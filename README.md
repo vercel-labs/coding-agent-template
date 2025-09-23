@@ -2,6 +2,8 @@
 
 A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, Cursor CLI, and opencode with [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) to automatically execute coding tasks on your repositories.
 
+![Coding Agent Template Screenshot](screenshot.png)
+
 ## Deploy Your Own
 
 You can deploy your own version of the coding agent template to Vercel with one click:
