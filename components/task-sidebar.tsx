@@ -150,15 +150,18 @@ export function TaskSidebar({ tasks, selectedTask, onTaskSelect, width = 288 }: 
                     <div className="flex gap-2">
                       {/* Text content */}
                       <div className="flex-1 min-w-0">
-                        <h3
-                          className={cn(
-                            'text-xs font-medium truncate mb-0.5',
-                            task.status === 'processing' &&
-                              'bg-gradient-to-r from-muted-foreground from-20% via-white via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]',
-                          )}
-                        >
-                          {task.prompt.slice(0, 50) + (task.prompt.length > 50 ? '...' : '')}
-                        </h3>
+                        <div className="flex items-center justify-between gap-1">
+                          <h3
+                            className={cn(
+                              'text-xs font-medium truncate mb-0.5',
+                              task.status === 'processing' &&
+                                'bg-gradient-to-r from-muted-foreground from-20% via-white via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]',
+                            )}
+                          >
+                            {task.prompt.slice(0, 50) + (task.prompt.length > 50 ? '...' : '')}
+                          </h3>
+                          {task.status === 'error' && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                        </div>
                         {task.repoUrl && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
                             <span className="truncate">
