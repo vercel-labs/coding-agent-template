@@ -230,10 +230,13 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
       // Load saved model for this agent
       const savedModel = localStorage.getItem(`last-selected-model-${savedAgent}`)
       const agentModels = AGENT_MODELS[savedAgent as keyof typeof AGENT_MODELS]
-      if (savedModel && agentModels.some((model) => model.value === savedModel)) {
+      if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
         setSelectedModel(savedModel)
       } else {
-        setSelectedModel(DEFAULT_MODELS[savedAgent as keyof typeof DEFAULT_MODELS])
+        const defaultModel = DEFAULT_MODELS[savedAgent as keyof typeof DEFAULT_MODELS]
+        if (defaultModel) {
+          setSelectedModel(defaultModel)
+        }
       }
     }
 
@@ -258,10 +261,13 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
       // Load saved model for this agent or use default
       const savedModel = localStorage.getItem(`last-selected-model-${selectedAgent}`)
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
-      if (savedModel && agentModels.some((model) => model.value === savedModel)) {
+      if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
         setSelectedModel(savedModel)
       } else {
-        setSelectedModel(DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS])
+        const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
+        if (defaultModel) {
+          setSelectedModel(defaultModel)
+        }
       }
     }
   }, [selectedAgent])
@@ -567,11 +573,11 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                       <SelectValue placeholder="Model" />
                     </SelectTrigger>
                     <SelectContent>
-                      {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS].map((model) => (
+                      {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
                         <SelectItem key={model.value} value={model.value}>
                           {model.label}
                         </SelectItem>
-                      ))}
+                      )) || []}
                     </SelectContent>
                   </Select>
                 </div>
@@ -719,11 +725,11 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     <SelectValue placeholder="Model" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS].map((model) => (
+                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
                       <SelectItem key={model.value} value={model.value}>
                         {model.label}
                       </SelectItem>
-                    ))}
+                    )) || []}
                   </SelectContent>
                 </Select>
               </div>

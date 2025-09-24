@@ -85,7 +85,9 @@ export function TaskActions({ task }: TaskActionsProps) {
     if (selectedAgent) {
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
       const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
-      setSelectedModel(defaultModel)
+      if (defaultModel && agentModels) {
+        setSelectedModel(defaultModel)
+      }
     }
   }, [selectedAgent])
 
@@ -239,11 +241,11 @@ export function TaskActions({ task }: TaskActionsProps) {
                     <SelectValue placeholder="Select a model" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS].map((model) => (
+                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
                       <SelectItem key={model.value} value={model.value}>
                         {model.label}
                       </SelectItem>
-                    ))}
+                    )) || []}
                   </SelectContent>
                 </Select>
               </div>
