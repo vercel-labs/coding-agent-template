@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db/client'
 import { tasks, insertTaskSchema } from '@/lib/db/schema'
 import { generateId } from '@/lib/utils/id'
@@ -8,6 +8,7 @@ import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { eq, desc, and, or } from 'drizzle-orm'
 import { createInfoLog, createCommandLog, createErrorLog, createSuccessLog } from '@/lib/utils/logging'
 import { createTaskLogger } from '@/lib/utils/task-logger'
+import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 
 export async function GET() {
   try {
@@ -41,6 +42,70 @@ export async function POST(request: NextRequest) {
         id: taskId, // Ensure id is always present
       })
       .returning()
+
+    // Generate AI branch name after response is sent (non-blocking)
+    after(async () => {
+      try {
+        // Check if AI Gateway API key is available
+        if (!process.env.AI_GATEWAY_API_KEY) {
+          console.log('AI_GATEWAY_API_KEY not available, skipping AI branch name generation')
+          return
+        }
+
+        const logger = createTaskLogger(taskId)
+        await logger.info('Generating AI-powered branch name...')
+        
+        // Extract repository name from URL for context
+        let repoName: string | undefined
+        try {
+          const url = new URL(validatedData.repoUrl || '')
+          const pathParts = url.pathname.split('/')
+          if (pathParts.length >= 3) {
+            repoName = pathParts[pathParts.length - 1].replace('.git', '')
+          }
+        } catch {
+          // Ignore URL parsing errors
+        }
+
+        // Generate AI branch name
+        const aiBranchName = await generateBranchName({
+          description: validatedData.prompt,
+          repoName,
+          context: `${validatedData.selectedAgent} agent task`,
+        })
+
+        // Update task with AI-generated branch name
+        await db
+          .update(tasks)
+          .set({
+            branchName: aiBranchName,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId))
+
+        await logger.success(`Generated AI branch name: ${aiBranchName}`)
+      } catch (error) {
+        console.error('Error generating AI branch name:', error)
+        
+        // Fallback to timestamp-based branch name
+        const fallbackBranchName = createFallbackBranchName(taskId)
+        
+        try {
+          await db
+            .update(tasks)
+            .set({
+              branchName: fallbackBranchName,
+              updatedAt: new Date(),
+            })
+            .where(eq(tasks.id, taskId))
+
+          const logger = createTaskLogger(taskId)
+          await logger.info(`Using fallback branch name: ${fallbackBranchName}`)
+        } catch (dbError) {
+          console.error('Error updating task with fallback branch name:', dbError)
+        }
+      }
+    })
 
     // Process the task asynchronously with timeout
     processTaskWithTimeout(
@@ -112,6 +177,27 @@ async function processTaskWithTimeout(
   }
 }
 
+// Helper function to wait for AI-generated branch name
+async function waitForBranchName(taskId: string, maxWaitMs: number = 10000): Promise<string | null> {
+  const startTime = Date.now()
+  
+  while (Date.now() - startTime < maxWaitMs) {
+    try {
+      const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId))
+      if (task?.branchName) {
+        return task.branchName
+      }
+    } catch (error) {
+      console.error('Error checking for branch name:', error)
+    }
+    
+    // Wait 500ms before checking again
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+  
+  return null
+}
+
 async function processTask(
   taskId: string,
   prompt: string,
@@ -126,6 +212,17 @@ async function processTask(
     // Update task status to processing with real-time logging
     await logger.updateStatus('processing', 'Task created, preparing to start...')
     await logger.updateProgress(10, 'Initializing task execution...')
+    
+    // Wait for AI-generated branch name (with timeout)
+    await logger.updateProgress(12, 'Waiting for AI-generated branch name...')
+    const aiBranchName = await waitForBranchName(taskId, 10000)
+    
+    if (aiBranchName) {
+      await logger.info(`Using AI-generated branch name: ${aiBranchName}`)
+    } else {
+      await logger.info('AI branch name not ready, will use fallback during sandbox creation')
+    }
+    
     await logger.updateProgress(15, 'Creating sandbox environment...')
 
     // Create sandbox with progress callback and 5-minute timeout
@@ -138,6 +235,7 @@ async function processTask(
       taskPrompt: prompt,
       selectedAgent,
       selectedModel,
+      preDeterminedBranchName: aiBranchName || undefined,
       onProgress: async (progress: number, message: string) => {
         // Use real-time logger for progress updates
         await logger.updateProgress(progress, message)
@@ -165,14 +263,20 @@ async function processTask(
       }
     }
 
-    // Update sandbox URL and branch name
+    // Update sandbox URL and branch name (only update branch name if not already set by AI)
+    const updateData: any = {
+      sandboxUrl: domain,
+      updatedAt: new Date(),
+    }
+    
+    // Only update branch name if we don't already have an AI-generated one
+    if (!aiBranchName) {
+      updateData.branchName = branchName
+    }
+    
     await db
       .update(tasks)
-      .set({
-        sandboxUrl: domain,
-        branchName: branchName,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(tasks.id, taskId))
 
     // Log agent execution start

@@ -47,8 +47,9 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     const authenticatedRepoUrl = createAuthenticatedRepoUrl(config.repoUrl)
     logs.push('Added GitHub authentication to repository URL')
 
-    // Determine the branch name to pass to the sandbox
-    const branchNameForEnv = config.existingBranchName || config.preDeterminedBranchName
+    // For initial clone, only use existing branch names, not AI-generated ones
+    // AI-generated branch names will be created later inside the sandbox
+    const branchNameForEnv = config.existingBranchName
 
     // Create sandbox with proper source configuration
     const sandboxConfig = {
