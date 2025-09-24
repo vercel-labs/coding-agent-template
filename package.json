@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "prepare": "husky"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.1",
@@ -55,6 +56,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
+    "husky": "^9.1.7",
     "prettier": "^3.6.2",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.8",
