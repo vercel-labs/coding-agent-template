@@ -127,6 +127,10 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     return () => clearInterval(interval)
   }, [])
 
+  const toggleSidebar = () => {
+    updateSidebarOpen(!isSidebarOpen)
+  }
+
   // Handle window resize - close sidebar on mobile and update isDesktop
   useEffect(() => {
     const handleResize = () => {
@@ -142,6 +146,18 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [isSidebarOpen])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault()
+        toggleSidebar()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [toggleSidebar])
 
   const fetchTasks = async () => {
     try {
@@ -163,10 +179,6 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     if (!isDesktop) {
       updateSidebarOpen(false, false)
     }
-  }
-
-  const toggleSidebar = () => {
-    updateSidebarOpen(!isSidebarOpen)
   }
 
   const addTaskOptimistically = (taskData: { prompt: string; repoUrl: string; selectedAgent: string; selectedModel: string }) => {
