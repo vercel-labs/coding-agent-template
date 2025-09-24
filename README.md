@@ -8,7 +8,7 @@ A template for building AI-powered coding agents that supports Claude Code, Open
 
 You can deploy your own version of the coding agent template to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=POSTGRES_URL,ANTHROPIC_API_KEY,GITHUB_TOKEN,VERCEL_TEAM_ID,VERCEL_PROJECT_ID,VERCEL_TOKEN&envDescription=Required+environment+variables+for+the+coding+agent+template&project-name=coding-agent-template&repository-name=coding-agent-template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=POSTGRES_URL,ANTHROPIC_API_KEY,GITHUB_TOKEN,VERCEL_TEAM_ID,VERCEL_PROJECT_ID,VERCEL_TOKEN,AI_GATEWAY_API_KEY,CURSOR_API_KEY,NPM_TOKEN&envDescription=Environment+variables+for+the+coding+agent+template.+AI_GATEWAY_API_KEY+is+required+for+branch+name+generation+and+Codex+agent.+CURSOR_API_KEY+and+NPM_TOKEN+are+optional.&project-name=coding-agent-template&repository-name=coding-agent-template)
 
 ## Features
 
@@ -52,12 +52,11 @@ Required environment variables:
 - `VERCEL_TEAM_ID`: Your Vercel team ID
 - `VERCEL_PROJECT_ID`: Your Vercel project ID
 - `VERCEL_TOKEN`: Your Vercel API token
-- `AI_GATEWAY_API_KEY`: Your AI Gateway API key for AI-generated branch names
+- `AI_GATEWAY_API_KEY`: Your AI Gateway API key for AI-generated branch names and Codex agent support
 
 Optional environment variables:
 
 - `CURSOR_API_KEY`: For Cursor agent support
-- `OPENAI_API_KEY`: For Codex agent support
 - `NPM_TOKEN`: For private npm packages
 
 ### 4. Set up the database
@@ -103,12 +102,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - `VERCEL_TEAM_ID`: Vercel team ID for sandbox creation
 - `VERCEL_PROJECT_ID`: Vercel project ID for sandbox creation
 - `VERCEL_TOKEN`: Vercel API token for sandbox creation
-- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation
+- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation and Codex agent support
 
 ### Optional
 
 - `CURSOR_API_KEY`: Cursor agent API key
-- `OPENAI_API_KEY`: OpenAI API key for Codex
 - `NPM_TOKEN`: NPM token for private packages
 
 ## AI Branch Name Generation

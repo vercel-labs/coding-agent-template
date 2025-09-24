@@ -64,10 +64,10 @@ export async function executeCodexInSandbox(
     }
 
     // Set up authentication - we'll use API key method since we're in a sandbox
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.AI_GATEWAY_API_KEY) {
       return {
         success: false,
-        error: 'OpenAI API key not found. Please set OPENAI_API_KEY environment variable.',
+        error: 'AI Gateway API key not found. Please set AI_GATEWAY_API_KEY environment variable.',
         cliName: 'codex',
         changesDetected: false,
         logs,
@@ -75,7 +75,7 @@ export async function executeCodexInSandbox(
     }
 
     // Validate API key format - can be either OpenAI (sk-) or Vercel (vck_)
-    const apiKey = process.env.OPENAI_API_KEY
+    const apiKey = process.env.AI_GATEWAY_API_KEY
     const isOpenAIKey = apiKey?.startsWith('sk-')
     const isVercelKey = apiKey?.startsWith('vck_')
 
@@ -147,7 +147,7 @@ model_provider = "vercel-ai-gateway"
 [model_providers.vercel-ai-gateway]
 name = "Vercel AI Gateway"
 base_url = "https://ai-gateway.vercel.sh/v1"
-env_key = "OPENAI_API_KEY"
+env_key = "AI_GATEWAY_API_KEY"
 wire_api = "chat"
 
 # Debug settings
@@ -162,7 +162,7 @@ model_provider = "openai"
 [model_providers.openai]
 name = "OpenAI"
 base_url = "https://api.openai.com/v1"
-env_key = "OPENAI_API_KEY"
+env_key = "AI_GATEWAY_API_KEY"
 wire_api = "responses"
 
 # Debug settings
@@ -222,7 +222,7 @@ log_requests = true
 
     // Use the same pattern as other working agents (Claude, etc.)
     // Execute with environment variables using sh -c like Claude does
-    const envPrefix = `OPENAI_API_KEY="${process.env.OPENAI_API_KEY}" HOME="/home/vercel-sandbox" CI="true"`
+    const envPrefix = `AI_GATEWAY_API_KEY="${process.env.AI_GATEWAY_API_KEY}" HOME="/home/vercel-sandbox" CI="true"`
     const fullCommand = `${envPrefix} codex exec --dangerously-bypass-approvals-and-sandbox "${instruction}"`
 
     // Use the standard runCommandInSandbox helper like other agents

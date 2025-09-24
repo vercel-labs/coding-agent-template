@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { MoreHorizontal, RefreshCw, Trash2, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 export function HomePageHeader() {
   const { toggleSidebar, isSidebarOpen, refreshTasks } = useTasks()
@@ -90,12 +91,7 @@ export function HomePageHeader() {
         size="sm"
         className="h-8 px-3 text-xs bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
       >
-        <a
-          href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5"
-        >
+        <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
           <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
             <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
           </svg>
@@ -144,7 +140,11 @@ export function HomePageHeader() {
           <div className="py-4">
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Checkbox id="delete-completed" checked={deleteCompleted} onCheckedChange={setDeleteCompleted} />
+                <Checkbox
+                  id="delete-completed"
+                  checked={deleteCompleted}
+                  onCheckedChange={(checked) => setDeleteCompleted(checked === true)}
+                />
                 <label
                   htmlFor="delete-completed"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -153,7 +153,11 @@ export function HomePageHeader() {
                 </label>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox id="delete-failed" checked={deleteFailed} onCheckedChange={setDeleteFailed} />
+                <Checkbox
+                  id="delete-failed"
+                  checked={deleteFailed}
+                  onCheckedChange={(checked) => setDeleteFailed(checked === true)}
+                />
                 <label
                   htmlFor="delete-failed"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
