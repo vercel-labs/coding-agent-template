@@ -59,6 +59,8 @@ export const selectTaskSchema = z.object({
   progress: z.number().nullable(),
   logs: z.array(logEntrySchema).nullable(),
   error: z.string().nullable(),
+  description: z.string().nullable(),
+  instructions: z.string().nullable(),
   branchName: z.string().nullable(),
   sandboxUrl: z.string().nullable(),
   createdAt: z.date(),

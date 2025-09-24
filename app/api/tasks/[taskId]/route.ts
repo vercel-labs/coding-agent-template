@@ -3,15 +3,9 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
-interface RouteParams {
-  params: {
-    taskId: string
-  }
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteContext<'/api/tasks/[taskId]'>) {
   try {
-    const { taskId } = params
+    const { taskId } = await params
     const task = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
 
     if (!task[0]) {
@@ -25,9 +19,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: RouteContext<'/api/tasks/[taskId]'>) {
   try {
-    const { taskId } = params
+    const { taskId } = await params
 
     // Check if task exists first
     const existingTask = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
