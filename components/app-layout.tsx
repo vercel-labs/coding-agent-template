@@ -20,7 +20,12 @@ interface TasksContextType {
   refreshTasks: () => Promise<void>
   toggleSidebar: () => void
   isSidebarOpen: boolean
-  addTaskOptimistically: (taskData: { prompt: string; repoUrl: string; selectedAgent: string; selectedModel: string }) => { id: string; optimisticTask: Task }
+  addTaskOptimistically: (taskData: {
+    prompt: string
+    repoUrl: string
+    selectedAgent: string
+    selectedModel: string
+  }) => { id: string; optimisticTask: Task }
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined)
@@ -90,12 +95,11 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     }
   }
 
-
   // Ensure isDesktop is correct after hydration and set proper sidebar state
   useEffect(() => {
     const newIsDesktop = window.innerWidth >= 1024
     setIsDesktop(newIsDesktop)
-    
+
     // On mobile, always close sidebar after hydration
     if (!newIsDesktop) {
       setIsSidebarOpen(false)
@@ -136,7 +140,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     const handleResize = () => {
       const newIsDesktop = window.innerWidth >= 1024
       setIsDesktop(newIsDesktop)
-      
+
       // On mobile, always close sidebar
       if (!newIsDesktop && isSidebarOpen) {
         setIsSidebarOpen(false)
@@ -181,7 +185,12 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     }
   }
 
-  const addTaskOptimistically = (taskData: { prompt: string; repoUrl: string; selectedAgent: string; selectedModel: string }) => {
+  const addTaskOptimistically = (taskData: {
+    prompt: string
+    repoUrl: string
+    selectedAgent: string
+    selectedModel: string
+  }) => {
     const id = nanoid()
     const optimisticTask: Task = {
       id,
@@ -203,7 +212,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     }
 
     // Add the optimistic task to the beginning of the tasks array
-    setTasks(prevTasks => [optimisticTask, ...prevTasks])
+    setTasks((prevTasks) => [optimisticTask, ...prevTasks])
 
     return { id, optimisticTask }
   }
@@ -251,18 +260,18 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
 
   return (
     <TasksContext.Provider value={{ refreshTasks: fetchTasks, toggleSidebar, isSidebarOpen, addTaskOptimistically }}>
-      <div 
+      <div
         className="h-screen flex relative"
-        style={{
-          '--sidebar-width': `${sidebarWidth}px`,
-          '--sidebar-open': isSidebarOpen ? '1' : '0'
-        } as React.CSSProperties}
+        style={
+          {
+            '--sidebar-width': `${sidebarWidth}px`,
+            '--sidebar-open': isSidebarOpen ? '1' : '0',
+          } as React.CSSProperties
+        }
         suppressHydrationWarning
       >
         {/* Backdrop - Mobile Only */}
-        {isSidebarOpen && (
-          <div className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={closeSidebar} />
-        )}
+        {isSidebarOpen && <div className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={closeSidebar} />}
 
         {/* Sidebar */}
         <div
@@ -273,13 +282,13 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
             ${isSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'}
           `}
           style={{
-            width: `${sidebarWidth}px`
+            width: `${sidebarWidth}px`,
           }}
         >
-          <div 
-            className="h-full overflow-hidden" 
-            style={{ 
-              width: `${sidebarWidth}px`
+          <div
+            className="h-full overflow-hidden"
+            style={{
+              width: `${sidebarWidth}px`,
             }}
           >
             {isLoading ? (
@@ -300,7 +309,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
           onMouseDown={isSidebarOpen ? handleMouseDown : undefined}
           style={{
             // Position it right after the sidebar
-            left: isSidebarOpen ? `${sidebarWidth}px` : '0px'
+            left: isSidebarOpen ? `${sidebarWidth}px` : '0px',
           }}
         >
           <div className="absolute inset-0 w-2 -ml-0.5" />
@@ -308,10 +317,10 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
         </div>
 
         {/* Main Content */}
-        <div 
+        <div
           className={`flex-1 overflow-auto flex flex-col lg:ml-0 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
           style={{
-            marginLeft: isSidebarOpen ? `${sidebarWidth + 4}px` : '0px'
+            marginLeft: isSidebarOpen ? `${sidebarWidth + 4}px` : '0px',
           }}
         >
           {children}

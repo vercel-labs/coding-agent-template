@@ -22,7 +22,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
   const getAgentLogo = (agent: string | null) => {
     if (!agent) return null
-    
+
     switch (agent.toLowerCase()) {
       case 'claude':
         return Claude
@@ -53,14 +53,14 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   // Auto-scroll to bottom when new logs are added (after initial load)
   useEffect(() => {
     const currentLogsLength = task.logs?.length || 0
-    
+
     // Only scroll if new logs were added (not on initial load)
     if (currentLogsLength > prevLogsLengthRef.current && prevLogsLengthRef.current > 0) {
       if (logsContainerRef.current) {
         logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
       }
     }
-    
+
     // Update the previous logs length
     prevLogsLengthRef.current = currentLogsLength
   }, [task.logs])
@@ -78,10 +78,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
   const copyLogsToClipboard = async () => {
     try {
-      const logsText = (task.logs || [])
-        .map(log => log.message)
-        .join('\n')
-      
+      const logsText = (task.logs || []).map((log) => log.message).join('\n')
+
       await navigator.clipboard.writeText(logsText)
       setCopiedLogs(true)
       toast.success('Logs copied to clipboard!')
@@ -160,10 +158,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               <div>
                 <h4 className="font-medium mb-1">Completed</h4>
                 <p className="text-sm text-muted-foreground">
-                  {task.completedAt 
+                  {task.completedAt
                     ? `${new Date(task.completedAt).toLocaleDateString()} at ${new Date(task.completedAt).toLocaleTimeString()}`
-                    : 'Not completed'
-                  }
+                    : 'Not completed'}
                 </p>
               </div>
               <div>
@@ -176,7 +173,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                     const durationSeconds = Math.floor(durationMs / 1000)
                     const minutes = Math.floor(durationSeconds / 60)
                     const seconds = durationSeconds % 60
-                    
+
                     if (minutes > 0) {
                       return `${minutes}m ${seconds}s`
                     } else {
@@ -197,11 +194,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                   className="h-8 w-8 p-0"
                   title="Copy prompt to clipboard"
                 >
-                  {copiedPrompt ? (
-                    <Check className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                  {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
               <p className="text-sm bg-muted p-3 rounded-md">{task.prompt}</p>
@@ -238,10 +231,10 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                     <h4 className="font-medium mb-2">Repo</h4>
                     <div className="flex items-center gap-2 text-sm">
                       <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <a 
-                        href={task.repoUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
+                      <a
+                        href={task.repoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-muted-foreground hover:text-foreground truncate"
                       >
                         {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
@@ -256,9 +249,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                     <div className="flex items-center gap-2 text-sm">
                       <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                       {task.repoUrl ? (
-                        <a 
-                          href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`} 
-                          target="_blank" 
+                        <a
+                          href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-muted-foreground hover:text-foreground truncate"
                         >
@@ -274,8 +267,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             )}
           </CardContent>
         </Card>
-
-
 
         {/* Logs */}
         {task.logs && task.logs.length > 0 && (
@@ -293,16 +284,12 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                   className="h-8 w-8 p-0"
                   title="Copy logs to clipboard"
                 >
-                  {copiedLogs ? (
-                    <Check className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                  {copiedLogs ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div 
+              <div
                 ref={logsContainerRef}
                 className="bg-black text-green-400 p-4 rounded-md font-mono text-sm max-h-96 overflow-y-auto"
               >
@@ -327,18 +314,14 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit',
-                      fractionalSecondDigits: 3
+                      fractionalSecondDigits: 3,
                     })
                   }
 
                   return (
                     <div key={index} className={cn('mb-1 flex gap-2', getLogColor(log.type))}>
-                      <span className="text-gray-500 text-xs shrink-0 mt-0.5">
-                        [{formatTime(log.timestamp)}]
-                      </span>
-                      <span className="flex-1">
-                        {log.message}
-                      </span>
+                      <span className="text-gray-500 text-xs shrink-0 mt-0.5">[{formatTime(log.timestamp)}]</span>
+                      <span className="flex-1">{log.message}</span>
                     </div>
                   )
                 })}

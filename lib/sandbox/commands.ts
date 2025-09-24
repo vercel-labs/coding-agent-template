@@ -40,7 +40,7 @@ export async function runCommandInSandbox(
     }
 
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-    
+
     return {
       success: result.exitCode === 0,
       exitCode: result.exitCode,
@@ -66,7 +66,7 @@ export async function runStreamingCommandInSandbox(
 ): Promise<CommandResult> {
   try {
     const result = await sandbox.runCommand(command, args)
-    
+
     let stdout = ''
     let stderr = ''
 
@@ -110,7 +110,7 @@ export async function runStreamingCommandInSandbox(
     }
 
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-    
+
     return {
       success: result.exitCode === 0,
       exitCode: result.exitCode,
@@ -127,4 +127,3 @@ export async function runStreamingCommandInSandbox(
     }
   }
 }
-

@@ -175,11 +175,7 @@ export function TaskActions({ task }: TaskActionsProps) {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5"
           >
-            <svg
-              viewBox="0 0 76 65"
-              className="h-3 w-3"
-              fill="currentColor"
-            >
+            <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
               <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
             </svg>
             Deploy to Vercel
@@ -193,22 +189,22 @@ export function TaskActions({ task }: TaskActionsProps) {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {getPRUrl() && (
-            <DropdownMenuItem onClick={handleOpenPR}>
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open PR
+          <DropdownMenuContent align="end">
+            {getPRUrl() && (
+              <DropdownMenuItem onClick={handleOpenPR}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open PR
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Try Again
             </DropdownMenuItem>
-          )}
-          <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Try Again
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Task
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Task
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
@@ -216,9 +212,7 @@ export function TaskActions({ task }: TaskActionsProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Try Again</AlertDialogTitle>
-            <AlertDialogDescription>
-              Create a new task with the same prompt and repository.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Create a new task with the same prompt and repository.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

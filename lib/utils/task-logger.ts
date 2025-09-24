@@ -121,10 +121,7 @@ export class TaskLogger {
         updates.completedAt = new Date()
       }
 
-      await db
-        .update(tasks)
-        .set(updates)
-        .where(eq(tasks.id, this.taskId))
+      await db.update(tasks).set(updates).where(eq(tasks.id, this.taskId))
 
       // Task status: ${status}
     } catch (error) {

@@ -109,7 +109,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
       // On desktop: Enter submits, Shift+Enter creates new line
       // On mobile: Enter creates new line, must use submit button
       const isMobile = window.innerWidth < 1024
-      
+
       if (!isMobile && !e.shiftKey) {
         // Desktop: Enter without Shift submits the form
         e.preventDefault()
@@ -135,7 +135,6 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
     })
   }
 
-
   // Load saved repo when owner changes
   useEffect(() => {
     if (selectedOwner) {
@@ -152,7 +151,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
   useEffect(() => {
     if (owners.length > 0 && !selectedOwner) {
       const lastUsedOwner = localStorage.getItem('last-selected-owner')
-      if (lastUsedOwner && owners.some(owner => owner.login === lastUsedOwner)) {
+      if (lastUsedOwner && owners.some((owner) => owner.login === lastUsedOwner)) {
         setSelectedOwner(lastUsedOwner)
       }
     }
@@ -168,8 +167,8 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
           try {
             const parsedOwners = JSON.parse(cachedOwners)
             // Sort owners by login name
-            const sortedOwners = parsedOwners.sort((a: GitHubOwner, b: GitHubOwner) => 
-              a.login.localeCompare(b.login, undefined, { sensitivity: 'base' })
+            const sortedOwners = parsedOwners.sort((a: GitHubOwner, b: GitHubOwner) =>
+              a.login.localeCompare(b.login, undefined, { sensitivity: 'base' }),
             )
             setOwners(sortedOwners)
             setLoadingOwners(false)
@@ -197,8 +196,8 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
         }
 
         // Sort owners by login name
-        const sortedOwnersList = ownersList.sort((a, b) => 
-          a.login.localeCompare(b.login, undefined, { sensitivity: 'base' })
+        const sortedOwnersList = ownersList.sort((a, b) =>
+          a.login.localeCompare(b.login, undefined, { sensitivity: 'base' }),
         )
 
         setOwners(sortedOwnersList)
@@ -225,13 +224,13 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
     }
 
     const savedAgent = localStorage.getItem('last-selected-agent')
-    if (savedAgent && CODING_AGENTS.some(agent => agent.value === savedAgent)) {
+    if (savedAgent && CODING_AGENTS.some((agent) => agent.value === savedAgent)) {
       setSelectedAgent(savedAgent)
-      
+
       // Load saved model for this agent
       const savedModel = localStorage.getItem(`last-selected-model-${savedAgent}`)
       const agentModels = AGENT_MODELS[savedAgent as keyof typeof AGENT_MODELS]
-      if (savedModel && agentModels.some(model => model.value === savedModel)) {
+      if (savedModel && agentModels.some((model) => model.value === savedModel)) {
         setSelectedModel(savedModel)
       } else {
         setSelectedModel(DEFAULT_MODELS[savedAgent as keyof typeof DEFAULT_MODELS])
@@ -259,7 +258,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
       // Load saved model for this agent or use default
       const savedModel = localStorage.getItem(`last-selected-model-${selectedAgent}`)
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
-      if (savedModel && agentModels.some(model => model.value === savedModel)) {
+      if (savedModel && agentModels.some((model) => model.value === savedModel)) {
         setSelectedModel(savedModel)
       } else {
         setSelectedModel(DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS])
@@ -368,23 +367,23 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
   const displayedRepos = repoFilter ? filteredRepos : filteredRepos.slice(0, 50)
   const hasMoreRepos = !repoFilter && repos.length > 50
 
-      const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (prompt.trim() && selectedOwner && selectedRepo) {
-          const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
-          if (selectedRepoData) {
-            // Clear the saved prompt since we're submitting it
-            localStorage.removeItem('task-prompt')
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (prompt.trim() && selectedOwner && selectedRepo) {
+      const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
+      if (selectedRepoData) {
+        // Clear the saved prompt since we're submitting it
+        localStorage.removeItem('task-prompt')
 
-            onSubmit({
-              prompt: prompt.trim(),
-              repoUrl: selectedRepoData.clone_url,
-              selectedAgent,
-              selectedModel,
-            })
-          }
-        }
+        onSubmit({
+          prompt: prompt.trim(),
+          repoUrl: selectedRepoData.clone_url,
+          selectedAgent,
+          selectedModel,
+        })
       }
+    }
+  }
 
   return (
     <div className="w-full max-w-4xl">
@@ -392,11 +391,21 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
         <h1 className="text-4xl font-bold mb-3">Coding Agent Template</h1>
         <p className="text-muted-foreground text-xl mb-2 max-w-3xl mx-auto">
           Multi-agent AI coding platform powered by{' '}
-          <a href="https://vercel.com/docs/vercel-sandbox" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+          <a
+            href="https://vercel.com/docs/vercel-sandbox"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:no-underline"
+          >
             Vercel Sandbox
           </a>{' '}
           and{' '}
-          <a href="https://vercel.com/docs/ai-gateway" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+          <a
+            href="https://vercel.com/docs/ai-gateway"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:no-underline"
+          >
             AI Gateway
           </a>
         </p>
@@ -471,13 +480,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                 >
                   <SelectTrigger className="w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
                     <SelectValue
-                      placeholder={
-                        !selectedOwner
-                          ? 'Select owner first'
-                          : loadingRepos
-                            ? 'Loading...'
-                            : 'Repo'
-                      }
+                      placeholder={!selectedOwner ? 'Select owner first' : loadingRepos ? 'Loading...' : 'Repo'}
                     />
                   </SelectTrigger>
                   <SelectContent>
@@ -538,16 +541,16 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     <SelectTrigger className="w-auto min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
                       <SelectValue placeholder="Agent" />
                     </SelectTrigger>
-                  <SelectContent>
-                    {CODING_AGENTS.map((agent) => (
-                      <SelectItem key={agent.value} value={agent.value}>
-                        <div className="flex items-center gap-2">
-                          <agent.icon className="w-4 h-4" />
-                          <span>{agent.label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                    <SelectContent>
+                      {CODING_AGENTS.map((agent) => (
+                        <SelectItem key={agent.value} value={agent.value}>
+                          <div className="flex items-center gap-2">
+                            <agent.icon className="w-4 h-4" />
+                            <span>{agent.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
 
                   {/* Model Selection */}
@@ -630,13 +633,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                 >
                   <SelectTrigger className="w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
                     <SelectValue
-                      placeholder={
-                        !selectedOwner
-                          ? 'Select owner first'
-                          : loadingRepos
-                            ? 'Loading...'
-                            : 'Repo'
-                      }
+                      placeholder={!selectedOwner ? 'Select owner first' : loadingRepos ? 'Loading...' : 'Repo'}
                     />
                   </SelectTrigger>
                   <SelectContent>

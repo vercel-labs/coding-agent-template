@@ -41,11 +41,7 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5"
                   >
-                    <svg
-                      viewBox="0 0 76 65"
-                      className="h-3 w-3"
-                      fill="currentColor"
-                    >
+                    <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
                       <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
                     </svg>
                     Deploy to Vercel
@@ -65,14 +61,12 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
               <div className="max-w-4xl mx-auto space-y-6">
                 {/* Task Info Skeleton - 339px height */}
                 <Card className="h-[339px]">
-                  <CardContent className="space-y-4">
-                  </CardContent>
+                  <CardContent className="space-y-4"></CardContent>
                 </Card>
 
                 {/* Logs Skeleton - 512px height */}
                 <Card className="h-[512px]">
-                  <CardContent>
-                  </CardContent>
+                  <CardContent></CardContent>
                 </Card>
               </div>
             </div>
@@ -89,9 +83,7 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <h2 className="text-lg font-semibold mb-2">Task Not Found</h2>
-              <p className="text-muted-foreground">
-                {error || 'The requested task could not be found.'}
-              </p>
+              <p className="text-muted-foreground">{error || 'The requested task could not be found.'}</p>
             </div>
           </div>
         </div>

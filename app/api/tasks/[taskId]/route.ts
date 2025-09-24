@@ -28,10 +28,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { taskId } = params
-    
+
     // Check if task exists first
     const existingTask = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
-    
+
     if (!existingTask[0]) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }

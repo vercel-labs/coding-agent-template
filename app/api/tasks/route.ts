@@ -34,13 +34,22 @@ export async function POST(request: NextRequest) {
     })
 
     // Insert the task into the database - ensure id is definitely present
-    const [newTask] = await db.insert(tasks).values({
-      ...validatedData,
-      id: taskId, // Ensure id is always present
-    }).returning()
+    const [newTask] = await db
+      .insert(tasks)
+      .values({
+        ...validatedData,
+        id: taskId, // Ensure id is always present
+      })
+      .returning()
 
     // Process the task asynchronously with timeout
-    processTaskWithTimeout(newTask.id, validatedData.prompt, validatedData.repoUrl || '', validatedData.selectedAgent || 'claude', validatedData.selectedModel)
+    processTaskWithTimeout(
+      newTask.id,
+      validatedData.prompt,
+      validatedData.repoUrl || '',
+      validatedData.selectedAgent || 'claude',
+      validatedData.selectedModel,
+    )
 
     return NextResponse.json({ task: newTask })
   } catch (error) {
@@ -49,31 +58,37 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function processTaskWithTimeout(taskId: string, prompt: string, repoUrl: string, selectedAgent: string = 'claude', selectedModel?: string) {
+async function processTaskWithTimeout(
+  taskId: string,
+  prompt: string,
+  repoUrl: string,
+  selectedAgent: string = 'claude',
+  selectedModel?: string,
+) {
   const TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes in milliseconds
-  
+
   // Add a warning at 4 minutes
-  const warningTimeout = setTimeout(async () => {
-    try {
-      const warningLogger = createTaskLogger(taskId)
-      await warningLogger.info('Task is taking longer than expected (4+ minutes). Will timeout in 1 minute.')
-    } catch (error) {
-      console.error('Failed to add timeout warning:', error)
-    }
-  }, 4 * 60 * 1000) // 4 minutes
-  
+  const warningTimeout = setTimeout(
+    async () => {
+      try {
+        const warningLogger = createTaskLogger(taskId)
+        await warningLogger.info('Task is taking longer than expected (4+ minutes). Will timeout in 1 minute.')
+      } catch (error) {
+        console.error('Failed to add timeout warning:', error)
+      }
+    },
+    4 * 60 * 1000,
+  ) // 4 minutes
+
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
       reject(new Error('Task execution timed out after 5 minutes'))
     }, TASK_TIMEOUT_MS)
   })
-  
+
   try {
-    await Promise.race([
-      processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel),
-      timeoutPromise
-    ])
-    
+    await Promise.race([processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel), timeoutPromise])
+
     // Clear the warning timeout if task completes successfully
     clearTimeout(warningTimeout)
   } catch (error: any) {
@@ -82,11 +97,14 @@ async function processTaskWithTimeout(taskId: string, prompt: string, repoUrl: s
     // Handle timeout specifically
     if (error.message?.includes('timed out after 5 minutes')) {
       console.error('Task timed out:', taskId)
-      
+
       // Use logger for timeout error
       const timeoutLogger = createTaskLogger(taskId)
       await timeoutLogger.error('Task execution timed out after 5 minutes')
-      await timeoutLogger.updateStatus('error', 'Task execution timed out after 5 minutes. The operation took too long to complete.')
+      await timeoutLogger.updateStatus(
+        'error',
+        'Task execution timed out after 5 minutes. The operation took too long to complete.',
+      )
     } else {
       // Re-throw other errors to be handled by the original error handler
       throw error
@@ -94,7 +112,13 @@ async function processTaskWithTimeout(taskId: string, prompt: string, repoUrl: s
   }
 }
 
-async function processTask(taskId: string, prompt: string, repoUrl: string, selectedAgent: string = 'claude', selectedModel?: string) {
+async function processTask(
+  taskId: string,
+  prompt: string,
+  repoUrl: string,
+  selectedAgent: string = 'claude',
+  selectedModel?: string,
+) {
   let sandbox: any = null
   const logger = createTaskLogger(taskId)
 
@@ -129,7 +153,7 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
 
     // Log sandbox creation completion and append sandbox logs
     await logger.success('Sandbox created successfully')
-    
+
     // Append sandbox logs to database in real-time
     for (const log of sandboxResult.logs || []) {
       if (log.startsWith('$ ')) {
@@ -166,26 +190,26 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
           return 3 * 60 * 1000 // 3 minutes for other agents
       }
     }
-    
+
     const AGENT_TIMEOUT_MS = getAgentTimeout(selectedAgent)
     const timeoutMinutes = Math.floor(AGENT_TIMEOUT_MS / (60 * 1000))
-    
+
     const agentTimeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         reject(new Error(`${selectedAgent} agent execution timed out after ${timeoutMinutes} minutes`))
       }, AGENT_TIMEOUT_MS)
     })
-    
+
     const agentResult = await Promise.race([
       executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel),
-      agentTimeoutPromise
+      agentTimeoutPromise,
     ])
 
     if (agentResult.success) {
       // Log agent completion
       await logger.success(`${selectedAgent} agent execution completed`)
       await logger.info(agentResult.output || 'Code changes applied successfully')
-      
+
       if (agentResult.agentResponse) {
         await logger.info(`Agent Response: ${agentResult.agentResponse}`)
       }
@@ -222,10 +246,10 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
     } else {
       // Agent failed, but we still want to capture its logs
       await logger.error(`${selectedAgent} agent execution failed`)
-      
+
       // Agent execution logs are already logged in real-time by the agent
       // No need to log them again here
-      
+
       throw new Error(agentResult.error || 'Agent execution failed')
     }
   } catch (error) {
@@ -258,19 +282,22 @@ export async function DELETE(request: NextRequest) {
   try {
     const url = new URL(request.url)
     const action = url.searchParams.get('action')
-    
+
     if (!action) {
       return NextResponse.json({ error: 'Action parameter is required' }, { status: 400 })
     }
 
-    const actions = action.split(',').map(a => a.trim())
+    const actions = action.split(',').map((a) => a.trim())
     const validActions = ['completed', 'failed']
-    const invalidActions = actions.filter(a => !validActions.includes(a))
-    
+    const invalidActions = actions.filter((a) => !validActions.includes(a))
+
     if (invalidActions.length > 0) {
-      return NextResponse.json({ 
-        error: `Invalid action(s): ${invalidActions.join(', ')}. Valid actions: ${validActions.join(', ')}` 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: `Invalid action(s): ${invalidActions.join(', ')}. Valid actions: ${validActions.join(', ')}`,
+        },
+        { status: 400 },
+      )
     }
 
     // Build the where conditions
@@ -288,28 +315,27 @@ export async function DELETE(request: NextRequest) {
 
     // Delete tasks based on conditions
     const whereClause = conditions.length === 1 ? conditions[0] : or(...conditions)
-    const deletedTasks = await db.delete(tasks)
-      .where(whereClause)
-      .returning()
-    
+    const deletedTasks = await db.delete(tasks).where(whereClause).returning()
+
     // Build response message
     const actionMessages = []
     if (actions.includes('completed')) {
-      const completedCount = deletedTasks.filter(task => task.status === 'completed').length
+      const completedCount = deletedTasks.filter((task) => task.status === 'completed').length
       if (completedCount > 0) actionMessages.push(`${completedCount} completed`)
     }
     if (actions.includes('failed')) {
-      const failedCount = deletedTasks.filter(task => task.status === 'error').length
+      const failedCount = deletedTasks.filter((task) => task.status === 'error').length
       if (failedCount > 0) actionMessages.push(`${failedCount} failed`)
     }
 
-    const message = actionMessages.length > 0 
-      ? `${actionMessages.join(' and ')} task(s) deleted successfully`
-      : 'No tasks found to delete'
-    
-    return NextResponse.json({ 
+    const message =
+      actionMessages.length > 0
+        ? `${actionMessages.join(' and ')} task(s) deleted successfully`
+        : 'No tasks found to delete'
+
+    return NextResponse.json({
       message,
-      deletedCount: deletedTasks.length
+      deletedCount: deletedTasks.length,
     })
   } catch (error) {
     console.error('Error deleting tasks:', error)

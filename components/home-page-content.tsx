@@ -12,15 +12,20 @@ export function HomePageContent() {
   const router = useRouter()
   const { refreshTasks, addTaskOptimistically } = useTasks()
 
-  const handleTaskSubmit = async (data: { prompt: string; repoUrl: string; selectedAgent: string; selectedModel: string }) => {
+  const handleTaskSubmit = async (data: {
+    prompt: string
+    repoUrl: string
+    selectedAgent: string
+    selectedModel: string
+  }) => {
     setIsSubmitting(true)
-    
+
     // Add task optimistically to sidebar immediately
     const { id, optimisticTask } = addTaskOptimistically(data)
-    
+
     // Navigate to the new task page immediately
     router.push(`/tasks/${id}`)
-    
+
     try {
       const response = await fetch('/api/tasks', {
         method: 'POST',

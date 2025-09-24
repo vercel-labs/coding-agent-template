@@ -3,12 +3,7 @@
 import { PageHeader } from '@/components/page-header'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +37,7 @@ export function HomePageHeader() {
           sessionStorage.removeItem(key)
         }
       })
-      
+
       // Reload the page to fetch fresh data
       window.location.reload()
     } catch (error) {
@@ -101,11 +96,7 @@ export function HomePageHeader() {
           rel="noopener noreferrer"
           className="flex items-center gap-1.5"
         >
-          <svg
-            viewBox="0 0 76 65"
-            className="h-3 w-3"
-            fill="currentColor"
-          >
+          <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
             <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
           </svg>
           Deploy to Vercel
@@ -141,7 +132,7 @@ export function HomePageHeader() {
         isMobileSidebarOpen={isSidebarOpen}
         actions={actions}
       />
-      
+
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -153,22 +144,20 @@ export function HomePageHeader() {
           <div className="py-4">
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="delete-completed" 
-                  checked={deleteCompleted}
-                  onCheckedChange={setDeleteCompleted}
-                />
-                <label htmlFor="delete-completed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                <Checkbox id="delete-completed" checked={deleteCompleted} onCheckedChange={setDeleteCompleted} />
+                <label
+                  htmlFor="delete-completed"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
                   Delete Completed Tasks
                 </label>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="delete-failed" 
-                  checked={deleteFailed}
-                  onCheckedChange={setDeleteFailed}
-                />
-                <label htmlFor="delete-failed" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                <Checkbox id="delete-failed" checked={deleteFailed} onCheckedChange={setDeleteFailed} />
+                <label
+                  htmlFor="delete-failed"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
                   Delete Failed Tasks
                 </label>
               </div>
@@ -176,8 +165,8 @@ export function HomePageHeader() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteTasks} 
+            <AlertDialogAction
+              onClick={handleDeleteTasks}
               disabled={isDeleting || (!deleteCompleted && !deleteFailed)}
               className="bg-red-600 hover:bg-red-700"
             >

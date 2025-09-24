@@ -6,18 +6,24 @@ import { LogEntry } from '@/lib/db/schema'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
 // Helper function to run command and collect logs
-async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logs: LogEntry[], logger?: TaskLogger) {
+async function runAndLogCommand(
+  sandbox: Sandbox,
+  command: string,
+  args: string[],
+  logs: LogEntry[],
+  logger?: TaskLogger,
+) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
-  
+
   // Log to both local logs and database if logger is provided
   logs.push(createCommandLog(redactedCommand))
   if (logger) {
     await logger.command(redactedCommand)
   }
-  
+
   const result = await runCommandInSandbox(sandbox, command, args)
-  
+
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
     const redactedOutput = redactSensitiveInfo(result.output.trim())
@@ -26,7 +32,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
       await logger.info(redactedOutput)
     }
   }
-  
+
   if (result && !result.success && result.error) {
     const redactedError = redactSensitiveInfo(result.error)
     logs.push(createErrorLog(redactedError))
@@ -34,7 +40,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
       await logger.error(redactedError)
     }
   }
-  
+
   // If result is null/undefined, create a fallback result
   if (!result) {
     const errorResult = {
@@ -42,7 +48,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
       error: 'Command execution failed - no result returned',
       exitCode: -1,
       output: '',
-      command: redactedCommand
+      command: redactedCommand,
     }
     logs.push(createErrorLog('Command execution failed - no result returned'))
     if (logger) {
@@ -50,11 +56,14 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
     }
     return errorResult
   }
-  
+
   return result
 }
 
-export async function installClaudeCLI(sandbox: Sandbox, selectedModel?: string): Promise<{ success: boolean; logs: string[] }> {
+export async function installClaudeCLI(
+  sandbox: Sandbox,
+  selectedModel?: string,
+): Promise<{ success: boolean; logs: string[] }> {
   const logs: string[] = []
 
   // Install Claude CLI
@@ -73,7 +82,7 @@ export async function installClaudeCLI(sandbox: Sandbox, selectedModel?: string)
 
       // Create config file directly using absolute path
       // Use selectedModel if provided, otherwise fall back to default
-      const modelToUse = selectedModel || "claude-3-5-sonnet-20241022"
+      const modelToUse = selectedModel || 'claude-3-5-sonnet-20241022'
       const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
 {
   "api_key": "${process.env.ANTHROPIC_API_KEY}",
@@ -109,15 +118,20 @@ EOF`
   }
 }
 
-export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger, selectedModel?: string): Promise<AgentExecutionResult> {
+export async function executeClaudeInSandbox(
+  sandbox: Sandbox,
+  instruction: string,
+  logger?: TaskLogger,
+  selectedModel?: string,
+): Promise<AgentExecutionResult> {
   const logs: LogEntry[] = []
-  
+
   try {
     // Executing Claude CLI with instruction
 
     // Check if Claude CLI is available and get version info
     const cliCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logs, logger)
-    
+
     if (cliCheck.success) {
       // Get Claude CLI version for debugging
       await runAndLogCommand(sandbox, 'claude', ['--version'], logs, logger)
@@ -129,10 +143,10 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
       // Claude CLI not found, try to install it
       // Claude CLI not found, installing
       const installResult = await installClaudeCLI(sandbox, selectedModel)
-      
+
       if (!installResult.success) {
         // Convert installation logs to LogEntry format
-        const installLogs = installResult.logs.map(log => createInfoLog(log))
+        const installLogs = installResult.logs.map((log) => createInfoLog(log))
         return {
           success: false,
           error: `Failed to install Claude CLI: ${installResult.logs.join(', ')}`,
@@ -141,13 +155,13 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
           logs: [...logs, ...installLogs],
         }
       }
-      
+
       // Add installation logs to our logs (convert string logs to LogEntry)
-      installResult.logs.forEach(log => {
+      installResult.logs.forEach((log) => {
         logs.push(createInfoLog(log))
       })
       // Claude CLI installed successfully
-      
+
       // Verify installation worked
       const verifyCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logs, logger)
       if (!verifyCheck.success) {
@@ -174,19 +188,21 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
 
     // Execute Claude CLI with proper environment and instruction
     const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
-    
+
     // Log what we're trying to do
-    const modelToUse = selectedModel || "claude-3-5-sonnet-20241022"
+    const modelToUse = selectedModel || 'claude-3-5-sonnet-20241022'
     if (logger) {
-      await logger.info(`Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`)
+      await logger.info(
+        `Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`,
+      )
     }
-    
+
     // Try multiple command formats to see what works
     let fullCommand: string
-    
+
     // First try: Simple direct command with permissions flag, model specification, and verbose output
     fullCommand = `${envPrefix} claude --model "${modelToUse}" --dangerously-skip-permissions --verbose "${instruction}"`
-    
+
     if (logger) {
       await logger.info('Executing Claude CLI with --dangerously-skip-permissions for automated file changes...')
     }
@@ -199,7 +215,7 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
     }
 
     const result = await runCommandInSandbox(sandbox, 'sh', ['-c', fullCommand])
-    
+
     // Check if result is valid before accessing properties
     if (!result) {
       const errorMsg = 'Claude CLI execution failed - no result returned'
@@ -215,7 +231,7 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         logs,
       }
     }
-    
+
     // Log the output
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
@@ -224,7 +240,7 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         await logger.info(redactedOutput)
       }
     }
-    
+
     if (!result.success && result.error) {
       const redactedError = redactSensitiveInfo(result.error)
       logs.push(createErrorLog(redactedError))
@@ -257,12 +273,18 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
         if (logger) {
           await logger.info('No changes detected. Checking if files exist...')
         }
-        
+
         // Check if common files exist
-        const readmeCheck = await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logs, logger)
+        const readmeCheck = await runAndLogCommand(
+          sandbox,
+          'find',
+          ['.', '-name', 'README*', '-o', '-name', 'readme*'],
+          logs,
+          logger,
+        )
         const fileListCheck = await runAndLogCommand(sandbox, 'ls', ['-la'], logs, logger)
       }
-      
+
       return {
         success: true,
         output: `Claude CLI executed successfully${hasChanges ? ' (Changes detected)' : ' (No changes made)'}`,

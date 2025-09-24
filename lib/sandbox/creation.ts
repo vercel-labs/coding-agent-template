@@ -10,17 +10,17 @@ import { redactSensitiveInfo } from '@/lib/utils/logging'
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logs: string[]) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   logs.push(`$ ${redactSensitiveInfo(fullCommand)}`)
-  
+
   const result = await runCommandInSandbox(sandbox, command, args)
-  
+
   if (result.output && result.output.trim()) {
     logs.push(redactSensitiveInfo(result.output.trim()))
   }
-  
+
   if (!result.success && result.error) {
     logs.push(`Error: ${redactSensitiveInfo(result.error)}`)
   }
-  
+
   return result
 }
 
@@ -30,7 +30,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
   try {
     logs.push('Creating Vercel sandbox...')
     logs.push(`Repository URL: ${redactSensitiveInfo(config.repoUrl)}`)
-    
+
     // Call progress callback if provided
     if (config.onProgress) {
       await config.onProgress(20, 'Validating environment variables...')
@@ -67,11 +67,17 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       resources: { vcpus: config.resources?.vcpus || 4 },
     }
 
-    logs.push(`Sandbox config: ${JSON.stringify({ 
-      ...sandboxConfig, 
-      token: '[REDACTED]',
-      source: { ...sandboxConfig.source, url: '[REDACTED]' }
-    }, null, 2)}`)
+    logs.push(
+      `Sandbox config: ${JSON.stringify(
+        {
+          ...sandboxConfig,
+          token: '[REDACTED]',
+          source: { ...sandboxConfig.source, url: '[REDACTED]' },
+        },
+        null,
+        2,
+      )}`,
+    )
 
     // Call progress callback before sandbox creation
     if (config.onProgress) {
@@ -82,7 +88,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     try {
       sandbox = await Sandbox.create(sandboxConfig)
       logs.push('Sandbox created successfully')
-      
+
       // Call progress callback after sandbox creation
       if (config.onProgress) {
         await config.onProgress(30, 'Sandbox created, installing dependencies...')
@@ -94,7 +100,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
         logs.push(`This usually happens when the repository is large or has many dependencies`)
         throw new Error('Sandbox creation timed out. Try with a smaller repository or fewer dependencies.')
       }
-      
+
       logs.push(`Sandbox creation failed: ${error.message}`)
       if (error.response) {
         logs.push(`HTTP Status: ${error.response.status}`)
@@ -120,7 +126,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       throw new Error('Failed to install pnpm globally')
     } else {
       logs.push('pnpm installed globally')
-      
+
       // Call progress callback after pnpm installation
       if (config.onProgress) {
         await config.onProgress(32, 'pnpm installed, detecting project type...')
@@ -135,7 +141,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     if (packageJsonCheck.success) {
       // JavaScript/Node.js project
       logs.push('package.json found, installing Node.js dependencies...')
-      
+
       // Call progress callback before dependency installation
       if (config.onProgress) {
         await config.onProgress(35, 'Installing Node.js dependencies...')
@@ -158,7 +164,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     } else if (requirementsTxtCheck.success) {
       // Python project
       logs.push('requirements.txt found, installing Python dependencies...')
-      
+
       // Call progress callback before dependency installation
       if (config.onProgress) {
         await config.onProgress(35, 'Installing Python dependencies...')
@@ -169,15 +175,25 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
 
       if (!pipCheck.success) {
         logs.push('pip not found, installing pip...')
-        
+
         // Install pip using get-pip.py in a temporary directory
-        const getPipResult = await runCommandInSandbox(sandbox, 'sh', ['-c', 'cd /tmp && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py && rm -f get-pip.py'])
+        const getPipResult = await runCommandInSandbox(sandbox, 'sh', [
+          '-c',
+          'cd /tmp && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py && rm -f get-pip.py',
+        ])
 
         if (!getPipResult.success) {
           logs.push('Failed to install pip, trying alternative method...')
-          
+
           // Try installing python3-pip package
-          const aptResult = await runCommandInSandbox(sandbox, 'apt-get', ['update', '&&', 'apt-get', 'install', '-y', 'python3-pip'])
+          const aptResult = await runCommandInSandbox(sandbox, 'apt-get', [
+            'update',
+            '&&',
+            'apt-get',
+            'install',
+            '-y',
+            'python3-pip',
+          ])
 
           if (!aptResult.success) {
             logs.push('Warning: Could not install pip, skipping Python dependencies')
@@ -186,11 +202,11 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
             logs.push('pip installed via apt-get')
           }
         }
-        
+
         logs.push('pip installed successfully')
       } else {
         logs.push('pip is available')
-        
+
         // Upgrade pip to latest version
         const pipUpgrade = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', 'install', '--upgrade', 'pip'])
 
@@ -202,7 +218,13 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       }
 
       // Install dependencies from requirements.txt
-      const pipInstall = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', 'install', '-r', 'requirements.txt'])
+      const pipInstall = await runCommandInSandbox(sandbox, 'python3', [
+        '-m',
+        'pip',
+        'install',
+        '-r',
+        'requirements.txt',
+      ])
 
       if (!pipInstall.success) {
         logs.push('pip install failed')
@@ -235,10 +257,10 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     } else if (requirementsTxtCheck.success) {
       logs.push('Python project detected, sandbox ready for Python development')
       logs.push(`Sandbox available at: ${domain}`)
-      
+
       // Check if there's a common Python web framework entry point
       const flaskAppCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'app.py'])
-      
+
       const djangoManageCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'manage.py'])
 
       if (flaskAppCheck.success) {
@@ -259,7 +281,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     if (process.env.GITHUB_TOKEN) {
       logs.push('Configuring Git authentication with GitHub token')
       await runCommandInSandbox(sandbox, 'git', ['config', 'credential.helper', 'store'])
-      
+
       // Create credentials file with GitHub token
       const credentialsContent = `https://${process.env.GITHUB_TOKEN}:x-oauth-basic@github.com`
       await runCommandInSandbox(sandbox, 'sh', ['-c', `echo "${credentialsContent}" > ~/.git-credentials`])
@@ -288,7 +310,12 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     } else if (config.preDeterminedBranchName) {
       // Use the AI-generated branch name
       logs.push(`Using pre-determined branch name: ${config.preDeterminedBranchName}`)
-      const createBranch = await runAndLogCommand(sandbox, 'git', ['checkout', '-b', config.preDeterminedBranchName], logs)
+      const createBranch = await runAndLogCommand(
+        sandbox,
+        'git',
+        ['checkout', '-b', config.preDeterminedBranchName],
+        logs,
+      )
 
       if (!createBranch.success) {
         logs.push(`Failed to create branch ${config.preDeterminedBranchName}: ${createBranch.error}`)

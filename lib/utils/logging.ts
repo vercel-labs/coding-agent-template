@@ -23,13 +23,14 @@ export function redactSensitiveInfo(message: string): string {
   ]
 
   // Apply redaction patterns
-  apiKeyPatterns.forEach(pattern => {
+  apiKeyPatterns.forEach((pattern) => {
     redacted = redacted.replace(pattern, (match, key) => {
       // Keep the prefix and show first 4 and last 4 characters
       const prefix = match.substring(0, match.indexOf(key))
-      const redactedKey = key.length > 8 
-        ? `${key.substring(0, 4)}${'*'.repeat(Math.max(8, key.length - 8))}${key.substring(key.length - 4)}`
-        : '*'.repeat(key.length)
+      const redactedKey =
+        key.length > 8
+          ? `${key.substring(0, 4)}${'*'.repeat(Math.max(8, key.length - 8))}${key.substring(key.length - 4)}`
+          : '*'.repeat(key.length)
       return `${prefix}${redactedKey}`
     })
   })
@@ -38,21 +39,18 @@ export function redactSensitiveInfo(message: string): string {
   redacted = redacted.replace(
     /([A-Z_]*(?:KEY|TOKEN|SECRET|PASSWORD)[A-Z_]*)[=\s]*["']?([a-zA-Z0-9_-]{8,})["']?/gi,
     (match, varName, value) => {
-      const redactedValue = value.length > 8 
-        ? `${value.substring(0, 4)}${'*'.repeat(Math.max(8, value.length - 8))}${value.substring(value.length - 4)}`
-        : '*'.repeat(value.length)
+      const redactedValue =
+        value.length > 8
+          ? `${value.substring(0, 4)}${'*'.repeat(Math.max(8, value.length - 8))}${value.substring(value.length - 4)}`
+          : '*'.repeat(value.length)
       return `${varName}="${redactedValue}"`
-    }
+    },
   )
 
   return redacted
 }
 
-export function createLogEntry(
-  type: LogEntry['type'],
-  message: string,
-  timestamp?: Date
-): LogEntry {
+export function createLogEntry(type: LogEntry['type'], message: string, timestamp?: Date): LogEntry {
   return {
     type,
     message: redactSensitiveInfo(message),
