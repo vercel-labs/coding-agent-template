@@ -273,13 +273,7 @@ export async function executeClaudeInSandbox(
         }
 
         // Check if common files exist
-        await runAndLogCommand(
-          sandbox,
-          'find',
-          ['.', '-name', 'README*', '-o', '-name', 'readme*'],
-          logs,
-          logger,
-        )
+        await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logs, logger)
         await runAndLogCommand(sandbox, 'ls', ['-la'], logs, logger)
       }
 

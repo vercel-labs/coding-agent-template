@@ -248,7 +248,7 @@ async function processTask(
     }
 
     const { sandbox: createdSandbox, domain, branchName } = sandboxResult
-    sandbox = createdSandbox
+    sandbox = createdSandbox || null
 
     // Log sandbox creation completion and append sandbox logs
     await logger.success('Sandbox created successfully')
@@ -265,8 +265,8 @@ async function processTask(
     }
 
     // Update sandbox URL and branch name (only update branch name if not already set by AI)
-    const updateData: { sandboxUrl: string; updatedAt: Date; branchName?: string } = {
-      sandboxUrl: domain,
+    const updateData: { sandboxUrl?: string; updatedAt: Date; branchName?: string } = {
+      sandboxUrl: domain || undefined,
       updatedAt: new Date(),
     }
 
@@ -302,6 +302,10 @@ async function processTask(
       }, AGENT_TIMEOUT_MS)
     })
 
+    if (!sandbox) {
+      throw new Error('Sandbox is not available for agent execution')
+    }
+
     const agentResult = await Promise.race([
       executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel),
       agentTimeoutPromise,
@@ -321,7 +325,7 @@ async function processTask(
 
       // Push changes to branch
       const commitMessage = `${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`
-      const pushResult = await pushChangesToBranch(sandbox, branchName!, commitMessage)
+      const pushResult = await pushChangesToBranch(sandbox!, branchName!, commitMessage)
 
       // Append push result logs in real-time
       for (const log of pushResult.logs || []) {

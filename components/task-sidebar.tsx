@@ -75,7 +75,6 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
     }
   }
 
-
   return (
     <div className="h-full border-r bg-muted p-3 overflow-y-auto" style={{ width: `${width}px` }}>
       <div className="mb-3">

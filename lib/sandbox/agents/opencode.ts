@@ -1,12 +1,7 @@
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
-import {
-  redactSensitiveInfo,
-  createCommandLog,
-  createInfoLog,
-  createErrorLog,
-} from '@/lib/utils/logging'
+import { redactSensitiveInfo, createCommandLog, createInfoLog, createErrorLog } from '@/lib/utils/logging'
 import { LogEntry } from '@/lib/db/schema'
 import { TaskLogger } from '@/lib/utils/task-logger'
 

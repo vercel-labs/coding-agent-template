@@ -97,9 +97,13 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       const errorName = error instanceof Error ? error.name : 'UnknownError'
-      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined
-      const errorResponse = error && typeof error === 'object' && 'response' in error ? (error as { response?: { status?: number; data?: unknown } }).response : undefined
-      
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined
+      const errorResponse =
+        error && typeof error === 'object' && 'response' in error
+          ? (error as { response?: { status?: number; data?: unknown } }).response
+          : undefined
+
       // Check if this is a timeout error
       if (errorMessage?.includes('timeout') || errorCode === 'ETIMEDOUT' || errorName === 'TimeoutError') {
         logs.push(`Sandbox creation timed out after 5 minutes`)

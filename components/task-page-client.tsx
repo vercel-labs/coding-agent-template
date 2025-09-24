@@ -16,7 +16,7 @@ interface TaskPageClientProps {
 
 export function TaskPageClient({ taskId }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
-  const { toggleSidebar, isSidebarOpen } = useTasks()
+  const { toggleSidebar } = useTasks()
 
   if (isLoading) {
     return (
@@ -25,7 +25,6 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
           <PageHeader
             showMobileMenu={true}
             onToggleMobileMenu={toggleSidebar}
-            isMobileSidebarOpen={isSidebarOpen}
             actions={
               <div className="flex items-center gap-2">
                 {/* Deploy to Vercel Button */}

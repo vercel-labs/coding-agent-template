@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 export function HomePageHeader() {
-  const { toggleSidebar, isSidebarOpen, refreshTasks } = useTasks()
+  const { toggleSidebar, refreshTasks } = useTasks()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -122,12 +122,7 @@ export function HomePageHeader() {
 
   return (
     <>
-      <PageHeader
-        showMobileMenu={true}
-        onToggleMobileMenu={toggleSidebar}
-        isMobileSidebarOpen={isSidebarOpen}
-        actions={actions}
-      />
+      <PageHeader showMobileMenu={true} onToggleMobileMenu={toggleSidebar} actions={actions} />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

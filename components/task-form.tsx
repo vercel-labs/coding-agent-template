@@ -125,7 +125,6 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
     }
   }
 
-
   // Load saved repo when owner changes
   useEffect(() => {
     if (selectedOwner) {
@@ -453,7 +452,13 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     {owners.map((owner) => (
                       <SelectItem key={owner.login} value={owner.login}>
                         <div className="flex items-center gap-2">
-                          <Image src={owner.avatar_url} alt={owner.login} width={16} height={16} className="w-4 h-4 rounded-full" />
+                          <Image
+                            src={owner.avatar_url}
+                            alt={owner.login}
+                            width={16}
+                            height={16}
+                            className="w-4 h-4 rounded-full"
+                          />
                           <span>{owner.login}</span>
                         </div>
                       </SelectItem>
@@ -606,7 +611,13 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     {owners.map((owner) => (
                       <SelectItem key={owner.login} value={owner.login}>
                         <div className="flex items-center gap-2">
-                          <Image src={owner.avatar_url} alt={owner.login} width={16} height={16} className="w-4 h-4 rounded-full" />
+                          <Image
+                            src={owner.avatar_url}
+                            alt={owner.login}
+                            width={16}
+                            height={16}
+                            className="w-4 h-4 rounded-full"
+                          />
                           <span>{owner.login}</span>
                         </div>
                       </SelectItem>

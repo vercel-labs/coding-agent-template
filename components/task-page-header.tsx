@@ -10,14 +10,7 @@ interface TaskPageHeaderProps {
 }
 
 export function TaskPageHeader({ task }: TaskPageHeaderProps) {
-  const { toggleSidebar, isSidebarOpen } = useTasks()
+  const { toggleSidebar } = useTasks()
 
-  return (
-    <PageHeader
-      showMobileMenu={true}
-      onToggleMobileMenu={toggleSidebar}
-      isMobileSidebarOpen={isSidebarOpen}
-      actions={<TaskActions task={task} />}
-    />
-  )
+  return <PageHeader showMobileMenu={true} onToggleMobileMenu={toggleSidebar} actions={<TaskActions task={task} />} />
 }

@@ -292,7 +292,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
             {isLoading ? (
               <SidebarLoader width={sidebarWidth} />
             ) : (
-              <TaskSidebar tasks={tasks} selectedTask={null} onTaskSelect={handleTaskSelect} width={sidebarWidth} />
+              <TaskSidebar tasks={tasks} onTaskSelect={handleTaskSelect} width={sidebarWidth} />
             )}
           </div>
         </div>

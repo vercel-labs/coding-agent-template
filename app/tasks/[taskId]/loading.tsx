@@ -8,7 +8,7 @@ import { MoreHorizontal } from 'lucide-react'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 export default function TaskLoading() {
-  const { toggleSidebar, isSidebarOpen } = useTasks()
+  const { toggleSidebar } = useTasks()
 
   // Placeholder actions for loading state
   const loadingActions = (
@@ -38,12 +38,7 @@ export default function TaskLoading() {
   return (
     <div className="flex-1 bg-background">
       <div className="mx-auto p-3">
-        <PageHeader
-          showMobileMenu={true}
-          onToggleMobileMenu={toggleSidebar}
-          isMobileSidebarOpen={isSidebarOpen}
-          actions={loadingActions}
-        />
+        <PageHeader showMobileMenu={true} onToggleMobileMenu={toggleSidebar} actions={loadingActions} />
 
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

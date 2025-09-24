@@ -105,7 +105,12 @@ export class TaskLogger {
    */
   async updateStatus(status: 'pending' | 'processing' | 'completed' | 'error', message?: string): Promise<void> {
     try {
-      const updates: { status: string; updatedAt: Date; logs?: LogEntry[] } = {
+      const updates: {
+        status: 'pending' | 'processing' | 'completed' | 'error'
+        updatedAt: Date
+        logs?: LogEntry[]
+        completedAt?: Date
+      } = {
         status,
         updatedAt: new Date(),
       }

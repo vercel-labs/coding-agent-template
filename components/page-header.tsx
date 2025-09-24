@@ -10,12 +10,7 @@ interface PageHeaderProps {
   actions?: React.ReactNode
 }
 
-export function PageHeader({
-  title,
-  showMobileMenu = false,
-  onToggleMobileMenu,
-  actions,
-}: PageHeaderProps) {
+export function PageHeader({ title, showMobileMenu = false, onToggleMobileMenu, actions }: PageHeaderProps) {
   return (
     <div className="relative p-3">
       {/* Menu Button - Absolute positioned in top-left */}
