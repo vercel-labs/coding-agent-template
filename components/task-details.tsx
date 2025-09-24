@@ -320,7 +320,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
                   return (
                     <div key={index} className={cn('mb-1 flex gap-2', getLogColor(log.type))}>
-                      <span className="text-gray-500 text-xs shrink-0 mt-0.5">[{formatTime(log.timestamp)}]</span>
+                      <span className="text-gray-500 text-xs shrink-0 mt-0.5">[{formatTime(log.timestamp ?? new Date())}]</span>
                       <span className="flex-1">{log.message}</span>
                     </div>
                   )
