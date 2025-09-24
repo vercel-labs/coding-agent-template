@@ -23,7 +23,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   return result
 }
 
-export async function executeCursorInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger): Promise<AgentExecutionResult> {
+export async function executeCursorInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger, selectedModel?: string): Promise<AgentExecutionResult> {
   const logs: LogEntry[] = []
   
   try {
@@ -155,10 +155,14 @@ export async function executeCursorInSandbox(sandbox: Sandbox, instruction: stri
     }
     
     // Log what we're about to execute
-    const logCommand = `cursor-agent -p --force --output-format json "${instruction}"`
+    const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
+    const logCommand = `cursor-agent -p --force --output-format json${modelFlag} "${instruction}"`
     logs.push(createCommandLog(logCommand))
     if (logger) {
       await logger.command(logCommand)
+      if (selectedModel) {
+        await logger.info(`Executing cursor-agent with model: ${selectedModel}`)
+      }
       await logger.info('Executing cursor-agent directly without shell wrapper')
     }
     
@@ -201,9 +205,16 @@ export async function executeCursorInSandbox(sandbox: Sandbox, instruction: stri
     })
     
     // Start the command with output capture
+    // Add model parameter if provided
+    const args = ['-p', '--force', '--output-format', 'json']
+    if (selectedModel) {
+      args.push('--model', selectedModel)
+    }
+    args.push(instruction)
+    
     const command = await sandbox.runCommand({
       cmd: '/home/vercel-sandbox/.local/bin/cursor-agent',
-      args: ['-p', '--force', '--output-format', 'json', instruction],
+      args: args,
       env: {
         CURSOR_API_KEY: process.env.CURSOR_API_KEY!
       },

@@ -54,7 +54,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   return result
 }
 
-export async function installClaudeCLI(sandbox: Sandbox): Promise<{ success: boolean; logs: string[] }> {
+export async function installClaudeCLI(sandbox: Sandbox, selectedModel?: string): Promise<{ success: boolean; logs: string[] }> {
   const logs: string[] = []
 
   // Install Claude CLI
@@ -72,10 +72,12 @@ export async function installClaudeCLI(sandbox: Sandbox): Promise<{ success: boo
       await runCommandInSandbox(sandbox, 'mkdir', ['-p', '$HOME/.config/claude'])
 
       // Create config file directly using absolute path
+      // Use selectedModel if provided, otherwise fall back to default
+      const modelToUse = selectedModel || "claude-3-5-sonnet-20241022"
       const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
 {
   "api_key": "${process.env.ANTHROPIC_API_KEY}",
-  "default_model": "claude-3-5-sonnet-20241022"
+  "default_model": "${modelToUse}"
 }
 EOF`
       const configFileResult = await runCommandInSandbox(sandbox, 'sh', ['-c', configFileCmd])
@@ -107,7 +109,7 @@ EOF`
   }
 }
 
-export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger): Promise<AgentExecutionResult> {
+export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger, selectedModel?: string): Promise<AgentExecutionResult> {
   const logs: LogEntry[] = []
   
   try {
@@ -126,7 +128,7 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
     if (!cliCheck.success) {
       // Claude CLI not found, try to install it
       // Claude CLI not found, installing
-      const installResult = await installClaudeCLI(sandbox)
+      const installResult = await installClaudeCLI(sandbox, selectedModel)
       
       if (!installResult.success) {
         // Convert installation logs to LogEntry format
@@ -174,15 +176,16 @@ export async function executeClaudeInSandbox(sandbox: Sandbox, instruction: stri
     const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
     
     // Log what we're trying to do
+    const modelToUse = selectedModel || "claude-3-5-sonnet-20241022"
     if (logger) {
-      await logger.info(`Attempting to execute Claude CLI with instruction: ${instruction.substring(0, 100)}...`)
+      await logger.info(`Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`)
     }
     
     // Try multiple command formats to see what works
     let fullCommand: string
     
-    // First try: Simple direct command with permissions flag and verbose output
-    fullCommand = `${envPrefix} claude --dangerously-skip-permissions --verbose "${instruction}"`
+    // First try: Simple direct command with permissions flag, model specification, and verbose output
+    fullCommand = `${envPrefix} claude --model "${modelToUse}" --dangerously-skip-permissions --verbose "${instruction}"`
     
     if (logger) {
       await logger.info('Executing Claude CLI with --dangerously-skip-permissions for automated file changes...')

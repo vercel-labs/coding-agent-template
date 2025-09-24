@@ -17,20 +17,21 @@ export async function executeAgentInSandbox(
   sandbox: Sandbox,
   instruction: string,
   agentType: AgentType,
-  logger?: TaskLogger
+  logger?: TaskLogger,
+  selectedModel?: string
 ): Promise<AgentExecutionResult> {
   switch (agentType) {
     case 'claude':
-      return executeClaudeInSandbox(sandbox, instruction, logger)
+      return executeClaudeInSandbox(sandbox, instruction, logger, selectedModel)
     
     case 'codex':
-      return executeCodexInSandbox(sandbox, instruction, logger)
+      return executeCodexInSandbox(sandbox, instruction, logger, selectedModel)
     
     case 'cursor':
-      return executeCursorInSandbox(sandbox, instruction, logger)
+      return executeCursorInSandbox(sandbox, instruction, logger, selectedModel)
     
     case 'opencode':
-      return executeOpenCodeInSandbox(sandbox, instruction, logger)
+      return executeOpenCodeInSandbox(sandbox, instruction, logger, selectedModel)
     
     default:
       return {

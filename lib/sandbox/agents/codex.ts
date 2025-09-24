@@ -23,7 +23,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   return result
 }
 
-export async function executeCodexInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger): Promise<AgentExecutionResult> {
+export async function executeCodexInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger, selectedModel?: string): Promise<AgentExecutionResult> {
   const logs: LogEntry[] = []
   
   try {
@@ -130,11 +130,13 @@ export async function executeCodexInSandbox(sandbox: Sandbox, instruction: strin
     }
     
     // Create configuration file based on API key type
+    // Use selectedModel if provided, otherwise fall back to default
+    const modelToUse = selectedModel || "openai/gpt-4o"
     let configToml
     if (isVercelKey) {
       // Use Vercel AI Gateway configuration for vck_ keys
       // Based on the curl example, it uses /chat/completions endpoint, not responses
-      configToml = `model = "openai/gpt-4o"
+      configToml = `model = "${modelToUse}"
 model_provider = "vercel-ai-gateway"
 
 [model_providers.vercel-ai-gateway]
@@ -149,7 +151,7 @@ log_requests = true
 `
     } else {
       // Use OpenAI direct for sk_ keys
-      configToml = `model = "openai/gpt-4o"
+      configToml = `model = "${modelToUse}"
 model_provider = "openai"
 
 [model_providers.openai]
@@ -208,7 +210,7 @@ log_requests = true
     if (logger) {
       await logger.command(logCommand)
       const providerName = isVercelKey ? 'Vercel AI Gateway' : 'OpenAI API'
-      await logger.info(`Executing Codex with ${providerName} and bypassed sandbox restrictions`)
+      await logger.info(`Executing Codex with model ${modelToUse} via ${providerName} and bypassed sandbox restrictions`)
     }
     
     // Use the same pattern as other working agents (Claude, etc.)

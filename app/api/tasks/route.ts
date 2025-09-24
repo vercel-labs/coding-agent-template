@@ -177,7 +177,7 @@ async function processTask(taskId: string, prompt: string, repoUrl: string, sele
     })
     
     const agentResult = await Promise.race([
-      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger),
+      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel),
       agentTimeoutPromise
     ])
 

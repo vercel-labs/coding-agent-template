@@ -54,7 +54,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   return result
 }
 
-export async function executeOpenCodeInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger): Promise<AgentExecutionResult> {
+export async function executeOpenCodeInSandbox(sandbox: Sandbox, instruction: string, logger?: TaskLogger, selectedModel?: string): Promise<AgentExecutionResult> {
   const logs: LogEntry[] = []
   
   try {
@@ -220,11 +220,16 @@ export async function executeOpenCodeInSandbox(sandbox: Sandbox, instruction: st
     console.log('Executing OpenCode using the run command for non-interactive mode...')
     if (logger) {
       await logger.info('Executing OpenCode run command in non-interactive mode...')
+      if (selectedModel) {
+        await logger.info(`Using selected model: ${selectedModel}`)
+      }
     }
 
     // Use the 'opencode run' command for non-interactive execution as documented at https://opencode.ai/docs/cli/
     // This command allows us to pass a prompt directly and get results without the TUI
-    const fullCommand = `${envPrefix} ${opencodeCmdToUse} run "${instruction}"`
+    // Add model parameter if provided
+    const modelFlag = selectedModel ? ` --model "${selectedModel}"` : ''
+    const fullCommand = `${envPrefix} ${opencodeCmdToUse} run${modelFlag} "${instruction}"`
     
     // Log the command we're about to execute (with redacted API keys)
     const redactedCommand = fullCommand.replace(/API_KEY="[^"]*"/g, 'API_KEY="[REDACTED]"')
