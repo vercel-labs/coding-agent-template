@@ -271,10 +271,11 @@ log_requests = true
         logs,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to execute Codex CLI in sandbox'
     return {
       success: false,
-      error: error.message || 'Failed to execute Codex CLI in sandbox',
+      error: errorMessage,
       cliName: 'codex',
       changesDetected: false,
       logs,

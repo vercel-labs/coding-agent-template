@@ -21,7 +21,7 @@ export function HomePageContent() {
     setIsSubmitting(true)
 
     // Add task optimistically to sidebar immediately
-    const { id, optimisticTask } = addTaskOptimistically(data)
+    const { id } = addTaskOptimistically(data)
 
     // Navigate to the new task page immediately
     router.push(`/tasks/${id}`)

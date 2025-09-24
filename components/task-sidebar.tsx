@@ -1,10 +1,9 @@
 'use client'
 
 import { Task } from '@/lib/db/schema'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Clock, CheckCircle, AlertCircle, Loader2, Plus, Github } from 'lucide-react'
+import { AlertCircle, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -42,12 +41,11 @@ const AGENT_MODELS = {
 
 interface TaskSidebarProps {
   tasks: Task[]
-  selectedTask: Task | null
   onTaskSelect: (task: Task) => void
   width?: number
 }
 
-export function TaskSidebar({ tasks, selectedTask, onTaskSelect, width = 288 }: TaskSidebarProps) {
+export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarProps) {
   const pathname = usePathname()
 
   const getHumanFriendlyModelName = (agent: string | null, model: string | null) => {
@@ -77,35 +75,6 @@ export function TaskSidebar({ tasks, selectedTask, onTaskSelect, width = 288 }: 
     }
   }
 
-  const getStatusIcon = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="h-4 w-4" />
-      case 'processing':
-        return <Loader2 className="h-4 w-4 animate-spin" />
-      case 'completed':
-        return <CheckCircle className="h-4 w-4" />
-      case 'error':
-        return <AlertCircle className="h-4 w-4" />
-      default:
-        return <Clock className="h-4 w-4" />
-    }
-  }
-
-  const getStatusColor = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-gray-500'
-      case 'processing':
-        return 'bg-blue-500'
-      case 'completed':
-        return 'bg-green-500'
-      case 'error':
-        return 'bg-red-500'
-      default:
-        return 'bg-gray-500'
-    }
-  }
 
   return (
     <div className="h-full border-r bg-muted p-3 overflow-y-auto" style={{ width: `${width}px` }}>

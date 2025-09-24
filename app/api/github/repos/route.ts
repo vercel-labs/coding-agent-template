@@ -27,8 +27,18 @@ export async function GET(request: NextRequest) {
       isAuthenticatedUser = user.login === owner
     }
 
+    interface GitHubRepo {
+      name: string
+      full_name: string
+      description?: string
+      private: boolean
+      clone_url: string
+      updated_at: string
+      language?: string
+    }
+
     // Fetch all repositories by paginating through all pages
-    const allRepos: any[] = []
+    const allRepos: GitHubRepo[] = []
     let page = 1
     const perPage = 100 // GitHub's maximum per page
 
@@ -93,7 +103,7 @@ export async function GET(request: NextRequest) {
     uniqueRepos.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
 
     return NextResponse.json(
-      uniqueRepos.map((repo: any) => ({
+      uniqueRepos.map((repo) => ({
         name: repo.name,
         full_name: repo.full_name,
         description: repo.description,

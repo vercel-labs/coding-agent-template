@@ -71,7 +71,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       setCopiedPrompt(true)
       toast.success('Prompt copied to clipboard!')
       setTimeout(() => setCopiedPrompt(false), 2000)
-    } catch (err) {
+    } catch {
       toast.error('Failed to copy to clipboard')
     }
   }
@@ -84,7 +84,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       setCopiedLogs(true)
       toast.success('Logs copied to clipboard!')
       setTimeout(() => setCopiedLogs(false), 2000)
-    } catch (err) {
+    } catch {
       toast.error('Failed to copy logs to clipboard')
     }
   }

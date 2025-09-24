@@ -6,7 +6,6 @@ import {
   createCommandLog,
   createInfoLog,
   createErrorLog,
-  createSuccessLog,
 } from '@/lib/utils/logging'
 import { LogEntry } from '@/lib/db/schema'
 import { TaskLogger } from '@/lib/utils/task-logger'
@@ -331,17 +330,17 @@ export async function executeOpenCodeInSandbox(
         logs,
       }
     }
-  } catch (error: any) {
-    const errorMsg = error.message || 'Failed to execute OpenCode in sandbox'
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to execute OpenCode in sandbox'
     console.error('OpenCode execution error:', error)
 
     if (logger) {
-      await logger.error(errorMsg)
+      await logger.error(errorMessage)
     }
 
     return {
       success: false,
-      error: errorMsg,
+      error: errorMessage,
       cliName: 'opencode',
       changesDetected: false,
       logs,

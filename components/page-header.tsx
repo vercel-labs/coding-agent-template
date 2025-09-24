@@ -7,7 +7,6 @@ interface PageHeaderProps {
   title?: string
   showMobileMenu?: boolean
   onToggleMobileMenu?: () => void
-  isMobileSidebarOpen?: boolean
   actions?: React.ReactNode
 }
 
@@ -15,7 +14,6 @@ export function PageHeader({
   title,
   showMobileMenu = false,
   onToggleMobileMenu,
-  isMobileSidebarOpen = false,
   actions,
 }: PageHeaderProps) {
   return (

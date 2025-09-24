@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { TaskSidebar } from '@/components/task-sidebar'
 import { Task } from '@/lib/db/schema'
 import { useRouter } from 'next/navigation'
@@ -87,13 +87,13 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
   }
 
   // Update sidebar open state and save to cookie (desktop only)
-  const updateSidebarOpen = (isOpen: boolean, saveToCookie = true) => {
+  const updateSidebarOpen = useCallback((isOpen: boolean, saveToCookie = true) => {
     setIsSidebarOpen(isOpen)
     // Only save to cookie on desktop screens
     if (saveToCookie && typeof window !== 'undefined' && window.innerWidth >= 1024) {
       setSidebarOpen(isOpen)
     }
-  }
+  }, [])
 
   // Ensure isDesktop is correct after hydration and set proper sidebar state
   useEffect(() => {
@@ -131,9 +131,9 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     return () => clearInterval(interval)
   }, [])
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     updateSidebarOpen(!isSidebarOpen)
-  }
+  }, [isSidebarOpen, updateSidebarOpen])
 
   // Handle window resize - close sidebar on mobile and update isDesktop
   useEffect(() => {

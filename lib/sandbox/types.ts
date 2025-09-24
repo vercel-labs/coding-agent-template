@@ -33,6 +33,6 @@ export interface AgentExecutionResult {
   cliName?: string
   changesDetected?: boolean
   error?: string
-  streamingLogs?: any[]
+  streamingLogs?: unknown[]
   logs?: LogEntry[]
 }

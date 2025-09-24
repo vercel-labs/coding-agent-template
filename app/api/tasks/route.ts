@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { Sandbox } from '@vercel/sandbox'
 import { db } from '@/lib/db/client'
 import { tasks, insertTaskSchema } from '@/lib/db/schema'
 import { generateId } from '@/lib/utils/id'
 import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
-import { eq, desc, and, or } from 'drizzle-orm'
-import { createInfoLog, createCommandLog, createErrorLog, createSuccessLog } from '@/lib/utils/logging'
+import { eq, desc, or } from 'drizzle-orm'
+import { createInfoLog } from '@/lib/utils/logging'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 
@@ -156,11 +157,11 @@ async function processTaskWithTimeout(
 
     // Clear the warning timeout if task completes successfully
     clearTimeout(warningTimeout)
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Clear the warning timeout on any error
     clearTimeout(warningTimeout)
     // Handle timeout specifically
-    if (error.message?.includes('timed out after 5 minutes')) {
+    if (error instanceof Error && error.message?.includes('timed out after 5 minutes')) {
       console.error('Task timed out:', taskId)
 
       // Use logger for timeout error
@@ -205,7 +206,7 @@ async function processTask(
   selectedAgent: string = 'claude',
   selectedModel?: string,
 ) {
-  let sandbox: any = null
+  let sandbox: Sandbox | null = null
   const logger = createTaskLogger(taskId)
 
   try {
@@ -264,7 +265,7 @@ async function processTask(
     }
 
     // Update sandbox URL and branch name (only update branch name if not already set by AI)
-    const updateData: any = {
+    const updateData: { sandboxUrl: string; updatedAt: Date; branchName?: string } = {
       sandboxUrl: domain,
       updatedAt: new Date(),
     }
@@ -334,7 +335,7 @@ async function processTask(
       }
 
       // Shutdown sandbox
-      const shutdownResult = await shutdownSandbox(sandbox)
+      const shutdownResult = await shutdownSandbox()
       if (shutdownResult.success) {
         await logger.success('Sandbox shutdown completed')
       } else {
@@ -359,7 +360,7 @@ async function processTask(
     // Try to shutdown sandbox even on error
     if (sandbox) {
       try {
-        const shutdownResult = await shutdownSandbox(sandbox)
+        const shutdownResult = await shutdownSandbox()
         if (shutdownResult.success) {
           await logger.info('Sandbox shutdown completed after error')
         } else {

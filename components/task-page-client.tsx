@@ -8,7 +8,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from 'lucide-react'
 import { useTasks } from '@/components/app-layout'
-import { Loader2 } from 'lucide-react'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 interface TaskPageClientProps {

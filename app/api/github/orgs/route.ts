@@ -19,8 +19,14 @@ export async function GET() {
 
     const orgs = await response.json()
 
+    interface GitHubOrg {
+      login: string
+      name?: string
+      avatar_url: string
+    }
+
     return NextResponse.json(
-      orgs.map((org: any) => ({
+      (orgs as GitHubOrg[]).map((org) => ({
         login: org.login,
         name: org.name || org.login,
         avatar_url: org.avatar_url,

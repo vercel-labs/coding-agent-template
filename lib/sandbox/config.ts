@@ -38,7 +38,7 @@ export function createAuthenticatedRepoUrl(repoUrl: string): string {
       url.password = 'x-oauth-basic'
     }
     return url.toString()
-  } catch (error) {
+  } catch {
     // Failed to parse repository URL
     return repoUrl
   }

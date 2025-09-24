@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: TaskPageProps) {
   const { taskId } = await params
 
   return {
-    title: `Task - Coding Agent Platform`,
+    title: `Task ${taskId} - Coding Agent Platform`,
     description: 'View task details and execution logs',
   }
 }

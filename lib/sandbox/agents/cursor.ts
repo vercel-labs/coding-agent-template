@@ -157,17 +157,9 @@ export async function executeCursorInSandbox(
       }
     }
 
-    const envPrefix = `CURSOR_API_KEY="${process.env.CURSOR_API_KEY}"`
-
     // Use the correct flags: -p for print mode (non-interactive), --force for file modifications
     // Try multiple approaches to find and execute cursor-agent
     let result
-
-    // Execute cursor-agent directly without shell wrapper - this might be causing the hanging
-    const envVars = {
-      PATH: `${process.env.HOME}/.local/bin:${process.env.PATH}`,
-      CURSOR_API_KEY: process.env.CURSOR_API_KEY!,
-    }
 
     // Log what we're about to execute
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
@@ -192,10 +184,14 @@ export async function executeCursorInSandbox(
     let isCompleted = false
 
     // Create custom writable streams to capture the output
-    const { Writable } = require('stream')
+    const { Writable } = await import('stream')
+
+    interface WriteCallback {
+      (error?: Error | null): void
+    }
 
     const captureStdout = new Writable({
-      write(chunk: any, encoding: any, callback: any) {
+      write(chunk: Buffer | string, encoding: BufferEncoding, callback: WriteCallback) {
         const data = chunk.toString()
         capturedOutput += data
 
@@ -215,7 +211,7 @@ export async function executeCursorInSandbox(
     })
 
     const captureStderr = new Writable({
-      write(chunk: any, encoding: any, callback: any) {
+      write(chunk: Buffer | string, encoding: BufferEncoding, callback: WriteCallback) {
         capturedError += chunk.toString()
         callback()
       },
@@ -229,7 +225,7 @@ export async function executeCursorInSandbox(
     }
     args.push(instruction)
 
-    const command = await sandbox.runCommand({
+    await sandbox.runCommand({
       cmd: '/home/vercel-sandbox/.local/bin/cursor-agent',
       args: args,
       env: {
@@ -325,10 +321,11 @@ export async function executeCursorInSandbox(
         logs,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to execute Cursor CLI in sandbox'
     return {
       success: false,
-      error: error.message || 'Failed to execute Cursor CLI in sandbox',
+      error: errorMessage,
       cliName: 'cursor',
       changesDetected: false,
       logs,

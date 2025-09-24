@@ -5,14 +5,14 @@ export interface CommandResult {
   exitCode?: number
   output?: string
   error?: string
-  streamingLogs?: any[]
+  streamingLogs?: unknown[]
   command?: string
 }
 
 export interface StreamingCommandOptions {
   onStdout?: (chunk: string) => void
   onStderr?: (chunk: string) => void
-  onJsonLine?: (jsonData: any) => void
+  onJsonLine?: (jsonData: unknown) => void
 }
 
 export async function runCommandInSandbox(
@@ -29,13 +29,13 @@ export async function runCommandInSandbox(
 
     try {
       stdout = await (result.stdout as () => Promise<string>)()
-    } catch (e) {
+    } catch {
       // Failed to read stdout
     }
 
     try {
       stderr = await (result.stderr as () => Promise<string>)()
-    } catch (e) {
+    } catch {
       // Failed to read stderr
     }
 
@@ -48,11 +48,12 @@ export async function runCommandInSandbox(
       error: stderr,
       command: fullCommand,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Command execution failed'
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
     return {
       success: false,
-      error: error.message || 'Command execution failed',
+      error: errorMessage,
       command: fullCommand,
     }
   }
@@ -83,7 +84,7 @@ export async function runStreamingCommandInSandbox(
               try {
                 const jsonData = JSON.parse(trimmedLine)
                 options.onJsonLine(jsonData)
-              } catch (e) {
+              } catch {
                 // Not valid JSON, ignore
               }
             }
@@ -93,7 +94,7 @@ export async function runStreamingCommandInSandbox(
           options.onStdout(stdout)
         }
       }
-    } catch (e) {
+    } catch {
       // Failed to read stdout
     }
 
@@ -105,7 +106,7 @@ export async function runStreamingCommandInSandbox(
           options.onStderr(stderr)
         }
       }
-    } catch (e) {
+    } catch {
       // Failed to read stderr
     }
 
@@ -118,11 +119,12 @@ export async function runStreamingCommandInSandbox(
       error: stderr,
       command: fullCommand,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to run streaming command in sandbox'
     const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
     return {
       success: false,
-      error: error.message || 'Failed to run streaming command in sandbox',
+      error: errorMessage,
       command: fullCommand,
     }
   }

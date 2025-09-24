@@ -94,18 +94,23 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       if (config.onProgress) {
         await config.onProgress(30, 'Sandbox created, installing dependencies...')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      const errorName = error instanceof Error ? error.name : 'UnknownError'
+      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined
+      const errorResponse = error && typeof error === 'object' && 'response' in error ? (error as { response?: { status?: number; data?: unknown } }).response : undefined
+      
       // Check if this is a timeout error
-      if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT' || error.name === 'TimeoutError') {
+      if (errorMessage?.includes('timeout') || errorCode === 'ETIMEDOUT' || errorName === 'TimeoutError') {
         logs.push(`Sandbox creation timed out after 5 minutes`)
         logs.push(`This usually happens when the repository is large or has many dependencies`)
         throw new Error('Sandbox creation timed out. Try with a smaller repository or fewer dependencies.')
       }
 
-      logs.push(`Sandbox creation failed: ${error.message}`)
-      if (error.response) {
-        logs.push(`HTTP Status: ${error.response.status}`)
-        logs.push(`Response: ${JSON.stringify(error.response.data)}`)
+      logs.push(`Sandbox creation failed: ${errorMessage}`)
+      if (errorResponse) {
+        logs.push(`HTTP Status: ${errorResponse.status}`)
+        logs.push(`Response: ${JSON.stringify(errorResponse.data)}`)
       }
       throw error
     }
@@ -349,13 +354,14 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       logs,
       branchName,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     console.error('Sandbox creation error:', error)
-    logs.push(`Error: ${error.message}`)
+    logs.push(`Error: ${errorMessage}`)
 
     return {
       success: false,
-      error: error.message || 'Failed to create sandbox',
+      error: errorMessage || 'Failed to create sandbox',
       logs,
     }
   }

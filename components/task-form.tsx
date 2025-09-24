@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, ArrowUp, Github, Lock } from 'lucide-react'
+import { Loader2, ArrowUp, Lock } from 'lucide-react'
 import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
 
 interface GitHubOwner {
@@ -124,16 +125,6 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
     }
   }
 
-  // Clear cache function
-  const clearCache = () => {
-    sessionStorage.removeItem('github-owners')
-    // Clear all repo caches and timestamps
-    Object.keys(sessionStorage).forEach((key) => {
-      if (key.startsWith('github-repos-')) {
-        sessionStorage.removeItem(key)
-      }
-    })
-  }
 
   // Load saved repo when owner changes
   useEffect(() => {
@@ -175,7 +166,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
 
             // Owner selection will be handled by the useEffect that watches owners array
             return
-          } catch (error) {
+          } catch {
             console.warn('Failed to parse cached owners, fetching fresh data')
             sessionStorage.removeItem('github-owners')
           }
@@ -326,7 +317,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
               fetchRepos(true)
             }
             return
-          } catch (error) {
+          } catch {
             console.warn(`Failed to parse cached repos for ${selectedOwner}, fetching fresh data`)
             sessionStorage.removeItem(cacheKey)
             sessionStorage.removeItem(cacheTimestampKey)
@@ -462,7 +453,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     {owners.map((owner) => (
                       <SelectItem key={owner.login} value={owner.login}>
                         <div className="flex items-center gap-2">
-                          <img src={owner.avatar_url} alt={owner.login} className="w-4 h-4 rounded-full" />
+                          <Image src={owner.avatar_url} alt={owner.login} width={16} height={16} className="w-4 h-4 rounded-full" />
                           <span>{owner.login}</span>
                         </div>
                       </SelectItem>
@@ -508,7 +499,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     )}
                     {filteredRepos.length === 0 && repoFilter ? (
                       <div className="p-2 text-sm text-muted-foreground text-center">
-                        No repositories match "{repoFilter}"
+                        No repositories match &quot;{repoFilter}&quot;
                       </div>
                     ) : (
                       <>
@@ -615,7 +606,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     {owners.map((owner) => (
                       <SelectItem key={owner.login} value={owner.login}>
                         <div className="flex items-center gap-2">
-                          <img src={owner.avatar_url} alt={owner.login} className="w-4 h-4 rounded-full" />
+                          <Image src={owner.avatar_url} alt={owner.login} width={16} height={16} className="w-4 h-4 rounded-full" />
                           <span>{owner.login}</span>
                         </div>
                       </SelectItem>
@@ -661,7 +652,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     )}
                     {filteredRepos.length === 0 && repoFilter ? (
                       <div className="p-2 text-sm text-muted-foreground text-center">
-                        No repositories match "{repoFilter}"
+                        No repositories match &quot;{repoFilter}&quot;
                       </div>
                     ) : (
                       <>
