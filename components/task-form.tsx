@@ -48,8 +48,6 @@ const AGENT_MODELS = {
     { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
   ],
   cursor: [
-    { value: 'cursor-small', label: 'Cursor Small' },
-    { value: 'cursor-medium', label: 'Cursor Medium' },
     { value: 'gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
@@ -71,7 +69,7 @@ const AGENT_MODELS = {
 const DEFAULT_MODELS = {
   claude: 'claude-sonnet-4-20250514',
   codex: 'openai/gpt-5',
-  cursor: 'cursor-small',
+  cursor: 'gpt-5',
   opencode: 'gpt-5',
 } as const
 
