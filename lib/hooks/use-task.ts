@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Task } from '@/lib/db/schema'
 
 export function useTask(taskId: string) {
@@ -8,7 +8,7 @@ export function useTask(taskId: string) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchTask = async () => {
+  const fetchTask = useCallback(async () => {
     try {
       const response = await fetch(`/api/tasks/${taskId}`)
       if (response.ok) {
@@ -27,12 +27,12 @@ export function useTask(taskId: string) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [taskId])
 
   // Initial fetch
   useEffect(() => {
     fetchTask()
-  }, [taskId])
+  }, [fetchTask])
 
   // Poll for updates every 5 seconds
   useEffect(() => {
@@ -41,7 +41,7 @@ export function useTask(taskId: string) {
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [taskId])
+  }, [fetchTask])
 
   return { task, isLoading, error, refetch: fetchTask }
 }

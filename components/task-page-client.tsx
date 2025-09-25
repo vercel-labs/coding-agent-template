@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from 'lucide-react'
 import { useTasks } from '@/components/app-layout'
-import { Loader2 } from 'lucide-react'
+import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 interface TaskPageClientProps {
   taskId: string
@@ -16,7 +16,7 @@ interface TaskPageClientProps {
 
 export function TaskPageClient({ taskId }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
-  const { toggleSidebar, isSidebarOpen } = useTasks()
+  const { toggleSidebar } = useTasks()
 
   if (isLoading) {
     return (
@@ -25,7 +25,6 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
           <PageHeader
             showMobileMenu={true}
             onToggleMobileMenu={toggleSidebar}
-            isMobileSidebarOpen={isSidebarOpen}
             actions={
               <div className="flex items-center gap-2">
                 {/* Deploy to Vercel Button */}
@@ -36,7 +35,7 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
                   className="h-8 px-3 text-xs bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
                 >
                   <a
-                    href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template"
+                    href={VERCEL_DEPLOY_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5"

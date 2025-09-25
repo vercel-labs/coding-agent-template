@@ -1,6 +1,6 @@
 import { Sandbox } from '@vercel/sandbox'
 import { AgentExecutionResult } from '../types'
-import { installClaudeCLI, executeClaudeInSandbox } from './claude'
+import { executeClaudeInSandbox } from './claude'
 import { executeCodexInSandbox } from './codex'
 import { executeCursorInSandbox } from './cursor'
 import { executeOpenCodeInSandbox } from './opencode'
@@ -8,9 +8,8 @@ import { TaskLogger } from '@/lib/utils/task-logger'
 
 export type AgentType = 'claude' | 'codex' | 'cursor' | 'opencode'
 
-// Re-export types and Claude CLI installer
+// Re-export types
 export type { AgentExecutionResult } from '../types'
-export { installClaudeCLI } from './claude'
 
 // Main agent execution function
 export async function executeAgentInSandbox(

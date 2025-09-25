@@ -48,7 +48,7 @@ export class TaskLogger {
         .where(eq(tasks.id, this.taskId))
 
       // Task log: ${type.toUpperCase()}: ${message.substring(0, 100)}
-    } catch (error) {
+    } catch {
       // Failed to append log to database
       // Don't throw - we don't want logging failures to break the main process
     }
@@ -95,7 +95,7 @@ export class TaskLogger {
         .where(eq(tasks.id, this.taskId))
 
       // Task progress: ${progress}%
-    } catch (error) {
+    } catch {
       // Failed to update progress
     }
   }
@@ -105,7 +105,12 @@ export class TaskLogger {
    */
   async updateStatus(status: 'pending' | 'processing' | 'completed' | 'error', message?: string): Promise<void> {
     try {
-      const updates: any = {
+      const updates: {
+        status: 'pending' | 'processing' | 'completed' | 'error'
+        updatedAt: Date
+        logs?: LogEntry[]
+        completedAt?: Date
+      } = {
         status,
         updatedAt: new Date(),
       }
@@ -124,7 +129,7 @@ export class TaskLogger {
       await db.update(tasks).set(updates).where(eq(tasks.id, this.taskId))
 
       // Task status: ${status}
-    } catch (error) {
+    } catch {
       // Failed to update status
     }
   }
