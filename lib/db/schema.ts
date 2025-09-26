@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, integer, jsonb, boolean } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
 // Log entry types
@@ -16,8 +16,10 @@ export const tasks = pgTable('tasks', {
   repoUrl: text('repo_url'),
   selectedAgent: text('selected_agent').default('claude'),
   selectedModel: text('selected_model'),
+  installDependencies: boolean('install_dependencies').default(false),
+  maxDuration: integer('max_duration').default(5),
   status: text('status', {
-    enum: ['pending', 'processing', 'completed', 'error'],
+    enum: ['pending', 'processing', 'completed', 'error', 'stopped'],
   })
     .notNull()
     .default('pending'),
@@ -38,7 +40,9 @@ export const insertTaskSchema = z.object({
   repoUrl: z.string().url('Must be a valid URL').optional(),
   selectedAgent: z.enum(['claude', 'codex', 'cursor', 'opencode']).default('claude'),
   selectedModel: z.string().optional(),
-  status: z.enum(['pending', 'processing', 'completed', 'error']).default('pending'),
+  installDependencies: z.boolean().default(false),
+  maxDuration: z.number().default(5),
+  status: z.enum(['pending', 'processing', 'completed', 'error', 'stopped']).default('pending'),
   progress: z.number().min(0).max(100).default(0),
   logs: z.array(logEntrySchema).optional(),
   error: z.string().optional(),
@@ -55,7 +59,9 @@ export const selectTaskSchema = z.object({
   repoUrl: z.string().nullable(),
   selectedAgent: z.string().nullable(),
   selectedModel: z.string().nullable(),
-  status: z.enum(['pending', 'processing', 'completed', 'error']),
+  installDependencies: z.boolean().nullable(),
+  maxDuration: z.number().nullable(),
+  status: z.enum(['pending', 'processing', 'completed', 'error', 'stopped']),
   progress: z.number().nullable(),
   logs: z.array(logEntrySchema).nullable(),
   error: z.string().nullable(),

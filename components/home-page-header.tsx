@@ -1,6 +1,7 @@
 'use client'
 
 import { PageHeader } from '@/components/page-header'
+import { RepoSelector } from '@/components/repo-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -21,7 +22,14 @@ import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 
-export function HomePageHeader() {
+interface HomePageHeaderProps {
+  selectedOwner: string
+  selectedRepo: string
+  onOwnerChange: (owner: string) => void
+  onRepoChange: (repo: string) => void
+}
+
+export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onRepoChange }: HomePageHeaderProps) {
   const { toggleSidebar, refreshTasks } = useTasks()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -29,6 +37,7 @@ export function HomePageHeader() {
   const [showConnectorDialog, setShowConnectorDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
   const [deleteFailed, setDeleteFailed] = useState(true)
+  const [deleteStopped, setDeleteStopped] = useState(true)
 
   const handleRefreshRepos = async () => {
     setIsRefreshing(true)
@@ -51,7 +60,7 @@ export function HomePageHeader() {
   }
 
   const handleDeleteTasks = async () => {
-    if (!deleteCompleted && !deleteFailed) {
+    if (!deleteCompleted && !deleteFailed && !deleteStopped) {
       toast.error('Please select at least one task type to delete')
       return
     }
@@ -61,6 +70,7 @@ export function HomePageHeader() {
       const actions = []
       if (deleteCompleted) actions.push('completed')
       if (deleteFailed) actions.push('failed')
+      if (deleteStopped) actions.push('stopped')
 
       const response = await fetch(`/api/tasks?action=${actions.join(',')}`, {
         method: 'DELETE',
@@ -126,9 +136,24 @@ export function HomePageHeader() {
     </div>
   )
 
+  const leftActions = (
+    <RepoSelector
+      selectedOwner={selectedOwner}
+      selectedRepo={selectedRepo}
+      onOwnerChange={onOwnerChange}
+      onRepoChange={onRepoChange}
+      size="sm"
+    />
+  )
+
   return (
     <>
-      <PageHeader showMobileMenu={true} onToggleMobileMenu={toggleSidebar} actions={actions} />
+      <PageHeader
+        showMobileMenu={true}
+        onToggleMobileMenu={toggleSidebar}
+        actions={actions}
+        leftActions={leftActions}
+      />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
@@ -166,13 +191,26 @@ export function HomePageHeader() {
                   Delete Failed Tasks
                 </label>
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="delete-stopped"
+                  checked={deleteStopped}
+                  onCheckedChange={(checked) => setDeleteStopped(checked === true)}
+                />
+                <label
+                  htmlFor="delete-stopped"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Delete Stopped Tasks
+                </label>
+              </div>
             </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteTasks}
-              disabled={isDeleting || (!deleteCompleted && !deleteFailed)}
+              disabled={isDeleting || (!deleteCompleted && !deleteFailed && !deleteStopped)}
               className="bg-red-600 hover:bg-red-700"
             >
               {isDeleting ? 'Deleting...' : 'Delete Tasks'}

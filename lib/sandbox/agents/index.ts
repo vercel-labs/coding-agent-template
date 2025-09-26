@@ -21,7 +21,18 @@ export async function executeAgentInSandbox(
   logger: TaskLogger,
   selectedModel?: string,
   mcpServers?: Connector[],
+  onCancellationCheck?: () => Promise<boolean>,
 ): Promise<AgentExecutionResult> {
+  // Check for cancellation before starting agent execution
+  if (onCancellationCheck && (await onCancellationCheck())) {
+    await logger.info('Task was cancelled before agent execution')
+    return {
+      success: false,
+      error: 'Task was cancelled',
+      cliName: agentType,
+      changesDetected: false,
+    }
+  }
   switch (agentType) {
     case 'claude':
       return executeClaudeInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)

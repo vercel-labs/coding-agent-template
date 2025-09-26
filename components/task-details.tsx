@@ -3,11 +3,13 @@
 import { Task, LogEntry } from '@/lib/db/schema'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check } from 'lucide-react'
+import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
+import { useTasks } from '@/components/app-layout'
+import { TaskDuration } from '@/components/task-duration'
 
 interface TaskDetailsProps {
   task: Task
@@ -16,9 +18,34 @@ interface TaskDetailsProps {
 export function TaskDetails({ task }: TaskDetailsProps) {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedLogs, setCopiedLogs] = useState(false)
+  const [isStopping, setIsStopping] = useState(false)
+  const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
+  const { refreshTasks } = useTasks()
+
+  // Helper function to format dates - show only time if same day as today
+  const formatDateTime = (date: Date) => {
+    const today = new Date()
+    const isToday = date.toDateString() === today.toDateString()
+
+    if (isToday) {
+      return date.toLocaleTimeString()
+    } else {
+      return `${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`
+    }
+  }
+
+  // Use optimistic status if available, otherwise use actual task status
+  const currentStatus = optimisticStatus || task.status
+
+  // Clear optimistic status when task status actually changes
+  useEffect(() => {
+    if (optimisticStatus && task.status === optimisticStatus) {
+      setOptimisticStatus(null)
+    }
+  }, [task.status, optimisticStatus])
 
   const getAgentLogo = (agent: string | null) => {
     if (!agent) return null
@@ -89,6 +116,39 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
   }
 
+  const handleStopTask = async () => {
+    setIsStopping(true)
+    // Optimistically update the status to 'stopped'
+    setOptimisticStatus('stopped')
+
+    try {
+      const response = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'stop' }),
+      })
+
+      if (response.ok) {
+        toast.success('Task stopped successfully!')
+        refreshTasks() // Refresh the sidebar
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to stop task')
+        // Revert optimistic update on error
+        setOptimisticStatus(null)
+      }
+    } catch (error) {
+      console.error('Error stopping task:', error)
+      toast.error('Failed to stop task')
+      // Revert optimistic update on error
+      setOptimisticStatus(null)
+    } finally {
+      setIsStopping(false)
+    }
+  }
+
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'pending':
@@ -98,6 +158,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       case 'completed':
         return <CheckCircle className="h-4 w-4" />
       case 'error':
+        return <AlertCircle className="h-4 w-4" />
+      case 'stopped':
         return <AlertCircle className="h-4 w-4" />
       default:
         return <Clock className="h-4 w-4" />
@@ -114,6 +176,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         return 'Completed'
       case 'error':
         return 'Failed'
+      case 'stopped':
+        return 'Stopped'
       default:
         return 'Unknown'
     }
@@ -129,6 +193,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         return 'text-green-500'
       case 'error':
         return 'text-red-500'
+      case 'stopped':
+        return 'text-orange-500'
       default:
         return 'text-gray-500'
     }
@@ -144,44 +210,34 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <div>
                 <h4 className="font-medium mb-1">Status</h4>
-                <div className={cn('flex items-center gap-2 text-sm', getStatusColor(task.status))}>
-                  {getStatusIcon(task.status)}
-                  <span>{getStatusText(task.status)}</span>
+                <div className={cn('flex items-center gap-2 text-sm', getStatusColor(currentStatus))}>
+                  {getStatusIcon(currentStatus)}
+                  <span>{getStatusText(currentStatus)}</span>
+                  {currentStatus === 'processing' && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleStopTask}
+                      disabled={isStopping}
+                      className="h-5 w-5 p-0 rounded-full"
+                      title="Stop task"
+                    >
+                      <div className="h-2.5 w-2.5 bg-current" />
+                    </Button>
+                  )}
                 </div>
               </div>
               <div>
                 <h4 className="font-medium mb-1">Created</h4>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString()}
-                </p>
+                <p className="text-sm text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</p>
               </div>
               <div>
                 <h4 className="font-medium mb-1">Completed</h4>
                 <p className="text-sm text-muted-foreground">
-                  {task.completedAt
-                    ? `${new Date(task.completedAt).toLocaleDateString()} at ${new Date(task.completedAt).toLocaleTimeString()}`
-                    : 'Not completed'}
+                  {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
                 </p>
               </div>
-              <div>
-                <h4 className="font-medium mb-1">Duration</h4>
-                <p className="text-sm text-muted-foreground">
-                  {(() => {
-                    const startTime = new Date(task.createdAt).getTime()
-                    const endTime = task.completedAt ? new Date(task.completedAt).getTime() : Date.now()
-                    const durationMs = endTime - startTime
-                    const durationSeconds = Math.floor(durationMs / 1000)
-                    const minutes = Math.floor(durationSeconds / 60)
-                    const seconds = durationSeconds % 60
-
-                    if (minutes > 0) {
-                      return `${minutes}m ${seconds}s`
-                    } else {
-                      return `${seconds}s`
-                    }
-                  })()}
-                </p>
-              </div>
+              <TaskDuration task={task} />
             </div>
 
             <div>
