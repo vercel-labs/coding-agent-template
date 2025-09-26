@@ -120,13 +120,11 @@ export async function installClaudeCLI(
         }
       }
 
-      const configObject = {
-        api_key: process.env.ANTHROPIC_API_KEY,
-        default_model: modelToUse,
-      }
-
       const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
-${JSON.stringify(configObject, null, 2)}
+{
+  "api_key": "${process.env.ANTHROPIC_API_KEY}",
+  "default_model": "${modelToUse}"
+}
 EOF`
       const configFileResult = await runCommandInSandbox(sandbox, 'sh', ['-c', configFileCmd])
 
