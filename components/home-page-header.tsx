@@ -1,6 +1,7 @@
 'use client'
 
 import { PageHeader } from '@/components/page-header'
+import { RepoSelector } from '@/components/repo-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -20,7 +21,14 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
-export function HomePageHeader() {
+interface HomePageHeaderProps {
+  selectedOwner: string
+  selectedRepo: string
+  onOwnerChange: (owner: string) => void
+  onRepoChange: (repo: string) => void
+}
+
+export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onRepoChange }: HomePageHeaderProps) {
   const { toggleSidebar, refreshTasks } = useTasks()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -122,9 +130,24 @@ export function HomePageHeader() {
     </div>
   )
 
+  const leftActions = (
+    <RepoSelector
+      selectedOwner={selectedOwner}
+      selectedRepo={selectedRepo}
+      onOwnerChange={onOwnerChange}
+      onRepoChange={onRepoChange}
+      size="sm"
+    />
+  )
+
   return (
     <>
-      <PageHeader showMobileMenu={true} onToggleMobileMenu={toggleSidebar} actions={actions} />
+      <PageHeader
+        showMobileMenu={true}
+        onToggleMobileMenu={toggleSidebar}
+        actions={actions}
+        leftActions={leftActions}
+      />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

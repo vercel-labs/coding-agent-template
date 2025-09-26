@@ -137,167 +137,172 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       throw error
     }
 
-    // Install project dependencies (pnpm only)
-    await logger.info('Detecting project type and installing dependencies...')
+    // Install project dependencies (based on user preference)
+    if (config.installDependencies !== false) {
+      await logger.info('Detecting project type and installing dependencies...')
+    } else {
+      await logger.info('Skipping dependency installation as requested by user')
+    }
 
     // Check for project type and install dependencies accordingly
     const packageJsonCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'package.json'])
-
     const requirementsTxtCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'requirements.txt'])
 
-    if (packageJsonCheck.success) {
-      // JavaScript/Node.js project
-      await logger.info('package.json found, installing Node.js dependencies...')
+    if (config.installDependencies !== false) {
+      if (packageJsonCheck.success) {
+        // JavaScript/Node.js project
+        await logger.info('package.json found, installing Node.js dependencies...')
 
-      // Detect which package manager to use
-      const packageManager = await detectPackageManager(sandbox, logger)
+        // Detect which package manager to use
+        const packageManager = await detectPackageManager(sandbox, logger)
 
-      // Install required package manager globally if needed
-      if (packageManager === 'pnpm') {
-        // Check if pnpm is already installed
-        const pnpmCheck = await runCommandInSandbox(sandbox, 'which', ['pnpm'])
-        if (!pnpmCheck.success) {
-          await logger.info('Installing pnpm globally...')
-          const pnpmGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'pnpm'])
-          if (!pnpmGlobalInstall.success) {
-            await logger.error('Failed to install pnpm globally, falling back to npm')
-            // Fall back to npm if pnpm installation fails
-            const npmResult = await installDependencies(sandbox, 'npm', logger)
-            if (!npmResult.success) {
-              await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+        // Install required package manager globally if needed
+        if (packageManager === 'pnpm') {
+          // Check if pnpm is already installed
+          const pnpmCheck = await runCommandInSandbox(sandbox, 'which', ['pnpm'])
+          if (!pnpmCheck.success) {
+            await logger.info('Installing pnpm globally...')
+            const pnpmGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'pnpm'])
+            if (!pnpmGlobalInstall.success) {
+              await logger.error('Failed to install pnpm globally, falling back to npm')
+              // Fall back to npm if pnpm installation fails
+              const npmResult = await installDependencies(sandbox, 'npm', logger)
+              if (!npmResult.success) {
+                await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+              }
+            } else {
+              await logger.info('pnpm installed globally')
             }
-          } else {
-            await logger.info('pnpm installed globally')
+          }
+        } else if (packageManager === 'yarn') {
+          // Check if yarn is already installed
+          const yarnCheck = await runCommandInSandbox(sandbox, 'which', ['yarn'])
+          if (!yarnCheck.success) {
+            await logger.info('Installing yarn globally...')
+            const yarnGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'yarn'])
+            if (!yarnGlobalInstall.success) {
+              await logger.error('Failed to install yarn globally, falling back to npm')
+              // Fall back to npm if yarn installation fails
+              const npmResult = await installDependencies(sandbox, 'npm', logger)
+              if (!npmResult.success) {
+                await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+              }
+            } else {
+              await logger.info('yarn installed globally')
+            }
           }
         }
-      } else if (packageManager === 'yarn') {
-        // Check if yarn is already installed
-        const yarnCheck = await runCommandInSandbox(sandbox, 'which', ['yarn'])
-        if (!yarnCheck.success) {
-          await logger.info('Installing yarn globally...')
-          const yarnGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'yarn'])
-          if (!yarnGlobalInstall.success) {
-            await logger.error('Failed to install yarn globally, falling back to npm')
-            // Fall back to npm if yarn installation fails
-            const npmResult = await installDependencies(sandbox, 'npm', logger)
-            if (!npmResult.success) {
-              await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
-            }
-          } else {
-            await logger.info('yarn installed globally')
-          }
-        }
-      }
 
-      // Call progress callback before dependency installation
-      if (config.onProgress) {
-        await config.onProgress(35, 'Installing Node.js dependencies...')
-      }
-
-      // Install dependencies with the detected package manager
-      const installResult = await installDependencies(sandbox, packageManager, logger)
-
-      // Check for cancellation after dependency installation
-      if (config.onCancellationCheck && (await config.onCancellationCheck())) {
-        await logger.info('Task was cancelled after dependency installation')
-        return { success: false, cancelled: true }
-      }
-
-      // If primary package manager fails, try npm as fallback (unless it was already npm)
-      if (!installResult.success && packageManager !== 'npm') {
-        await logger.info(`${packageManager} failed, trying npm as fallback...`)
-
+        // Call progress callback before dependency installation
         if (config.onProgress) {
-          await config.onProgress(37, `${packageManager} failed, trying npm fallback...`)
+          await config.onProgress(35, 'Installing Node.js dependencies...')
         }
 
-        const npmFallbackResult = await installDependencies(sandbox, 'npm', logger)
-        if (!npmFallbackResult.success) {
+        // Install dependencies with the detected package manager
+        const installResult = await installDependencies(sandbox, packageManager, logger)
+
+        // Check for cancellation after dependency installation
+        if (config.onCancellationCheck && (await config.onCancellationCheck())) {
+          await logger.info('Task was cancelled after dependency installation')
+          return { success: false, cancelled: true }
+        }
+
+        // If primary package manager fails, try npm as fallback (unless it was already npm)
+        if (!installResult.success && packageManager !== 'npm') {
+          await logger.info(`${packageManager} failed, trying npm as fallback...`)
+
+          if (config.onProgress) {
+            await config.onProgress(37, `${packageManager} failed, trying npm fallback...`)
+          }
+
+          const npmFallbackResult = await installDependencies(sandbox, 'npm', logger)
+          if (!npmFallbackResult.success) {
+            await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+          }
+        } else if (!installResult.success) {
           await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
         }
-      } else if (!installResult.success) {
-        await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
-      }
-    } else if (requirementsTxtCheck.success) {
-      // Python project
-      await logger.info('requirements.txt found, installing Python dependencies...')
+      } else if (requirementsTxtCheck.success) {
+        // Python project
+        await logger.info('requirements.txt found, installing Python dependencies...')
 
-      // Call progress callback before dependency installation
-      if (config.onProgress) {
-        await config.onProgress(35, 'Installing Python dependencies...')
-      }
+        // Call progress callback before dependency installation
+        if (config.onProgress) {
+          await config.onProgress(35, 'Installing Python dependencies...')
+        }
 
-      // First install pip if it's not available
-      const pipCheck = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', '--version'])
+        // First install pip if it's not available
+        const pipCheck = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', '--version'])
 
-      if (!pipCheck.success) {
-        await logger.info('pip not found, installing pip...')
+        if (!pipCheck.success) {
+          await logger.info('pip not found, installing pip...')
 
-        // Install pip using get-pip.py in a temporary directory
-        const getPipResult = await runCommandInSandbox(sandbox, 'sh', [
-          '-c',
-          'cd /tmp && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py && rm -f get-pip.py',
-        ])
-
-        if (!getPipResult.success) {
-          await logger.info('Failed to install pip, trying alternative method...')
-
-          // Try installing python3-pip package
-          const aptResult = await runCommandInSandbox(sandbox, 'apt-get', [
-            'update',
-            '&&',
-            'apt-get',
-            'install',
-            '-y',
-            'python3-pip',
+          // Install pip using get-pip.py in a temporary directory
+          const getPipResult = await runCommandInSandbox(sandbox, 'sh', [
+            '-c',
+            'cd /tmp && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py && rm -f get-pip.py',
           ])
 
-          if (!aptResult.success) {
-            await logger.info('Warning: Could not install pip, skipping Python dependencies')
-            // Continue without Python dependencies
+          if (!getPipResult.success) {
+            await logger.info('Failed to install pip, trying alternative method...')
+
+            // Try installing python3-pip package
+            const aptResult = await runCommandInSandbox(sandbox, 'apt-get', [
+              'update',
+              '&&',
+              'apt-get',
+              'install',
+              '-y',
+              'python3-pip',
+            ])
+
+            if (!aptResult.success) {
+              await logger.info('Warning: Could not install pip, skipping Python dependencies')
+              // Continue without Python dependencies
+            } else {
+              await logger.info('pip installed via apt-get')
+            }
+          }
+
+          await logger.info('pip installed successfully')
+        } else {
+          await logger.info('pip is available')
+
+          // Upgrade pip to latest version
+          const pipUpgrade = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', 'install', '--upgrade', 'pip'])
+
+          if (!pipUpgrade.success) {
+            await logger.info('Warning: Failed to upgrade pip, continuing anyway')
           } else {
-            await logger.info('pip installed via apt-get')
+            await logger.info('pip upgraded successfully')
           }
         }
 
-        await logger.info('pip installed successfully')
-      } else {
-        await logger.info('pip is available')
+        // Install dependencies from requirements.txt
+        const pipInstall = await runCommandInSandbox(sandbox, 'python3', [
+          '-m',
+          'pip',
+          'install',
+          '-r',
+          'requirements.txt',
+        ])
 
-        // Upgrade pip to latest version
-        const pipUpgrade = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', 'install', '--upgrade', 'pip'])
+        if (!pipInstall.success) {
+          await logger.info('pip install failed')
+          await logger.info(`pip exit code: ${pipInstall.exitCode}`)
 
-        if (!pipUpgrade.success) {
-          await logger.info('Warning: Failed to upgrade pip, continuing anyway')
+          if (pipInstall.output) await logger.info(`pip stdout: ${pipInstall.output}`)
+          if (pipInstall.error) await logger.info(`pip stderr: ${pipInstall.error}`)
+
+          // Don't throw error, just log it and continue
+          await logger.info('Warning: Failed to install Python dependencies, but continuing with sandbox setup')
         } else {
-          await logger.info('pip upgraded successfully')
+          await logger.info('Python dependencies installed successfully')
         }
-      }
-
-      // Install dependencies from requirements.txt
-      const pipInstall = await runCommandInSandbox(sandbox, 'python3', [
-        '-m',
-        'pip',
-        'install',
-        '-r',
-        'requirements.txt',
-      ])
-
-      if (!pipInstall.success) {
-        await logger.info('pip install failed')
-        await logger.info(`pip exit code: ${pipInstall.exitCode}`)
-
-        if (pipInstall.output) await logger.info(`pip stdout: ${pipInstall.output}`)
-        if (pipInstall.error) await logger.info(`pip stderr: ${pipInstall.error}`)
-
-        // Don't throw error, just log it and continue
-        await logger.info('Warning: Failed to install Python dependencies, but continuing with sandbox setup')
       } else {
-        await logger.info('Python dependencies installed successfully')
+        await logger.info('No package.json or requirements.txt found, skipping dependency installation')
       }
-    } else {
-      await logger.info('No package.json or requirements.txt found, skipping dependency installation')
-    }
+    } // End of installDependencies check
 
     // Get the domain for the sandbox
     const domain = sandbox.domain(config.ports?.[0] || 3000)
