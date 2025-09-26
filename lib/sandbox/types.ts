@@ -21,7 +21,6 @@ export interface SandboxResult {
   success: boolean
   sandbox?: Sandbox
   domain?: string
-  logs: string[]
   branchName?: string
   error?: string
 }

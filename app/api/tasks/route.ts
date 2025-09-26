@@ -227,21 +227,24 @@ async function processTask(
     await logger.updateProgress(15, 'Creating sandbox environment...')
 
     // Create sandbox with progress callback and 5-minute timeout
-    const sandboxResult = await createSandbox({
-      repoUrl,
-      timeout: '5m',
-      ports: [3000],
-      runtime: 'node22',
-      resources: { vcpus: 4 },
-      taskPrompt: prompt,
-      selectedAgent,
-      selectedModel,
-      preDeterminedBranchName: aiBranchName || undefined,
-      onProgress: async (progress: number, message: string) => {
-        // Use real-time logger for progress updates
-        await logger.updateProgress(progress, message)
+    const sandboxResult = await createSandbox(
+      {
+        repoUrl,
+        timeout: '5m',
+        ports: [3000],
+        runtime: 'node22',
+        resources: { vcpus: 4 },
+        taskPrompt: prompt,
+        selectedAgent,
+        selectedModel,
+        preDeterminedBranchName: aiBranchName || undefined,
+        onProgress: async (progress: number, message: string) => {
+          // Use real-time logger for progress updates
+          await logger.updateProgress(progress, message)
+        },
       },
-    })
+      logger,
+    )
 
     if (!sandboxResult.success) {
       throw new Error(sandboxResult.error || 'Failed to create sandbox')
@@ -250,19 +253,8 @@ async function processTask(
     const { sandbox: createdSandbox, domain, branchName } = sandboxResult
     sandbox = createdSandbox || null
 
-    // Log sandbox creation completion and append sandbox logs
+    // Log sandbox creation completion
     await logger.success('Sandbox created successfully')
-
-    // Append sandbox logs to database in real-time
-    for (const log of sandboxResult.logs || []) {
-      if (log.startsWith('$ ')) {
-        await logger.command(log.substring(2)) // Remove "$ " prefix
-      } else if (log.startsWith('Error: ')) {
-        await logger.error(log)
-      } else {
-        await logger.info(log)
-      }
-    }
 
     // Update sandbox URL and branch name (only update branch name if not already set by AI)
     const updateData: { sandboxUrl?: string; updatedAt: Date; branchName?: string } = {
