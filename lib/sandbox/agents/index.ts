@@ -5,8 +5,10 @@ import { executeCodexInSandbox } from './codex'
 import { executeCursorInSandbox } from './cursor'
 import { executeOpenCodeInSandbox } from './opencode'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { connectors } from '@/lib/db/schema'
 
 export type AgentType = 'claude' | 'codex' | 'cursor' | 'opencode'
+type Connector = typeof connectors.$inferSelect
 
 // Re-export types
 export type { AgentExecutionResult } from '../types'
@@ -18,10 +20,11 @@ export async function executeAgentInSandbox(
   agentType: AgentType,
   logger: TaskLogger,
   selectedModel?: string,
+  mcpServers?: Connector[],
 ): Promise<AgentExecutionResult> {
   switch (agentType) {
     case 'claude':
-      return executeClaudeInSandbox(sandbox, instruction, logger, selectedModel)
+      return executeClaudeInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     case 'codex':
       return executeCodexInSandbox(sandbox, instruction, logger, selectedModel)

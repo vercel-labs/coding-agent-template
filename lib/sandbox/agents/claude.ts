@@ -3,6 +3,12 @@ import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { connectors } from '@/lib/db/schema'
+
+type Connector = typeof connectors.$inferSelect
+
+// Execute Claude CLI with proper environment and instruction
+const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
 
 // Helper function to run command and collect logs
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
@@ -57,6 +63,7 @@ export async function installClaudeCLI(
   sandbox: Sandbox,
   logger: TaskLogger,
   selectedModel?: string,
+  mcpServers?: Connector[],
 ): Promise<{ success: boolean }> {
   // Install Claude CLI
   await logger.info('Installing Claude CLI...')
@@ -75,11 +82,51 @@ export async function installClaudeCLI(
       // Create config file directly using absolute path
       // Use selectedModel if provided, otherwise fall back to default
       const modelToUse = selectedModel || 'claude-3-5-sonnet-20241022'
+
+      const mcpServersConfig: Record<
+        string,
+        {
+          url: string
+          headers?: {
+            Authorization?: string
+            'X-Client-ID'?: string
+          }
+        }
+      > = {}
+
+      if (mcpServers && mcpServers.length > 0) {
+        await logger.info(`Adding ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+
+        for (const server of mcpServers) {
+          const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+
+          let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
+
+          if (server.oauthClientSecret) {
+            addMcpCmd += ` --header "Authorization: Bearer ${server.oauthClientSecret}"`
+          }
+
+          if (server.oauthClientId) {
+            addMcpCmd += ` --header "X-Client-ID: ${server.oauthClientId}"`
+          }
+
+          const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
+
+          if (addResult.success) {
+            await logger.info(`Successfully added MCP server: ${server.name}`)
+          } else {
+            await logger.info(`Failed to add MCP server ${server.name}: ${addResult.error}`)
+          }
+        }
+      }
+
+      const configObject = {
+        api_key: process.env.ANTHROPIC_API_KEY,
+        default_model: modelToUse,
+      }
+
       const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
-{
-  "api_key": "${process.env.ANTHROPIC_API_KEY}",
-  "default_model": "${modelToUse}"
-}
+${JSON.stringify(configObject, null, 2)}
 EOF`
       const configFileResult = await runCommandInSandbox(sandbox, 'sh', ['-c', configFileCmd])
 
@@ -115,6 +162,7 @@ export async function executeClaudeInSandbox(
   instruction: string,
   logger: TaskLogger,
   selectedModel?: string,
+  mcpServers?: Connector[],
 ): Promise<AgentExecutionResult> {
   try {
     // Executing Claude CLI with instruction
@@ -132,7 +180,7 @@ export async function executeClaudeInSandbox(
     if (!cliCheck.success) {
       // Claude CLI not found, try to install it
       // Claude CLI not found, installing
-      const installResult = await installClaudeCLI(sandbox, logger, selectedModel)
+      const installResult = await installClaudeCLI(sandbox, logger, selectedModel, mcpServers)
 
       if (!installResult.success) {
         return {
@@ -166,15 +214,19 @@ export async function executeClaudeInSandbox(
       }
     }
 
-    // Execute Claude CLI with proper environment and instruction
-    const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
-
     // Log what we're trying to do
     const modelToUse = selectedModel || 'claude-3-5-sonnet-20241022'
     if (logger) {
       await logger.info(
         `Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`,
       )
+    }
+
+    // Check MCP configuration status
+    const mcpList = await runCommandInSandbox(sandbox, 'sh', ['-c', `${envPrefix} claude mcp list`])
+    await logger.info(`MCP servers list: ${JSON.stringify(mcpList.output)}`)
+    if (mcpList.error) {
+      await logger.info(`MCP list error: ${JSON.stringify(mcpList.error)}`)
     }
 
     // Try multiple command formats to see what works
@@ -211,6 +263,8 @@ export async function executeClaudeInSandbox(
 
     // Log the output
     if (result.output && result.output.trim()) {
+      await logger.info(`everything: ${JSON.stringify(result.output)}`)
+
       const redactedOutput = redactSensitiveInfo(result.output.trim())
       await logger.info(redactedOutput)
       if (logger) {

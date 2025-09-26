@@ -36,6 +36,13 @@
       "when": 1758640229800,
       "tag": "0004_dashing_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1758840876149,
+      "tag": "0005_flashy_nova",
+      "breakpoints": true
     }
   ]
 }
