@@ -1,23 +1,22 @@
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
-import { redactSensitiveInfo, createCommandLog, createInfoLog, createErrorLog } from '@/lib/utils/logging'
-import { LogEntry } from '@/lib/db/schema'
+import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
-// Helper function to run command and collect logs
-async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logs: LogEntry[]) {
+// Helper function to run command and log it
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  logs.push(createCommandLog(redactSensitiveInfo(fullCommand)))
+  await logger.command(redactSensitiveInfo(fullCommand))
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
-    logs.push(createInfoLog(redactSensitiveInfo(result.output.trim())))
+    await logger.info(redactSensitiveInfo(result.output.trim()))
   }
 
   if (!result.success && result.error) {
-    logs.push(createErrorLog(redactSensitiveInfo(result.error)))
+    await logger.error(redactSensitiveInfo(result.error))
   }
 
   return result
@@ -26,17 +25,15 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
 export async function executeCodexInSandbox(
   sandbox: Sandbox,
   instruction: string,
-  logger?: TaskLogger,
+  logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-  const logs: LogEntry[] = []
-
   try {
     // Executing Codex CLI with instruction
 
     // Install Codex CLI using npm
     // Installing Codex CLI
-    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', '@openai/codex'], logs)
+    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', '@openai/codex'], logger)
 
     if (!installResult.success) {
       return {
@@ -44,14 +41,13 @@ export async function executeCodexInSandbox(
         error: `Failed to install Codex CLI: ${installResult.error}`,
         cliName: 'codex',
         changesDetected: false,
-        logs,
       }
     }
 
     // Codex CLI installed successfully
 
     // Check if Codex CLI is available
-    const cliCheck = await runAndLogCommand(sandbox, 'which', ['codex'], logs)
+    const cliCheck = await runAndLogCommand(sandbox, 'which', ['codex'], logger)
 
     if (!cliCheck.success) {
       return {
@@ -59,7 +55,6 @@ export async function executeCodexInSandbox(
         error: 'Codex CLI not found after installation. Please ensure it is properly installed.',
         cliName: 'codex',
         changesDetected: false,
-        logs,
       }
     }
 
@@ -70,7 +65,6 @@ export async function executeCodexInSandbox(
         error: 'AI Gateway API key not found. Please set AI_GATEWAY_API_KEY environment variable.',
         cliName: 'codex',
         changesDetected: false,
-        logs,
       }
     }
 
@@ -90,7 +84,6 @@ export async function executeCodexInSandbox(
         error: errorMsg,
         cliName: 'codex',
         changesDetected: false,
-        logs,
       }
     }
 
@@ -211,7 +204,7 @@ log_requests = true
     // Use --dangerously-bypass-approvals-and-sandbox (no --cd flag like other agents)
     const logCommand = `codex exec --dangerously-bypass-approvals-and-sandbox "${instruction}"`
 
-    logs.push(createCommandLog(logCommand))
+    await logger.command(logCommand)
     if (logger) {
       await logger.command(logCommand)
       const providerName = isVercelKey ? 'Vercel AI Gateway' : 'OpenAI API'
@@ -231,7 +224,7 @@ log_requests = true
     // Log the output and error results (similar to Claude and Cursor)
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
-      logs.push(createInfoLog(redactedOutput))
+      await logger.info(redactedOutput)
       if (logger) {
         await logger.info(redactedOutput)
       }
@@ -239,7 +232,7 @@ log_requests = true
 
     if (!result.success && result.error && result.error.trim()) {
       const redactedError = redactSensitiveInfo(result.error.trim())
-      logs.push(createErrorLog(redactedError))
+      await logger.error(redactedError)
       if (logger) {
         await logger.error(redactedError)
       }
@@ -248,7 +241,7 @@ log_requests = true
     // Codex CLI execution completed
 
     // Check if any files were modified
-    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logs)
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
     if (result.success || result.exitCode === 0) {
@@ -259,7 +252,6 @@ log_requests = true
         cliName: 'codex',
         changesDetected: !!hasChanges,
         error: undefined,
-        logs,
       }
     } else {
       return {
@@ -268,7 +260,6 @@ log_requests = true
         agentResponse: result.output,
         cliName: 'codex',
         changesDetected: !!hasChanges,
-        logs,
       }
     }
   } catch (error: unknown) {
@@ -278,7 +269,6 @@ log_requests = true
       error: errorMessage,
       cliName: 'codex',
       changesDetected: false,
-      logs,
     }
   }
 }

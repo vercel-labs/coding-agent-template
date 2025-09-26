@@ -1,44 +1,27 @@
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
-import { redactSensitiveInfo, createCommandLog, createInfoLog, createErrorLog } from '@/lib/utils/logging'
-import { LogEntry } from '@/lib/db/schema'
+import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
-// Helper function to run command and collect logs
-async function runAndLogCommand(
-  sandbox: Sandbox,
-  command: string,
-  args: string[],
-  logs: LogEntry[],
-  logger?: TaskLogger,
-) {
+// Helper function to run command and log it
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
-  // Log to both local logs and database if logger is provided
-  logs.push(createCommandLog(redactedCommand))
-  if (logger) {
-    await logger.command(redactedCommand)
-  }
+  await logger.command(redactedCommand)
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
     const redactedOutput = redactSensitiveInfo(result.output.trim())
-    logs.push(createInfoLog(redactedOutput))
-    if (logger) {
-      await logger.info(redactedOutput)
-    }
+    await logger.info(redactedOutput)
   }
 
   if (result && !result.success && result.error) {
     const redactedError = redactSensitiveInfo(result.error)
-    logs.push(createErrorLog(redactedError))
-    if (logger) {
-      await logger.error(redactedError)
-    }
+    await logger.error(redactedError)
   }
 
   // If result is null/undefined, create a fallback result
@@ -50,10 +33,7 @@ async function runAndLogCommand(
       output: '',
       command: redactedCommand,
     }
-    logs.push(createErrorLog('Command execution failed - no result returned'))
-    if (logger) {
-      await logger.error('Command execution failed - no result returned')
-    }
+    await logger.error('Command execution failed - no result returned')
     return errorResult
   }
 
@@ -63,31 +43,22 @@ async function runAndLogCommand(
 export async function executeOpenCodeInSandbox(
   sandbox: Sandbox,
   instruction: string,
-  logger?: TaskLogger,
+  logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-  const logs: LogEntry[] = []
-
   try {
     // Executing OpenCode with instruction
-
-    if (logger) {
-      await logger.info('Starting OpenCode agent execution...')
-    }
+    await logger.info('Starting OpenCode agent execution...')
 
     // Check if we have required environment variables for OpenCode
     if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
       const errorMsg = 'OpenAI API key or Anthropic API key is required for OpenCode agent'
-      logs.push(createErrorLog(errorMsg))
-      if (logger) {
-        await logger.error(errorMsg)
-      }
+      await logger.error(errorMsg)
       return {
         success: false,
         error: errorMsg,
         cliName: 'opencode',
         changesDetected: false,
-        logs,
       }
     }
 
@@ -97,7 +68,7 @@ export async function executeOpenCodeInSandbox(
       await logger.info('Installing OpenCode CLI...')
     }
 
-    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', 'opencode-ai'], logs, logger)
+    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', 'opencode-ai'], logger)
 
     if (!installResult.success) {
       console.error('OpenCode CLI installation failed:', { error: installResult.error })
@@ -106,7 +77,6 @@ export async function executeOpenCodeInSandbox(
         error: `Failed to install OpenCode CLI: ${installResult.error || 'Unknown error'}`,
         cliName: 'opencode',
         changesDetected: false,
-        logs,
       }
     }
 
@@ -116,11 +86,11 @@ export async function executeOpenCodeInSandbox(
     }
 
     // Verify OpenCode CLI is available
-    const cliCheck = await runAndLogCommand(sandbox, 'opencode', ['--version'], logs, logger)
+    const cliCheck = await runAndLogCommand(sandbox, 'opencode', ['--version'], logger)
 
     if (!cliCheck.success) {
       // Try to find the exact path where npm installed it
-      const npmBinCheck = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'], logs, logger)
+      const npmBinCheck = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'], logger)
 
       if (npmBinCheck.success && npmBinCheck.output) {
         const globalBinPath = npmBinCheck.output.trim()
@@ -131,7 +101,7 @@ export async function executeOpenCodeInSandbox(
           sandbox,
           `${globalBinPath}/opencode`,
           ['--version'],
-          logs,
+
           logger,
         )
 
@@ -141,7 +111,6 @@ export async function executeOpenCodeInSandbox(
             error: `OpenCode CLI not found after installation. Tried both 'opencode' and '${globalBinPath}/opencode'. Installation may have failed.`,
             cliName: 'opencode',
             changesDetected: false,
-            logs,
           }
         }
       } else {
@@ -150,7 +119,6 @@ export async function executeOpenCodeInSandbox(
           error: 'OpenCode CLI not found after installation and could not determine npm global bin path.',
           cliName: 'opencode',
           changesDetected: false,
-          logs,
         }
       }
     }
@@ -218,7 +186,7 @@ export async function executeOpenCodeInSandbox(
     let opencodeCmdToUse = 'opencode'
 
     if (!cliCheck.success) {
-      const npmBinResult = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'], logs, logger)
+      const npmBinResult = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'], logger)
       if (npmBinResult.success && npmBinResult.output) {
         const globalBinPath = npmBinResult.output.trim()
         opencodeCmdToUse = `${globalBinPath}/opencode`
@@ -256,7 +224,7 @@ export async function executeOpenCodeInSandbox(
 
     // Log the command we're about to execute (with redacted API keys)
     const redactedCommand = fullCommand.replace(/API_KEY="[^"]*"/g, 'API_KEY="[REDACTED]"')
-    logs.push(createCommandLog(redactedCommand))
+    await logger.command(redactedCommand)
     if (logger) {
       await logger.command(redactedCommand)
     }
@@ -269,13 +237,13 @@ export async function executeOpenCodeInSandbox(
 
     // Log the output
     if (stdout && stdout.trim()) {
-      logs.push(createInfoLog(redactSensitiveInfo(stdout.trim())))
+      await logger.info(redactSensitiveInfo(stdout.trim()))
       if (logger) {
         await logger.info(redactSensitiveInfo(stdout.trim()))
       }
     }
     if (stderr && stderr.trim()) {
-      logs.push(createErrorLog(redactSensitiveInfo(stderr.trim())))
+      await logger.error(redactSensitiveInfo(stderr.trim()))
       if (logger) {
         await logger.error(redactSensitiveInfo(stderr.trim()))
       }
@@ -284,7 +252,7 @@ export async function executeOpenCodeInSandbox(
     // OpenCode execution completed
 
     // Check if any files were modified by OpenCode
-    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logs, logger)
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
     if (executeResult.success || executeResult.exitCode === 0) {
@@ -308,7 +276,6 @@ export async function executeOpenCodeInSandbox(
         cliName: 'opencode',
         changesDetected: !!hasChanges,
         error: undefined,
-        logs,
       }
     } else {
       const errorMsg = `OpenCode failed (exit code ${executeResult.exitCode}): ${stderr || stdout || 'No error message'}`
@@ -322,7 +289,6 @@ export async function executeOpenCodeInSandbox(
         agentResponse: stdout,
         cliName: 'opencode',
         changesDetected: !!hasChanges,
-        logs,
       }
     }
   } catch (error: unknown) {
@@ -338,7 +304,6 @@ export async function executeOpenCodeInSandbox(
       error: errorMessage,
       cliName: 'opencode',
       changesDetected: false,
-      logs,
     }
   }
 }

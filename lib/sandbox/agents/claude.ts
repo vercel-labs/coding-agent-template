@@ -1,23 +1,16 @@
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
-import { redactSensitiveInfo, createCommandLog, createInfoLog, createErrorLog } from '@/lib/utils/logging'
-import { LogEntry } from '@/lib/db/schema'
+import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
 // Helper function to run command and collect logs
-async function runAndLogCommand(
-  sandbox: Sandbox,
-  command: string,
-  args: string[],
-  logs: LogEntry[],
-  logger?: TaskLogger,
-) {
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
   // Log to both local logs and database if logger is provided
-  logs.push(createCommandLog(redactedCommand))
+  await logger.command(redactedCommand)
   if (logger) {
     await logger.command(redactedCommand)
   }
@@ -27,7 +20,7 @@ async function runAndLogCommand(
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
     const redactedOutput = redactSensitiveInfo(result.output.trim())
-    logs.push(createInfoLog(redactedOutput))
+    await logger.info(redactedOutput)
     if (logger) {
       await logger.info(redactedOutput)
     }
@@ -35,7 +28,7 @@ async function runAndLogCommand(
 
   if (result && !result.success && result.error) {
     const redactedError = redactSensitiveInfo(result.error)
-    logs.push(createErrorLog(redactedError))
+    await logger.error(redactedError)
     if (logger) {
       await logger.error(redactedError)
     }
@@ -50,7 +43,7 @@ async function runAndLogCommand(
       output: '',
       command: redactedCommand,
     }
-    logs.push(createErrorLog('Command execution failed - no result returned'))
+    await logger.error('Command execution failed - no result returned')
     if (logger) {
       await logger.error('Command execution failed - no result returned')
     }
@@ -62,20 +55,19 @@ async function runAndLogCommand(
 
 export async function installClaudeCLI(
   sandbox: Sandbox,
+  logger: TaskLogger,
   selectedModel?: string,
-): Promise<{ success: boolean; logs: string[] }> {
-  const logs: string[] = []
-
+): Promise<{ success: boolean }> {
   // Install Claude CLI
-  logs.push('Installing Claude CLI...')
+  await logger.info('Installing Claude CLI...')
   const claudeInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', '@anthropic-ai/claude-code'])
 
   if (claudeInstall.success) {
-    logs.push('Claude CLI installed successfully')
+    await logger.info('Claude CLI installed successfully')
 
     // Authenticate Claude CLI with API key
     if (process.env.ANTHROPIC_API_KEY) {
-      logs.push('Authenticating Claude CLI...')
+      await logger.info('Authenticating Claude CLI...')
 
       // Create Claude config directory (use $HOME instead of ~)
       await runCommandInSandbox(sandbox, 'mkdir', ['-p', '$HOME/.config/claude'])
@@ -92,9 +84,9 @@ EOF`
       const configFileResult = await runCommandInSandbox(sandbox, 'sh', ['-c', configFileCmd])
 
       if (configFileResult.success) {
-        logs.push('Claude CLI config file created successfully')
+        await logger.info('Claude CLI config file created successfully')
       } else {
-        logs.push('Warning: Failed to create Claude CLI config file')
+        await logger.info('Warning: Failed to create Claude CLI config file')
       }
 
       // Verify authentication
@@ -103,74 +95,63 @@ EOF`
         `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY} claude --version`,
       ])
       if (verifyAuth.success) {
-        logs.push('Claude CLI authentication verified')
+        await logger.info('Claude CLI authentication verified')
       } else {
-        logs.push('Warning: Claude CLI authentication could not be verified')
+        await logger.info('Warning: Claude CLI authentication could not be verified')
       }
     } else {
-      logs.push('Warning: ANTHROPIC_API_KEY not found, Claude CLI may not work')
+      await logger.info('Warning: ANTHROPIC_API_KEY not found, Claude CLI may not work')
     }
 
-    return { success: true, logs }
+    return { success: true }
   } else {
-    logs.push('Failed to install Claude CLI')
-    return { success: false, logs }
+    await logger.info('Failed to install Claude CLI')
+    return { success: false }
   }
 }
 
 export async function executeClaudeInSandbox(
   sandbox: Sandbox,
   instruction: string,
-  logger?: TaskLogger,
+  logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-  const logs: LogEntry[] = []
-
   try {
     // Executing Claude CLI with instruction
 
     // Check if Claude CLI is available and get version info
-    const cliCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logs, logger)
+    const cliCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logger)
 
     if (cliCheck.success) {
       // Get Claude CLI version for debugging
-      await runAndLogCommand(sandbox, 'claude', ['--version'], logs, logger)
+      await runAndLogCommand(sandbox, 'claude', ['--version'], logger)
       // Also try to see what commands are available
-      await runAndLogCommand(sandbox, 'claude', ['--help'], logs, logger)
+      await runAndLogCommand(sandbox, 'claude', ['--help'], logger)
     }
 
     if (!cliCheck.success) {
       // Claude CLI not found, try to install it
       // Claude CLI not found, installing
-      const installResult = await installClaudeCLI(sandbox, selectedModel)
+      const installResult = await installClaudeCLI(sandbox, logger, selectedModel)
 
       if (!installResult.success) {
-        // Convert installation logs to LogEntry format
-        const installLogs = installResult.logs.map((log) => createInfoLog(log))
         return {
           success: false,
-          error: `Failed to install Claude CLI: ${installResult.logs.join(', ')}`,
+          error: 'Failed to install Claude CLI',
           cliName: 'claude',
           changesDetected: false,
-          logs: [...logs, ...installLogs],
         }
       }
-
-      // Add installation logs to our logs (convert string logs to LogEntry)
-      installResult.logs.forEach((log) => {
-        logs.push(createInfoLog(log))
-      })
       // Claude CLI installed successfully
 
       // Verify installation worked
-      const verifyCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logs, logger)
+      const verifyCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logger)
       if (!verifyCheck.success) {
         return {
           success: false,
           error: 'Claude CLI installation completed but CLI still not found',
           cliName: 'claude',
           changesDetected: false,
-          logs,
         }
       }
     }
@@ -182,7 +163,6 @@ export async function executeClaudeInSandbox(
         error: 'ANTHROPIC_API_KEY environment variable is required but not found',
         cliName: 'claude',
         changesDetected: false,
-        logs,
       }
     }
 
@@ -207,7 +187,7 @@ export async function executeClaudeInSandbox(
 
     // Log the command we're about to execute (with redacted API key)
     const redactedCommand = fullCommand.replace(process.env.ANTHROPIC_API_KEY!, '[REDACTED]')
-    logs.push(createCommandLog(redactedCommand))
+    await logger.command(redactedCommand)
     if (logger) {
       await logger.command(redactedCommand)
     }
@@ -217,7 +197,7 @@ export async function executeClaudeInSandbox(
     // Check if result is valid before accessing properties
     if (!result) {
       const errorMsg = 'Claude CLI execution failed - no result returned'
-      logs.push(createErrorLog(errorMsg))
+      await logger.error(errorMsg)
       if (logger) {
         await logger.error(errorMsg)
       }
@@ -226,14 +206,13 @@ export async function executeClaudeInSandbox(
         error: errorMsg,
         cliName: 'claude',
         changesDetected: false,
-        logs,
       }
     }
 
     // Log the output
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
-      logs.push(createInfoLog(redactedOutput))
+      await logger.info(redactedOutput)
       if (logger) {
         await logger.info(redactedOutput)
       }
@@ -241,7 +220,7 @@ export async function executeClaudeInSandbox(
 
     if (!result.success && result.error) {
       const redactedError = redactSensitiveInfo(result.error)
-      logs.push(createErrorLog(redactedError))
+      await logger.error(redactedError)
       if (logger) {
         await logger.error(redactedError)
       }
@@ -261,7 +240,7 @@ export async function executeClaudeInSandbox(
     }
 
     // Check if any files were modified
-    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logs, logger)
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
 
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
@@ -273,8 +252,8 @@ export async function executeClaudeInSandbox(
         }
 
         // Check if common files exist
-        await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logs, logger)
-        await runAndLogCommand(sandbox, 'ls', ['-la'], logs, logger)
+        await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logger)
+        await runAndLogCommand(sandbox, 'ls', ['-la'], logger)
       }
 
       return {
@@ -284,7 +263,6 @@ export async function executeClaudeInSandbox(
         cliName: 'claude',
         changesDetected: !!hasChanges,
         error: undefined,
-        logs,
       }
     } else {
       return {
@@ -293,7 +271,6 @@ export async function executeClaudeInSandbox(
         agentResponse: result.output,
         cliName: 'claude',
         changesDetected: !!hasChanges,
-        logs,
       }
     }
   } catch (error: unknown) {
@@ -303,7 +280,6 @@ export async function executeClaudeInSandbox(
       error: errorMessage,
       cliName: 'claude',
       changesDetected: false,
-      logs,
     }
   }
 }
