@@ -29,13 +29,13 @@ interface GitHubRepo {
 }
 
 interface TaskFormProps {
-  onSubmit: (data: { 
-    prompt: string; 
-    repoUrl: string; 
-    selectedAgent: string; 
-    selectedModel: string;
-    installDependencies: boolean;
-    maxDuration: number;
+  onSubmit: (data: {
+    prompt: string
+    repoUrl: string
+    selectedAgent: string
+    selectedModel: string
+    installDependencies: boolean
+    maxDuration: number
   }) => void
   isSubmitting: boolean
   selectedOwner: string
@@ -91,13 +91,20 @@ const DEFAULT_MODELS = {
   opencode: 'gpt-5',
 } as const
 
-export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, initialInstallDependencies = false, initialMaxDuration = 5 }: TaskFormProps) {
+export function TaskForm({
+  onSubmit,
+  isSubmitting,
+  selectedOwner,
+  selectedRepo,
+  initialInstallDependencies = false,
+  initialMaxDuration = 5,
+}: TaskFormProps) {
   const [prompt, setPrompt] = useState('')
   const [selectedAgent, setSelectedAgent] = useState('claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [loadingRepos, setLoadingRepos] = useState(false)
-  
+
   // Options state - initialize with server values
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
@@ -272,8 +279,8 @@ export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, 
             className="underline hover:no-underline"
           >
             Vercel Sandbox
-          </a>
-          {' '}and{' '}
+          </a>{' '}
+          and{' '}
           <a
             href="https://vercel.com/docs/ai-gateway"
             target="_blank"
@@ -302,7 +309,6 @@ export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, 
               className="w-full border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 p-4 text-base !bg-transparent"
             />
           </div>
-
 
           {/* Agent Selection */}
           <div className="p-4">
@@ -359,8 +365,8 @@ export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, 
                 {(!installDependencies || maxDuration !== 5) && (
                   <div className="flex items-center gap-2 flex-wrap">
                     {!installDependencies && (
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
                         onClick={() => setShowOptionsDialog(true)}
                       >
@@ -379,8 +385,8 @@ export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, 
                       </Badge>
                     )}
                     {maxDuration !== 5 && (
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
                         onClick={() => setShowOptionsDialog(true)}
                       >
@@ -406,21 +412,14 @@ export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, 
               <div className="flex items-center gap-2">
                 <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
                   <DialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full h-8 w-8 p-0"
-                    >
+                    <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
                       <Settings className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Task Options</DialogTitle>
-                      <DialogDescription>
-                        Configure settings for your task execution.
-                      </DialogDescription>
+                      <DialogDescription>Configure settings for your task execution.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="flex items-center space-x-2">
@@ -461,7 +460,7 @@ export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, 
                     </div>
                   </DialogContent>
                 </Dialog>
-                
+
                 <Button
                   type="submit"
                   disabled={isSubmitting || !prompt.trim() || !selectedOwner || !selectedRepo}

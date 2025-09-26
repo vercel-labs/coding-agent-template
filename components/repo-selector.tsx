@@ -30,23 +30,25 @@ interface RepoSelectorProps {
   size?: 'sm' | 'default'
 }
 
-export function RepoSelector({ 
-  selectedOwner, 
-  selectedRepo, 
-  onOwnerChange, 
+export function RepoSelector({
+  selectedOwner,
+  selectedRepo,
+  onOwnerChange,
   onRepoChange,
   disabled = false,
-  size = 'default'
+  size = 'default',
 }: RepoSelectorProps) {
   const [repoFilter, setRepoFilter] = useState('')
   // Initialize with selected owner to prevent flash
   const [owners, setOwners] = useState<GitHubOwner[]>(() => {
     if (selectedOwner) {
-      return [{
-        login: selectedOwner,
-        name: selectedOwner,
-        avatar_url: `https://github.com/${selectedOwner}.png`
-      }]
+      return [
+        {
+          login: selectedOwner,
+          name: selectedOwner,
+          avatar_url: `https://github.com/${selectedOwner}.png`,
+        },
+      ]
     }
     return []
   })
@@ -72,10 +74,7 @@ export function RepoSelector({
         }
 
         // Fetch both user and organizations
-        const [userResponse, orgsResponse] = await Promise.all([
-          fetch('/api/github/user'),
-          fetch('/api/github/orgs')
-        ])
+        const [userResponse, orgsResponse] = await Promise.all([fetch('/api/github/user'), fetch('/api/github/orgs')])
 
         const ownersList: GitHubOwner[] = []
         let personalAccount: GitHubOwner | null = null
@@ -86,7 +85,7 @@ export function RepoSelector({
           personalAccount = {
             login: user.login,
             name: user.name || user.login,
-            avatar_url: user.avatar_url
+            avatar_url: user.avatar_url,
           }
         }
 
@@ -98,9 +97,7 @@ export function RepoSelector({
         }
 
         // Sort organizations by login name
-        organizations.sort((a, b) =>
-          a.login.localeCompare(b.login, undefined, { sensitivity: 'base' })
-        )
+        organizations.sort((a, b) => a.login.localeCompare(b.login, undefined, { sensitivity: 'base' }))
 
         // Put personal account first, then sorted organizations
         const sortedOwners: GitHubOwner[] = []
@@ -134,7 +131,7 @@ export function RepoSelector({
           onOwnerChange(owners[0].login)
         }
       }, 100) // Small delay to allow parent component to set saved owner
-      
+
       return () => clearTimeout(timer)
     }
   }, [owners, selectedOwner, onOwnerChange])
@@ -175,7 +172,6 @@ export function RepoSelector({
     }
   }, [selectedOwner])
 
-
   // Focus filter input when dropdown opens
   useEffect(() => {
     if (repoDropdownOpen && filterInputRef.current && repos && repos.length > 0) {
@@ -189,9 +185,10 @@ export function RepoSelector({
   }, [repoDropdownOpen, repos?.length])
 
   // Filter repos based on search
-  const filteredRepos = (repos || []).filter((repo) =>
-    repo.name.toLowerCase().includes(repoFilter.toLowerCase()) ||
-    repo.description?.toLowerCase().includes(repoFilter.toLowerCase())
+  const filteredRepos = (repos || []).filter(
+    (repo) =>
+      repo.name.toLowerCase().includes(repoFilter.toLowerCase()) ||
+      repo.description?.toLowerCase().includes(repoFilter.toLowerCase()),
   )
 
   // Show first 50 filtered repos
@@ -208,9 +205,10 @@ export function RepoSelector({
     onRepoChange(value)
   }
 
-  const triggerClassName = size === 'sm' 
-    ? "w-auto min-w-[100px] border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs"
-    : "w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8"
+  const triggerClassName =
+    size === 'sm'
+      ? 'w-auto min-w-[100px] border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs'
+      : 'w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
 
   return (
     <div className="flex items-center gap-2">
@@ -250,21 +248,24 @@ export function RepoSelector({
             disabled={disabled || loadingRepos}
             onOpenChange={setRepoDropdownOpen}
           >
-            <SelectTrigger className={size === 'sm' 
-              ? "w-auto min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs"
-              : "w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8"
-            }>
-              <SelectValue
-                placeholder={loadingRepos ? 'Loading...' : 'Repo'}
-              />
+            <SelectTrigger
+              className={
+                size === 'sm'
+                  ? 'w-auto min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs'
+                  : 'w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
+              }
+            >
+              <SelectValue placeholder={loadingRepos ? 'Loading...' : 'Repo'} />
             </SelectTrigger>
             <SelectContent>
-                    {repos && repos.length > 0 && (
+              {repos && repos.length > 0 && (
                 <div className="p-2 border-b">
                   <Input
                     ref={filterInputRef}
                     placeholder={
-                      (repos?.length || 0) > 50 ? `Filter ${repos?.length || 0} repositories...` : 'Filter repositories...'
+                      (repos?.length || 0) > 50
+                        ? `Filter ${repos?.length || 0} repositories...`
+                        : 'Filter repositories...'
                     }
                     value={repoFilter}
                     onChange={(e) => setRepoFilter(e.target.value)}
@@ -291,7 +292,7 @@ export function RepoSelector({
                   ))}
                   {hasMoreRepos && (
                     <div className="p-2 text-xs text-muted-foreground text-center border-t">
-                        Showing first 50 of {repos?.length || 0} repositories. Use filter to find more.
+                      Showing first 50 of {repos?.length || 0} repositories. Use filter to find more.
                     </div>
                   )}
                 </>

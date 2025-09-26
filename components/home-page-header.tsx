@@ -21,7 +21,6 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
-
 interface HomePageHeaderProps {
   selectedOwner: string
   selectedRepo: string
@@ -132,21 +131,21 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
   )
 
   const leftActions = (
-        <RepoSelector
-          selectedOwner={selectedOwner}
-          selectedRepo={selectedRepo}
-          onOwnerChange={onOwnerChange}
-          onRepoChange={onRepoChange}
-          size="sm"
-        />
+    <RepoSelector
+      selectedOwner={selectedOwner}
+      selectedRepo={selectedRepo}
+      onOwnerChange={onOwnerChange}
+      onRepoChange={onRepoChange}
+      size="sm"
+    />
   )
 
   return (
     <>
-      <PageHeader 
-        showMobileMenu={true} 
-        onToggleMobileMenu={toggleSidebar} 
-        actions={actions} 
+      <PageHeader
+        showMobileMenu={true}
+        onToggleMobileMenu={toggleSidebar}
+        actions={actions}
         leftActions={leftActions}
       />
 

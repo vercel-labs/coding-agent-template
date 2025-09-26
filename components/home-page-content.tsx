@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation'
 import { useTasks } from '@/components/app-layout'
 import { getSelectedOwner, setSelectedOwner, getSelectedRepo, setSelectedRepo } from '@/lib/utils/cookies'
 
-
 interface HomePageContentProps {
   initialSelectedOwner?: string
   initialSelectedRepo?: string
@@ -16,11 +15,11 @@ interface HomePageContentProps {
   initialMaxDuration?: number
 }
 
-export function HomePageContent({ 
-  initialSelectedOwner = '', 
+export function HomePageContent({
+  initialSelectedOwner = '',
   initialSelectedRepo = '',
   initialInstallDependencies = false,
-  initialMaxDuration = 5
+  initialMaxDuration = 5,
 }: HomePageContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)
@@ -94,7 +93,7 @@ export function HomePageContent({
   return (
     <div className="flex-1 bg-background">
       <div className="mx-auto p-3">
-        <HomePageHeader 
+        <HomePageHeader
           selectedOwner={selectedOwner}
           selectedRepo={selectedRepo}
           onOwnerChange={handleOwnerChange}
@@ -102,8 +101,8 @@ export function HomePageContent({
         />
 
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-          <TaskForm 
-            onSubmit={handleTaskSubmit} 
+          <TaskForm
+            onSubmit={handleTaskSubmit}
             isSubmitting={isSubmitting}
             selectedOwner={selectedOwner}
             selectedRepo={selectedRepo}

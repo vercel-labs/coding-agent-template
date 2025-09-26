@@ -9,7 +9,7 @@ export default async function Home() {
   const maxDuration = parseInt(cookieStore.get('max-duration')?.value || '5', 10)
 
   return (
-    <HomePageContent 
+    <HomePageContent
       initialSelectedOwner={selectedOwner}
       initialSelectedRepo={selectedRepo}
       initialInstallDependencies={installDependencies}

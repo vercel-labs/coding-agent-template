@@ -158,7 +158,10 @@ async function processTaskWithTimeout(
   })
 
   try {
-    await Promise.race([processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel, installDependencies, maxDuration), timeoutPromise])
+    await Promise.race([
+      processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel, installDependencies, maxDuration),
+      timeoutPromise,
+    ])
 
     // Clear the warning timeout if task completes successfully
     clearTimeout(warningTimeout)
