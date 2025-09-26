@@ -1,11 +1,11 @@
 import { Sandbox } from '@vercel/sandbox'
-import { setTimeout } from 'timers/promises'
 import { validateEnvironmentVariables, createAuthenticatedRepoUrl } from './config'
 import { runCommandInSandbox } from './commands'
 import { generateId } from '@/lib/utils/id'
 import { SandboxConfig, SandboxResult } from './types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { detectPackageManager, installDependencies } from './package-manager'
 
 // Helper function to run command and log it
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
@@ -123,48 +123,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     }
 
     // Install project dependencies (pnpm only)
-    await logger.info('Installing project dependencies with pnpm...')
-
-    // First install pnpm globally with timeout
-    await logger.info('Installing pnpm globally with 2-minute timeout...')
-
-    type TimeoutResult = { success: false; error: string; timedOut: true }
-
-    const pnpmGlobalInstall = await Promise.race([
-      runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'pnpm']),
-      new Promise<TimeoutResult>((resolve) => {
-        global.setTimeout(
-          () => {
-            resolve({ success: false, error: 'pnpm global install timed out after 2 minutes', timedOut: true })
-          },
-          2 * 60 * 1000,
-        )
-      }),
-    ])
-
-    if (!pnpmGlobalInstall.success) {
-      await logger.error('pnpm global install failed')
-
-      if ('timedOut' in pnpmGlobalInstall && pnpmGlobalInstall.timedOut) {
-        await logger.error('pnpm global install timed out')
-        await logger.error('Error: pnpm global install timed out after 2 minutes')
-      } else if ('exitCode' in pnpmGlobalInstall) {
-        await logger.error(`npm exit code: ${pnpmGlobalInstall.exitCode}`)
-        if (pnpmGlobalInstall.output) await logger.error(`npm stdout: ${pnpmGlobalInstall.output}`)
-        if (pnpmGlobalInstall.error) await logger.error(`npm stderr: ${pnpmGlobalInstall.error}`)
-      } else {
-        await logger.error(`pnpm global install error: ${pnpmGlobalInstall.error}`)
-      }
-
-      throw new Error('Failed to install pnpm globally')
-    } else {
-      await logger.info('pnpm installed globally')
-
-      // Call progress callback after pnpm installation
-      if (config.onProgress) {
-        await config.onProgress(32, 'pnpm installed, detecting project type...')
-      }
-    }
+    await logger.info('Detecting project type and installing dependencies...')
 
     // Check for project type and install dependencies accordingly
     const packageJsonCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'package.json'])
@@ -175,84 +134,68 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       // JavaScript/Node.js project
       await logger.info('package.json found, installing Node.js dependencies...')
 
+      // Detect which package manager to use
+      const packageManager = await detectPackageManager(sandbox, logger)
+
+      // Install required package manager globally if needed
+      if (packageManager === 'pnpm') {
+        // Check if pnpm is already installed
+        const pnpmCheck = await runCommandInSandbox(sandbox, 'which', ['pnpm'])
+        if (!pnpmCheck.success) {
+          await logger.info('Installing pnpm globally...')
+          const pnpmGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'pnpm'])
+          if (!pnpmGlobalInstall.success) {
+            await logger.error('Failed to install pnpm globally, falling back to npm')
+            // Fall back to npm if pnpm installation fails
+            const npmResult = await installDependencies(sandbox, 'npm', logger)
+            if (!npmResult.success) {
+              await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+            }
+          } else {
+            await logger.info('pnpm installed globally')
+          }
+        }
+      } else if (packageManager === 'yarn') {
+        // Check if yarn is already installed
+        const yarnCheck = await runCommandInSandbox(sandbox, 'which', ['yarn'])
+        if (!yarnCheck.success) {
+          await logger.info('Installing yarn globally...')
+          const yarnGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'yarn'])
+          if (!yarnGlobalInstall.success) {
+            await logger.error('Failed to install yarn globally, falling back to npm')
+            // Fall back to npm if yarn installation fails
+            const npmResult = await installDependencies(sandbox, 'npm', logger)
+            if (!npmResult.success) {
+              await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+            }
+          } else {
+            await logger.info('yarn installed globally')
+          }
+        }
+      }
+
       // Call progress callback before dependency installation
       if (config.onProgress) {
         await config.onProgress(35, 'Installing Node.js dependencies...')
       }
 
-      // Try pnpm install with timeout
-      await logger.info('Attempting pnpm install with 3-minute timeout...')
+      // Install dependencies with the detected package manager
+      const installResult = await installDependencies(sandbox, packageManager, logger)
 
-      const pnpmInstallWithTimeout = await Promise.race([
-        runCommandInSandbox(sandbox, 'pnpm', ['install', '--frozen-lockfile']),
-        new Promise<TimeoutResult>((resolve) => {
-          global.setTimeout(
-            () => {
-              resolve({ success: false, error: 'pnpm install timed out after 3 minutes', timedOut: true })
-            },
-            3 * 60 * 1000,
-          )
-        }),
-      ])
-
-      if (pnpmInstallWithTimeout.success) {
-        await logger.info('Node.js dependencies installed with pnpm')
-      } else if ('timedOut' in pnpmInstallWithTimeout && pnpmInstallWithTimeout.timedOut) {
-        await logger.info('pnpm install timed out, trying with npm as fallback...')
+      // If primary package manager fails, try npm as fallback (unless it was already npm)
+      if (!installResult.success && packageManager !== 'npm') {
+        await logger.info(`${packageManager} failed, trying npm as fallback...`)
 
         if (config.onProgress) {
-          await config.onProgress(37, 'pnpm timed out, trying npm fallback...')
+          await config.onProgress(37, `${packageManager} failed, trying npm fallback...`)
         }
 
-        // Fallback to npm with timeout
-        const npmInstallWithTimeout = await Promise.race([
-          runCommandInSandbox(sandbox, 'npm', ['install', '--no-audit', '--no-fund']),
-          new Promise<TimeoutResult>((resolve) => {
-            global.setTimeout(
-              () => {
-                resolve({ success: false, error: 'npm install timed out after 3 minutes', timedOut: true })
-              },
-              3 * 60 * 1000,
-            )
-          }),
-        ])
-
-        if (npmInstallWithTimeout.success) {
-          await logger.info('Node.js dependencies installed with npm (fallback)')
-        } else {
-          await logger.info('Both pnpm and npm install failed/timed out')
+        const npmFallbackResult = await installDependencies(sandbox, 'npm', logger)
+        if (!npmFallbackResult.success) {
           await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
         }
-      } else {
-        await logger.info('pnpm install failed')
-
-        // Type guard to ensure we have a CommandResult
-        if ('exitCode' in pnpmInstallWithTimeout) {
-          await logger.info(`pnpm exit code: ${pnpmInstallWithTimeout.exitCode}`)
-          if (pnpmInstallWithTimeout.output) await logger.info(`pnpm stdout: ${pnpmInstallWithTimeout.output}`)
-          if (pnpmInstallWithTimeout.error) await logger.info(`pnpm stderr: ${pnpmInstallWithTimeout.error}`)
-        } else {
-          await logger.info(`pnpm error: ${pnpmInstallWithTimeout.error}`)
-        }
-
-        // Try npm as fallback
-        await logger.info('Trying npm as fallback...')
-
-        if (config.onProgress) {
-          await config.onProgress(37, 'pnpm failed, trying npm fallback...')
-        }
-
-        const npmInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '--no-audit', '--no-fund'])
-
-        if (npmInstall.success) {
-          await logger.info('Node.js dependencies installed with npm (fallback)')
-        } else {
-          await logger.info('npm install also failed')
-          await logger.info(`npm exit code: ${npmInstall.exitCode}`)
-          if (npmInstall.output) await logger.info(`npm stdout: ${npmInstall.output}`)
-          if (npmInstall.error) await logger.info(`npm stderr: ${npmInstall.error}`)
-          await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
-        }
+      } else if (!installResult.success) {
+        await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
       }
     } else if (requirementsTxtCheck.success) {
       // Python project

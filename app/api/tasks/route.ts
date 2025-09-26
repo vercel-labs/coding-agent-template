@@ -327,9 +327,16 @@ async function processTask(
         await logger.error(`Sandbox shutdown failed: ${shutdownResult.error}`)
       }
 
-      // Update task as completed
-      await logger.updateStatus('completed')
-      await logger.updateProgress(100, 'Task completed successfully')
+      // Check if push failed and handle accordingly
+      if (pushResult.pushFailed) {
+        await logger.updateStatus('error')
+        await logger.error('Task failed: Unable to push changes to repository')
+        throw new Error('Failed to push changes to repository')
+      } else {
+        // Update task as completed
+        await logger.updateStatus('completed')
+        await logger.updateProgress(100, 'Task completed successfully')
+      }
     } else {
       // Agent failed, but we still want to capture its logs
       await logger.error(`${selectedAgent} agent execution failed`)
