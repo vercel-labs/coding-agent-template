@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
+import { TaskDuration } from '@/components/task-duration'
 
 interface TaskDetailsProps {
   task: Task
@@ -23,6 +24,18 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
   const { refreshTasks } = useTasks()
+
+  // Helper function to format dates - show only time if same day as today
+  const formatDateTime = (date: Date) => {
+    const today = new Date()
+    const isToday = date.toDateString() === today.toDateString()
+
+    if (isToday) {
+      return date.toLocaleTimeString()
+    } else {
+      return `${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`
+    }
+  }
 
   // Use optimistic status if available, otherwise use actual task status
   const currentStatus = optimisticStatus || task.status
@@ -216,37 +229,15 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               </div>
               <div>
                 <h4 className="font-medium mb-1">Created</h4>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString()}
-                </p>
+                <p className="text-sm text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</p>
               </div>
               <div>
                 <h4 className="font-medium mb-1">Completed</h4>
                 <p className="text-sm text-muted-foreground">
-                  {task.completedAt
-                    ? `${new Date(task.completedAt).toLocaleDateString()} at ${new Date(task.completedAt).toLocaleTimeString()}`
-                    : 'Not completed'}
+                  {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
                 </p>
               </div>
-              <div>
-                <h4 className="font-medium mb-1">Duration</h4>
-                <p className="text-sm text-muted-foreground">
-                  {(() => {
-                    const startTime = new Date(task.createdAt).getTime()
-                    const endTime = task.completedAt ? new Date(task.completedAt).getTime() : Date.now()
-                    const durationMs = endTime - startTime
-                    const durationSeconds = Math.floor(durationMs / 1000)
-                    const minutes = Math.floor(durationSeconds / 60)
-                    const seconds = durationSeconds % 60
-
-                    if (minutes > 0) {
-                      return `${minutes}m ${seconds}s`
-                    } else {
-                      return `${seconds}s`
-                    }
-                  })()}
-                </p>
-              </div>
+              <TaskDuration task={task} />
             </div>
 
             <div>
