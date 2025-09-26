@@ -2,6 +2,7 @@ import { Sandbox } from '@vercel/sandbox'
 import { LogEntry } from '@/lib/db/schema'
 
 export interface SandboxConfig {
+  taskId: string
   repoUrl: string
   timeout?: string
   ports?: number[]
@@ -15,6 +16,7 @@ export interface SandboxConfig {
   preDeterminedBranchName?: string
   existingBranchName?: string
   onProgress?: (progress: number, message: string) => Promise<void>
+  onCancellationCheck?: () => Promise<boolean>
 }
 
 export interface SandboxResult {
@@ -23,6 +25,7 @@ export interface SandboxResult {
   domain?: string
   branchName?: string
   error?: string
+  cancelled?: boolean
 }
 
 export interface AgentExecutionResult {

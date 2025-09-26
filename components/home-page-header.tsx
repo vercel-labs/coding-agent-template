@@ -27,6 +27,7 @@ export function HomePageHeader() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
   const [deleteFailed, setDeleteFailed] = useState(true)
+  const [deleteStopped, setDeleteStopped] = useState(true)
 
   const handleRefreshRepos = async () => {
     setIsRefreshing(true)
@@ -49,7 +50,7 @@ export function HomePageHeader() {
   }
 
   const handleDeleteTasks = async () => {
-    if (!deleteCompleted && !deleteFailed) {
+    if (!deleteCompleted && !deleteFailed && !deleteStopped) {
       toast.error('Please select at least one task type to delete')
       return
     }
@@ -59,6 +60,7 @@ export function HomePageHeader() {
       const actions = []
       if (deleteCompleted) actions.push('completed')
       if (deleteFailed) actions.push('failed')
+      if (deleteStopped) actions.push('stopped')
 
       const response = await fetch(`/api/tasks?action=${actions.join(',')}`, {
         method: 'DELETE',
@@ -160,13 +162,26 @@ export function HomePageHeader() {
                   Delete Failed Tasks
                 </label>
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="delete-stopped"
+                  checked={deleteStopped}
+                  onCheckedChange={(checked) => setDeleteStopped(checked === true)}
+                />
+                <label
+                  htmlFor="delete-stopped"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Delete Stopped Tasks
+                </label>
+              </div>
             </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteTasks}
-              disabled={isDeleting || (!deleteCompleted && !deleteFailed)}
+              disabled={isDeleting || (!deleteCompleted && !deleteFailed && !deleteStopped)}
               className="bg-red-600 hover:bg-red-700"
             >
               {isDeleting ? 'Deleting...' : 'Delete Tasks'}

@@ -130,6 +130,9 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                             {task.prompt.slice(0, 50) + (task.prompt.length > 50 ? '...' : '')}
                           </h3>
                           {task.status === 'error' && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                          {task.status === 'stopped' && (
+                            <AlertCircle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                          )}
                         </div>
                         {task.repoUrl && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
