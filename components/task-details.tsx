@@ -29,7 +29,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const formatDateTime = (date: Date) => {
     const today = new Date()
     const isToday = date.toDateString() === today.toDateString()
-    
+
     if (isToday) {
       return date.toLocaleTimeString()
     } else {
@@ -229,16 +229,12 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               </div>
               <div>
                 <h4 className="font-medium mb-1">Created</h4>
-                <p className="text-sm text-muted-foreground">
-                  {formatDateTime(new Date(task.createdAt))}
-                </p>
+                <p className="text-sm text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</p>
               </div>
               <div>
                 <h4 className="font-medium mb-1">Completed</h4>
                 <p className="text-sm text-muted-foreground">
-                  {task.completedAt
-                    ? formatDateTime(new Date(task.completedAt))
-                    : 'Not completed'}
+                  {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
                 </p>
               </div>
               <TaskDuration task={task} />

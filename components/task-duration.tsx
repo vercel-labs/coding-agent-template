@@ -26,7 +26,7 @@ export function TaskDuration({ task }: TaskDurationProps) {
     const endTime = task.completedAt ? new Date(task.completedAt).getTime() : currentTime
     const durationMs = endTime - startTime
     const durationSeconds = Math.floor(durationMs / 1000)
-    
+
     const hours = Math.floor(durationSeconds / 3600)
     const minutes = Math.floor((durationSeconds % 3600) / 60)
     const seconds = durationSeconds % 60
@@ -43,9 +43,7 @@ export function TaskDuration({ task }: TaskDurationProps) {
   return (
     <div>
       <h4 className="font-medium mb-1">Duration</h4>
-      <p className="text-sm text-muted-foreground">
-        {formatDuration()}
-      </p>
+      <p className="text-sm text-muted-foreground">{formatDuration()}</p>
     </div>
   )
 }
