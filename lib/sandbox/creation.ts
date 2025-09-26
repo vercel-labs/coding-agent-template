@@ -5,31 +5,34 @@ import { runCommandInSandbox } from './commands'
 import { generateId } from '@/lib/utils/id'
 import { SandboxConfig, SandboxResult } from './types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
+import { TaskLogger } from '@/lib/utils/task-logger'
 
 // Helper function to run command and log it
-async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logs: string[]) {
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  logs.push(`$ ${redactSensitiveInfo(fullCommand)}`)
+  const redactedCommand = redactSensitiveInfo(fullCommand)
+
+  await logger.command(redactedCommand)
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
-  if (result.output && result.output.trim()) {
-    logs.push(redactSensitiveInfo(result.output.trim()))
+  if (result && result.output && result.output.trim()) {
+    const redactedOutput = redactSensitiveInfo(result.output.trim())
+    await logger.info(redactedOutput)
   }
 
-  if (!result.success && result.error) {
-    logs.push(`Error: ${redactSensitiveInfo(result.error)}`)
+  if (result && !result.success && result.error) {
+    const redactedError = redactSensitiveInfo(result.error)
+    await logger.error(redactedError)
   }
 
   return result
 }
 
-export async function createSandbox(config: SandboxConfig): Promise<SandboxResult> {
-  const logs: string[] = []
-
+export async function createSandbox(config: SandboxConfig, logger: TaskLogger): Promise<SandboxResult> {
   try {
-    logs.push('Creating Vercel sandbox...')
-    logs.push(`Repository URL: ${redactSensitiveInfo(config.repoUrl)}`)
+    await logger.info('Creating Vercel sandbox...')
+    await logger.info(`Repository URL: ${redactSensitiveInfo(config.repoUrl)}`)
 
     // Call progress callback if provided
     if (config.onProgress) {
@@ -41,11 +44,11 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     if (!envValidation.valid) {
       throw new Error(envValidation.error!)
     }
-    logs.push('Environment variables validated')
+    await logger.info('Environment variables validated')
 
     // Handle private repository authentication
     const authenticatedRepoUrl = createAuthenticatedRepoUrl(config.repoUrl)
-    logs.push('Added GitHub authentication to repository URL')
+    await logger.info('Added GitHub authentication to repository URL')
 
     // For initial clone, only use existing branch names, not AI-generated ones
     // AI-generated branch names will be created later inside the sandbox
@@ -68,7 +71,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       resources: { vcpus: config.resources?.vcpus || 4 },
     }
 
-    logs.push(
+    await logger.info(
       `Sandbox config: ${JSON.stringify(
         {
           ...sandboxConfig,
@@ -88,7 +91,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
     let sandbox: Sandbox
     try {
       sandbox = await Sandbox.create(sandboxConfig)
-      logs.push('Sandbox created successfully')
+      await logger.info('Sandbox created successfully')
 
       // Call progress callback after sandbox creation
       if (config.onProgress) {
@@ -106,36 +109,56 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
 
       // Check if this is a timeout error
       if (errorMessage?.includes('timeout') || errorCode === 'ETIMEDOUT' || errorName === 'TimeoutError') {
-        logs.push(`Sandbox creation timed out after 5 minutes`)
-        logs.push(`This usually happens when the repository is large or has many dependencies`)
+        await logger.error(`Sandbox creation timed out after 5 minutes`)
+        await logger.error(`This usually happens when the repository is large or has many dependencies`)
         throw new Error('Sandbox creation timed out. Try with a smaller repository or fewer dependencies.')
       }
 
-      logs.push(`Sandbox creation failed: ${errorMessage}`)
+      await logger.error(`Sandbox creation failed: ${errorMessage}`)
       if (errorResponse) {
-        logs.push(`HTTP Status: ${errorResponse.status}`)
-        logs.push(`Response: ${JSON.stringify(errorResponse.data)}`)
+        await logger.error(`HTTP Status: ${errorResponse.status}`)
+        await logger.error(`Response: ${JSON.stringify(errorResponse.data)}`)
       }
       throw error
     }
 
     // Install project dependencies (pnpm only)
-    logs.push('Installing project dependencies with pnpm...')
+    await logger.info('Installing project dependencies with pnpm...')
 
-    // First install pnpm globally
-    logs.push('Installing pnpm globally...')
-    const pnpmGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'pnpm'])
+    // First install pnpm globally with timeout
+    await logger.info('Installing pnpm globally with 2-minute timeout...')
+
+    type TimeoutResult = { success: false; error: string; timedOut: true }
+
+    const pnpmGlobalInstall = await Promise.race([
+      runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'pnpm']),
+      new Promise<TimeoutResult>((resolve) => {
+        global.setTimeout(
+          () => {
+            resolve({ success: false, error: 'pnpm global install timed out after 2 minutes', timedOut: true })
+          },
+          2 * 60 * 1000,
+        )
+      }),
+    ])
 
     if (!pnpmGlobalInstall.success) {
-      logs.push('pnpm global install failed')
-      logs.push(`npm exit code: ${pnpmGlobalInstall.exitCode}`)
+      await logger.error('pnpm global install failed')
 
-      if (pnpmGlobalInstall.output) logs.push(`npm stdout: ${pnpmGlobalInstall.output}`)
-      if (pnpmGlobalInstall.error) logs.push(`npm stderr: ${pnpmGlobalInstall.error}`)
+      if ('timedOut' in pnpmGlobalInstall && pnpmGlobalInstall.timedOut) {
+        await logger.error('pnpm global install timed out')
+        await logger.error('Error: pnpm global install timed out after 2 minutes')
+      } else if ('exitCode' in pnpmGlobalInstall) {
+        await logger.error(`npm exit code: ${pnpmGlobalInstall.exitCode}`)
+        if (pnpmGlobalInstall.output) await logger.error(`npm stdout: ${pnpmGlobalInstall.output}`)
+        if (pnpmGlobalInstall.error) await logger.error(`npm stderr: ${pnpmGlobalInstall.error}`)
+      } else {
+        await logger.error(`pnpm global install error: ${pnpmGlobalInstall.error}`)
+      }
 
       throw new Error('Failed to install pnpm globally')
     } else {
-      logs.push('pnpm installed globally')
+      await logger.info('pnpm installed globally')
 
       // Call progress callback after pnpm installation
       if (config.onProgress) {
@@ -150,30 +173,90 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
 
     if (packageJsonCheck.success) {
       // JavaScript/Node.js project
-      logs.push('package.json found, installing Node.js dependencies...')
+      await logger.info('package.json found, installing Node.js dependencies...')
 
       // Call progress callback before dependency installation
       if (config.onProgress) {
         await config.onProgress(35, 'Installing Node.js dependencies...')
       }
 
-      const pnpmInstall = await runCommandInSandbox(sandbox, 'pnpm', ['install'])
+      // Try pnpm install with timeout
+      await logger.info('Attempting pnpm install with 3-minute timeout...')
 
-      if (!pnpmInstall.success) {
-        logs.push('pnpm install failed')
-        logs.push(`pnpm exit code: ${pnpmInstall.exitCode}`)
+      const pnpmInstallWithTimeout = await Promise.race([
+        runCommandInSandbox(sandbox, 'pnpm', ['install', '--frozen-lockfile']),
+        new Promise<TimeoutResult>((resolve) => {
+          global.setTimeout(
+            () => {
+              resolve({ success: false, error: 'pnpm install timed out after 3 minutes', timedOut: true })
+            },
+            3 * 60 * 1000,
+          )
+        }),
+      ])
 
-        if (pnpmInstall.output) logs.push(`pnpm stdout: ${pnpmInstall.output}`)
-        if (pnpmInstall.error) logs.push(`pnpm stderr: ${pnpmInstall.error}`)
+      if (pnpmInstallWithTimeout.success) {
+        await logger.info('Node.js dependencies installed with pnpm')
+      } else if ('timedOut' in pnpmInstallWithTimeout && pnpmInstallWithTimeout.timedOut) {
+        await logger.info('pnpm install timed out, trying with npm as fallback...')
 
-        // Don't throw error, just log it and continue
-        logs.push('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+        if (config.onProgress) {
+          await config.onProgress(37, 'pnpm timed out, trying npm fallback...')
+        }
+
+        // Fallback to npm with timeout
+        const npmInstallWithTimeout = await Promise.race([
+          runCommandInSandbox(sandbox, 'npm', ['install', '--no-audit', '--no-fund']),
+          new Promise<TimeoutResult>((resolve) => {
+            global.setTimeout(
+              () => {
+                resolve({ success: false, error: 'npm install timed out after 3 minutes', timedOut: true })
+              },
+              3 * 60 * 1000,
+            )
+          }),
+        ])
+
+        if (npmInstallWithTimeout.success) {
+          await logger.info('Node.js dependencies installed with npm (fallback)')
+        } else {
+          await logger.info('Both pnpm and npm install failed/timed out')
+          await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+        }
       } else {
-        logs.push('Node.js dependencies installed with pnpm')
+        await logger.info('pnpm install failed')
+
+        // Type guard to ensure we have a CommandResult
+        if ('exitCode' in pnpmInstallWithTimeout) {
+          await logger.info(`pnpm exit code: ${pnpmInstallWithTimeout.exitCode}`)
+          if (pnpmInstallWithTimeout.output) await logger.info(`pnpm stdout: ${pnpmInstallWithTimeout.output}`)
+          if (pnpmInstallWithTimeout.error) await logger.info(`pnpm stderr: ${pnpmInstallWithTimeout.error}`)
+        } else {
+          await logger.info(`pnpm error: ${pnpmInstallWithTimeout.error}`)
+        }
+
+        // Try npm as fallback
+        await logger.info('Trying npm as fallback...')
+
+        if (config.onProgress) {
+          await config.onProgress(37, 'pnpm failed, trying npm fallback...')
+        }
+
+        const npmInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '--no-audit', '--no-fund'])
+
+        if (npmInstall.success) {
+          await logger.info('Node.js dependencies installed with npm (fallback)')
+        } else {
+          await logger.info('npm install also failed')
+          await logger.info(`npm exit code: ${npmInstall.exitCode}`)
+          if (npmInstall.output) await logger.info(`npm stdout: ${npmInstall.output}`)
+          if (npmInstall.error) await logger.info(`npm stderr: ${npmInstall.error}`)
+          await logger.info('Warning: Failed to install Node.js dependencies, but continuing with sandbox setup')
+        }
       }
     } else if (requirementsTxtCheck.success) {
       // Python project
-      logs.push('requirements.txt found, installing Python dependencies...')
+      await logger.info('requirements.txt found, installing Python dependencies...')
 
       // Call progress callback before dependency installation
       if (config.onProgress) {
@@ -184,7 +267,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       const pipCheck = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', '--version'])
 
       if (!pipCheck.success) {
-        logs.push('pip not found, installing pip...')
+        await logger.info('pip not found, installing pip...')
 
         // Install pip using get-pip.py in a temporary directory
         const getPipResult = await runCommandInSandbox(sandbox, 'sh', [
@@ -193,7 +276,7 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
         ])
 
         if (!getPipResult.success) {
-          logs.push('Failed to install pip, trying alternative method...')
+          await logger.info('Failed to install pip, trying alternative method...')
 
           // Try installing python3-pip package
           const aptResult = await runCommandInSandbox(sandbox, 'apt-get', [
@@ -206,24 +289,24 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
           ])
 
           if (!aptResult.success) {
-            logs.push('Warning: Could not install pip, skipping Python dependencies')
+            await logger.info('Warning: Could not install pip, skipping Python dependencies')
             // Continue without Python dependencies
           } else {
-            logs.push('pip installed via apt-get')
+            await logger.info('pip installed via apt-get')
           }
         }
 
-        logs.push('pip installed successfully')
+        await logger.info('pip installed successfully')
       } else {
-        logs.push('pip is available')
+        await logger.info('pip is available')
 
         // Upgrade pip to latest version
         const pipUpgrade = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', 'install', '--upgrade', 'pip'])
 
         if (!pipUpgrade.success) {
-          logs.push('Warning: Failed to upgrade pip, continuing anyway')
+          await logger.info('Warning: Failed to upgrade pip, continuing anyway')
         } else {
-          logs.push('pip upgraded successfully')
+          await logger.info('pip upgraded successfully')
         }
       }
 
@@ -237,59 +320,77 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
       ])
 
       if (!pipInstall.success) {
-        logs.push('pip install failed')
-        logs.push(`pip exit code: ${pipInstall.exitCode}`)
+        await logger.info('pip install failed')
+        await logger.info(`pip exit code: ${pipInstall.exitCode}`)
 
-        if (pipInstall.output) logs.push(`pip stdout: ${pipInstall.output}`)
-        if (pipInstall.error) logs.push(`pip stderr: ${pipInstall.error}`)
+        if (pipInstall.output) await logger.info(`pip stdout: ${pipInstall.output}`)
+        if (pipInstall.error) await logger.info(`pip stderr: ${pipInstall.error}`)
 
         // Don't throw error, just log it and continue
-        logs.push('Warning: Failed to install Python dependencies, but continuing with sandbox setup')
+        await logger.info('Warning: Failed to install Python dependencies, but continuing with sandbox setup')
       } else {
-        logs.push('Python dependencies installed successfully')
+        await logger.info('Python dependencies installed successfully')
       }
     } else {
-      logs.push('No package.json or requirements.txt found, skipping dependency installation')
+      await logger.info('No package.json or requirements.txt found, skipping dependency installation')
     }
 
     // Get the domain for the sandbox
     const domain = sandbox.domain(config.ports?.[0] || 3000)
 
-    // Start the development server based on project type
+    // Log sandbox readiness based on project type
     if (packageJsonCheck.success) {
-      logs.push('Starting Node.js development server...')
-      await runCommandInSandbox(sandbox, 'pnpm', ['run', 'dev'])
-
-      // Wait for server to start
-      await setTimeout(2000)
-
-      logs.push(`Node.js development server started at: ${domain}`)
+      await logger.info('Node.js project detected, sandbox ready for development')
+      await logger.info(`Sandbox available at: ${domain}`)
     } else if (requirementsTxtCheck.success) {
-      logs.push('Python project detected, sandbox ready for Python development')
-      logs.push(`Sandbox available at: ${domain}`)
+      await logger.info('Python project detected, sandbox ready for development')
+      await logger.info(`Sandbox available at: ${domain}`)
 
       // Check if there's a common Python web framework entry point
       const flaskAppCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'app.py'])
-
       const djangoManageCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'manage.py'])
 
       if (flaskAppCheck.success) {
-        logs.push('Flask app.py detected, you can run: python3 app.py')
+        await logger.info('Flask app.py detected, you can run: python3 app.py')
       } else if (djangoManageCheck.success) {
-        logs.push('Django manage.py detected, you can run: python3 manage.py runserver')
+        await logger.info('Django manage.py detected, you can run: python3 manage.py runserver')
       }
     } else {
-      logs.push('No package.json or requirements.txt found, skipping development server start')
-      logs.push(`Sandbox available at: ${domain}`)
+      await logger.info('Project type not detected, sandbox ready for general development')
+      await logger.info(`Sandbox available at: ${domain}`)
     }
 
     // Configure Git user
     await runCommandInSandbox(sandbox, 'git', ['config', 'user.name', 'Coding Agent'])
     await runCommandInSandbox(sandbox, 'git', ['config', 'user.email', 'agent@example.com'])
 
+    // Verify we're in a Git repository
+    const gitRepoCheck = await runCommandInSandbox(sandbox, 'git', ['rev-parse', '--git-dir'])
+    if (!gitRepoCheck.success) {
+      await logger.info('Not in a Git repository, initializing...')
+      const gitInit = await runCommandInSandbox(sandbox, 'git', ['init'])
+      if (!gitInit.success) {
+        throw new Error('Failed to initialize Git repository')
+      }
+      await logger.info('Git repository initialized')
+    } else {
+      await logger.info('Git repository detected')
+    }
+
+    // Add debugging information about Git state
+    await logger.info('Debugging Git repository state...')
+    const gitStatusDebug = await runCommandInSandbox(sandbox, 'git', ['status', '--porcelain'])
+    await logger.info(`Git status (porcelain): ${gitStatusDebug.output || 'Clean working directory'}`)
+
+    const gitBranchDebug = await runCommandInSandbox(sandbox, 'git', ['branch', '-a'])
+    await logger.info(`Available branches: ${gitBranchDebug.output || 'No branches listed'}`)
+
+    const gitRemoteDebug = await runCommandInSandbox(sandbox, 'git', ['remote', '-v'])
+    await logger.info(`Git remotes: ${gitRemoteDebug.output || 'No remotes configured'}`)
+
     // Configure Git to use GitHub token for authentication
     if (process.env.GITHUB_TOKEN) {
-      logs.push('Configuring Git authentication with GitHub token')
+      await logger.info('Configuring Git authentication with GitHub token')
       await runCommandInSandbox(sandbox, 'git', ['config', 'credential.helper', 'store'])
 
       // Create credentials file with GitHub token
@@ -301,72 +402,141 @@ export async function createSandbox(config: SandboxConfig): Promise<SandboxResul
 
     if (config.existingBranchName) {
       // Checkout existing branch for continuing work
-      logs.push(`Checking out existing branch: ${config.existingBranchName}`)
-      const checkoutResult = await runAndLogCommand(sandbox, 'git', ['checkout', config.existingBranchName], logs)
+      await logger.info(`Checking out existing branch: ${config.existingBranchName}`)
+      const checkoutResult = await runAndLogCommand(sandbox, 'git', ['checkout', config.existingBranchName], logger)
 
       if (!checkoutResult.success) {
         throw new Error(`Failed to checkout existing branch ${config.existingBranchName}`)
       }
 
       // Get the latest changes from remote
-      logs.push('Pulling latest changes from remote...')
-      const pullResult = await runAndLogCommand(sandbox, 'git', ['pull', 'origin', config.existingBranchName], logs)
+      await logger.info('Pulling latest changes from remote...')
+      const pullResult = await runAndLogCommand(sandbox, 'git', ['pull', 'origin', config.existingBranchName], logger)
 
       if (pullResult.output) {
-        logs.push(`Git pull output: ${pullResult.output}`)
+        await logger.info(`Git pull output: ${pullResult.output}`)
       }
 
       branchName = config.existingBranchName
     } else if (config.preDeterminedBranchName) {
       // Use the AI-generated branch name
-      logs.push(`Using pre-determined branch name: ${config.preDeterminedBranchName}`)
-      const createBranch = await runAndLogCommand(
-        sandbox,
-        'git',
-        ['checkout', '-b', config.preDeterminedBranchName],
-        logs,
-      )
+      await logger.info(`Using pre-determined branch name: ${config.preDeterminedBranchName}`)
 
-      if (!createBranch.success) {
-        logs.push(`Failed to create branch ${config.preDeterminedBranchName}: ${createBranch.error}`)
-        throw new Error(`Failed to create Git branch ${config.preDeterminedBranchName}`)
+      // First check if the branch already exists locally
+      const branchExistsLocal = await runCommandInSandbox(sandbox, 'git', [
+        'show-ref',
+        '--verify',
+        '--quiet',
+        `refs/heads/${config.preDeterminedBranchName}`,
+      ])
+
+      if (branchExistsLocal.success) {
+        // Branch exists locally, just check it out
+        await logger.info(`Branch ${config.preDeterminedBranchName} already exists locally, checking it out`)
+        const checkoutBranch = await runAndLogCommand(
+          sandbox,
+          'git',
+          ['checkout', config.preDeterminedBranchName],
+          logger,
+        )
+
+        if (!checkoutBranch.success) {
+          await logger.info(
+            `Failed to checkout existing branch ${config.preDeterminedBranchName}: ${checkoutBranch.error}`,
+          )
+          throw new Error(`Failed to checkout Git branch ${config.preDeterminedBranchName}`)
+        }
+
+        branchName = config.preDeterminedBranchName
+      } else {
+        // Check if branch exists on remote
+        const branchExistsRemote = await runCommandInSandbox(sandbox, 'git', [
+          'ls-remote',
+          '--heads',
+          'origin',
+          config.preDeterminedBranchName,
+        ])
+
+        if (branchExistsRemote.success && branchExistsRemote.output?.trim()) {
+          // Branch exists on remote, check it out and track it
+          await logger.info(`Branch ${config.preDeterminedBranchName} exists on remote, checking it out`)
+          const checkoutRemoteBranch = await runAndLogCommand(
+            sandbox,
+            'git',
+            ['checkout', '-b', config.preDeterminedBranchName, `origin/${config.preDeterminedBranchName}`],
+            logger,
+          )
+
+          if (!checkoutRemoteBranch.success) {
+            await logger.info(
+              `Failed to checkout remote branch ${config.preDeterminedBranchName}: ${checkoutRemoteBranch.error}`,
+            )
+            throw new Error(`Failed to checkout remote Git branch ${config.preDeterminedBranchName}`)
+          }
+
+          branchName = config.preDeterminedBranchName
+        } else {
+          // Branch doesn't exist, create it
+          await logger.info(`Creating new branch: ${config.preDeterminedBranchName}`)
+          const createBranch = await runAndLogCommand(
+            sandbox,
+            'git',
+            ['checkout', '-b', config.preDeterminedBranchName],
+            logger,
+          )
+
+          if (!createBranch.success) {
+            await logger.info(`Failed to create branch ${config.preDeterminedBranchName}: ${createBranch.error}`)
+            // Add debugging information
+            const gitStatus = await runCommandInSandbox(sandbox, 'git', ['status'])
+            await logger.info(`Git status: ${gitStatus.output || 'No output'}`)
+            const gitBranch = await runCommandInSandbox(sandbox, 'git', ['branch', '-a'])
+            await logger.info(`Git branches: ${gitBranch.output || 'No output'}`)
+            throw new Error(`Failed to create Git branch ${config.preDeterminedBranchName}`)
+          }
+
+          await logger.info(`Successfully created branch: ${config.preDeterminedBranchName}`)
+          branchName = config.preDeterminedBranchName
+        }
       }
-
-      logs.push(`Successfully created branch: ${config.preDeterminedBranchName}`)
-      branchName = config.preDeterminedBranchName
     } else {
       // Fallback: Create a timestamp-based branch name
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
       const suffix = generateId()
       branchName = `agent/${timestamp}-${suffix}`
 
-      logs.push(`No predetermined branch name, using timestamp-based: ${branchName}`)
-      const createBranch = await runAndLogCommand(sandbox, 'git', ['checkout', '-b', branchName], logs)
+      await logger.info(`No predetermined branch name, using timestamp-based: ${branchName}`)
+      const createBranch = await runAndLogCommand(sandbox, 'git', ['checkout', '-b', branchName], logger)
 
       if (!createBranch.success) {
-        logs.push(`Failed to create branch ${branchName}: ${createBranch.error}`)
+        await logger.info(`Failed to create branch ${branchName}: ${createBranch.error}`)
+        // Add debugging information for fallback branch creation too
+        const gitStatus = await runCommandInSandbox(sandbox, 'git', ['status'])
+        await logger.info(`Git status: ${gitStatus.output || 'No output'}`)
+        const gitBranch = await runCommandInSandbox(sandbox, 'git', ['branch', '-a'])
+        await logger.info(`Git branches: ${gitBranch.output || 'No output'}`)
+        const gitLog = await runCommandInSandbox(sandbox, 'git', ['log', '--oneline', '-5'])
+        await logger.info(`Recent commits: ${gitLog.output || 'No commits'}`)
         throw new Error(`Failed to create Git branch ${branchName}`)
       }
 
-      logs.push(`Successfully created fallback branch: ${branchName}`)
+      await logger.info(`Successfully created fallback branch: ${branchName}`)
     }
 
     return {
       success: true,
       sandbox,
       domain,
-      logs,
       branchName,
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     console.error('Sandbox creation error:', error)
-    logs.push(`Error: ${errorMessage}`)
+    await logger.error(`Error: ${errorMessage}`)
 
     return {
       success: false,
       error: errorMessage || 'Failed to create sandbox',
-      logs,
     }
   }
 }
