@@ -6,6 +6,7 @@ import { SandboxConfig, SandboxResult } from './types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 import { detectPackageManager, installDependencies } from './package-manager'
+import { registerSandbox } from './sandbox-registry'
 
 // Helper function to run command and log it
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
@@ -31,8 +32,13 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
 
 export async function createSandbox(config: SandboxConfig, logger: TaskLogger): Promise<SandboxResult> {
   try {
-    await logger.info('Creating Vercel sandbox...')
     await logger.info(`Repository URL: ${redactSensitiveInfo(config.repoUrl)}`)
+
+    // Check for cancellation before starting
+    if (config.onCancellationCheck && (await config.onCancellationCheck())) {
+      await logger.info('Task was cancelled before sandbox creation')
+      return { success: false, cancelled: true }
+    }
 
     // Call progress callback if provided
     if (config.onProgress) {
@@ -85,13 +91,22 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
     // Call progress callback before sandbox creation
     if (config.onProgress) {
-      await config.onProgress(25, 'Creating Vercel sandbox instance...')
+      await config.onProgress(25, 'Validating configuration...')
     }
 
     let sandbox: Sandbox
     try {
       sandbox = await Sandbox.create(sandboxConfig)
       await logger.info('Sandbox created successfully')
+
+      // Register the sandbox immediately for potential killing
+      registerSandbox(config.taskId, sandbox)
+
+      // Check for cancellation after sandbox creation
+      if (config.onCancellationCheck && (await config.onCancellationCheck())) {
+        await logger.info('Task was cancelled after sandbox creation')
+        return { success: false, cancelled: true }
+      }
 
       // Call progress callback after sandbox creation
       if (config.onProgress) {
@@ -181,6 +196,12 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
       // Install dependencies with the detected package manager
       const installResult = await installDependencies(sandbox, packageManager, logger)
+
+      // Check for cancellation after dependency installation
+      if (config.onCancellationCheck && (await config.onCancellationCheck())) {
+        await logger.info('Task was cancelled after dependency installation')
+        return { success: false, cancelled: true }
+      }
 
       // If primary package manager fails, try npm as fallback (unless it was already npm)
       if (!installResult.success && packageManager !== 'npm') {
@@ -301,6 +322,12 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     } else {
       await logger.info('Project type not detected, sandbox ready for general development')
       await logger.info(`Sandbox available at: ${domain}`)
+    }
+
+    // Check for cancellation before Git configuration
+    if (config.onCancellationCheck && (await config.onCancellationCheck())) {
+      await logger.info('Task was cancelled before Git configuration')
+      return { success: false, cancelled: true }
     }
 
     // Configure Git user

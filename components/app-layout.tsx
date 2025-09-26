@@ -200,7 +200,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
       selectedModel: taskData.selectedModel,
       status: 'pending',
       progress: 0,
-      logs: [{ type: 'info', message: 'Task created, preparing to start...', timestamp: new Date() }],
+      logs: [],
       error: null,
       branchName: null,
       sandboxUrl: null,
