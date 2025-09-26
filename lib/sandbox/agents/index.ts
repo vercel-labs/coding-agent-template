@@ -16,7 +16,7 @@ export async function executeAgentInSandbox(
   sandbox: Sandbox,
   instruction: string,
   agentType: AgentType,
-  logger?: TaskLogger,
+  logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
   switch (agentType) {

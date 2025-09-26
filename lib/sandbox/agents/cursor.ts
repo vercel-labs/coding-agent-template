@@ -1,23 +1,22 @@
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
-import { redactSensitiveInfo, createCommandLog, createInfoLog, createErrorLog } from '@/lib/utils/logging'
-import { LogEntry } from '@/lib/db/schema'
+import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
-// Helper function to run command and collect logs
-async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logs: LogEntry[]) {
+// Helper function to run command and collect 
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  logs.push(createCommandLog(redactSensitiveInfo(fullCommand)))
+  await logger.command(redactSensitiveInfo(fullCommand))
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
-    logs.push(createInfoLog(redactSensitiveInfo(result.output.trim())))
+    await logger.info(redactSensitiveInfo(result.output.trim()))
   }
 
   if (!result.success && result.error) {
-    logs.push(createErrorLog(redactSensitiveInfo(result.error)))
+    await logger.error(redactSensitiveInfo(result.error))
   }
 
   return result
@@ -26,10 +25,10 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
 export async function executeCursorInSandbox(
   sandbox: Sandbox,
   instruction: string,
-  logger?: TaskLogger,
+  logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-  const logs: LogEntry[] = []
+  
 
   try {
     // Executing Cursor CLI with instruction
@@ -43,7 +42,7 @@ export async function executeCursorInSandbox(
     // Install Cursor CLI using the official installation script with timeout
     // Add debugging to see what the installation script does
     const installCommand = 'timeout 300 bash -c "curl https://cursor.com/install -fsS | bash -s -- --verbose"'
-    const cursorInstall = await runAndLogCommand(sandbox, 'sh', ['-c', installCommand], logs)
+    const cursorInstall = await runAndLogCommand(sandbox, 'sh', ['-c', installCommand], logger)
 
     // After installation, check what was installed and where
     if (logger) {
@@ -58,7 +57,7 @@ export async function executeCursorInSandbox(
     ]
 
     for (const checkCmd of postInstallChecks) {
-      const checkResult = await runAndLogCommand(sandbox, 'sh', ['-c', checkCmd], logs)
+      const checkResult = await runAndLogCommand(sandbox, 'sh', ['-c', checkCmd], logger)
       if (logger && checkResult.output) {
         await logger.info(`Post-install check "${checkCmd}": ${checkResult.output}`)
       }
@@ -80,7 +79,7 @@ export async function executeCursorInSandbox(
         error: errorMsg,
         cliName: 'cursor',
         changesDetected: false,
-        logs,
+        
       }
     }
 
@@ -94,7 +93,7 @@ export async function executeCursorInSandbox(
       sandbox,
       'sh',
       ['-c', 'export PATH="$HOME/.local/bin:$PATH"; which cursor-agent'],
-      logs,
+      logger,
     )
 
     if (!cliCheck.success) {
@@ -112,7 +111,7 @@ export async function executeCursorInSandbox(
       ]
 
       for (const searchCmd of searchPaths) {
-        const searchResult = await runAndLogCommand(sandbox, 'sh', ['-c', searchCmd], logs)
+        const searchResult = await runAndLogCommand(sandbox, 'sh', ['-c', searchCmd], logger)
         if (logger && searchResult.output) {
           await logger.info(`Search result for "${searchCmd}": ${searchResult.output}`)
         }
@@ -123,7 +122,7 @@ export async function executeCursorInSandbox(
         error: 'Cursor CLI (cursor-agent) not found after installation. Check logs for search results.',
         cliName: 'cursor',
         changesDetected: false,
-        logs,
+        
       }
     }
 
@@ -134,7 +133,7 @@ export async function executeCursorInSandbox(
         error: 'CURSOR_API_KEY not found. Please set the API key to use Cursor agent.',
         cliName: 'cursor',
         changesDetected: false,
-        logs,
+        
       }
     }
 
@@ -148,7 +147,7 @@ export async function executeCursorInSandbox(
       sandbox,
       'sh',
       ['-c', 'export PATH="$HOME/.local/bin:$PATH"; which cursor-agent'],
-      logs,
+      logger,
     )
     if (logger) {
       await logger.info(`Pre-execution cursor-agent check: ${preExecCheck.success ? 'FOUND' : 'NOT FOUND'}`)
@@ -164,7 +163,7 @@ export async function executeCursorInSandbox(
     // Log what we're about to execute
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
     const logCommand = `cursor-agent -p --force --output-format json${modelFlag} "${instruction}"`
-    logs.push(createCommandLog(logCommand))
+    await logger.command(logCommand)
     if (logger) {
       await logger.command(logCommand)
       if (selectedModel) {
@@ -281,7 +280,7 @@ export async function executeCursorInSandbox(
     // Log the output and error results (similar to Claude)
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
-      logs.push(createInfoLog(redactedOutput))
+      await logger.info(redactedOutput)
       if (logger) {
         await logger.info(redactedOutput)
       }
@@ -289,7 +288,7 @@ export async function executeCursorInSandbox(
 
     if (!result.success && result.error) {
       const redactedError = redactSensitiveInfo(result.error)
-      logs.push(createErrorLog(redactedError))
+      await logger.error(redactedError)
       if (logger) {
         await logger.error(redactedError)
       }
@@ -298,7 +297,7 @@ export async function executeCursorInSandbox(
     // Cursor CLI execution completed
 
     // Check if any files were modified
-    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logs)
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
     if (result.success) {
@@ -309,7 +308,7 @@ export async function executeCursorInSandbox(
         cliName: 'cursor',
         changesDetected: !!hasChanges,
         error: undefined,
-        logs,
+        
       }
     } else {
       return {
@@ -318,7 +317,7 @@ export async function executeCursorInSandbox(
         agentResponse: result.output,
         cliName: 'cursor',
         changesDetected: !!hasChanges,
-        logs,
+        
       }
     }
   } catch (error: unknown) {
@@ -328,7 +327,7 @@ export async function executeCursorInSandbox(
       error: errorMessage,
       cliName: 'cursor',
       changesDetected: false,
-      logs,
+      
     }
   }
 }
