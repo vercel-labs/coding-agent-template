@@ -4,7 +4,7 @@ import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
-// Helper function to run command and collect 
+// Helper function to run command and collect
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   await logger.command(redactSensitiveInfo(fullCommand))
@@ -28,8 +28,6 @@ export async function executeCursorInSandbox(
   logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-  
-
   try {
     // Executing Cursor CLI with instruction
 
@@ -79,7 +77,6 @@ export async function executeCursorInSandbox(
         error: errorMsg,
         cliName: 'cursor',
         changesDetected: false,
-        
       }
     }
 
@@ -122,7 +119,6 @@ export async function executeCursorInSandbox(
         error: 'Cursor CLI (cursor-agent) not found after installation. Check logs for search results.',
         cliName: 'cursor',
         changesDetected: false,
-        
       }
     }
 
@@ -133,7 +129,6 @@ export async function executeCursorInSandbox(
         error: 'CURSOR_API_KEY not found. Please set the API key to use Cursor agent.',
         cliName: 'cursor',
         changesDetected: false,
-        
       }
     }
 
@@ -308,7 +303,6 @@ export async function executeCursorInSandbox(
         cliName: 'cursor',
         changesDetected: !!hasChanges,
         error: undefined,
-        
       }
     } else {
       return {
@@ -317,7 +311,6 @@ export async function executeCursorInSandbox(
         agentResponse: result.output,
         cliName: 'cursor',
         changesDetected: !!hasChanges,
-        
       }
     }
   } catch (error: unknown) {
@@ -327,7 +320,6 @@ export async function executeCursorInSandbox(
       error: errorMessage,
       cliName: 'cursor',
       changesDetected: false,
-      
     }
   }
 }

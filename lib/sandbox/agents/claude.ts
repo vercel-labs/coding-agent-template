@@ -5,12 +5,7 @@ import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
 // Helper function to run command and collect logs
-async function runAndLogCommand(
-  sandbox: Sandbox,
-  command: string,
-  args: string[],
-  logger: TaskLogger,
-) {
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
@@ -121,8 +116,6 @@ export async function executeClaudeInSandbox(
   logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-  
-
   try {
     // Executing Claude CLI with instruction
 
@@ -159,7 +152,6 @@ export async function executeClaudeInSandbox(
           error: 'Claude CLI installation completed but CLI still not found',
           cliName: 'claude',
           changesDetected: false,
-          
         }
       }
     }
@@ -171,7 +163,6 @@ export async function executeClaudeInSandbox(
         error: 'ANTHROPIC_API_KEY environment variable is required but not found',
         cliName: 'claude',
         changesDetected: false,
-        
       }
     }
 
@@ -215,7 +206,6 @@ export async function executeClaudeInSandbox(
         error: errorMsg,
         cliName: 'claude',
         changesDetected: false,
-        
       }
     }
 
@@ -250,7 +240,7 @@ export async function executeClaudeInSandbox(
     }
 
     // Check if any files were modified
-    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'],  logger)
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
 
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
@@ -262,7 +252,7 @@ export async function executeClaudeInSandbox(
         }
 
         // Check if common files exist
-        await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'],  logger)
+        await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logger)
         await runAndLogCommand(sandbox, 'ls', ['-la'], logger)
       }
 
@@ -273,7 +263,6 @@ export async function executeClaudeInSandbox(
         cliName: 'claude',
         changesDetected: !!hasChanges,
         error: undefined,
-        
       }
     } else {
       return {
@@ -282,7 +271,6 @@ export async function executeClaudeInSandbox(
         agentResponse: result.output,
         cliName: 'claude',
         changesDetected: !!hasChanges,
-        
       }
     }
   } catch (error: unknown) {
@@ -292,7 +280,6 @@ export async function executeClaudeInSandbox(
       error: errorMessage,
       cliName: 'claude',
       changesDetected: false,
-      
     }
   }
 }

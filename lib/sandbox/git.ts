@@ -8,7 +8,6 @@ export async function pushChangesToBranch(
   commitMessage: string,
   logger: TaskLogger,
 ): Promise<{ success: boolean; pushFailed?: boolean }> {
-
   try {
     // Check if there are any changes to commit
     const statusResult = await runCommandInSandbox(sandbox, 'git', ['status', '--porcelain'])

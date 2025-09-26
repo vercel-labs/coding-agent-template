@@ -5,12 +5,7 @@ import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
 // Helper function to run command and log it
-async function runAndLogCommand(
-  sandbox: Sandbox,
-  command: string,
-  args: string[],
-  logger: TaskLogger,
-) {
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
@@ -51,7 +46,6 @@ export async function executeOpenCodeInSandbox(
   logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-
   try {
     // Executing OpenCode with instruction
     await logger.info('Starting OpenCode agent execution...')
@@ -74,7 +68,7 @@ export async function executeOpenCodeInSandbox(
       await logger.info('Installing OpenCode CLI...')
     }
 
-    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', 'opencode-ai'],  logger)
+    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', 'opencode-ai'], logger)
 
     if (!installResult.success) {
       console.error('OpenCode CLI installation failed:', { error: installResult.error })
@@ -83,7 +77,6 @@ export async function executeOpenCodeInSandbox(
         error: `Failed to install OpenCode CLI: ${installResult.error || 'Unknown error'}`,
         cliName: 'opencode',
         changesDetected: false,
-        
       }
     }
 
@@ -97,7 +90,7 @@ export async function executeOpenCodeInSandbox(
 
     if (!cliCheck.success) {
       // Try to find the exact path where npm installed it
-      const npmBinCheck = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'],  logger)
+      const npmBinCheck = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'], logger)
 
       if (npmBinCheck.success && npmBinCheck.output) {
         const globalBinPath = npmBinCheck.output.trim()
@@ -108,7 +101,7 @@ export async function executeOpenCodeInSandbox(
           sandbox,
           `${globalBinPath}/opencode`,
           ['--version'],
-          
+
           logger,
         )
 
@@ -118,7 +111,6 @@ export async function executeOpenCodeInSandbox(
             error: `OpenCode CLI not found after installation. Tried both 'opencode' and '${globalBinPath}/opencode'. Installation may have failed.`,
             cliName: 'opencode',
             changesDetected: false,
-            
           }
         }
       } else {
@@ -127,7 +119,6 @@ export async function executeOpenCodeInSandbox(
           error: 'OpenCode CLI not found after installation and could not determine npm global bin path.',
           cliName: 'opencode',
           changesDetected: false,
-          
         }
       }
     }
@@ -195,7 +186,7 @@ export async function executeOpenCodeInSandbox(
     let opencodeCmdToUse = 'opencode'
 
     if (!cliCheck.success) {
-      const npmBinResult = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'],  logger)
+      const npmBinResult = await runAndLogCommand(sandbox, 'npm', ['bin', '-g'], logger)
       if (npmBinResult.success && npmBinResult.output) {
         const globalBinPath = npmBinResult.output.trim()
         opencodeCmdToUse = `${globalBinPath}/opencode`
@@ -261,7 +252,7 @@ export async function executeOpenCodeInSandbox(
     // OpenCode execution completed
 
     // Check if any files were modified by OpenCode
-    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'],  logger)
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
     if (executeResult.success || executeResult.exitCode === 0) {
@@ -285,7 +276,6 @@ export async function executeOpenCodeInSandbox(
         cliName: 'opencode',
         changesDetected: !!hasChanges,
         error: undefined,
-        
       }
     } else {
       const errorMsg = `OpenCode failed (exit code ${executeResult.exitCode}): ${stderr || stdout || 'No error message'}`
@@ -299,7 +289,6 @@ export async function executeOpenCodeInSandbox(
         agentResponse: stdout,
         cliName: 'opencode',
         changesDetected: !!hasChanges,
-        
       }
     }
   } catch (error: unknown) {
@@ -315,7 +304,6 @@ export async function executeOpenCodeInSandbox(
       error: errorMessage,
       cliName: 'opencode',
       changesDetected: false,
-      
     }
   }
 }

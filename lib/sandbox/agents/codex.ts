@@ -28,8 +28,6 @@ export async function executeCodexInSandbox(
   logger: TaskLogger,
   selectedModel?: string,
 ): Promise<AgentExecutionResult> {
-  
-
   try {
     // Executing Codex CLI with instruction
 
@@ -43,7 +41,6 @@ export async function executeCodexInSandbox(
         error: `Failed to install Codex CLI: ${installResult.error}`,
         cliName: 'codex',
         changesDetected: false,
-        
       }
     }
 
@@ -58,7 +55,6 @@ export async function executeCodexInSandbox(
         error: 'Codex CLI not found after installation. Please ensure it is properly installed.',
         cliName: 'codex',
         changesDetected: false,
-        
       }
     }
 
@@ -69,7 +65,6 @@ export async function executeCodexInSandbox(
         error: 'AI Gateway API key not found. Please set AI_GATEWAY_API_KEY environment variable.',
         cliName: 'codex',
         changesDetected: false,
-        
       }
     }
 
@@ -89,7 +84,6 @@ export async function executeCodexInSandbox(
         error: errorMsg,
         cliName: 'codex',
         changesDetected: false,
-        
       }
     }
 
@@ -258,7 +252,6 @@ log_requests = true
         cliName: 'codex',
         changesDetected: !!hasChanges,
         error: undefined,
-        
       }
     } else {
       return {
@@ -267,7 +260,6 @@ log_requests = true
         agentResponse: result.output,
         cliName: 'codex',
         changesDetected: !!hasChanges,
-        
       }
     }
   } catch (error: unknown) {
@@ -277,7 +269,6 @@ log_requests = true
       error: errorMessage,
       cliName: 'codex',
       changesDetected: false,
-      
     }
   }
 }
