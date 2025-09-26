@@ -1,22 +1,58 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TaskForm } from '@/components/task-form'
 import { HomePageHeader } from '@/components/home-page-header'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useTasks } from '@/components/app-layout'
+import { getSelectedOwner, setSelectedOwner, getSelectedRepo, setSelectedRepo } from '@/lib/utils/cookies'
 
-export function HomePageContent() {
+
+interface HomePageContentProps {
+  initialSelectedOwner?: string
+  initialSelectedRepo?: string
+  initialInstallDependencies?: boolean
+  initialMaxDuration?: number
+}
+
+export function HomePageContent({ 
+  initialSelectedOwner = '', 
+  initialSelectedRepo = '',
+  initialInstallDependencies = false,
+  initialMaxDuration = 5
+}: HomePageContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)
+  const [selectedRepo, setSelectedRepoState] = useState(initialSelectedRepo)
   const router = useRouter()
   const { refreshTasks, addTaskOptimistically } = useTasks()
+
+  // No longer need the useEffect for loading cookies - they come from server
+
+  // Wrapper functions to update both state and cookies
+  const handleOwnerChange = (owner: string) => {
+    setSelectedOwnerState(owner)
+    setSelectedOwner(owner)
+    // Clear repo when owner changes
+    if (selectedRepo) {
+      setSelectedRepoState('')
+      setSelectedRepo('')
+    }
+  }
+
+  const handleRepoChange = (repo: string) => {
+    setSelectedRepoState(repo)
+    setSelectedRepo(repo)
+  }
 
   const handleTaskSubmit = async (data: {
     prompt: string
     repoUrl: string
     selectedAgent: string
     selectedModel: string
+    installDependencies: boolean
+    maxDuration: number
   }) => {
     setIsSubmitting(true)
 
@@ -58,10 +94,22 @@ export function HomePageContent() {
   return (
     <div className="flex-1 bg-background">
       <div className="mx-auto p-3">
-        <HomePageHeader />
+        <HomePageHeader 
+          selectedOwner={selectedOwner}
+          selectedRepo={selectedRepo}
+          onOwnerChange={handleOwnerChange}
+          onRepoChange={handleRepoChange}
+        />
 
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-          <TaskForm onSubmit={handleTaskSubmit} isSubmitting={isSubmitting} />
+          <TaskForm 
+            onSubmit={handleTaskSubmit} 
+            isSubmitting={isSubmitting}
+            selectedOwner={selectedOwner}
+            selectedRepo={selectedRepo}
+            initialInstallDependencies={initialInstallDependencies}
+            initialMaxDuration={initialMaxDuration}
+          />
         </div>
       </div>
     </div>

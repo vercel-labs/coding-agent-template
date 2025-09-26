@@ -116,6 +116,8 @@ export async function POST(request: NextRequest) {
       validatedData.repoUrl || '',
       validatedData.selectedAgent || 'claude',
       validatedData.selectedModel,
+      validatedData.installDependencies || false,
+      validatedData.maxDuration || 5,
     )
 
     return NextResponse.json({ task: newTask })
@@ -131,6 +133,8 @@ async function processTaskWithTimeout(
   repoUrl: string,
   selectedAgent: string = 'claude',
   selectedModel?: string,
+  installDependencies: boolean = false,
+  maxDuration: number = 5,
 ) {
   const TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes in milliseconds
 
@@ -154,7 +158,7 @@ async function processTaskWithTimeout(
   })
 
   try {
-    await Promise.race([processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel), timeoutPromise])
+    await Promise.race([processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel, installDependencies, maxDuration), timeoutPromise])
 
     // Clear the warning timeout if task completes successfully
     clearTimeout(warningTimeout)
@@ -217,6 +221,8 @@ async function processTask(
   repoUrl: string,
   selectedAgent: string = 'claude',
   selectedModel?: string,
+  installDependencies: boolean = false,
+  maxDuration: number = 5,
 ) {
   let sandbox: Sandbox | null = null
   const logger = createTaskLogger(taskId)
@@ -254,13 +260,14 @@ async function processTask(
       {
         taskId,
         repoUrl,
-        timeout: '5m',
+        timeout: `${maxDuration}m`,
         ports: [3000],
         runtime: 'node22',
         resources: { vcpus: 4 },
         taskPrompt: prompt,
         selectedAgent,
         selectedModel,
+        installDependencies,
         preDeterminedBranchName: aiBranchName || undefined,
         onProgress: async (progress: number, message: string) => {
           // Use real-time logger for progress updates

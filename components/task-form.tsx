@@ -1,19 +1,23 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, ArrowUp, Lock } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Loader2, ArrowUp, Settings, X } from 'lucide-react'
 import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
-
-interface GitHubOwner {
-  login: string
-  name: string
-  avatar_url: string
-}
+import { getInstallDependencies, setInstallDependencies, getMaxDuration, setMaxDuration } from '@/lib/utils/cookies'
 
 interface GitHubRepo {
   name: string
@@ -25,8 +29,19 @@ interface GitHubRepo {
 }
 
 interface TaskFormProps {
-  onSubmit: (data: { prompt: string; repoUrl: string; selectedAgent: string; selectedModel: string }) => void
+  onSubmit: (data: { 
+    prompt: string; 
+    repoUrl: string; 
+    selectedAgent: string; 
+    selectedModel: string;
+    installDependencies: boolean;
+    maxDuration: number;
+  }) => void
   isSubmitting: boolean
+  selectedOwner: string
+  selectedRepo: string
+  initialInstallDependencies?: boolean
+  initialMaxDuration?: number
 }
 
 const CODING_AGENTS = [
@@ -76,33 +91,30 @@ const DEFAULT_MODELS = {
   opencode: 'gpt-5',
 } as const
 
-export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
+export function TaskForm({ onSubmit, isSubmitting, selectedOwner, selectedRepo, initialInstallDependencies = false, initialMaxDuration = 5 }: TaskFormProps) {
   const [prompt, setPrompt] = useState('')
-  const [selectedOwner, setSelectedOwner] = useState('')
-  const [selectedRepo, setSelectedRepo] = useState('')
   const [selectedAgent, setSelectedAgent] = useState('claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
-  const [repoFilter, setRepoFilter] = useState('')
-  const [owners, setOwners] = useState<GitHubOwner[]>([])
   const [repos, setRepos] = useState<GitHubRepo[]>([])
-  const [loadingOwners, setLoadingOwners] = useState(true)
   const [loadingRepos, setLoadingRepos] = useState(false)
-  const [repoDropdownOpen, setRepoDropdownOpen] = useState(false)
+  
+  // Options state - initialize with server values
+  const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
+  const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
+  const [showOptionsDialog, setShowOptionsDialog] = useState(false)
 
   // Ref for the textarea to focus it programmatically
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  // Ref for the filter input to focus it when dropdown opens
-  const filterInputRef = useRef<HTMLInputElement>(null)
 
-  // Handle container click to focus textarea
-  const handleContainerClick = (e: React.MouseEvent) => {
-    // Don't focus if clicking on interactive elements
-    const target = e.target as HTMLElement
-    const isInteractiveElement = target.closest('button, [role="combobox"], [role="option"], input')
+  // Wrapper functions to update both state and cookies
+  const updateInstallDependencies = (value: boolean) => {
+    setInstallDependenciesState(value)
+    setInstallDependencies(value)
+  }
 
-    if (!isInteractiveElement && textareaRef.current) {
-      textareaRef.current.focus()
-    }
+  const updateMaxDuration = (value: number) => {
+    setMaxDurationState(value)
+    setMaxDuration(value)
   }
 
   // Handle keyboard events in textarea
@@ -110,15 +122,14 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
     if (e.key === 'Enter') {
       // On desktop: Enter submits, Shift+Enter creates new line
       // On mobile: Enter creates new line, must use submit button
-      const isMobile = window.innerWidth < 1024
-
+      const isMobile = window.innerWidth < 768
       if (!isMobile && !e.shiftKey) {
-        // Desktop: Enter without Shift submits the form
         e.preventDefault()
         if (prompt.trim() && selectedOwner && selectedRepo) {
+          // Find the form and submit it
           const form = e.currentTarget.closest('form')
           if (form) {
-            form.requestSubmit()
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
           }
         }
       }
@@ -126,88 +137,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
     }
   }
 
-  // Load saved repo when owner changes
-  useEffect(() => {
-    if (selectedOwner) {
-      const lastUsedRepo = localStorage.getItem(`last-selected-repo-${selectedOwner}`)
-      if (lastUsedRepo) {
-        setSelectedRepo(lastUsedRepo)
-      }
-    } else {
-      setSelectedRepo('')
-    }
-  }, [selectedOwner])
-
-  // Restore saved owner selection after owners are loaded
-  useEffect(() => {
-    if (owners.length > 0 && !selectedOwner) {
-      const lastUsedOwner = localStorage.getItem('last-selected-owner')
-      if (lastUsedOwner && owners.some((owner) => owner.login === lastUsedOwner)) {
-        setSelectedOwner(lastUsedOwner)
-      }
-    }
-  }, [owners, selectedOwner])
-
-  // Fetch user and organizations on mount
-  useEffect(() => {
-    const fetchOwners = async () => {
-      try {
-        // Check cache first
-        const cachedOwners = sessionStorage.getItem('github-owners')
-        if (cachedOwners) {
-          try {
-            const parsedOwners = JSON.parse(cachedOwners)
-            // Sort owners by login name
-            const sortedOwners = parsedOwners.sort((a: GitHubOwner, b: GitHubOwner) =>
-              a.login.localeCompare(b.login, undefined, { sensitivity: 'base' }),
-            )
-            setOwners(sortedOwners)
-            setLoadingOwners(false)
-
-            // Owner selection will be handled by the useEffect that watches owners array
-            return
-          } catch {
-            console.warn('Failed to parse cached owners, fetching fresh data')
-            sessionStorage.removeItem('github-owners')
-          }
-        }
-
-        const [userResponse, orgsResponse] = await Promise.all([fetch('/api/github/user'), fetch('/api/github/orgs')])
-
-        const ownersList: GitHubOwner[] = []
-
-        if (userResponse.ok) {
-          const user = await userResponse.json()
-          ownersList.push(user)
-        }
-
-        if (orgsResponse.ok) {
-          const orgs = await orgsResponse.json()
-          ownersList.push(...orgs)
-        }
-
-        // Sort owners by login name
-        const sortedOwnersList = ownersList.sort((a, b) =>
-          a.login.localeCompare(b.login, undefined, { sensitivity: 'base' }),
-        )
-
-        setOwners(sortedOwnersList)
-
-        // Cache the results
-        sessionStorage.setItem('github-owners', JSON.stringify(sortedOwnersList))
-
-        // Owner selection will be handled by the useEffect that watches owners array
-      } catch (error) {
-        console.error('Error fetching owners:', error)
-      } finally {
-        setLoadingOwners(false)
-      }
-    }
-
-    fetchOwners()
-  }, [])
-
-  // Load saved prompt, agent, and model on mount, and focus the prompt input
+  // Load saved prompt, agent, model, and options on mount, and focus the prompt input
   useEffect(() => {
     const savedPrompt = localStorage.getItem('task-prompt')
     if (savedPrompt) {
@@ -231,13 +161,15 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
       }
     }
 
+    // Options are now initialized from server props, no need to load from cookies
+
     // Focus the prompt input when the component mounts
     if (textareaRef.current) {
       textareaRef.current.focus()
     }
   }, [])
 
-  // Save prompt to localStorage whenever it changes
+  // Save prompt to localStorage as user types
   useEffect(() => {
     if (prompt) {
       localStorage.setItem('task-prompt', prompt)
@@ -263,64 +195,29 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
     }
   }, [selectedAgent])
 
-  // Focus filter input when repo dropdown opens
-  useEffect(() => {
-    if (repoDropdownOpen && filterInputRef.current && selectedOwner && repos.length > 0) {
-      // Small delay to ensure the dropdown is fully rendered
-      setTimeout(() => {
-        filterInputRef.current?.focus()
-      }, 100)
-    }
-  }, [repoDropdownOpen, selectedOwner, repos.length])
-
   // Fetch repositories when owner changes
   useEffect(() => {
     if (!selectedOwner) {
       setRepos([])
-      setSelectedRepo('')
-      setRepoFilter('')
       return
     }
 
-    const fetchRepos = async (forceRefresh = false) => {
-      if (!forceRefresh) {
-        setLoadingRepos(true)
-      }
+    const fetchRepos = async () => {
+      setLoadingRepos(true)
       try {
         // Check cache first
         const cacheKey = `github-repos-${selectedOwner}`
-        const cacheTimestampKey = `github-repos-timestamp-${selectedOwner}`
         const cachedRepos = sessionStorage.getItem(cacheKey)
-        const cachedTimestamp = sessionStorage.getItem(cacheTimestampKey)
 
-        if (cachedRepos && cachedTimestamp && !forceRefresh) {
+        if (cachedRepos) {
           try {
             const parsedRepos = JSON.parse(cachedRepos)
-            const timestamp = parseInt(cachedTimestamp)
-            const now = Date.now()
-            const tenMinutesInMs = 10 * 60 * 1000 // 10 minutes
-
-            // Use cached data immediately
             setRepos(parsedRepos)
             setLoadingRepos(false)
-
-            // Auto-select last used repo for this owner
-            const lastUsedRepo = localStorage.getItem(`last-selected-repo-${selectedOwner}`)
-            if (lastUsedRepo && parsedRepos.some((repo: GitHubRepo) => repo.name === lastUsedRepo)) {
-              setSelectedRepo(lastUsedRepo)
-            }
-
-            // Check if cache is older than 10 minutes and refresh in background
-            if (now - timestamp > tenMinutesInMs) {
-              console.log(`Cache for ${selectedOwner} is older than 10 minutes, refreshing in background`)
-              // Refresh in background without showing loading state
-              fetchRepos(true)
-            }
             return
           } catch {
             console.warn(`Failed to parse cached repos for ${selectedOwner}, fetching fresh data`)
             sessionStorage.removeItem(cacheKey)
-            sessionStorage.removeItem(cacheTimestampKey)
           }
         }
 
@@ -329,40 +226,18 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
           const reposList = await response.json()
           setRepos(reposList)
 
-          // Cache the results with timestamp
+          // Cache the results
           sessionStorage.setItem(cacheKey, JSON.stringify(reposList))
-          sessionStorage.setItem(cacheTimestampKey, Date.now().toString())
-
-          // Auto-select last used repo for this owner (only if not a background refresh)
-          if (!forceRefresh) {
-            const lastUsedRepo = localStorage.getItem(`last-selected-repo-${selectedOwner}`)
-            if (lastUsedRepo && reposList.some((repo: GitHubRepo) => repo.name === lastUsedRepo)) {
-              setSelectedRepo(lastUsedRepo)
-            }
-          }
         }
       } catch (error) {
         console.error('Error fetching repositories:', error)
       } finally {
-        if (!forceRefresh) {
-          setLoadingRepos(false)
-        }
+        setLoadingRepos(false)
       }
     }
 
     fetchRepos()
   }, [selectedOwner])
-
-  // Filter repositories based on search term
-  const filteredRepos = repos.filter(
-    (repo) =>
-      repo.name.toLowerCase().includes(repoFilter.toLowerCase()) ||
-      (repo.description && repo.description.toLowerCase().includes(repoFilter.toLowerCase())),
-  )
-
-  // Limit to 50 repos if no filter is applied, otherwise show all filtered results
-  const displayedRepos = repoFilter ? filteredRepos : filteredRepos.slice(0, 50)
-  const hasMoreRepos = !repoFilter && repos.length > 50
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -377,26 +252,28 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
           repoUrl: selectedRepoData.clone_url,
           selectedAgent,
           selectedModel,
+          installDependencies,
+          maxDuration,
         })
       }
     }
   }
 
   return (
-    <div className="w-full max-w-4xl">
-      <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold mb-3">Coding Agent Template</h1>
-        <p className="text-muted-foreground text-xl mb-2 max-w-3xl mx-auto">
+    <div className="w-full max-w-2xl">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold mb-4">Coding Agent Template</h1>
+        <p className="text-lg text-muted-foreground mb-2">
           Multi-agent AI coding platform powered by{' '}
           <a
-            href="https://vercel.com/docs/vercel-sandbox"
+            href="https://vercel.com/docs/sandbox"
             target="_blank"
             rel="noopener noreferrer"
             className="underline hover:no-underline"
           >
             Vercel Sandbox
-          </a>{' '}
-          and{' '}
+          </a>
+          {' '}and{' '}
           <a
             href="https://vercel.com/docs/ai-gateway"
             target="_blank"
@@ -409,10 +286,7 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div
-          className="relative border rounded-2xl shadow-sm overflow-hidden bg-muted/30 cursor-text"
-          onClick={handleContainerClick}
-        >
+        <div className="relative border rounded-2xl shadow-sm overflow-hidden bg-muted/30 cursor-text">
           {/* Prompt Input */}
           <div className="relative bg-transparent">
             <Textarea
@@ -429,266 +303,11 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
             />
           </div>
 
-          {/* Repository and Agent Selection */}
+
+          {/* Agent Selection */}
           <div className="p-4">
-            {/* Mobile: Two-line layout */}
-            <div className="flex flex-col gap-3 lg:hidden">
-              {/* Repository Selection Row */}
-              <div className="flex items-center gap-2">
-                <Select
-                  value={selectedOwner}
-                  onValueChange={(value) => {
-                    setSelectedOwner(value)
-                    setSelectedRepo('') // Reset repo when owner changes
-                    setRepoFilter('') // Reset filter when owner changes
-                    // Save to localStorage immediately
-                    localStorage.setItem('last-selected-owner', value)
-                  }}
-                  disabled={isSubmitting || loadingOwners}
-                >
-                  <SelectTrigger className="w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue placeholder={loadingOwners ? 'Loading...' : 'Owner'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {owners.map((owner) => (
-                      <SelectItem key={owner.login} value={owner.login}>
-                        <div className="flex items-center gap-2">
-                          <Image
-                            src={owner.avatar_url}
-                            alt={owner.login}
-                            width={16}
-                            height={16}
-                            className="w-4 h-4 rounded-full"
-                          />
-                          <span>{owner.login}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <span className="text-muted-foreground">/</span>
-
-                <Select
-                  value={selectedRepo}
-                  onValueChange={(value) => {
-                    setSelectedRepo(value)
-                    // Save to localStorage immediately
-                    if (selectedOwner) {
-                      localStorage.setItem(`last-selected-repo-${selectedOwner}`, value)
-                    }
-                  }}
-                  disabled={isSubmitting || !selectedOwner || loadingRepos}
-                  onOpenChange={setRepoDropdownOpen}
-                >
-                  <SelectTrigger className="w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue
-                      placeholder={!selectedOwner ? 'Select owner first' : loadingRepos ? 'Loading...' : 'Repo'}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedOwner && repos.length > 0 && (
-                      <div className="p-2 border-b">
-                        <Input
-                          ref={filterInputRef}
-                          placeholder={
-                            repos.length > 50 ? `Filter ${repos.length} repositories...` : 'Filter repositories...'
-                          }
-                          value={repoFilter}
-                          onChange={(e) => setRepoFilter(e.target.value)}
-                          disabled={isSubmitting || loadingRepos}
-                          className="text-sm h-8"
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    )}
-                    {filteredRepos.length === 0 && repoFilter ? (
-                      <div className="p-2 text-sm text-muted-foreground text-center">
-                        No repositories match &quot;{repoFilter}&quot;
-                      </div>
-                    ) : (
-                      <>
-                        {displayedRepos.map((repo) => (
-                          <SelectItem key={repo.full_name} value={repo.name}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{repo.name}</span>
-                              {repo.private && <Lock className="h-3 w-3 text-muted-foreground" />}
-                            </div>
-                          </SelectItem>
-                        ))}
-                        {hasMoreRepos && (
-                          <div className="p-2 text-xs text-muted-foreground text-center border-t">
-                            Showing first 50 of {repos.length} repositories. Use filter to find more.
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Agent, Model Selection and Submit Button Row */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {/* Agent Selection */}
-                  <Select
-                    value={selectedAgent}
-                    onValueChange={(value) => {
-                      setSelectedAgent(value)
-                      // Save to localStorage immediately
-                      localStorage.setItem('last-selected-agent', value)
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="w-auto min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                      <SelectValue placeholder="Agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CODING_AGENTS.map((agent) => (
-                        <SelectItem key={agent.value} value={agent.value}>
-                          <div className="flex items-center gap-2">
-                            <agent.icon className="w-4 h-4" />
-                            <span>{agent.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Model Selection */}
-                  <Select
-                    value={selectedModel}
-                    onValueChange={(value) => {
-                      setSelectedModel(value)
-                      // Save to localStorage immediately
-                      localStorage.setItem(`last-selected-model-${selectedAgent}`, value)
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                      <SelectValue placeholder="Model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
-                        <SelectItem key={model.value} value={model.value}>
-                          {model.label}
-                        </SelectItem>
-                      )) || []}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || !prompt.trim() || !selectedOwner || !selectedRepo}
-                  size="sm"
-                  className="rounded-full h-8 w-8 p-0"
-                >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* Desktop: Single-line layout */}
-            <div className="hidden lg:flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <Select
-                  value={selectedOwner}
-                  onValueChange={(value) => {
-                    setSelectedOwner(value)
-                    setSelectedRepo('') // Reset repo when owner changes
-                    setRepoFilter('') // Reset filter when owner changes
-                    // Save to localStorage immediately
-                    localStorage.setItem('last-selected-owner', value)
-                  }}
-                  disabled={isSubmitting || loadingOwners}
-                >
-                  <SelectTrigger className="w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue placeholder={loadingOwners ? 'Loading...' : 'Owner'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {owners.map((owner) => (
-                      <SelectItem key={owner.login} value={owner.login}>
-                        <div className="flex items-center gap-2">
-                          <Image
-                            src={owner.avatar_url}
-                            alt={owner.login}
-                            width={16}
-                            height={16}
-                            className="w-4 h-4 rounded-full"
-                          />
-                          <span>{owner.login}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <span className="text-muted-foreground">/</span>
-
-                <Select
-                  value={selectedRepo}
-                  onValueChange={(value) => {
-                    setSelectedRepo(value)
-                    // Save to localStorage immediately
-                    if (selectedOwner) {
-                      localStorage.setItem(`last-selected-repo-${selectedOwner}`, value)
-                    }
-                  }}
-                  disabled={isSubmitting || !selectedOwner || loadingRepos}
-                  onOpenChange={setRepoDropdownOpen}
-                >
-                  <SelectTrigger className="w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue
-                      placeholder={!selectedOwner ? 'Select owner first' : loadingRepos ? 'Loading...' : 'Repo'}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedOwner && repos.length > 0 && (
-                      <div className="p-2 border-b">
-                        <Input
-                          ref={filterInputRef}
-                          placeholder={
-                            repos.length > 50 ? `Filter ${repos.length} repositories...` : 'Filter repositories...'
-                          }
-                          value={repoFilter}
-                          onChange={(e) => setRepoFilter(e.target.value)}
-                          disabled={isSubmitting || loadingRepos}
-                          className="text-sm h-8"
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    )}
-                    {filteredRepos.length === 0 && repoFilter ? (
-                      <div className="p-2 text-sm text-muted-foreground text-center">
-                        No repositories match &quot;{repoFilter}&quot;
-                      </div>
-                    ) : (
-                      <>
-                        {displayedRepos.map((repo) => (
-                          <SelectItem key={repo.full_name} value={repo.name}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{repo.name}</span>
-                              {repo.private && <Lock className="h-3 w-3 text-muted-foreground" />}
-                            </div>
-                          </SelectItem>
-                        ))}
-                        {hasMoreRepos && (
-                          <div className="p-2 text-xs text-muted-foreground text-center border-t">
-                            Showing first 50 of {repos.length} repositories. Use filter to find more.
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-
-                {/* Via text */}
-                <span className="text-sm text-muted-foreground px-2">via</span>
-
                 {/* Agent Selection */}
                 <Select
                   value={selectedAgent}
@@ -735,17 +354,123 @@ export function TaskForm({ onSubmit, isSubmitting }: TaskFormProps) {
                     )) || []}
                   </SelectContent>
                 </Select>
+
+                {/* Option Chips */}
+                {(!installDependencies || maxDuration !== 5) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {!installDependencies && (
+                      <Badge 
+                        variant="secondary" 
+                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                        onClick={() => setShowOptionsDialog(true)}
+                      >
+                        Skip Install
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-3 w-3 p-0 hover:bg-transparent"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            updateInstallDependencies(true)
+                          }}
+                        >
+                          <X className="h-2 w-2" />
+                        </Button>
+                      </Badge>
+                    )}
+                    {maxDuration !== 5 && (
+                      <Badge 
+                        variant="secondary" 
+                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                        onClick={() => setShowOptionsDialog(true)}
+                      >
+                        {maxDuration}m
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-3 w-3 p-0 hover:bg-transparent"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            updateMaxDuration(5)
+                          }}
+                        >
+                          <X className="h-2 w-2" />
+                        </Button>
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={isSubmitting || !prompt.trim() || !selectedOwner || !selectedRepo}
-                size="sm"
-                className="rounded-full h-8 w-8 p-0"
-              >
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-              </Button>
+              {/* Options and Submit Buttons */}
+              <div className="flex items-center gap-2">
+                <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full h-8 w-8 p-0"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Task Options</DialogTitle>
+                      <DialogDescription>
+                        Configure settings for your task execution.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="install-deps"
+                          checked={installDependencies}
+                          onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
+                        />
+                        <Label
+                          htmlFor="install-deps"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Install Dependencies?
+                        </Label>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="max-duration" className="text-sm font-medium">
+                          Maximum Duration
+                        </Label>
+                        <Select
+                          value={maxDuration.toString()}
+                          onValueChange={(value) => updateMaxDuration(parseInt(value))}
+                        >
+                          <SelectTrigger id="max-duration" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 minute</SelectItem>
+                            <SelectItem value="2">2 minutes</SelectItem>
+                            <SelectItem value="3">3 minutes</SelectItem>
+                            <SelectItem value="5">5 minutes</SelectItem>
+                            <SelectItem value="10">10 minutes</SelectItem>
+                            <SelectItem value="15">15 minutes</SelectItem>
+                            <SelectItem value="30">30 minutes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || !prompt.trim() || !selectedOwner || !selectedRepo}
+                  size="sm"
+                  className="rounded-full h-8 w-8 p-0"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

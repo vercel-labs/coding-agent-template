@@ -137,13 +137,18 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       throw error
     }
 
-    // Install project dependencies (pnpm only)
-    await logger.info('Detecting project type and installing dependencies...')
+    // Install project dependencies (based on user preference)
+    if (config.installDependencies !== false) {
+      await logger.info('Detecting project type and installing dependencies...')
+    } else {
+      await logger.info('Skipping dependency installation as requested by user')
+    }
 
     // Check for project type and install dependencies accordingly
     const packageJsonCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'package.json'])
-
     const requirementsTxtCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'requirements.txt'])
+
+    if (config.installDependencies !== false) {
 
     if (packageJsonCheck.success) {
       // JavaScript/Node.js project
@@ -298,6 +303,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     } else {
       await logger.info('No package.json or requirements.txt found, skipping dependency installation')
     }
+    } // End of installDependencies check
 
     // Get the domain for the sandbox
     const domain = sandbox.domain(config.ports?.[0] || 3000)
