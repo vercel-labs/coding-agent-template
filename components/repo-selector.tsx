@@ -242,7 +242,7 @@ export function RepoSelector({
     const date = new Date(dateString)
     const now = new Date()
     const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    
+
     if (diffInDays === 0) return 'today'
     if (diffInDays === 1) return 'yesterday'
     if (diffInDays < 30) return `${diffInDays} days ago`
@@ -292,16 +292,14 @@ export function RepoSelector({
               className={cn(
                 size === 'sm'
                   ? 'w-auto min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs'
-                  : 'w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
+                  : 'w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8',
               )}
             >
               <SelectValue placeholder={loadingRepos ? 'Loading...' : 'Repo'}>
-                {selectedRepo && (
-                  <span>{selectedRepo}</span>
-                )}
+                {selectedRepo && <span>{selectedRepo}</span>}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className='relative w-[480px]'>
+            <SelectContent className="relative w-[480px]">
               {repos && repos.length > 0 && (
                 <div className="sticky top-0 z-10 p-3 border-b">
                   <Input
@@ -341,41 +339,37 @@ export function RepoSelector({
                                   </div>
                                 )}
                               </div>
-                              
+
                               {repo.description && (
-                                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                                  {repo.description}
-                                </p>
+                                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{repo.description}</p>
                               )}
-                              
+
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 {repo.language && (
                                   <div className="flex items-center gap-1">
-                                    <div 
-                                      className="w-3 h-3 rounded-full" 
+                                    <div
+                                      className="w-3 h-3 rounded-full"
                                       style={{ backgroundColor: getLanguageColor(repo.language) }}
                                     />
                                     <span>{repo.language}</span>
                                   </div>
                                 )}
-                                
+
                                 {repo.stargazers_count !== undefined && (
                                   <div className="flex items-center gap-1">
                                     <Star className="h-3 w-3" />
                                     <span>{repo.stargazers_count.toLocaleString()}</span>
                                   </div>
                                 )}
-                                
+
                                 {repo.forks_count !== undefined && (
                                   <div className="flex items-center gap-1">
                                     <GitFork className="h-3 w-3" />
                                     <span>{repo.forks_count.toLocaleString()}</span>
                                   </div>
                                 )}
-                                
-                                {repo.updated_at && (
-                                  <span>Updated {formatTimeAgo(repo.updated_at)}</span>
-                                )}
+
+                                {repo.updated_at && <span>Updated {formatTimeAgo(repo.updated_at)}</span>}
                               </div>
                             </div>
                           </div>
