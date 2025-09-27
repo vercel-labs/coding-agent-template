@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Lock } from 'lucide-react'
+import { Lock, GitFork, Star } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface GitHubOwner {
   login: string
@@ -19,6 +20,9 @@ interface GitHubRepo {
   private: boolean
   clone_url: string
   language: string
+  stargazers_count?: number
+  forks_count?: number
+  updated_at?: string
 }
 
 interface RepoSelectorProps {
@@ -210,6 +214,42 @@ export function RepoSelector({
       ? 'w-auto min-w-[100px] border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs'
       : 'w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
 
+  const getLanguageColor = (language: string) => {
+    const colors: { [key: string]: string } = {
+      JavaScript: '#f1e05a',
+      TypeScript: '#3178c6',
+      Python: '#3572A5',
+      Java: '#b07219',
+      'C++': '#f34b7d',
+      'C#': '#239120',
+      PHP: '#4F5D95',
+      Ruby: '#701516',
+      Go: '#00ADD8',
+      Rust: '#dea584',
+      Swift: '#fa7343',
+      Kotlin: '#A97BFF',
+      Dart: '#00B4AB',
+      HTML: '#e34c26',
+      CSS: '#1572B6',
+      Vue: '#4FC08D',
+      React: '#61DAFB',
+    }
+    return colors[language] || '#8b949e'
+  }
+
+  const formatTimeAgo = (dateString?: string) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (diffInDays === 0) return 'today'
+    if (diffInDays === 1) return 'yesterday'
+    if (diffInDays < 30) return `${diffInDays} days ago`
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`
+    return `${Math.floor(diffInDays / 365)} years ago`
+  }
+
   return (
     <div className="flex items-center gap-2">
       <Select
@@ -249,17 +289,21 @@ export function RepoSelector({
             onOpenChange={setRepoDropdownOpen}
           >
             <SelectTrigger
-              className={
+              className={cn(
                 size === 'sm'
                   ? 'w-auto min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs'
                   : 'w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
-              }
+              )}
             >
-              <SelectValue placeholder={loadingRepos ? 'Loading...' : 'Repo'} />
+              <SelectValue placeholder={loadingRepos ? 'Loading...' : 'Repo'}>
+                {selectedRepo && (
+                  <span>{selectedRepo}</span>
+                )}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className='relative w-[480px]'>
               {repos && repos.length > 0 && (
-                <div className="p-2 border-b">
+                <div className="sticky top-0 z-10 p-3 border-b">
                   <Input
                     ref={filterInputRef}
                     placeholder={
@@ -270,33 +314,82 @@ export function RepoSelector({
                     value={repoFilter}
                     onChange={(e) => setRepoFilter(e.target.value)}
                     disabled={disabled || loadingRepos}
-                    className="text-sm h-8"
+                    className="text-sm rounded-[5px] focus-visible:ring-0 h-8"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   />
                 </div>
               )}
-              {filteredRepos.length === 0 && repoFilter ? (
-                <div className="p-2 text-sm text-muted-foreground text-center">
-                  No repositories match &quot;{repoFilter}&quot;
-                </div>
-              ) : (
-                <>
-                  {displayedRepos.map((repo) => (
-                    <SelectItem key={repo.full_name} value={repo.name}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{repo.name}</span>
-                        {repo.private && <Lock className="h-3 w-3 text-muted-foreground" />}
+              <div className="max-h-80 overflow-y-auto">
+                {filteredRepos.length === 0 && repoFilter ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">
+                    No repositories match &quot;{repoFilter}&quot;
+                  </div>
+                ) : (
+                  <>
+                    {displayedRepos.map((repo) => (
+                      <SelectItem key={repo.full_name} value={repo.name} className="p-0">
+                        <div className="w-full p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-sm truncate">{repo.name}</span>
+                                {repo.private && (
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border">
+                                    <Lock className="h-3 w-3" />
+                                    <span>Private</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {repo.description && (
+                                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                  {repo.description}
+                                </p>
+                              )}
+                              
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                {repo.language && (
+                                  <div className="flex items-center gap-1">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: getLanguageColor(repo.language) }}
+                                    />
+                                    <span>{repo.language}</span>
+                                  </div>
+                                )}
+                                
+                                {repo.stargazers_count !== undefined && (
+                                  <div className="flex items-center gap-1">
+                                    <Star className="h-3 w-3" />
+                                    <span>{repo.stargazers_count.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                
+                                {repo.forks_count !== undefined && (
+                                  <div className="flex items-center gap-1">
+                                    <GitFork className="h-3 w-3" />
+                                    <span>{repo.forks_count.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                
+                                {repo.updated_at && (
+                                  <span>Updated {formatTimeAgo(repo.updated_at)}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {hasMoreRepos && (
+                      <div className="p-3 text-xs text-muted-foreground text-center border-t bg-muted/20">
+                        Showing first 50 of {repos?.length || 0} repositories. Use filter to find more.
                       </div>
-                    </SelectItem>
-                  ))}
-                  {hasMoreRepos && (
-                    <div className="p-2 text-xs text-muted-foreground text-center border-t">
-                      Showing first 50 of {repos?.length || 0} repositories. Use filter to find more.
-                    </div>
-                  )}
-                </>
-              )}
+                    )}
+                  </>
+                )}
+              </div>
             </SelectContent>
           </Select>
         </>
