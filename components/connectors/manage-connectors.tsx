@@ -191,7 +191,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     <Input
                       id="description"
                       name="description"
-                      placeholder="Example description (optional) (optional)"
+                      placeholder="Example description (optional)"
                     />
                   </div>
 
