@@ -19,6 +19,19 @@ export function validateEnvironmentVariables(selectedAgent: string = 'claude') {
     errors.push('GITHUB_TOKEN is required for repository access')
   }
 
+  // Check for Vercel sandbox environment variables
+  if (!process.env.VERCEL_TEAM_ID) {
+    errors.push('VERCEL_TEAM_ID is required for sandbox creation')
+  }
+
+  if (!process.env.VERCEL_PROJECT_ID) {
+    errors.push('VERCEL_PROJECT_ID is required for sandbox creation')
+  }
+
+  if (!process.env.VERCEL_TOKEN) {
+    errors.push('VERCEL_TOKEN is required for sandbox creation')
+  }
+
   return {
     valid: errors.length === 0,
     error: errors.length > 0 ? errors.join(', ') : undefined,
