@@ -361,7 +361,8 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     await logger.info(`Available branches: ${gitBranchDebug.output || 'No branches listed'}`)
 
     const gitRemoteDebug = await runCommandInSandbox(sandbox, 'git', ['remote', '-v'])
-    await logger.info(`Git remotes: ${gitRemoteDebug.output || 'No remotes configured'}`)
+    const redactedRemotes = gitRemoteDebug.output ? redactSensitiveInfo(gitRemoteDebug.output) : 'No remotes configured'
+    await logger.info(`Git remotes: ${redactedRemotes}`)
 
     // Configure Git to use GitHub token for authentication
     if (process.env.GITHUB_TOKEN) {
