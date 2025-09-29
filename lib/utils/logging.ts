@@ -36,7 +36,7 @@ export function redactSensitiveInfo(message: string): string {
         // Replace the token in the URL while preserving the structure
         return match.replace(key, redactedKey)
       }
-      
+
       // Keep the prefix and show first 4 and last 4 characters
       const prefix = match.substring(0, match.indexOf(key))
       const redactedKey =
