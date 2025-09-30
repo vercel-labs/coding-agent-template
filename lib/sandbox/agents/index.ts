@@ -3,10 +3,11 @@ import { AgentExecutionResult } from '../types'
 import { executeClaudeInSandbox } from './claude'
 import { executeCodexInSandbox } from './codex'
 import { executeCursorInSandbox } from './cursor'
+import { executeGeminiInSandbox } from './gemini'
 import { executeOpenCodeInSandbox } from './opencode'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
-export type AgentType = 'claude' | 'codex' | 'cursor' | 'opencode'
+export type AgentType = 'claude' | 'codex' | 'cursor' | 'gemini' | 'opencode'
 
 // Re-export types
 export type { AgentExecutionResult } from '../types'
@@ -39,6 +40,9 @@ export async function executeAgentInSandbox(
 
     case 'cursor':
       return executeCursorInSandbox(sandbox, instruction, logger, selectedModel)
+
+    case 'gemini':
+      return executeGeminiInSandbox(sandbox, instruction, logger, selectedModel)
 
     case 'opencode':
       return executeOpenCodeInSandbox(sandbox, instruction, logger, selectedModel)

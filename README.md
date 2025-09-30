@@ -1,6 +1,6 @@
 # Coding Agent Template
 
-A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, Cursor CLI, and opencode with [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) to automatically execute coding tasks on your repositories.
+A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, Cursor CLI, Google Gemini CLI, and opencode with [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) to automatically execute coding tasks on your repositories.
 
 ![Coding Agent Template Screenshot](screenshot.png)
 
@@ -12,7 +12,7 @@ You can deploy your own version of the coding agent template to Vercel with one 
 
 ## Features
 
-- **Multi-Agent Support**: Choose from Claude Code, OpenAI Codex CLI, Cursor CLI, or opencode to execute coding tasks
+- **Multi-Agent Support**: Choose from Claude Code, OpenAI Codex CLI, Cursor CLI, Google Gemini CLI, or opencode to execute coding tasks
 - **Vercel Sandbox**: Runs code in isolated, secure sandboxes ([docs](https://vercel.com/docs/vercel-sandbox))
 - **AI Gateway Integration**: Built for seamless integration with [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) for model routing and observability
 - **AI-Generated Branch Names**: Automatically generates descriptive Git branch names using AI SDK 5 + AI Gateway
@@ -57,6 +57,7 @@ Required environment variables:
 Optional environment variables:
 
 - `CURSOR_API_KEY`: For Cursor agent support
+- `GEMINI_API_KEY`: For Google Gemini agent support
 - `NPM_TOKEN`: For private npm packages
 
 ### 4. Set up the database
@@ -88,7 +89,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 1. **Task Creation**: When you submit a task, it's stored in the database
 2. **AI Branch Name Generation**: AI SDK 5 + AI Gateway automatically generates a descriptive branch name based on your task (non-blocking using Next.js 15's `after()`)
 3. **Sandbox Setup**: A Vercel sandbox is created with your repository
-4. **Agent Execution**: Your chosen coding agent (Claude Code, Codex CLI, Cursor CLI, or opencode) analyzes your prompt and makes changes
+4. **Agent Execution**: Your chosen coding agent (Claude Code, Codex CLI, Cursor CLI, Gemini CLI, or opencode) analyzes your prompt and makes changes
 5. **Git Operations**: Changes are committed and pushed to the AI-generated branch
 6. **Cleanup**: The sandbox is shut down to free resources
 
@@ -107,6 +108,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### Optional
 
 - `CURSOR_API_KEY`: Cursor agent API key
+- `GEMINI_API_KEY`: Google Gemini agent API key (get yours at [Google AI Studio](https://aistudio.google.com/apikey))
 - `NPM_TOKEN`: NPM token for private packages
 
 ## AI Branch Name Generation
@@ -132,7 +134,7 @@ The system automatically generates descriptive Git branch names using AI SDK 5 a
 - **UI Components**: shadcn/ui
 - **Database**: PostgreSQL with Drizzle ORM
 - **AI SDK**: AI SDK 5 with Vercel AI Gateway integration
-- **AI Agents**: Claude Code, OpenAI Codex CLI, Cursor CLI, opencode
+- **AI Agents**: Claude Code, OpenAI Codex CLI, Cursor CLI, Google Gemini CLI, opencode
 - **Sandbox**: [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
 - **Git**: Automated branching and commits with AI-generated branch names
 
