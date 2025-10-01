@@ -7,11 +7,12 @@ import { AlertCircle, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
+import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 
 // Model mappings for human-friendly names
 const AGENT_MODELS = {
   claude: [
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
   ],
@@ -27,14 +28,20 @@ const AGENT_MODELS = {
     { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+  ],
+  gemini: [
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
   opencode: [
     { value: 'gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
   ],
@@ -69,6 +76,8 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
         return Codex
       case 'cursor':
         return Cursor
+      case 'gemini':
+        return Gemini
       case 'opencode':
         return OpenCode
       default:
@@ -130,6 +139,9 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                             {task.prompt.slice(0, 50) + (task.prompt.length > 50 ? '...' : '')}
                           </h3>
                           {task.status === 'error' && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                          {task.status === 'stopped' && (
+                            <AlertCircle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                          )}
                         </div>
                         {task.repoUrl && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">

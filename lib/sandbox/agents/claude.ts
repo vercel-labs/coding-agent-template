@@ -81,18 +81,6 @@ export async function installClaudeCLI(
 
       // Create config file directly using absolute path
       // Use selectedModel if provided, otherwise fall back to default
-      const modelToUse = selectedModel || 'claude-3-5-sonnet-20241022'
-
-      const mcpServersConfig: Record<
-        string,
-        {
-          url: string
-          headers?: {
-            Authorization?: string
-            'X-Client-ID'?: string
-          }
-        }
-      > = {}
 
       if (mcpServers && mcpServers.length > 0) {
         await logger.info(`Adding ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
@@ -120,6 +108,7 @@ export async function installClaudeCLI(
         }
       }
 
+      const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
       const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
 {
   "api_key": "${process.env.ANTHROPIC_API_KEY}",
@@ -213,7 +202,7 @@ export async function executeClaudeInSandbox(
     }
 
     // Log what we're trying to do
-    const modelToUse = selectedModel || 'claude-3-5-sonnet-20241022'
+    const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
     if (logger) {
       await logger.info(
         `Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`,
