@@ -16,10 +16,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
-import { MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react'
+import { Cable, MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
+import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 
 interface HomePageHeaderProps {
   selectedOwner: string
@@ -33,6 +34,7 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showConnectorDialog, setShowConnectorDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
   const [deleteFailed, setDeleteFailed] = useState(true)
   const [deleteStopped, setDeleteStopped] = useState(true)
@@ -117,6 +119,10 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setShowConnectorDialog(true)}>
+            <Cable className="h-4 w-4 mr-2" />
+            Connectors
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Repositories
@@ -212,6 +218,8 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConnectorDialog open={showConnectorDialog} onOpenChange={setShowConnectorDialog} />
     </>
   )
 }

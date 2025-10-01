@@ -74,3 +74,46 @@ export const selectTaskSchema = z.object({
 
 export type Task = z.infer<typeof selectTaskSchema>
 export type InsertTask = z.infer<typeof insertTaskSchema>
+
+export const connectors = pgTable('connectors', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  baseUrl: text('base_url').notNull(),
+  oauthClientId: text('oauth_client_id'),
+  oauthClientSecret: text('oauth_client_secret'),
+  status: text('status', {
+    enum: ['connected', 'disconnected'],
+  })
+    .notNull()
+    .default('disconnected'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const insertConnectorSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  baseUrl: z.string().url('Must be a valid URL'),
+  oauthClientId: z.string().optional(),
+  oauthClientSecret: z.string().optional(),
+  status: z.enum(['connected', 'disconnected']).default('disconnected'),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+})
+
+export const selectConnectorSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  baseUrl: z.string(),
+  oauthClientId: z.string().nullable(),
+  oauthClientSecret: z.string().nullable(),
+  status: z.enum(['connected', 'disconnected']),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export type Connector = z.infer<typeof selectConnectorSchema>
+export type InsertConnector = z.infer<typeof insertConnectorSchema>

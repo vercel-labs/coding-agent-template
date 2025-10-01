@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { Sandbox } from '@vercel/sandbox'
 import { db } from '@/lib/db/client'
-import { tasks, insertTaskSchema } from '@/lib/db/schema'
+import { tasks, insertTaskSchema, connectors } from '@/lib/db/schema'
 import { generateId } from '@/lib/utils/id'
 import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
@@ -11,6 +11,7 @@ import { eq, desc, or } from 'drizzle-orm'
 import { createInfoLog } from '@/lib/utils/logging'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
+import { decrypt } from '@/lib/crypto'
 
 export async function GET() {
   try {
@@ -358,8 +359,33 @@ async function processTask(
       throw new Error('Sandbox is not available for agent execution')
     }
 
+    type Connector = typeof connectors.$inferSelect
+
+    let mcpServers: Connector[] = []
+
+    try {
+      const allConnectors = await db.select().from(connectors)
+      mcpServers = allConnectors
+        .filter((connector: Connector) => connector.status === 'connected')
+        .map((connector: Connector) => {
+          return {
+            ...connector,
+            oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
+          }
+        })
+
+      if (mcpServers.length > 0) {
+        await logger.info(
+          `Found ${mcpServers.length} connected MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`,
+        )
+      }
+    } catch (mcpError) {
+      console.error('Failed to fetch MCP servers:', mcpError)
+      await logger.info('Warning: Could not fetch MCP servers, continuing without them')
+    }
+
     const agentResult = await Promise.race([
-      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel),
+      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel, mcpServers),
       agentTimeoutPromise,
     ])
 
