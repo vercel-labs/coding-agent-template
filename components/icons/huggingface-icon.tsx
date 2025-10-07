@@ -59,4 +59,3 @@ const HuggingFaceIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export default HuggingFaceIcon
-

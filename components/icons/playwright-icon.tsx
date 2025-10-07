@@ -2,14 +2,7 @@ import * as React from 'react'
 import type { SVGProps } from 'react'
 
 const PlaywrightIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    viewBox="0 0 24 24"
-    fill="none"
-    {...props}
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" {...props}>
     <path
       fill="currentColor"
       opacity="0.8"
@@ -48,4 +41,3 @@ const PlaywrightIcon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export default PlaywrightIcon
-

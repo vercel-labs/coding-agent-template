@@ -123,7 +123,7 @@ export function TaskForm({
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
-  
+
   // Connectors state
   const { connectors, refreshConnectors, isLoading: connectorsLoading } = useConnectors()
   const [loadingConnectors, setLoadingConnectors] = useState<Set<string>>(new Set())
@@ -531,9 +531,7 @@ export function TaskForm({
                                 <div className="w-full min-w-0">
                                   <h4 className="font-semibold text-sm">{connector.name}</h4>
                                   {connector.description && (
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {connector.description}
-                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">{connector.description}</p>
                                   )}
                                 </div>
                               </div>

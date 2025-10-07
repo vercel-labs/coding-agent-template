@@ -2,14 +2,7 @@ import * as React from 'react'
 import type { SVGProps } from 'react'
 
 const Context7Icon = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="1em"
-    height="1em"
-    viewBox="0 0 74 75"
-    className="rounded"
-    {...props}
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 74 75" className="rounded" {...props}>
     <rect width="74" height="74" transform="translate(0 0.27832)" className="fill-black dark:fill-white" />
     <path
       d="M27.9415 40.599C27.9415 46.535 25.5335 51.491 21.6135 56.055H30.7415L30.7415 60.479H16.7415V56.279C21.0255 51.435 22.6775 47.487 22.6775 40.599L27.9415 40.599Z"
@@ -31,4 +24,3 @@ const Context7Icon = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export default Context7Icon
-
