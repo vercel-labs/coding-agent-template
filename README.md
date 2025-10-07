@@ -20,6 +20,7 @@ You can deploy your own version of the coding agent template to Vercel with one 
 - **Persistent Storage**: Tasks stored in Neon Postgres database
 - **Git Integration**: Automatically creates branches and commits changes
 - **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
+- **MCP Server Support**: Connect MCP servers to Claude Code for extended capabilities (Claude only)
 
 ## Setup
 
@@ -38,11 +39,7 @@ pnpm install
 
 ### 3. Set up environment variables
 
-Copy the example environment file and fill in your values:
-
-```bash
-cp .env.example .env.local
-```
+Create a `.env.local` file with your values:
 
 Required environment variables:
 
@@ -59,6 +56,7 @@ Optional environment variables:
 - `CURSOR_API_KEY`: For Cursor agent support
 - `GEMINI_API_KEY`: For Google Gemini agent support
 - `NPM_TOKEN`: For private npm packages
+- `ENCRYPTION_KEY`: 32-byte hex string for encrypting MCP OAuth secrets (required only when using MCP connectors). Generate with: `openssl rand -hex 32`
 
 ### 4. Set up the database
 
@@ -110,6 +108,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - `CURSOR_API_KEY`: Cursor agent API key
 - `GEMINI_API_KEY`: Google Gemini agent API key (get yours at [Google AI Studio](https://aistudio.google.com/apikey))
 - `NPM_TOKEN`: NPM token for private packages
+- `ENCRYPTION_KEY`: 32-byte hex string for encrypting MCP OAuth secrets (required only when using MCP connectors). Generate with: `openssl rand -hex 32`
 
 ## AI Branch Name Generation
 
@@ -137,6 +136,19 @@ The system automatically generates descriptive Git branch names using AI SDK 5 a
 - **AI Agents**: Claude Code, OpenAI Codex CLI, Cursor CLI, Google Gemini CLI, opencode
 - **Sandbox**: [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
 - **Git**: Automated branching and commits with AI-generated branch names
+
+## MCP Server Support
+
+Connect MCP Servers to extend Claude Code with additional tools and integrations. **Currently only works with Claude Code agent.**
+
+### How to Add MCP Servers
+
+1. Go to the "Connectors" tab and click "Add MCP Server"
+2. Enter server details (name, base URL, optional OAuth credentials)
+3. If using OAuth, generate encryption key: `openssl rand -hex 32`
+4. Add to `.env.local`: `ENCRYPTION_KEY=your-32-byte-hex-key`
+
+**Note**: `ENCRYPTION_KEY` is only required when using MCP servers with OAuth authentication.
 
 ## Development
 

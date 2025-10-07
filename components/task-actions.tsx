@@ -15,12 +15,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreHorizontal, RotateCcw, Trash2, ExternalLink } from 'lucide-react'
+import { Cable, ExternalLink, MoreHorizontal, RotateCcw, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { useTasks } from '@/components/app-layout'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
+import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 
 interface TaskActionsProps {
   task: Task
@@ -84,6 +85,7 @@ const DEFAULT_MODELS = {
 export function TaskActions({ task }: TaskActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showTryAgainDialog, setShowTryAgainDialog] = useState(false)
+  const [showConnectorDialog, setShowConnectorDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isTryingAgain, setIsTryingAgain] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(task.selectedAgent || 'claude')
@@ -204,6 +206,10 @@ export function TaskActions({ task }: TaskActionsProps) {
                 Open PR
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem onClick={() => setShowConnectorDialog(true)}>
+              <Cable className="h-4 w-4 mr-2" />
+              Connectors
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Try Again
@@ -282,6 +288,8 @@ export function TaskActions({ task }: TaskActionsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConnectorDialog open={showConnectorDialog} onOpenChange={setShowConnectorDialog} />
     </>
   )
 }

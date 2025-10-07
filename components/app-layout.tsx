@@ -2,13 +2,14 @@
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { TaskSidebar } from '@/components/task-sidebar'
-import { Task } from '@/lib/db/schema'
+import { Task, Connector } from '@/lib/db/schema'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { getSidebarWidth, setSidebarWidth, getSidebarOpen, setSidebarOpen } from '@/lib/utils/cookies'
 import { nanoid } from 'nanoid'
+import { ConnectorsProvider } from '@/components/connectors-provider'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -264,72 +265,74 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
 
   return (
     <TasksContext.Provider value={{ refreshTasks: fetchTasks, toggleSidebar, isSidebarOpen, addTaskOptimistically }}>
-      <div
-        className="h-screen flex relative"
-        style={
-          {
-            '--sidebar-width': `${sidebarWidth}px`,
-            '--sidebar-open': isSidebarOpen ? '1' : '0',
-          } as React.CSSProperties
-        }
-        suppressHydrationWarning
-      >
-        {/* Backdrop - Mobile Only */}
-        {isSidebarOpen && <div className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={closeSidebar} />}
-
-        {/* Sidebar */}
+      <ConnectorsProvider>
         <div
-          className={`
+          className="h-screen flex relative"
+          style={
+            {
+              '--sidebar-width': `${sidebarWidth}px`,
+              '--sidebar-open': isSidebarOpen ? '1' : '0',
+            } as React.CSSProperties
+          }
+          suppressHydrationWarning
+        >
+          {/* Backdrop - Mobile Only */}
+          {isSidebarOpen && <div className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={closeSidebar} />}
+
+          {/* Sidebar */}
+          <div
+            className={`
             fixed inset-y-0 left-0 z-40
             ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             ${isSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'}
           `}
-          style={{
-            width: `${sidebarWidth}px`,
-          }}
-        >
-          <div
-            className="h-full overflow-hidden"
             style={{
               width: `${sidebarWidth}px`,
             }}
           >
-            {isLoading ? (
-              <SidebarLoader width={sidebarWidth} />
-            ) : (
-              <TaskSidebar tasks={tasks} onTaskSelect={handleTaskSelect} width={sidebarWidth} />
-            )}
+            <div
+              className="h-full overflow-hidden"
+              style={{
+                width: `${sidebarWidth}px`,
+              }}
+            >
+              {isLoading ? (
+                <SidebarLoader width={sidebarWidth} />
+              ) : (
+                <TaskSidebar tasks={tasks} onTaskSelect={handleTaskSelect} width={sidebarWidth} />
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Resize Handle - Desktop Only, when sidebar is open */}
-        <div
-          className={`
+          {/* Resize Handle - Desktop Only, when sidebar is open */}
+          <div
+            className={`
             hidden lg:block fixed inset-y-0 cursor-col-resize group z-41 hover:bg-primary/20
             ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}
             ${isSidebarOpen ? 'w-1 opacity-100' : 'w-0 opacity-0'}
           `}
-          onMouseDown={isSidebarOpen ? handleMouseDown : undefined}
-          style={{
-            // Position it right after the sidebar
-            left: isSidebarOpen ? `${sidebarWidth}px` : '0px',
-          }}
-        >
-          <div className="absolute inset-0 w-2 -ml-0.5" />
-          <div className="absolute inset-y-0 left-0 w-0.5 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
+            onMouseDown={isSidebarOpen ? handleMouseDown : undefined}
+            style={{
+              // Position it right after the sidebar
+              left: isSidebarOpen ? `${sidebarWidth}px` : '0px',
+            }}
+          >
+            <div className="absolute inset-0 w-2 -ml-0.5" />
+            <div className="absolute inset-y-0 left-0 w-0.5 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
 
-        {/* Main Content */}
-        <div
-          className={`flex-1 overflow-auto flex flex-col lg:ml-0 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
-          style={{
-            marginLeft: isSidebarOpen ? `${sidebarWidth + 4}px` : '0px',
-          }}
-        >
-          {children}
+          {/* Main Content */}
+          <div
+            className={`flex-1 overflow-auto flex flex-col lg:ml-0 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+            style={{
+              marginLeft: isSidebarOpen ? `${sidebarWidth + 4}px` : '0px',
+            }}
+          >
+            {children}
+          </div>
         </div>
-      </div>
+      </ConnectorsProvider>
     </TasksContext.Provider>
   )
 }
