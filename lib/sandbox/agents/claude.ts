@@ -88,24 +88,46 @@ export async function installClaudeCLI(
         for (const server of mcpServers) {
           const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
-          let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
+          if (server.type === 'local') {
+            // Local STDIO server - command string contains both executable and args
+            let addMcpCmd = `${envPrefix} claude mcp add "${serverName}" -- ${server.command}`
 
-          if (server.oauthClientSecret) {
-            addMcpCmd += ` --header "Authorization: Bearer ${server.oauthClientSecret}"`
-          }
+            // Add env vars if provided
+            if (server.env && Object.keys(server.env).length > 0) {
+              const envVars = Object.entries(server.env)
+                .map(([key, value]) => `--env ${key}="${value}"`)
+                .join(' ')
+              addMcpCmd = addMcpCmd.replace(' --', ` ${envVars} --`)
+            }
 
-          if (server.oauthClientId) {
-            addMcpCmd += ` --header "X-Client-ID: ${server.oauthClientId}"`
-          }
+            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
 
-          const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
-
-          if (addResult.success) {
-            await logger.info(`Successfully added MCP server: ${server.name}`)
+            if (addResult.success) {
+              await logger.info(`Successfully added local MCP server: ${server.name}`)
+            } else {
+              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
+              await logger.info(`Failed to add MCP server ${server.name}: ${redactedError}`)
+            }
           } else {
-            // Redact any secrets from error message before logging
-            const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
-            await logger.info(`Failed to add MCP server ${server.name}: ${redactedError}`)
+            // Remote HTTP/SSE server
+            let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
+
+            if (server.oauthClientSecret) {
+              addMcpCmd += ` --header "Authorization: Bearer ${server.oauthClientSecret}"`
+            }
+
+            if (server.oauthClientId) {
+              addMcpCmd += ` --header "X-Client-ID: ${server.oauthClientId}"`
+            }
+
+            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
+
+            if (addResult.success) {
+              await logger.info(`Successfully added remote MCP server: ${server.name}`)
+            } else {
+              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
+              await logger.info(`Failed to add MCP server ${server.name}: ${redactedError}`)
+            }
           }
         }
       }

@@ -142,7 +142,11 @@ export async function executeCursorInSandbox(
 
       // Create mcp.json configuration file
       const mcpConfig: {
-        mcpServers: Record<string, { url: string; headers?: Record<string, string> }>
+        mcpServers: Record<
+          string,
+          | { url: string; headers?: Record<string, string> }
+          | { command: string; args?: string[]; env?: Record<string, string> }
+        >
       } = {
         mcpServers: {},
       }
@@ -150,18 +154,38 @@ export async function executeCursorInSandbox(
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
-        mcpConfig.mcpServers[serverName] = {
-          url: server.baseUrl,
-        }
+        if (server.type === 'local') {
+          // Local STDIO server - parse command string into command and args
+          const commandParts = server.command!.trim().split(/\s+/)
+          const executable = commandParts[0]
+          const args = commandParts.slice(1)
 
-        // Add headers if authentication is provided
-        if (server.oauthClientSecret) {
-          mcpConfig.mcpServers[serverName].headers = {
-            Authorization: `Bearer ${server.oauthClientSecret}`,
+          mcpConfig.mcpServers[serverName] = {
+            command: executable,
+            ...(args.length > 0 ? { args } : {}),
+            ...(server.env ? { env: server.env } : {}),
           }
-        }
+          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+        } else {
+          // Remote HTTP/SSE server
+          mcpConfig.mcpServers[serverName] = {
+            url: server.baseUrl!,
+          }
 
-        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
+          // Merge headers from oauth and env
+          const headers: Record<string, string> = {}
+          if (server.oauthClientSecret) {
+            headers.Authorization = `Bearer ${server.oauthClientSecret}`
+          }
+          if (server.oauthClientId) {
+            headers['X-Client-ID'] = server.oauthClientId
+          }
+          if (Object.keys(headers).length > 0) {
+            mcpConfig.mcpServers[serverName].headers = headers
+          }
+
+          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
+        }
       }
 
       // Write the mcp.json file to the Cursor config directory (not project directory)
@@ -212,7 +236,6 @@ EOF`
     // Log what we're about to execute
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
     const logCommand = `cursor-agent -p --force --output-format json${modelFlag} "${instruction}"`
-    await logger.command(logCommand)
     if (logger) {
       await logger.command(logCommand)
       if (selectedModel) {

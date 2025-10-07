@@ -18,17 +18,23 @@ export async function createConnector(_: FormState, formData: FormData): Promise
   try {
     const name = formData.get('name') as string
     const description = formData.get('description') as string
+    const type = (formData.get('type') as string) || 'remote'
     const baseUrl = formData.get('baseUrl') as string
     const oauthClientId = formData.get('oauthClientId') as string
     const oauthClientSecret = formData.get('oauthClientSecret') as string
+    const command = formData.get('command') as string
+    const envJson = formData.get('env') as string
 
     const connectorData = {
       id: nanoid(),
       name,
       description: description?.trim() || undefined,
-      baseUrl,
+      type: type as 'local' | 'remote',
+      baseUrl: baseUrl?.trim() || undefined,
       oauthClientId: oauthClientId?.trim() || undefined,
       oauthClientSecret: oauthClientSecret?.trim() || undefined,
+      command: command?.trim() || undefined,
+      env: envJson ? JSON.parse(envJson) : undefined,
       status: 'connected' as const,
     }
 
@@ -38,9 +44,12 @@ export async function createConnector(_: FormState, formData: FormData): Promise
       id: validatedData.id!,
       name: validatedData.name,
       description: validatedData.description || null,
-      baseUrl: validatedData.baseUrl,
+      type: validatedData.type,
+      baseUrl: validatedData.baseUrl || null,
       oauthClientId: validatedData.oauthClientId || null,
       oauthClientSecret: validatedData.oauthClientSecret ? encrypt(validatedData.oauthClientSecret) : null,
+      command: validatedData.command || null,
+      env: validatedData.env ? JSON.parse(JSON.stringify(validatedData.env)) : null,
       status: validatedData.status,
     })
 
@@ -95,6 +104,90 @@ export async function toggleConnectorStatus(id: string, status: 'connected' | 'd
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to update connector status',
+    }
+  }
+}
+
+export async function updateConnector(_: FormState, formData: FormData): Promise<FormState> {
+  try {
+    const id = formData.get('id') as string
+
+    if (!id) {
+      return {
+        success: false,
+        message: 'Connector ID is required',
+        errors: {},
+      }
+    }
+
+    const name = formData.get('name') as string
+    const description = formData.get('description') as string
+    const type = (formData.get('type') as string) || 'remote'
+    const baseUrl = formData.get('baseUrl') as string
+    const oauthClientId = formData.get('oauthClientId') as string
+    const oauthClientSecret = formData.get('oauthClientSecret') as string
+    const command = formData.get('command') as string
+    const envJson = formData.get('env') as string
+
+    const connectorData = {
+      name,
+      description: description?.trim() || undefined,
+      type: type as 'local' | 'remote',
+      baseUrl: baseUrl?.trim() || undefined,
+      oauthClientId: oauthClientId?.trim() || undefined,
+      oauthClientSecret: oauthClientSecret?.trim() || undefined,
+      command: command?.trim() || undefined,
+      env: envJson ? JSON.parse(envJson) : undefined,
+      status: 'connected' as const,
+    }
+
+    const validatedData = insertConnectorSchema.parse(connectorData)
+
+    await db
+      .update(connectors)
+      .set({
+        name: validatedData.name,
+        description: validatedData.description || null,
+        type: validatedData.type,
+        baseUrl: validatedData.baseUrl || null,
+        oauthClientId: validatedData.oauthClientId || null,
+        oauthClientSecret: validatedData.oauthClientSecret ? encrypt(validatedData.oauthClientSecret) : null,
+        command: validatedData.command || null,
+        env: validatedData.env ? JSON.parse(JSON.stringify(validatedData.env)) : null,
+        status: validatedData.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(connectors.id, id))
+
+    revalidatePath('/')
+
+    return {
+      success: true,
+      message: 'Connector updated successfully',
+      errors: {},
+    }
+  } catch (error) {
+    console.error('Error updating connector:', error)
+
+    if (error instanceof ZodError) {
+      const fieldErrors: Record<string, string> = {}
+      error.issues.forEach((issue) => {
+        if (issue.path.length > 0) {
+          fieldErrors[issue.path[0] as string] = issue.message
+        }
+      })
+
+      return {
+        success: false,
+        message: 'Validation failed',
+        errors: fieldErrors,
+      }
+    }
+
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to update connector',
+      errors: {},
     }
   }
 }

@@ -1,15 +1,24 @@
 'use client'
 
-import { Task, LogEntry } from '@/lib/db/schema'
+import { Task, LogEntry, Connector } from '@/lib/db/schema'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check, Square } from 'lucide-react'
+import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check, Server } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
 import { TaskDuration } from '@/components/task-duration'
+import BrowserbaseIcon from '@/components/icons/browserbase-icon'
+import Context7Icon from '@/components/icons/context7-icon'
+import ConvexIcon from '@/components/icons/convex-icon'
+import FigmaIcon from '@/components/icons/figma-icon'
+import HuggingFaceIcon from '@/components/icons/huggingface-icon'
+import LinearIcon from '@/components/icons/linear-icon'
+import NotionIcon from '@/components/icons/notion-icon'
+import PlaywrightIcon from '@/components/icons/playwright-icon'
+import SupabaseIcon from '@/components/icons/supabase-icon'
 
 interface TaskDetailsProps {
   task: Task
@@ -20,6 +29,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
+  const [mcpServers, setMcpServers] = useState<Connector[]>([])
+  const [loadingMcpServers, setLoadingMcpServers] = useState(false)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
@@ -63,6 +74,124 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         return null
     }
   }
+
+  // Model mappings for all agents
+  const AGENT_MODELS: Record<string, Array<{ value: string; label: string }>> = {
+    claude: [
+      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    ],
+    codex: [
+      { value: 'openai/gpt-5', label: 'GPT-5' },
+      { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
+      { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
+      { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
+      { value: 'gpt-5-pro', label: 'GPT-5 pro' },
+      { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
+    ],
+    cursor: [
+      { value: 'auto', label: 'Auto' },
+      { value: 'gpt-5', label: 'GPT-5' },
+      { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+      { value: 'gpt-5-nano', label: 'GPT-5 nano' },
+      { value: 'gpt-4.1', label: 'GPT-4.1' },
+      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    ],
+    gemini: [
+      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    ],
+    opencode: [
+      { value: 'gpt-5', label: 'GPT-5' },
+      { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+      { value: 'gpt-5-nano', label: 'GPT-5 nano' },
+      { value: 'gpt-4.1', label: 'GPT-4.1' },
+      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    ],
+  }
+
+  // Get readable model name
+  const getModelName = (modelId: string | null, agent: string | null) => {
+    if (!modelId || !agent) return modelId
+
+    const agentModels = AGENT_MODELS[agent.toLowerCase()]
+    if (!agentModels) return modelId
+
+    const model = agentModels.find((m) => m.value === modelId)
+    return model ? model.label : modelId
+  }
+
+  // Function to determine which icon to show for a connector
+  const getConnectorIcon = (connector: Connector) => {
+    const lowerName = connector.name.toLowerCase()
+    const url = connector.baseUrl?.toLowerCase() || ''
+    const cmd = connector.command?.toLowerCase() || ''
+
+    // Check by name, URL, or command
+    if (lowerName.includes('browserbase') || cmd.includes('browserbasehq') || cmd.includes('@browserbasehq/mcp')) {
+      return <BrowserbaseIcon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('context7') || url.includes('context7.com')) {
+      return <Context7Icon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('convex') || cmd.includes('convex') || url.includes('convex')) {
+      return <ConvexIcon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('figma') || url.includes('figma.com')) {
+      return <FigmaIcon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('hugging') || lowerName.includes('huggingface') || url.includes('hf.co')) {
+      return <HuggingFaceIcon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('linear') || url.includes('linear.app')) {
+      return <LinearIcon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('notion') || url.includes('notion.com')) {
+      return <NotionIcon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('playwright') || cmd.includes('playwright') || cmd.includes('@playwright/mcp')) {
+      return <PlaywrightIcon className="h-6 w-6 flex-shrink-0" />
+    }
+    if (lowerName.includes('supabase') || url.includes('supabase.com')) {
+      return <SupabaseIcon className="h-6 w-6 flex-shrink-0" />
+    }
+
+    // Default icon
+    return <Server className="h-6 w-6 flex-shrink-0 text-muted-foreground" />
+  }
+
+  // Fetch MCP servers if task has mcpServerIds (only when IDs actually change)
+  useEffect(() => {
+    async function fetchMcpServers() {
+      if (!task.mcpServerIds || task.mcpServerIds.length === 0) {
+        return
+      }
+
+      setLoadingMcpServers(true)
+
+      try {
+        const response = await fetch('/api/connectors')
+        if (response.ok) {
+          const result = await response.json()
+          const taskMcpServers = result.data.filter((c: Connector) => task.mcpServerIds?.includes(c.id))
+          setMcpServers(taskMcpServers)
+        }
+      } catch (error) {
+        console.error('Failed to fetch MCP servers:', error)
+      } finally {
+        setLoadingMcpServers(false)
+      }
+    }
+
+    fetchMcpServers()
+    // Use JSON.stringify to create stable dependency - only re-run when IDs actually change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(task.mcpServerIds)])
 
   // Scroll to bottom on initial load
   useEffect(() => {
@@ -274,7 +403,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                 {task.selectedModel && (
                   <div className="min-w-0">
                     <h4 className="font-medium mb-2">Model</h4>
-                    <p className="text-sm text-muted-foreground truncate">{task.selectedModel}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {getModelName(task.selectedModel, task.selectedAgent)}
+                    </p>
                   </div>
                 )}
               </div>
@@ -318,6 +449,30 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                       )}
                     </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {task.mcpServerIds && task.mcpServerIds.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">MCP Servers</h4>
+                {loadingMcpServers ? (
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="h-10 w-32 bg-muted rounded-md animate-pulse" />
+                    ))}
+                  </div>
+                ) : mcpServers.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {mcpServers.map((server) => (
+                      <div key={server.id} className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm">
+                        {getConnectorIcon(server)}
+                        <span>{server.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No MCP servers found</p>
                 )}
               </div>
             )}

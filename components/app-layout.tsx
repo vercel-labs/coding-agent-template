@@ -2,7 +2,7 @@
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { TaskSidebar } from '@/components/task-sidebar'
-import { Task, Connector } from '@/lib/db/schema'
+import { Task } from '@/lib/db/schema'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
@@ -211,6 +211,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
       error: null,
       branchName: null,
       sandboxUrl: null,
+      mcpServerIds: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       completedAt: null,

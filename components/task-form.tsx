@@ -15,9 +15,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Loader2, ArrowUp, Settings, X } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Loader2, ArrowUp, Settings, X, Cable } from 'lucide-react'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
-import { getInstallDependencies, setInstallDependencies, getMaxDuration, setMaxDuration } from '@/lib/utils/cookies'
+import { setInstallDependencies, setMaxDuration } from '@/lib/utils/cookies'
+import { useConnectors } from '@/components/connectors-provider'
+import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 
 interface GitHubRepo {
   name: string
@@ -62,15 +65,16 @@ const AGENT_MODELS = {
   codex: [
     { value: 'openai/gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
-    { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
-    { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano' },
+    { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
+    { value: 'gpt-5-pro', label: 'GPT-5 pro' },
     { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
   ],
   cursor: [
     { value: 'auto', label: 'Auto' },
     { value: 'gpt-5', label: 'GPT-5' },
-    { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
-    { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
+    { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'gpt-5-nano', label: 'GPT-5 nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
@@ -82,8 +86,8 @@ const AGENT_MODELS = {
   ],
   opencode: [
     { value: 'gpt-5', label: 'GPT-5' },
-    { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
-    { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
+    { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'gpt-5-nano', label: 'GPT-5 nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
@@ -112,12 +116,16 @@ export function TaskForm({
   const [selectedAgent, setSelectedAgent] = useState('claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
   const [repos, setRepos] = useState<GitHubRepo[]>([])
-  const [loadingRepos, setLoadingRepos] = useState(false)
+  const [, setLoadingRepos] = useState(false)
 
   // Options state - initialize with server values
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
+  const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
+
+  // Connectors state
+  const { connectors } = useConnectors()
 
   // Ref for the textarea to focus it programmatically
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -419,56 +427,93 @@ export function TaskForm({
 
               {/* Options and Submit Buttons */}
               <div className="flex items-center gap-2">
-                <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
-                  <DialogTrigger asChild>
-                    <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Task Options</DialogTitle>
-                      <DialogDescription>Configure settings for your task execution.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="install-deps"
-                          checked={installDependencies}
-                          onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
-                        />
-                        <Label
-                          htmlFor="install-deps"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Install Dependencies?
-                        </Label>
+                <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-full h-8 w-8 p-0 relative"
+                        onClick={() => setShowMcpServersDialog(true)}
+                      >
+                        <Cable className="h-4 w-4" />
+                        {connectors.filter((c) => c.status === 'connected').length > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
+                          >
+                            {connectors.filter((c) => c.status === 'connected').length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>MCP Servers</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DialogTrigger asChild>
+                          <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Task Options</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle>Task Options</DialogTitle>
+                        <DialogDescription>Configure settings for your task execution.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-6 py-4 overflow-y-auto flex-1">
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-semibold">Task Settings</h3>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="install-deps"
+                              checked={installDependencies}
+                              onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
+                            />
+                            <Label
+                              htmlFor="install-deps"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Install Dependencies?
+                            </Label>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="max-duration" className="text-sm font-medium">
+                              Maximum Duration
+                            </Label>
+                            <Select
+                              value={maxDuration.toString()}
+                              onValueChange={(value) => updateMaxDuration(parseInt(value))}
+                            >
+                              <SelectTrigger id="max-duration" className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 minute</SelectItem>
+                                <SelectItem value="2">2 minutes</SelectItem>
+                                <SelectItem value="3">3 minutes</SelectItem>
+                                <SelectItem value="5">5 minutes</SelectItem>
+                                <SelectItem value="10">10 minutes</SelectItem>
+                                <SelectItem value="15">15 minutes</SelectItem>
+                                <SelectItem value="30">30 minutes</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="max-duration" className="text-sm font-medium">
-                          Maximum Duration
-                        </Label>
-                        <Select
-                          value={maxDuration.toString()}
-                          onValueChange={(value) => updateMaxDuration(parseInt(value))}
-                        >
-                          <SelectTrigger id="max-duration" className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 minute</SelectItem>
-                            <SelectItem value="2">2 minutes</SelectItem>
-                            <SelectItem value="3">3 minutes</SelectItem>
-                            <SelectItem value="5">5 minutes</SelectItem>
-                            <SelectItem value="10">10 minutes</SelectItem>
-                            <SelectItem value="15">15 minutes</SelectItem>
-                            <SelectItem value="30">30 minutes</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                    </DialogContent>
+                  </Dialog>
+                </TooltipProvider>
 
                 <Button
                   type="submit"
@@ -483,6 +528,8 @@ export function TaskForm({
           </div>
         </div>
       </form>
+
+      <ConnectorDialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog} />
     </div>
   )
 }

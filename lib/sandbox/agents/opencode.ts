@@ -139,7 +139,11 @@ export async function executeOpenCodeInSandbox(
       // Create OpenCode opencode.json configuration file
       const opencodeConfig: {
         $schema: string
-        mcp: Record<string, { type: string; url: string; enabled: boolean; headers?: Record<string, string> }>
+        mcp: Record<
+          string,
+          | { type: 'local'; command: string[]; enabled: boolean; environment?: Record<string, string> }
+          | { type: 'remote'; url: string; enabled: boolean; headers?: Record<string, string> }
+        >
       } = {
         $schema: 'https://opencode.ai/config.json',
         mcp: {},
@@ -148,29 +152,40 @@ export async function executeOpenCodeInSandbox(
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
-        // Configure as remote MCP server
-        opencodeConfig.mcp[serverName] = {
-          type: 'remote',
-          url: server.baseUrl,
-          enabled: true,
-        }
+        if (server.type === 'local') {
+          // Local MCP server - parse command string into executable and args
+          const commandParts = server.command!.trim().split(/\s+/)
 
-        // Add Authorization header if authentication is provided
-        if (server.oauthClientSecret) {
-          opencodeConfig.mcp[serverName].headers = {
-            Authorization: `Bearer ${server.oauthClientSecret}`,
+          opencodeConfig.mcp[serverName] = {
+            type: 'local',
+            command: commandParts,
+            enabled: true,
+            ...(server.env ? { environment: server.env } : {}),
           }
-        }
 
-        // Add additional headers if client ID is provided
-        if (server.oauthClientId) {
-          if (!opencodeConfig.mcp[serverName].headers) {
-            opencodeConfig.mcp[serverName].headers = {}
+          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+        } else {
+          // Remote MCP server
+          opencodeConfig.mcp[serverName] = {
+            type: 'remote',
+            url: server.baseUrl!,
+            enabled: true,
           }
-          opencodeConfig.mcp[serverName].headers['X-Client-ID'] = server.oauthClientId
-        }
 
-        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
+          // Build headers object
+          const headers: Record<string, string> = {}
+          if (server.oauthClientSecret) {
+            headers.Authorization = `Bearer ${server.oauthClientSecret}`
+          }
+          if (server.oauthClientId) {
+            headers['X-Client-ID'] = server.oauthClientId
+          }
+          if (Object.keys(headers).length > 0) {
+            opencodeConfig.mcp[serverName].headers = headers
+          }
+
+          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
+        }
       }
 
       // Write the opencode.json file to the OpenCode config directory (not project directory)
