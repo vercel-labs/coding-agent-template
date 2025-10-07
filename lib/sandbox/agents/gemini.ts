@@ -127,13 +127,14 @@ export async function executeGeminiInSandbox(
 ${settingsJson}
 EOF`
 
-      const settingsResult = await runAndLogCommand(sandbox, 'sh', ['-c', createSettingsCmd], logger)
+      await logger.info('Creating Gemini MCP settings file...')
+      const settingsResult = await runCommandInSandbox(sandbox, 'sh', ['-c', createSettingsCmd])
 
       if (settingsResult.success) {
         await logger.info('Gemini settings.json file created successfully')
-
-        // Verify the file was created
-        const verifySettings = await runAndLogCommand(sandbox, 'cat', ['~/.gemini/settings.json'], logger)
+        
+        // Verify the file was created (without logging sensitive contents)
+        const verifySettings = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.gemini/settings.json'])
         if (verifySettings.success) {
           await logger.info('Gemini MCP configuration verified')
         }

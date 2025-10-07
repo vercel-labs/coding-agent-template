@@ -176,13 +176,14 @@ export async function executeOpenCodeInSandbox(
 ${opencodeConfigJson}
 EOF`
 
-      const configResult = await runAndLogCommand(sandbox, 'sh', ['-c', createConfigCmd], logger)
+      await logger.info('Creating OpenCode MCP configuration file...')
+      const configResult = await runCommandInSandbox(sandbox, 'sh', ['-c', createConfigCmd])
 
       if (configResult.success) {
         await logger.info('OpenCode configuration file (~/.opencode/config.json) created successfully')
         
-        // Verify the file was created
-        const verifyConfig = await runAndLogCommand(sandbox, 'cat', ['~/.opencode/config.json'], logger)
+        // Verify the file was created (without logging sensitive contents)
+        const verifyConfig = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.opencode/config.json'])
         if (verifyConfig.success) {
           await logger.info('OpenCode MCP configuration verified')
         }

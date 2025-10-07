@@ -168,13 +168,14 @@ export async function executeCursorInSandbox(
 ${mcpConfigJson}
 EOF`
 
-      const mcpConfigResult = await runAndLogCommand(sandbox, 'sh', ['-c', createMcpConfigCmd], logger)
+      await logger.info('Creating Cursor MCP configuration file...')
+      const mcpConfigResult = await runCommandInSandbox(sandbox, 'sh', ['-c', createMcpConfigCmd])
 
       if (mcpConfigResult.success) {
         await logger.info('MCP configuration file (~/.cursor/mcp.json) created successfully')
         
-        // Verify the file was created
-        const verifyMcpConfig = await runAndLogCommand(sandbox, 'cat', ['~/.cursor/mcp.json'], logger)
+        // Verify the file was created (without logging sensitive contents)
+        const verifyMcpConfig = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.cursor/mcp.json'])
         if (verifyMcpConfig.success) {
           await logger.info('MCP configuration verified')
         }

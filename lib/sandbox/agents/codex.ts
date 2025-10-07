@@ -193,6 +193,10 @@ url = "${server.baseUrl}"
       }
     }
 
+    if (logger) {
+      await logger.info('Creating Codex configuration file...')
+    }
+
     const configSetupResult = await sandbox.runCommand({
       cmd: 'sh',
       args: ['-c', `mkdir -p ~/.codex && cat > ~/.codex/config.toml << 'EOF'\n${configToml}EOF`],
@@ -204,16 +208,16 @@ url = "${server.baseUrl}"
       await logger.info(`Codex config setup: ${configSetupResult.exitCode === 0 ? 'SUCCESS' : 'FAILED'}`)
     }
 
-    // Debug: Check if the config file was created correctly
+    // Debug: Check if the config file was created correctly (without logging sensitive contents)
     const configCheckResult = await sandbox.runCommand({
-      cmd: 'cat',
-      args: ['~/.codex/config.toml'],
+      cmd: 'test',
+      args: ['-f', '~/.codex/config.toml'],
       env: { HOME: '/home/vercel-sandbox' },
       sudo: false,
     })
 
     if (logger && configCheckResult.exitCode === 0) {
-      await logger.info('Config file contents verified')
+      await logger.info('Config file verified')
     }
 
     // Debug: List files in the current directory before running Codex
