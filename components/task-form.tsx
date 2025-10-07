@@ -18,6 +18,11 @@ import {
 import { Loader2, ArrowUp, Settings, X } from 'lucide-react'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { getInstallDependencies, setInstallDependencies, getMaxDuration, setMaxDuration } from '@/lib/utils/cookies'
+import { useConnectors } from '@/components/connectors-provider'
+import { Card } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { toggleConnectorStatus } from '@/lib/actions/connectors'
+import { toast } from 'sonner'
 
 interface GitHubRepo {
   name: string
@@ -118,6 +123,10 @@ export function TaskForm({
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
+  
+  // Connectors state
+  const { connectors, refreshConnectors, isLoading: connectorsLoading } = useConnectors()
+  const [loadingConnectors, setLoadingConnectors] = useState<Set<string>>(new Set())
 
   // Ref for the textarea to focus it programmatically
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -131,6 +140,31 @@ export function TaskForm({
   const updateMaxDuration = (value: number) => {
     setMaxDurationState(value)
     setMaxDuration(value)
+  }
+
+  const handleToggleConnectorStatus = async (id: string, currentStatus: 'connected' | 'disconnected') => {
+    const newStatus = currentStatus === 'connected' ? 'disconnected' : 'connected'
+
+    setLoadingConnectors((prev) => new Set(prev).add(id))
+
+    try {
+      const result = await toggleConnectorStatus(id, newStatus)
+
+      if (result.success) {
+        await refreshConnectors()
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
+    } catch {
+      toast.error('Failed to update connector status')
+    } finally {
+      setLoadingConnectors((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
+      })
+    }
   }
 
   // Handle keyboard events in textarea
@@ -425,46 +459,92 @@ export function TaskForm({
                       <Settings className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                       <DialogTitle>Task Options</DialogTitle>
                       <DialogDescription>Configure settings for your task execution.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="install-deps"
-                          checked={installDependencies}
-                          onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
-                        />
-                        <Label
-                          htmlFor="install-deps"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Install Dependencies?
-                        </Label>
+                    <div className="space-y-6 py-4 overflow-y-auto flex-1">
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-semibold">Task Settings</h3>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="install-deps"
+                            checked={installDependencies}
+                            onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
+                          />
+                          <Label
+                            htmlFor="install-deps"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Install Dependencies?
+                          </Label>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="max-duration" className="text-sm font-medium">
+                            Maximum Duration
+                          </Label>
+                          <Select
+                            value={maxDuration.toString()}
+                            onValueChange={(value) => updateMaxDuration(parseInt(value))}
+                          >
+                            <SelectTrigger id="max-duration" className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 minute</SelectItem>
+                              <SelectItem value="2">2 minutes</SelectItem>
+                              <SelectItem value="3">3 minutes</SelectItem>
+                              <SelectItem value="5">5 minutes</SelectItem>
+                              <SelectItem value="10">10 minutes</SelectItem>
+                              <SelectItem value="15">15 minutes</SelectItem>
+                              <SelectItem value="30">30 minutes</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="max-duration" className="text-sm font-medium">
-                          Maximum Duration
-                        </Label>
-                        <Select
-                          value={maxDuration.toString()}
-                          onValueChange={(value) => updateMaxDuration(parseInt(value))}
-                        >
-                          <SelectTrigger id="max-duration" className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 minute</SelectItem>
-                            <SelectItem value="2">2 minutes</SelectItem>
-                            <SelectItem value="3">3 minutes</SelectItem>
-                            <SelectItem value="5">5 minutes</SelectItem>
-                            <SelectItem value="10">10 minutes</SelectItem>
-                            <SelectItem value="15">15 minutes</SelectItem>
-                            <SelectItem value="30">30 minutes</SelectItem>
-                          </SelectContent>
-                        </Select>
+
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-semibold">MCP Servers</h3>
+                        {connectorsLoading ? (
+                          <div className="space-y-3">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                              <Card key={i} className="flex flex-row items-center justify-between p-4">
+                                <div className="flex items-start space-x-4 flex-1">
+                                  <div className="w-full space-y-2">
+                                    <div className="h-4 bg-muted animate-pulse rounded w-1/4"></div>
+                                    <div className="h-3 bg-muted animate-pulse rounded w-3/4"></div>
+                                  </div>
+                                </div>
+                                <div className="w-12 h-6 bg-muted animate-pulse rounded-full"></div>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : connectors.length === 0 ? (
+                          <Card className="p-6 text-center">
+                            <p className="text-sm text-muted-foreground">No MCP servers configured yet.</p>
+                          </Card>
+                        ) : (
+                          connectors.map((connector) => (
+                            <Card key={connector.id} className="flex flex-row items-center justify-between p-3">
+                              <div className="flex items-start space-x-4 flex-1 min-w-0">
+                                <div className="w-full min-w-0">
+                                  <h4 className="font-semibold text-sm">{connector.name}</h4>
+                                  {connector.description && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {connector.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Switch
+                                checked={connector.status === 'connected'}
+                                disabled={loadingConnectors.has(connector.id)}
+                                onCheckedChange={() => handleToggleConnectorStatus(connector.id, connector.status)}
+                              />
+                            </Card>
+                          ))
+                        )}
                       </div>
                     </div>
                   </DialogContent>

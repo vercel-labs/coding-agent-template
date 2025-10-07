@@ -18,17 +18,25 @@ export async function createConnector(_: FormState, formData: FormData): Promise
   try {
     const name = formData.get('name') as string
     const description = formData.get('description') as string
+    const type = (formData.get('type') as string) || 'remote'
     const baseUrl = formData.get('baseUrl') as string
     const oauthClientId = formData.get('oauthClientId') as string
     const oauthClientSecret = formData.get('oauthClientSecret') as string
+    const command = formData.get('command') as string
+    const argsJson = formData.get('args') as string
+    const envJson = formData.get('env') as string
 
     const connectorData = {
       id: nanoid(),
       name,
       description: description?.trim() || undefined,
-      baseUrl,
+      type: type as 'local' | 'remote',
+      baseUrl: baseUrl?.trim() || undefined,
       oauthClientId: oauthClientId?.trim() || undefined,
       oauthClientSecret: oauthClientSecret?.trim() || undefined,
+      command: command?.trim() || undefined,
+      args: argsJson ? JSON.parse(argsJson) : undefined,
+      env: envJson ? JSON.parse(envJson) : undefined,
       status: 'connected' as const,
     }
 
@@ -38,9 +46,13 @@ export async function createConnector(_: FormState, formData: FormData): Promise
       id: validatedData.id!,
       name: validatedData.name,
       description: validatedData.description || null,
-      baseUrl: validatedData.baseUrl,
+      type: validatedData.type,
+      baseUrl: validatedData.baseUrl || null,
       oauthClientId: validatedData.oauthClientId || null,
       oauthClientSecret: validatedData.oauthClientSecret ? encrypt(validatedData.oauthClientSecret) : null,
+      command: validatedData.command || null,
+      args: validatedData.args || null,
+      env: validatedData.env ? JSON.parse(JSON.stringify(validatedData.env)) : null,
       status: validatedData.status,
     })
 

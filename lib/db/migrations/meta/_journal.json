@@ -50,6 +50,13 @@
       "when": 1759859119371,
       "tag": "0006_nostalgic_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1759862728155,
+      "tag": "0007_lethal_hitman",
+      "breakpoints": true
     }
   ]
 }

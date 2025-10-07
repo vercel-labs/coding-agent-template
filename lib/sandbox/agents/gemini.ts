@@ -92,7 +92,11 @@ export async function executeGeminiInSandbox(
 
       // Create Gemini settings.json configuration file
       const settingsConfig: {
-        mcpServers: Record<string, { httpUrl: string; headers?: Record<string, string> }>
+        mcpServers: Record<
+          string,
+          | { httpUrl: string; headers?: Record<string, string> }
+          | { command: string; args?: string[]; env?: Record<string, string> }
+        >
       } = {
         mcpServers: {},
       }
@@ -100,27 +104,34 @@ export async function executeGeminiInSandbox(
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
-        // Configure as remote HTTP server
-        settingsConfig.mcpServers[serverName] = {
-          httpUrl: server.baseUrl,
-        }
-
-        // Add Authorization header if authentication is provided
-        if (server.oauthClientSecret) {
-          settingsConfig.mcpServers[serverName].headers = {
-            Authorization: `Bearer ${server.oauthClientSecret}`,
+        if (server.type === 'local') {
+          // Local STDIO server
+          settingsConfig.mcpServers[serverName] = {
+            command: server.command!,
+            ...(server.args && server.args.length > 0 ? { args: server.args } : {}),
+            ...(server.env ? { env: server.env } : {}),
           }
-        }
-
-        // Add additional headers if client ID is provided
-        if (server.oauthClientId) {
-          if (!settingsConfig.mcpServers[serverName].headers) {
-            settingsConfig.mcpServers[serverName].headers = {}
+          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+        } else {
+          // Remote HTTP server
+          settingsConfig.mcpServers[serverName] = {
+            httpUrl: server.baseUrl!,
           }
-          settingsConfig.mcpServers[serverName].headers['X-Client-ID'] = server.oauthClientId
-        }
 
-        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
+          // Build headers object
+          const headers: Record<string, string> = {}
+          if (server.oauthClientSecret) {
+            headers.Authorization = `Bearer ${server.oauthClientSecret}`
+          }
+          if (server.oauthClientId) {
+            headers['X-Client-ID'] = server.oauthClientId
+          }
+          if (Object.keys(headers).length > 0) {
+            settingsConfig.mcpServers[serverName].headers = headers
+          }
+
+          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
+        }
       }
 
       // Write the settings.json file to ~/.gemini/

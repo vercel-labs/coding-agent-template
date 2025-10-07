@@ -1,20 +1,26 @@
 'use client'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Switch } from '../ui/switch'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { createConnector, toggleConnectorStatus, deleteConnector } from '@/lib/actions/connectors'
+import { createConnector } from '@/lib/actions/connectors'
 import { useActionState } from 'react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import { useConnectors } from '@/components/connectors-provider'
-import { Loader2, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Loader2, Plus, X, ArrowLeft } from 'lucide-react'
+import BrowserbaseIcon from '@/components/icons/browserbase-icon'
+import Context7Icon from '@/components/icons/context7-icon'
+import ConvexIcon from '@/components/icons/convex-icon'
+import FigmaIcon from '@/components/icons/figma-icon'
+import HuggingFaceIcon from '@/components/icons/huggingface-icon'
+import LinearIcon from '@/components/icons/linear-icon'
+import NotionIcon from '@/components/icons/notion-icon'
+import PlaywrightIcon from '@/components/icons/playwright-icon'
+import SupabaseIcon from '@/components/icons/supabase-icon'
 
 interface ConnectorDialogProps {
   open: boolean
@@ -33,169 +39,350 @@ const initialState: FormState = {
   errors: {},
 }
 
+type PresetConfig = {
+  name: string
+  type: 'local' | 'remote'
+  command?: string
+  args?: string[]
+  url?: string
+  envKeys?: string[]
+}
+
+const PRESETS: PresetConfig[] = [
+  {
+    name: 'Browserbase',
+    type: 'local',
+    command: 'npx',
+    args: ['@browserbasehq/mcp'],
+    envKeys: ['BROWSERBASE_API_KEY', 'BROWSERBASE_PROJECT_ID'],
+  },
+  {
+    name: 'Context7',
+    type: 'remote',
+    url: 'https://mcp.context7.com/mcp',
+  },
+  {
+    name: 'Convex',
+    type: 'local',
+    command: 'npx',
+    args: ['-y', 'convex@latest', 'mcp', 'start'],
+  },
+  {
+    name: 'Figma',
+    type: 'remote',
+    url: 'https://mcp.figma.com/mcp',
+  },
+  {
+    name: 'Hugging Face',
+    type: 'remote',
+    url: 'https://hf.co/mcp',
+  },
+  {
+    name: 'Linear',
+    type: 'remote',
+    url: 'https://mcp.linear.app/sse',
+  },
+  {
+    name: 'Notion',
+    type: 'remote',
+    url: 'https://mcp.notion.com/mcp',
+  },
+  {
+    name: 'Playwright',
+    type: 'local',
+    command: 'npx',
+    args: ['-y', '@playwright/mcp@latest'],
+  },
+  {
+    name: 'Supabase',
+    type: 'remote',
+    url: 'https://mcp.supabase.com/mcp',
+  },
+]
+
 export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
   const [state, formAction, pending] = useActionState(createConnector, initialState)
-  const { connectors, refreshConnectors, isLoading } = useConnectors()
-  const [loadingConnectors, setLoadingConnectors] = useState<Set<string>>(new Set())
-
-  const handleToggleStatus = async (id: string, currentStatus: 'connected' | 'disconnected') => {
-    const newStatus = currentStatus === 'connected' ? 'disconnected' : 'connected'
-
-    setLoadingConnectors((prev) => new Set(prev).add(id))
-
-    try {
-      const result = await toggleConnectorStatus(id, newStatus)
-      if (result.success) {
-        toast.success(result.message)
-        await refreshConnectors()
-      } else {
-        toast.error(result.message)
-      }
-    } catch (error) {
-      toast.error('Failed to update connector status')
-    } finally {
-      setLoadingConnectors((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(id)
-        return newSet
-      })
-    }
-  }
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return
-
-    setLoadingConnectors((prev) => new Set(prev).add(id))
-
-    try {
-      const result = await deleteConnector(id)
-      if (result.success) {
-        toast.success(result.message)
-        await refreshConnectors()
-      } else {
-        toast.error(result.message)
-      }
-    } catch (error) {
-      toast.error('Failed to delete connector')
-    } finally {
-      setLoadingConnectors((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(id)
-        return newSet
-      })
-    }
-  }
+  const { refreshConnectors } = useConnectors()
+  const [serverType, setServerType] = useState<'local' | 'remote'>('remote')
+  const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>([])
+  const [args, setArgs] = useState<string[]>([''])
+  const [selectedPreset, setSelectedPreset] = useState<PresetConfig | null>(null)
+  const [view, setView] = useState<'presets' | 'form'>('presets')
 
   useEffect(() => {
     if (state.success) {
       toast.success(state.message)
       refreshConnectors() // Refresh after successful creation
+      // Reset form
+      setServerType('remote')
+      setEnvVars([])
+      setArgs([''])
+      setSelectedPreset(null)
+      setView('presets')
     } else if (state.message && !state.success) {
       toast.error(state.message)
     }
   }, [state, refreshConnectors])
 
+  const addEnvVar = () => {
+    setEnvVars([...envVars, { key: '', value: '' }])
+  }
+
+  const removeEnvVar = (index: number) => {
+    setEnvVars(envVars.filter((_, i) => i !== index))
+  }
+
+  const updateEnvVar = (index: number, field: 'key' | 'value', value: string) => {
+    const newEnvVars = [...envVars]
+    newEnvVars[index][field] = value
+    setEnvVars(newEnvVars)
+  }
+
+  const addArg = () => {
+    setArgs([...args, ''])
+  }
+
+  const removeArg = (index: number) => {
+    setArgs(args.filter((_, i) => i !== index))
+  }
+
+  const updateArg = (index: number, value: string) => {
+    const newArgs = [...args]
+    newArgs[index] = value
+    setArgs(newArgs)
+  }
+
+  const handleSelectPreset = (preset: PresetConfig) => {
+    setSelectedPreset(preset)
+    setServerType(preset.type)
+    
+    // Set env vars based on preset's envKeys
+    if (preset.envKeys && preset.envKeys.length > 0) {
+      setEnvVars(preset.envKeys.map(key => ({ key, value: '' })))
+    } else {
+      setEnvVars([])
+    }
+    
+    // Set args for local presets
+    if (preset.type === 'local' && preset.args) {
+      setArgs(preset.args)
+    } else {
+      setArgs([''])
+    }
+    
+    // Switch to form view
+    setView('form')
+  }
+
+  const handleAddCustom = () => {
+    setSelectedPreset(null)
+    setServerType('remote')
+    setEnvVars([])
+    setArgs([''])
+    setView('form')
+  }
+
+  const handleBack = () => {
+    setSelectedPreset(null)
+    setServerType('remote')
+    setEnvVars([])
+    setArgs([''])
+    setView('presets')
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>MCP Servers</DialogTitle>
+          <DialogTitle>
+            {view === 'form' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="mr-2 -ml-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            MCP Servers
+          </DialogTitle>
           <DialogDescription>Allow agents to reference other apps and services for more context.</DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="connectors" className="h-full">
-          <TabsList className="grid w-full grid-cols-2 mb-2">
-            <TabsTrigger value="connectors">Connectors</TabsTrigger>
-            <TabsTrigger value="add-custom">Add Custom</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="connectors" className="space-y-4 overflow-y-auto max-h-[60vh]">
-            <div className="space-y-3">
-              {isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Card key={i} className="flex flex-row items-center justify-between p-4">
-                      <div className="flex items-start space-x-4 flex-1">
-                        <div className="w-full space-y-2">
-                          <div className="h-4 bg-muted animate-pulse rounded w-1/4"></div>
-                          <div className="h-3 bg-muted animate-pulse rounded w-3/4"></div>
-                        </div>
-                      </div>
-                      <div className="w-12 h-6 bg-muted animate-pulse rounded-full"></div>
-                    </Card>
-                  ))}
+        {view === 'presets' ? (
+          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
+            <div className="grid grid-cols-3 gap-6">
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                  onClick={() => handleSelectPreset(preset)}
+                  type="button"
+                >
+                  {preset.name === 'Browserbase' ? (
+                    <BrowserbaseIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Context7' ? (
+                    <Context7Icon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Convex' ? (
+                    <ConvexIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Figma' ? (
+                    <FigmaIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Hugging Face' ? (
+                    <HuggingFaceIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Linear' ? (
+                    <LinearIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Notion' ? (
+                    <NotionIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Playwright' ? (
+                    <PlaywrightIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : preset.name === 'Supabase' ? (
+                    <SupabaseIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                  ) : null}
+                  <span className="text-sm font-medium text-center">{preset.name}</span>
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleAddCustom}
+            >
+              Add Custom MCP Server
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
+            <form
+              action={(formData) => {
+                // Add type field
+                formData.append('type', serverType)
+                
+                // For presets, ensure command/baseUrl are added even if disabled
+                if (selectedPreset) {
+                  if (selectedPreset.type === 'local' && selectedPreset.command) {
+                    formData.set('command', selectedPreset.command)
+                  } else if (selectedPreset.type === 'remote' && selectedPreset.url) {
+                    formData.set('baseUrl', selectedPreset.url)
+                  }
+                }
+                
+                // Add env vars as JSON
+                const envObj = envVars.reduce(
+                  (acc, { key, value }) => {
+                    if (key && value) acc[key] = value
+                    return acc
+                  },
+                  {} as Record<string, string>,
+                )
+                if (Object.keys(envObj).length > 0) {
+                  formData.append('env', JSON.stringify(envObj))
+                }
+                
+                // Add args as JSON for local servers
+                if (serverType === 'local') {
+                  const filteredArgs = args.filter((arg) => arg.trim() !== '')
+                  if (filteredArgs.length > 0) {
+                    formData.append('args', JSON.stringify(filteredArgs))
+                  }
+                }
+                
+                formAction(formData)
+              }}
+              className="space-y-4"
+            >
+              {selectedPreset && (
+                <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                  {selectedPreset.name === 'Browserbase' ? (
+                    <BrowserbaseIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Context7' ? (
+                    <Context7Icon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Convex' ? (
+                    <ConvexIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Figma' ? (
+                    <FigmaIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Hugging Face' ? (
+                    <HuggingFaceIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Linear' ? (
+                    <LinearIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Notion' ? (
+                    <NotionIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Playwright' ? (
+                    <PlaywrightIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : selectedPreset.name === 'Supabase' ? (
+                    <SupabaseIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                  ) : null}
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Configuring {selectedPreset.name}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedPreset(null)
+                      setEnvVars([])
+                      setArgs([''])
+                      setServerType('remote')
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-              ) : (
-                connectors.map((connector) => (
-                  <Card key={connector.id} className="flex flex-row items-center justify-between p-4">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-full">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-semibold">{connector.name}</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{connector?.description ?? ''}</p>
-                      </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Example MCP Server"
+                  defaultValue={selectedPreset?.name || ''}
+                  required
+                />
+                {state.errors?.name && <p className="text-sm text-red-600">{state.errors.name}</p>}
+              </div>
+
+              {!selectedPreset && (
+                <div className="space-y-2">
+                  <Label>Server Type</Label>
+                  <RadioGroup value={serverType} onValueChange={(value) => setServerType(value as 'local' | 'remote')}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="remote" id="remote" />
+                      <Label htmlFor="remote" className="font-normal cursor-pointer">
+                        Remote (HTTP/SSE)
+                      </Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={connector.status === 'connected'}
-                        disabled={loadingConnectors.has(connector.id)}
-                        onCheckedChange={() => handleToggleStatus(connector.id, connector.status)}
-                      />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(connector.id, connector.name)}
-                            disabled={loadingConnectors.has(connector.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <RadioGroupItem value="local" id="local" />
+                      <Label htmlFor="local" className="font-normal cursor-pointer">
+                        Local (STDIO)
+                      </Label>
                     </div>
-                  </Card>
-                ))
+                  </RadioGroup>
+                </div>
               )}
-            </div>
-          </TabsContent>
 
-          <TabsContent value="add-custom" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Add Custom MCP Server</CardTitle>
-                <CardDescription>
-                  Create a custom MCP server to integrate with your own services or APIs.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <form action={formAction} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input id="name" name="name" placeholder="Example MCP Server" required />
-                    {state.errors?.name && <p className="text-sm text-red-600">{state.errors.name}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (optional)</Label>
-                    <Input id="description" name="description" placeholder="Example description (optional)" />
-                  </div>
-
+              {serverType === 'remote' ? (
+                <>
                   <div className="space-y-2">
                     <Label htmlFor="baseUrl">Base URL</Label>
-                    <Input id="baseUrl" name="baseUrl" type="url" placeholder="https://api.example.com" required />
+                    <Input
+                      id="baseUrl"
+                      name="baseUrl"
+                      type="url"
+                      placeholder="https://api.example.com"
+                      defaultValue={selectedPreset?.url || ''}
+                      required={serverType === 'remote'}
+                      disabled={!!selectedPreset}
+                    />
                     {state.errors?.baseUrl && <p className="text-sm text-red-600">{state.errors.baseUrl}</p>}
                   </div>
 
                   <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="advanced">
-                      <AccordionTrigger>Advanced settings</AccordionTrigger>
-                      <AccordionContent className="space-y-4">
+                    <AccordionItem value="advanced" className="border-none">
+                      <AccordionTrigger className="text-sm py-2">Advanced Settings</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-2">
                         <div className="space-y-2">
                           <Label htmlFor="oauthClientId">OAuth Client ID (optional)</Label>
                           <Input id="oauthClientId" name="oauthClientId" placeholder="OAuth Client ID (optional)" />
@@ -213,24 +400,109 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
-
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button type="submit" disabled={pending}>
-                      {pending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        'Add MCP Server'
-                      )}
-                    </Button>
+                    </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="command">Command</Label>
+                    <Input
+                      id="command"
+                      name="command"
+                      placeholder="npx"
+                      defaultValue={selectedPreset?.command || ''}
+                      required={serverType === 'local'}
+                      disabled={!!selectedPreset}
+                    />
+                    {state.errors?.command && <p className="text-sm text-red-600">{state.errors.command}</p>}
                   </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Arguments</Label>
+                      <Button type="button" size="sm" variant="outline" onClick={addArg}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Argument
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {args.map((arg, index) => {
+                        const isPresetArg = selectedPreset?.args && index < selectedPreset.args.length
+                        return (
+                          <div key={index} className="flex gap-2">
+                            <Input
+                              placeholder={`Argument ${index + 1}`}
+                              value={arg}
+                              onChange={(e) => updateArg(index, e.target.value)}
+                              disabled={isPresetArg}
+                            />
+                            {args.length > 1 && !isPresetArg && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeArg(index)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Environment Variables {selectedPreset && selectedPreset.envKeys && selectedPreset.envKeys.length > 0 ? '' : '(optional)'}</Label>
+                  <Button type="button" size="sm" variant="outline" onClick={addEnvVar}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Variable
+                  </Button>
+                </div>
+                {envVars.length > 0 && (
+                  <div className="space-y-2">
+                    {envVars.map((envVar, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          placeholder="KEY"
+                          value={envVar.key}
+                          onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
+                          disabled={selectedPreset?.envKeys?.includes(envVar.key)}
+                        />
+                        <Input
+                          placeholder="value"
+                          type="password"
+                          value={envVar.value}
+                          onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
+                        />
+                        {!(selectedPreset?.envKeys?.includes(envVar.key)) && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeEnvVar(index)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="submit" disabled={pending}>
+                  {pending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Add MCP Server'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

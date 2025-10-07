@@ -172,24 +172,47 @@ log_requests = true
     if (mcpServers && mcpServers.length > 0) {
       await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
 
-      // Enable experimental RMCP client for streamable HTTP support
-      configToml = `experimental_use_rmcp_client = true\n\n` + configToml
+      // Check if we need experimental RMCP client (for remote servers)
+      const hasRemoteServers = mcpServers.some((s) => s.type === 'remote')
+      if (hasRemoteServers) {
+        configToml = `experimental_use_rmcp_client = true\n\n` + configToml
+      }
 
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
-        configToml += `
+        if (server.type === 'local') {
+          // Local STDIO server
+          configToml += `
+[mcp_servers.${serverName}]
+command = "${server.command}"
+`
+          // Add args if provided
+          if (server.args && server.args.length > 0) {
+            configToml += `args = [${server.args.map((arg) => `"${arg}"`).join(', ')}]\n`
+          }
+
+          // Add env vars if provided
+          if (server.env && Object.keys(server.env).length > 0) {
+            configToml += `env = { ${Object.entries(server.env)
+              .map(([key, value]) => `"${key}" = "${value}"`)
+              .join(', ')} }\n`
+          }
+
+          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+        } else {
+          // Remote HTTP/SSE server
+          configToml += `
 [mcp_servers.${serverName}]
 url = "${server.baseUrl}"
 `
+          // Add bearer token if available (using oauthClientSecret)
+          if (server.oauthClientSecret) {
+            configToml += `bearer_token = "${server.oauthClientSecret}"\n`
+          }
 
-        // Add bearer token if available (using oauthClientSecret)
-        if (server.oauthClientSecret) {
-          configToml += `bearer_token = "${server.oauthClientSecret}"
-`
+          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
         }
-
-        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
       }
     }
 
