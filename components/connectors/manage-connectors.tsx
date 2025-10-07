@@ -124,7 +124,7 @@ const PRESETS: PresetConfig[] = [
 export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
   const { connectors, refreshConnectors, isLoading: connectorsLoading } = useConnectors()
   const [loadingConnectors, setLoadingConnectors] = useState<Set<string>>(new Set())
-  
+
   // Jotai atoms
   const [view, setView] = useAtom(connectorDialogViewAtom)
   const editingConnector = useAtomValue(editingConnectorAtom)
@@ -142,16 +142,16 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
   const goBackFromPresets = useSetAtom(goBackFromPresetsAtom)
   const onSuccessAction = useSetAtom(onSuccessActionAtom)
   const clearPreset = useSetAtom(clearPresetActionAtom)
-  
+
   // Use separate action states for create and update
   const [createState, createAction, createPending] = useActionState(createConnector, initialState)
   const [updateState, updateAction, updatePending] = useActionState(updateConnector, initialState)
-  
+
   // Use the appropriate state and action based on whether we're editing
   const state = isEditing ? updateState : createState
   const formAction = isEditing ? updateAction : createAction
   const pending = isEditing ? updatePending : createPending
-  
+
   const lastStateRef = useRef<{ success: boolean; message: string }>({ success: false, message: '' })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -161,7 +161,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     if (open) {
       resetDialogState()
     }
-    
+
     // Reset the state ref when dialog opens/closes
     if (!open) {
       lastStateRef.current = { success: false, message: '' }
@@ -269,8 +269,12 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     setVisibleEnvVars(newVisible)
   }
 
-
-  const getConnectorIcon = (connector: { name: string; type: string; baseUrl: string | null; command: string | null }) => {
+  const getConnectorIcon = (connector: {
+    name: string
+    type: string
+    baseUrl: string | null
+    command: string | null
+  }) => {
     const lowerName = connector.name.toLowerCase()
     const url = connector.baseUrl?.toLowerCase() || ''
     const cmd = connector.command?.toLowerCase() || ''
@@ -313,7 +317,12 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center">
               {(view === 'form' || view === 'presets') && (
-                <Button variant="ghost" size="sm" onClick={() => view === 'form' ? goBackFromForm() : goBackFromPresets()} className="mr-2 -ml-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => (view === 'form' ? goBackFromForm() : goBackFromPresets())}
+                  className="mr-2 -ml-2"
+                >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
@@ -483,12 +492,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     <div className="flex-1">
                       <p className="text-sm font-medium">Configuring {selectedPreset.name}</p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => clearPreset()}
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={() => clearPreset()}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>

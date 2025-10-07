@@ -430,10 +430,10 @@ export function TaskForm({
                 <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         className="rounded-full h-8 w-8 p-0 relative"
                         onClick={() => setShowMcpServersDialog(true)}
                       >
@@ -529,10 +529,7 @@ export function TaskForm({
         </div>
       </form>
 
-      <ConnectorDialog
-        open={showMcpServersDialog}
-        onOpenChange={setShowMcpServersDialog}
-      />
+      <ConnectorDialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog} />
     </div>
   )
 }

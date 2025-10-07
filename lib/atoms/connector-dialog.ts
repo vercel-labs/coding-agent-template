@@ -36,7 +36,7 @@ export const resetDialogStateAtom = atom(null, (get, set) => {
 export const setEditingConnectorActionAtom = atom(null, (get, set, connector: Connector) => {
   set(editingConnectorAtom, connector)
   set(serverTypeAtom, connector.type)
-  
+
   // Set env vars if they exist
   if (connector.env) {
     const envArray = Object.entries(connector.env).map(([key, value]) => ({ key, value: String(value) }))
@@ -64,7 +64,10 @@ export const selectPresetActionAtom = atom(null, (get, set, preset: PresetConfig
 
   // Set env vars based on preset's envKeys
   if (preset.envKeys && preset.envKeys.length > 0) {
-    set(envVarsAtom, preset.envKeys.map((key) => ({ key, value: '' })))
+    set(
+      envVarsAtom,
+      preset.envKeys.map((key) => ({ key, value: '' })),
+    )
   } else {
     set(envVarsAtom, [])
   }
@@ -83,7 +86,7 @@ export const addCustomServerAtom = atom(null, (get, set) => {
 
 export const goBackFromFormAtom = atom(null, (get, set) => {
   const isEditing = get(isEditingAtom)
-  
+
   if (isEditing) {
     // Go back to list view when editing
     set(connectorDialogViewAtom, 'list')
@@ -121,4 +124,3 @@ export const clearPresetActionAtom = atom(null, (get, set) => {
   set(envVarsAtom, [])
   set(serverTypeAtom, 'remote')
 })
-
