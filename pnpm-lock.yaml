@@ -74,6 +74,9 @@ importers:
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@neondatabase/serverless@0.10.4)(@opentelemetry/api@1.9.0)(@types/pg@8.15.5)(@types/react@19.1.13)(pg@8.16.3)(postgres@3.4.7)(react@19.1.0)
+      jotai:
+        specifier: ^2.15.0
+        version: 2.15.0(@types/react@19.1.13)(react@19.1.0)
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -2318,6 +2321,24 @@ packages:
   jiti@2.6.0:
     resolution: {integrity: sha512-VXe6RjJkBPj0ohtqaO8vSWP3ZhAKo66fKrFNCll4BTcwljPLz03pCbaNKfzGP5MbrCYcbJ7v0nOYYwUzTEIdXQ==}
     hasBin: true
+
+  jotai@2.15.0:
+    resolution: {integrity: sha512-nbp/6jN2Ftxgw0VwoVnOg0m5qYM1rVcfvij+MZx99Z5IK13eGve9FJoCwGv+17JvVthTjhSmNtT5e1coJnr6aw==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@babel/core': '>=7.0.0'
+      '@babel/template': '>=7.0.0'
+      '@types/react': '>=17.0.0'
+      react: '>=17.0.0'
+    peerDependenciesMeta:
+      '@babel/core':
+        optional: true
+      '@babel/template':
+        optional: true
+      '@types/react':
+        optional: true
+      react:
+        optional: true
 
   js-cookie@3.0.5:
     resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
@@ -5243,6 +5264,11 @@ snapshots:
       set-function-name: 2.0.2
 
   jiti@2.6.0: {}
+
+  jotai@2.15.0(@types/react@19.1.13)(react@19.1.0):
+    optionalDependencies:
+      '@types/react': 19.1.13
+      react: 19.1.0
 
   js-cookie@3.0.5: {}
 

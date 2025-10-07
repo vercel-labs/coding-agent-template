@@ -16,13 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { createConnector, updateConnector, deleteConnector } from '@/lib/actions/connectors'
+import { createConnector, updateConnector, deleteConnector, toggleConnectorStatus } from '@/lib/actions/connectors'
 import type { Connector } from '@/lib/db/schema'
 import { useActionState } from 'react'
 import { toast } from 'sonner'
 import { useEffect, useState, useRef } from 'react'
 import { useConnectors } from '@/components/connectors-provider'
-import { Loader2, Plus, X, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Plus, X, ArrowLeft, Eye, EyeOff, Pencil, Server } from 'lucide-react'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
 import ConvexIcon from '@/components/icons/convex-icon'
@@ -32,13 +32,32 @@ import LinearIcon from '@/components/icons/linear-icon'
 import NotionIcon from '@/components/icons/notion-icon'
 import PlaywrightIcon from '@/components/icons/playwright-icon'
 import SupabaseIcon from '@/components/icons/supabase-icon'
+import { Card } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import {
+  connectorDialogViewAtom,
+  editingConnectorAtom,
+  selectedPresetAtom,
+  serverTypeAtom,
+  envVarsAtom,
+  visibleEnvVarsAtom,
+  isEditingAtom,
+  resetDialogStateAtom,
+  setEditingConnectorActionAtom,
+  startAddingConnectorAtom,
+  selectPresetActionAtom,
+  addCustomServerAtom,
+  goBackFromFormAtom,
+  goBackFromPresetsAtom,
+  onSuccessActionAtom,
+  clearPresetActionAtom,
+  type PresetConfig,
+} from '@/lib/atoms/connector-dialog'
 
 interface ConnectorDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  editingConnector?: Connector | null
-  onSuccess?: () => void
-  onBack?: () => void
 }
 
 type FormState = {
@@ -51,14 +70,6 @@ const initialState: FormState = {
   success: false,
   message: '',
   errors: {},
-}
-
-type PresetConfig = {
-  name: string
-  type: 'local' | 'remote'
-  command?: string
-  url?: string
-  envKeys?: string[]
 }
 
 const PRESETS: PresetConfig[] = [
@@ -110,48 +121,52 @@ const PRESETS: PresetConfig[] = [
   },
 ]
 
-export function ConnectorDialog({ open, onOpenChange, editingConnector, onSuccess, onBack }: ConnectorDialogProps) {
-  const isEditing = !!editingConnector
-  const [state, formAction, pending] = useActionState(isEditing ? updateConnector : createConnector, initialState)
-  const { refreshConnectors } = useConnectors()
-  const [serverType, setServerType] = useState<'local' | 'remote'>('remote')
-  const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>([])
-  const [selectedPreset, setSelectedPreset] = useState<PresetConfig | null>(null)
-  const [view, setView] = useState<'presets' | 'form'>('presets')
-  const [visibleEnvVars, setVisibleEnvVars] = useState<Set<number>>(new Set())
+export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
+  const { connectors, refreshConnectors, isLoading: connectorsLoading } = useConnectors()
+  const [loadingConnectors, setLoadingConnectors] = useState<Set<string>>(new Set())
+  
+  // Jotai atoms
+  const [view, setView] = useAtom(connectorDialogViewAtom)
+  const editingConnector = useAtomValue(editingConnectorAtom)
+  const isEditing = useAtomValue(isEditingAtom)
+  const [serverType, setServerType] = useAtom(serverTypeAtom)
+  const [envVars, setEnvVars] = useAtom(envVarsAtom)
+  const selectedPreset = useAtomValue(selectedPresetAtom)
+  const [visibleEnvVars, setVisibleEnvVars] = useAtom(visibleEnvVarsAtom)
+  const resetDialogState = useSetAtom(resetDialogStateAtom)
+  const setEditingConnectorAction = useSetAtom(setEditingConnectorActionAtom)
+  const startAddingConnector = useSetAtom(startAddingConnectorAtom)
+  const selectPresetAction = useSetAtom(selectPresetActionAtom)
+  const addCustomServer = useSetAtom(addCustomServerAtom)
+  const goBackFromForm = useSetAtom(goBackFromFormAtom)
+  const goBackFromPresets = useSetAtom(goBackFromPresetsAtom)
+  const onSuccessAction = useSetAtom(onSuccessActionAtom)
+  const clearPreset = useSetAtom(clearPresetActionAtom)
+  
+  // Use separate action states for create and update
+  const [createState, createAction, createPending] = useActionState(createConnector, initialState)
+  const [updateState, updateAction, updatePending] = useActionState(updateConnector, initialState)
+  
+  // Use the appropriate state and action based on whether we're editing
+  const state = isEditing ? updateState : createState
+  const formAction = isEditing ? updateAction : createAction
+  const pending = isEditing ? updatePending : createPending
+  
   const lastStateRef = useRef<{ success: boolean; message: string }>({ success: false, message: '' })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Pre-fill form when editing
+  // Reset to list view when dialog opens
   useEffect(() => {
-    if (editingConnector && open) {
-      setServerType(editingConnector.type)
-      setView('form')
-      setSelectedPreset(null)
-
-      // Set env vars if they exist
-      if (editingConnector.env) {
-        const envArray = Object.entries(editingConnector.env).map(([key, value]) => ({ key, value: String(value) }))
-        setEnvVars(envArray)
-      } else {
-        setEnvVars([])
-      }
-      setVisibleEnvVars(new Set())
-    } else if (!editingConnector && open) {
-      // Only reset to presets view when dialog opens without editing
-      setView('presets')
-      setServerType('remote')
-      setEnvVars([])
-      setSelectedPreset(null)
-      setVisibleEnvVars(new Set())
+    if (open) {
+      resetDialogState()
     }
-
-    // Reset the state ref when dialog opens/closes or when switching between create/edit
+    
+    // Reset the state ref when dialog opens/closes
     if (!open) {
       lastStateRef.current = { success: false, message: '' }
     }
-  }, [editingConnector, open])
+  }, [open, resetDialogState])
 
   useEffect(() => {
     // Only show toast if state has actually changed (not just reference)
@@ -162,11 +177,8 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
       if (state.success) {
         toast.success(state.message)
         refreshConnectors() // Refresh after successful creation/update
-        onOpenChange(false) // Close dialog on success
-        // Call onSuccess callback if provided
-        if (onSuccess) {
-          onSuccess()
-        }
+        // Go back to list view on success
+        onSuccessAction()
       } else {
         toast.error(state.message)
       }
@@ -174,23 +186,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
       // Update the ref to the current state
       lastStateRef.current = { success: state.success, message: state.message }
     }
-  }, [state.success, state.message, refreshConnectors, onOpenChange, onSuccess])
-
-  // Reset form state after dialog closes (to prevent flash)
-  useEffect(() => {
-    if (!open && !isEditing) {
-      // Delay reset to ensure dialog animation completes (typical dialog animations are 200-300ms)
-      const timer = setTimeout(() => {
-        setServerType('remote')
-        setEnvVars([])
-        setSelectedPreset(null)
-        setView('presets')
-        setVisibleEnvVars(new Set())
-      }, 300)
-
-      return () => clearTimeout(timer)
-    }
-  }, [open, isEditing])
+  }, [state.success, state.message, refreshConnectors, onSuccessAction])
 
   const addEnvVar = () => {
     setEnvVars([...envVars, { key: '', value: '' }])
@@ -216,6 +212,31 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
     setEnvVars(newEnvVars)
   }
 
+  const handleToggleConnectorStatus = async (id: string, currentStatus: 'connected' | 'disconnected') => {
+    const newStatus = currentStatus === 'connected' ? 'disconnected' : 'connected'
+
+    setLoadingConnectors((prev) => new Set(prev).add(id))
+
+    try {
+      const result = await toggleConnectorStatus(id, newStatus)
+
+      if (result.success) {
+        await refreshConnectors()
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
+    } catch {
+      toast.error('Failed to update connector status')
+    } finally {
+      setLoadingConnectors((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
+      })
+    }
+  }
+
   const handleDelete = async () => {
     if (!editingConnector) return
 
@@ -225,11 +246,8 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
       if (result.success) {
         toast.success(result.message)
         refreshConnectors()
-        onOpenChange(false)
-        // Go back to the MCP servers list after successful deletion
-        if (onBack) {
-          onBack()
-        }
+        // Go back to list view
+        onSuccessAction()
       } else {
         toast.error(result.message)
       }
@@ -251,35 +269,41 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
     setVisibleEnvVars(newVisible)
   }
 
-  const handleSelectPreset = (preset: PresetConfig) => {
-    setSelectedPreset(preset)
-    setServerType(preset.type)
 
-    // Set env vars based on preset's envKeys
-    if (preset.envKeys && preset.envKeys.length > 0) {
-      setEnvVars(preset.envKeys.map((key) => ({ key, value: '' })))
-    } else {
-      setEnvVars([])
+  const getConnectorIcon = (connector: { name: string; type: string; baseUrl: string | null; command: string | null }) => {
+    const lowerName = connector.name.toLowerCase()
+    const url = connector.baseUrl?.toLowerCase() || ''
+    const cmd = connector.command?.toLowerCase() || ''
+
+    if (lowerName.includes('browserbase') || cmd.includes('browserbasehq') || cmd.includes('@browserbasehq/mcp')) {
+      return <BrowserbaseIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('context7') || url.includes('context7.com')) {
+      return <Context7Icon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('convex') || cmd.includes('convex') || url.includes('convex')) {
+      return <ConvexIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('figma') || url.includes('figma.com')) {
+      return <FigmaIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('hugging') || lowerName.includes('huggingface') || url.includes('hf.co')) {
+      return <HuggingFaceIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('linear') || url.includes('linear.app')) {
+      return <LinearIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('notion') || url.includes('notion.com')) {
+      return <NotionIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('playwright') || cmd.includes('playwright') || cmd.includes('@playwright/mcp')) {
+      return <PlaywrightIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('supabase') || url.includes('supabase.com')) {
+      return <SupabaseIcon className="h-8 w-8 flex-shrink-0" />
     }
 
-    // Switch to form view
-    setView('form')
-  }
-
-  const handleAddCustom = () => {
-    setSelectedPreset(null)
-    setServerType('remote')
-    setEnvVars([])
-    setVisibleEnvVars(new Set())
-    setView('form')
-  }
-
-  const handleBack = () => {
-    setSelectedPreset(null)
-    setServerType('remote')
-    setEnvVars([])
-    setVisibleEnvVars(new Set())
-    setView('presets')
+    return <Server className="h-8 w-8 flex-shrink-0 text-muted-foreground" />
   }
 
   return (
@@ -287,25 +311,88 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>
-              {view === 'form' && !isEditing && (
-                <Button variant="ghost" size="sm" onClick={handleBack} className="mr-2 -ml-2">
+            <DialogTitle className="flex items-center">
+              {(view === 'form' || view === 'presets') && (
+                <Button variant="ghost" size="sm" onClick={() => view === 'form' ? goBackFromForm() : goBackFromPresets()} className="mr-2 -ml-2">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
-              {isEditing ? 'Edit MCP Server' : 'MCP Servers'}
+              {view === 'list' && 'MCP Servers'}
+              {view === 'presets' && 'Add MCP Server'}
+              {view === 'form' && (isEditing ? 'Edit MCP Server' : 'MCP Servers')}
             </DialogTitle>
-            <DialogDescription>Allow agents to reference other apps and services for more context.</DialogDescription>
+            <DialogDescription>
+              {view === 'list' && 'Manage your Model Context Protocol servers.'}
+              {view === 'presets' && 'Choose a preset or add a custom server.'}
+              {view === 'form' && 'Allow agents to reference other apps and services for more context.'}
+            </DialogDescription>
           </DialogHeader>
 
-          {view === 'presets' ? (
+          {view === 'list' ? (
+            <div className="space-y-3 py-4 overflow-y-auto flex-1 max-h-[60vh]">
+              {connectorsLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} className="flex flex-row items-center justify-between p-4">
+                      <div className="flex items-start space-x-4 flex-1">
+                        <div className="w-full space-y-2">
+                          <div className="h-4 bg-muted animate-pulse rounded w-1/4"></div>
+                          <div className="h-3 bg-muted animate-pulse rounded w-3/4"></div>
+                        </div>
+                      </div>
+                      <div className="w-12 h-6 bg-muted animate-pulse rounded-full"></div>
+                    </Card>
+                  ))}
+                </div>
+              ) : connectors.length === 0 ? (
+                <Card className="p-6 text-center">
+                  <p className="text-sm text-muted-foreground">No MCP servers configured yet.</p>
+                </Card>
+              ) : (
+                connectors.map((connector) => (
+                  <Card key={connector.id} className="flex flex-row items-center justify-between p-3">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      {getConnectorIcon(connector)}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm">{connector.name}</h4>
+                        {connector.description && (
+                          <p className="text-xs text-muted-foreground truncate">{connector.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setEditingConnectorAction(connector)}
+                      >
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Switch
+                        checked={connector.status === 'connected'}
+                        disabled={loadingConnectors.has(connector.id)}
+                        onCheckedChange={() => handleToggleConnectorStatus(connector.id, connector.status)}
+                      />
+                    </div>
+                  </Card>
+                ))
+              )}
+              <div className="flex justify-end pt-4">
+                <Button type="button" variant="default" onClick={() => startAddingConnector()}>
+                  Add MCP Server
+                </Button>
+              </div>
+            </div>
+          ) : view === 'presets' ? (
             <div className="space-y-4 overflow-y-auto max-h-[60vh]">
               <div className="grid grid-cols-3 gap-6">
                 {PRESETS.map((preset) => (
                   <button
                     key={preset.name}
                     className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                    onClick={() => handleSelectPreset(preset)}
+                    onClick={() => selectPresetAction(preset)}
                     type="button"
                   >
                     {preset.name === 'Browserbase' ? (
@@ -331,7 +418,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
                   </button>
                 ))}
               </div>
-              <Button variant="outline" className="w-full" onClick={handleAddCustom}>
+              <Button variant="outline" className="w-full" onClick={() => addCustomServer()}>
                 Add Custom MCP Server
               </Button>
             </div>
@@ -400,11 +487,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        setSelectedPreset(null)
-                        setEnvVars([])
-                        setServerType('remote')
-                      }}
+                      onClick={() => clearPreset()}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -583,17 +666,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        if (isEditing && onBack) {
-                          // When editing, close this dialog and reopen the list
-                          onOpenChange(false)
-                          onBack()
-                        } else if (!isEditing) {
-                          // When creating, go back to presets view
-                          handleBack()
-                        } else {
-                          // Fallback: just close the dialog
-                          onOpenChange(false)
-                        }
+                        goBackFromForm()
                       }}
                       disabled={pending || isDeleting}
                     >
