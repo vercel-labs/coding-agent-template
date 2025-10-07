@@ -208,7 +208,7 @@ export function TaskActions({ task }: TaskActionsProps) {
             )}
             <DropdownMenuItem onClick={() => setShowConnectorDialog(true)}>
               <Cable className="h-4 w-4 mr-2" />
-              Connectors
+              MCP Servers
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
               <RotateCcw className="h-4 w-4 mr-2" />

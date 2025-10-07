@@ -121,7 +121,7 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setShowConnectorDialog(true)}>
             <Cable className="h-4 w-4 mr-2" />
-            Connectors
+            MCP Servers
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />

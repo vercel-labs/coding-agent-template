@@ -38,16 +38,16 @@ export async function executeAgentInSandbox(
       return executeClaudeInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     case 'codex':
-      return executeCodexInSandbox(sandbox, instruction, logger, selectedModel)
+      return executeCodexInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     case 'cursor':
-      return executeCursorInSandbox(sandbox, instruction, logger, selectedModel)
+      return executeCursorInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     case 'gemini':
-      return executeGeminiInSandbox(sandbox, instruction, logger, selectedModel)
+      return executeGeminiInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     case 'opencode':
-      return executeOpenCodeInSandbox(sandbox, instruction, logger, selectedModel)
+      return executeOpenCodeInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     default:
       return {

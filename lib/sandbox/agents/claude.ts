@@ -103,7 +103,9 @@ export async function installClaudeCLI(
           if (addResult.success) {
             await logger.info(`Successfully added MCP server: ${server.name}`)
           } else {
-            await logger.info(`Failed to add MCP server ${server.name}: ${addResult.error}`)
+            // Redact any secrets from error message before logging
+            const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
+            await logger.info(`Failed to add MCP server ${server.name}: ${redactedError}`)
           }
         }
       }

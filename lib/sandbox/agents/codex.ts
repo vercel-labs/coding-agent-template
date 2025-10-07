@@ -3,6 +3,9 @@ import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { connectors } from '@/lib/db/schema'
+
+type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and log it
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
@@ -27,6 +30,7 @@ export async function executeCodexInSandbox(
   instruction: string,
   logger: TaskLogger,
   selectedModel?: string,
+  mcpServers?: Connector[],
 ): Promise<AgentExecutionResult> {
   try {
     // Executing Codex CLI with instruction
@@ -164,6 +168,35 @@ log_requests = true
 `
     }
 
+    // Add MCP servers configuration if provided
+    if (mcpServers && mcpServers.length > 0) {
+      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+
+      // Enable experimental RMCP client for streamable HTTP support
+      configToml = `experimental_use_rmcp_client = true\n\n` + configToml
+
+      for (const server of mcpServers) {
+        const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+
+        configToml += `
+[mcp_servers.${serverName}]
+url = "${server.baseUrl}"
+`
+
+        // Add bearer token if available (using oauthClientSecret)
+        if (server.oauthClientSecret) {
+          configToml += `bearer_token = "${server.oauthClientSecret}"
+`
+        }
+
+        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
+      }
+    }
+
+    if (logger) {
+      await logger.info('Creating Codex configuration file...')
+    }
+
     const configSetupResult = await sandbox.runCommand({
       cmd: 'sh',
       args: ['-c', `mkdir -p ~/.codex && cat > ~/.codex/config.toml << 'EOF'\n${configToml}EOF`],
@@ -175,16 +208,16 @@ log_requests = true
       await logger.info(`Codex config setup: ${configSetupResult.exitCode === 0 ? 'SUCCESS' : 'FAILED'}`)
     }
 
-    // Debug: Check if the config file was created correctly
+    // Debug: Check if the config file was created correctly (without logging sensitive contents)
     const configCheckResult = await sandbox.runCommand({
-      cmd: 'cat',
-      args: ['~/.codex/config.toml'],
+      cmd: 'test',
+      args: ['-f', '~/.codex/config.toml'],
       env: { HOME: '/home/vercel-sandbox' },
       sudo: false,
     })
 
     if (logger && configCheckResult.exitCode === 0) {
-      await logger.info('Config file contents verified')
+      await logger.info('Config file verified')
     }
 
     // Debug: List files in the current directory before running Codex
