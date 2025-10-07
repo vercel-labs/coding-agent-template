@@ -137,7 +137,10 @@ export async function executeOpenCodeInSandbox(
       await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
 
       // Create OpenCode opencode.json configuration file
-      const opencodeConfig: Record<string, any> = {
+      const opencodeConfig: {
+        $schema: string
+        mcp: Record<string, { type: string; url: string; enabled: boolean; headers?: Record<string, string> }>
+      } = {
         $schema: 'https://opencode.ai/config.json',
         mcp: {},
       }

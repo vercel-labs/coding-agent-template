@@ -91,7 +91,9 @@ export async function executeGeminiInSandbox(
       await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
 
       // Create Gemini settings.json configuration file
-      const settingsConfig: Record<string, any> = {
+      const settingsConfig: {
+        mcpServers: Record<string, { httpUrl: string; headers?: Record<string, string> }>
+      } = {
         mcpServers: {},
       }
 

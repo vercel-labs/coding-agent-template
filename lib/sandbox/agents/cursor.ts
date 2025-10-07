@@ -141,7 +141,9 @@ export async function executeCursorInSandbox(
       await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
 
       // Create mcp.json configuration file
-      const mcpConfig: Record<string, any> = {
+      const mcpConfig: {
+        mcpServers: Record<string, { url: string; headers?: Record<string, string> }>
+      } = {
         mcpServers: {},
       }
 
