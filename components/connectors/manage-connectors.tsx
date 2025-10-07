@@ -99,7 +99,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Connectors</DialogTitle>
+          <DialogTitle>MCP Servers</DialogTitle>
           <DialogDescription>Allow agents to reference other apps and services for more context.</DialogDescription>
         </DialogHeader>
 
@@ -168,9 +168,9 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
           <TabsContent value="add-custom" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Add Custom Connector</CardTitle>
+                <CardTitle>Add Custom MCP Server</CardTitle>
                 <CardDescription>
-                  Create a custom connector to integrate with your own services or APIs.
+                  Create a custom MCP server to integrate with your own services or APIs.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -222,7 +222,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                           Creating...
                         </>
                       ) : (
-                        'Add Connector'
+                        'Add MCP Server'
                       )}
                     </Button>
                   </div>
