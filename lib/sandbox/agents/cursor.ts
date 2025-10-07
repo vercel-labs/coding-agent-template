@@ -147,7 +147,7 @@ export async function executeCursorInSandbox(
 
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
-        
+
         mcpConfig.mcpServers[serverName] = {
           url: server.baseUrl,
         }
@@ -172,7 +172,7 @@ EOF`
 
       if (mcpConfigResult.success) {
         await logger.info('MCP configuration file (mcp.json) created successfully')
-        
+
         // Verify the file was created
         const verifyMcpConfig = await runAndLogCommand(sandbox, 'cat', ['mcp.json'], logger)
         if (verifyMcpConfig.success) {

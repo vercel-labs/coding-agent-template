@@ -3,6 +3,9 @@ import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { connectors } from '@/lib/db/schema'
+
+type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and log it
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
@@ -45,6 +48,7 @@ export async function executeGeminiInSandbox(
   instruction: string,
   logger: TaskLogger,
   selectedModel?: string,
+  mcpServers?: Connector[],
 ): Promise<AgentExecutionResult> {
   try {
     // Executing Gemini CLI with instruction
@@ -79,6 +83,62 @@ export async function executeGeminiInSandbox(
           cliName: 'gemini',
           changesDetected: false,
         }
+      }
+    }
+
+    // Configure MCP servers if provided
+    if (mcpServers && mcpServers.length > 0) {
+      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+
+      // Create Gemini settings.json configuration file
+      const settingsConfig: Record<string, any> = {
+        mcpServers: {},
+      }
+
+      for (const server of mcpServers) {
+        const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        
+        // Configure as remote HTTP server
+        settingsConfig.mcpServers[serverName] = {
+          httpUrl: server.baseUrl,
+        }
+
+        // Add Authorization header if authentication is provided
+        if (server.oauthClientSecret) {
+          settingsConfig.mcpServers[serverName].headers = {
+            Authorization: `Bearer ${server.oauthClientSecret}`,
+          }
+        }
+
+        // Add additional headers if client ID is provided
+        if (server.oauthClientId) {
+          if (!settingsConfig.mcpServers[serverName].headers) {
+            settingsConfig.mcpServers[serverName].headers = {}
+          }
+          settingsConfig.mcpServers[serverName].headers['X-Client-ID'] = server.oauthClientId
+        }
+
+        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
+      }
+
+      // Write the settings.json file to ~/.gemini/
+      const settingsJson = JSON.stringify(settingsConfig, null, 2)
+      const createSettingsCmd = `mkdir -p ~/.gemini && cat > ~/.gemini/settings.json << 'EOF'
+${settingsJson}
+EOF`
+
+      const settingsResult = await runAndLogCommand(sandbox, 'sh', ['-c', createSettingsCmd], logger)
+
+      if (settingsResult.success) {
+        await logger.info('Gemini settings.json file created successfully')
+        
+        // Verify the file was created
+        const verifySettings = await runAndLogCommand(sandbox, 'cat', ['~/.gemini/settings.json'], logger)
+        if (verifySettings.success) {
+          await logger.info('Gemini MCP configuration verified')
+        }
+      } else {
+        await logger.info('Warning: Failed to create Gemini settings.json file')
       }
     }
 

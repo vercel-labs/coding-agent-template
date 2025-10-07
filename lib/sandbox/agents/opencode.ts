@@ -3,6 +3,9 @@ import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { connectors } from '@/lib/db/schema'
+
+type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and log it
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
@@ -45,6 +48,7 @@ export async function executeOpenCodeInSandbox(
   instruction: string,
   logger: TaskLogger,
   selectedModel?: string,
+  mcpServers?: Connector[],
 ): Promise<AgentExecutionResult> {
   try {
     // Executing OpenCode with instruction
@@ -126,6 +130,65 @@ export async function executeOpenCodeInSandbox(
     console.log('OpenCode CLI verified successfully')
     if (logger) {
       await logger.success('OpenCode CLI verified successfully')
+    }
+
+    // Configure MCP servers if provided
+    if (mcpServers && mcpServers.length > 0) {
+      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+
+      // Create OpenCode opencode.json configuration file
+      const opencodeConfig: Record<string, any> = {
+        $schema: 'https://opencode.ai/config.json',
+        mcp: {},
+      }
+
+      for (const server of mcpServers) {
+        const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        
+        // Configure as remote MCP server
+        opencodeConfig.mcp[serverName] = {
+          type: 'remote',
+          url: server.baseUrl,
+          enabled: true,
+        }
+
+        // Add Authorization header if authentication is provided
+        if (server.oauthClientSecret) {
+          opencodeConfig.mcp[serverName].headers = {
+            Authorization: `Bearer ${server.oauthClientSecret}`,
+          }
+        }
+
+        // Add additional headers if client ID is provided
+        if (server.oauthClientId) {
+          if (!opencodeConfig.mcp[serverName].headers) {
+            opencodeConfig.mcp[serverName].headers = {}
+          }
+          opencodeConfig.mcp[serverName].headers['X-Client-ID'] = server.oauthClientId
+        }
+
+        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
+      }
+
+      // Write the opencode.json file to the project directory
+      const opencodeConfigJson = JSON.stringify(opencodeConfig, null, 2)
+      const createConfigCmd = `cat > opencode.json << 'EOF'
+${opencodeConfigJson}
+EOF`
+
+      const configResult = await runAndLogCommand(sandbox, 'sh', ['-c', createConfigCmd], logger)
+
+      if (configResult.success) {
+        await logger.info('OpenCode configuration file (opencode.json) created successfully')
+        
+        // Verify the file was created
+        const verifyConfig = await runAndLogCommand(sandbox, 'cat', ['opencode.json'], logger)
+        if (verifyConfig.success) {
+          await logger.info('OpenCode MCP configuration verified')
+        }
+      } else {
+        await logger.info('Warning: Failed to create OpenCode configuration file')
+      }
     }
 
     // Set up authentication for OpenCode
