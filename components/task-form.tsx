@@ -11,18 +11,31 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Loader2, ArrowUp, Settings, X } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Loader2, ArrowUp, Settings, X, Cable, Server, Pencil } from 'lucide-react'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
-import { getInstallDependencies, setInstallDependencies, getMaxDuration, setMaxDuration } from '@/lib/utils/cookies'
+import BrowserbaseIcon from '@/components/icons/browserbase-icon'
+import Context7Icon from '@/components/icons/context7-icon'
+import ConvexIcon from '@/components/icons/convex-icon'
+import FigmaIcon from '@/components/icons/figma-icon'
+import HuggingFaceIcon from '@/components/icons/huggingface-icon'
+import LinearIcon from '@/components/icons/linear-icon'
+import NotionIcon from '@/components/icons/notion-icon'
+import PlaywrightIcon from '@/components/icons/playwright-icon'
+import SupabaseIcon from '@/components/icons/supabase-icon'
+import { setInstallDependencies, setMaxDuration } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { toggleConnectorStatus } from '@/lib/actions/connectors'
 import { toast } from 'sonner'
+import { ConnectorDialog } from '@/components/connectors/manage-connectors'
+import type { Connector } from '@/lib/db/schema'
 
 interface GitHubRepo {
   name: string
@@ -67,15 +80,16 @@ const AGENT_MODELS = {
   codex: [
     { value: 'openai/gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
-    { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
-    { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano' },
+    { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
+    { value: 'gpt-5-pro', label: 'GPT-5 pro' },
     { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
   ],
   cursor: [
     { value: 'auto', label: 'Auto' },
     { value: 'gpt-5', label: 'GPT-5' },
-    { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
-    { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
+    { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'gpt-5-nano', label: 'GPT-5 nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
@@ -87,8 +101,8 @@ const AGENT_MODELS = {
   ],
   opencode: [
     { value: 'gpt-5', label: 'GPT-5' },
-    { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
-    { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
+    { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'gpt-5-nano', label: 'GPT-5 nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
@@ -117,12 +131,15 @@ export function TaskForm({
   const [selectedAgent, setSelectedAgent] = useState('claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
   const [repos, setRepos] = useState<GitHubRepo[]>([])
-  const [loadingRepos, setLoadingRepos] = useState(false)
+  const [, setLoadingRepos] = useState(false)
 
   // Options state - initialize with server values
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
+  const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
+  const [showConnectorDialog, setShowConnectorDialog] = useState(false)
+  const [editingConnector, setEditingConnector] = useState<Connector | null>(null)
 
   // Connectors state
   const { connectors, refreshConnectors, isLoading: connectorsLoading } = useConnectors()
@@ -309,6 +326,45 @@ export function TaskForm({
     }
   }
 
+  // Function to determine which icon to show for a connector
+  const getConnectorIcon = (connector: { name: string; type: string; baseUrl: string | null; command: string | null }) => {
+    const lowerName = connector.name.toLowerCase()
+    const url = connector.baseUrl?.toLowerCase() || ''
+    const cmd = connector.command?.toLowerCase() || ''
+
+    // Check by name, URL, or command
+    if (lowerName.includes('browserbase') || cmd.includes('browserbasehq') || cmd.includes('@browserbasehq/mcp')) {
+      return <BrowserbaseIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('context7') || url.includes('context7.com')) {
+      return <Context7Icon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('convex') || cmd.includes('convex') || url.includes('convex')) {
+      return <ConvexIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('figma') || url.includes('figma.com')) {
+      return <FigmaIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('hugging') || lowerName.includes('huggingface') || url.includes('hf.co')) {
+      return <HuggingFaceIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('linear') || url.includes('linear.app')) {
+      return <LinearIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('notion') || url.includes('notion.com')) {
+      return <NotionIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('playwright') || cmd.includes('playwright') || cmd.includes('@playwright/mcp')) {
+      return <PlaywrightIcon className="h-8 w-8 flex-shrink-0" />
+    }
+    if (lowerName.includes('supabase') || url.includes('supabase.com')) {
+      return <SupabaseIcon className="h-8 w-8 flex-shrink-0" />
+    }
+
+    // Default icon
+    return <Server className="h-8 w-8 flex-shrink-0 text-muted-foreground" />
+  }
+
   return (
     <div className="w-full max-w-2xl">
       <div className="text-center mb-8">
@@ -453,59 +509,34 @@ export function TaskForm({
 
               {/* Options and Submit Buttons */}
               <div className="flex items-center gap-2">
-                <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
-                  <DialogTrigger asChild>
-                    <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle>Task Options</DialogTitle>
-                      <DialogDescription>Configure settings for your task execution.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-6 py-4 overflow-y-auto flex-1">
-                      <div className="space-y-4">
-                        <h3 className="text-sm font-semibold">Task Settings</h3>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="install-deps"
-                            checked={installDependencies}
-                            onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
-                          />
-                          <Label
-                            htmlFor="install-deps"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            Install Dependencies?
-                          </Label>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="max-duration" className="text-sm font-medium">
-                            Maximum Duration
-                          </Label>
-                          <Select
-                            value={maxDuration.toString()}
-                            onValueChange={(value) => updateMaxDuration(parseInt(value))}
-                          >
-                            <SelectTrigger id="max-duration" className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1 minute</SelectItem>
-                              <SelectItem value="2">2 minutes</SelectItem>
-                              <SelectItem value="3">3 minutes</SelectItem>
-                              <SelectItem value="5">5 minutes</SelectItem>
-                              <SelectItem value="10">10 minutes</SelectItem>
-                              <SelectItem value="15">15 minutes</SelectItem>
-                              <SelectItem value="30">30 minutes</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <h3 className="text-sm font-semibold">MCP Servers</h3>
+                <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
+                  <Dialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DialogTrigger asChild>
+                          <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 relative">
+                            <Cable className="h-4 w-4" />
+                            {connectors.filter((c) => c.status === 'connected').length > 0 && (
+                              <Badge
+                                variant="secondary"
+                                className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
+                              >
+                                {connectors.filter((c) => c.status === 'connected').length}
+                              </Badge>
+                            )}
+                          </Button>
+                        </DialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>MCP Servers</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle>MCP Servers</DialogTitle>
+                        <DialogDescription>Manage your Model Context Protocol servers.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-3 py-4 overflow-y-auto flex-1">
                         {connectorsLoading ? (
                           <div className="space-y-3">
                             {Array.from({ length: 3 }).map((_, i) => (
@@ -527,26 +558,122 @@ export function TaskForm({
                         ) : (
                           connectors.map((connector) => (
                             <Card key={connector.id} className="flex flex-row items-center justify-between p-3">
-                              <div className="flex items-start space-x-4 flex-1 min-w-0">
-                                <div className="w-full min-w-0">
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                {getConnectorIcon(connector)}
+                                <div className="flex-1 min-w-0">
                                   <h4 className="font-semibold text-sm">{connector.name}</h4>
                                   {connector.description && (
                                     <p className="text-xs text-muted-foreground truncate">{connector.description}</p>
                                   )}
                                 </div>
                               </div>
-                              <Switch
-                                checked={connector.status === 'connected'}
-                                disabled={loadingConnectors.has(connector.id)}
-                                onCheckedChange={() => handleToggleConnectorStatus(connector.id, connector.status)}
-                              />
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    setEditingConnector(connector)
+                                    setShowConnectorDialog(true)
+                                    setShowMcpServersDialog(false)
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                                <Switch
+                                  checked={connector.status === 'connected'}
+                                  disabled={loadingConnectors.has(connector.id)}
+                                  onCheckedChange={() => handleToggleConnectorStatus(connector.id, connector.status)}
+                                />
+                              </div>
                             </Card>
                           ))
                         )}
                       </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                      <DialogFooter>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setShowConnectorDialog(true)
+                          }}
+                        >
+                          Add MCP Server
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setShowMcpServersDialog(false)
+                          }}
+                        >
+                          Close
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DialogTrigger asChild>
+                          <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Task Options</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle>Task Options</DialogTitle>
+                        <DialogDescription>Configure settings for your task execution.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-6 py-4 overflow-y-auto flex-1">
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-semibold">Task Settings</h3>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="install-deps"
+                              checked={installDependencies}
+                              onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
+                            />
+                            <Label
+                              htmlFor="install-deps"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Install Dependencies?
+                            </Label>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="max-duration" className="text-sm font-medium">
+                              Maximum Duration
+                            </Label>
+                            <Select
+                              value={maxDuration.toString()}
+                              onValueChange={(value) => updateMaxDuration(parseInt(value))}
+                            >
+                              <SelectTrigger id="max-duration" className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 minute</SelectItem>
+                                <SelectItem value="2">2 minutes</SelectItem>
+                                <SelectItem value="3">3 minutes</SelectItem>
+                                <SelectItem value="5">5 minutes</SelectItem>
+                                <SelectItem value="10">10 minutes</SelectItem>
+                                <SelectItem value="15">15 minutes</SelectItem>
+                                <SelectItem value="30">30 minutes</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </TooltipProvider>
 
                 <Button
                   type="submit"
@@ -561,6 +688,27 @@ export function TaskForm({
           </div>
         </div>
       </form>
+
+      <ConnectorDialog
+        open={showConnectorDialog}
+        onOpenChange={(open) => {
+          setShowConnectorDialog(open)
+          if (!open) {
+            setEditingConnector(null)
+          }
+        }}
+        editingConnector={editingConnector}
+        onSuccess={() => {
+          // After successful save, go back to the list
+          if (editingConnector) {
+            setShowMcpServersDialog(true)
+          }
+        }}
+        onBack={() => {
+          // When clicking Back from edit mode, go back to the list
+          setShowMcpServersDialog(true)
+        }}
+      />
     </div>
   )
 }

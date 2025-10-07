@@ -182,14 +182,18 @@ log_requests = true
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
         if (server.type === 'local') {
-          // Local STDIO server
+          // Local STDIO server - parse command string into command and args
+          const commandParts = server.command!.trim().split(/\s+/)
+          const executable = commandParts[0]
+          const args = commandParts.slice(1)
+
           configToml += `
 [mcp_servers.${serverName}]
-command = "${server.command}"
+command = "${executable}"
 `
           // Add args if provided
-          if (server.args && server.args.length > 0) {
-            configToml += `args = [${server.args.map((arg) => `"${arg}"`).join(', ')}]\n`
+          if (args.length > 0) {
+            configToml += `args = [${args.map((arg) => `"${arg}"`).join(', ')}]\n`
           }
 
           // Add env vars if provided

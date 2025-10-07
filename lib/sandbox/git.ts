@@ -75,7 +75,7 @@ export async function shutdownSandbox(sandbox?: Sandbox): Promise<{ success: boo
         await runCommandInSandbox(sandbox, 'pkill', ['-f', 'npm'])
         await runCommandInSandbox(sandbox, 'pkill', ['-f', 'yarn'])
         await runCommandInSandbox(sandbox, 'pkill', ['-f', 'pnpm'])
-      } catch (killError) {
+      } catch {
         // Best effort - don't fail if we can't kill processes
         console.log('Best effort process cleanup completed')
       }

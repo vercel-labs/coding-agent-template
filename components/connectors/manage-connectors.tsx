@@ -6,12 +6,23 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { createConnector } from '@/lib/actions/connectors'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { createConnector, updateConnector, deleteConnector } from '@/lib/actions/connectors'
+import type { Connector } from '@/lib/db/schema'
 import { useActionState } from 'react'
 import { toast } from 'sonner'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useConnectors } from '@/components/connectors-provider'
-import { Loader2, Plus, X, ArrowLeft } from 'lucide-react'
+import { Loader2, Plus, X, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
 import ConvexIcon from '@/components/icons/convex-icon'
@@ -25,6 +36,9 @@ import SupabaseIcon from '@/components/icons/supabase-icon'
 interface ConnectorDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  editingConnector?: Connector | null
+  onSuccess?: () => void
+  onBack?: () => void
 }
 
 type FormState = {
@@ -43,7 +57,6 @@ type PresetConfig = {
   name: string
   type: 'local' | 'remote'
   command?: string
-  args?: string[]
   url?: string
   envKeys?: string[]
 }
@@ -52,8 +65,7 @@ const PRESETS: PresetConfig[] = [
   {
     name: 'Browserbase',
     type: 'local',
-    command: 'npx',
-    args: ['@browserbasehq/mcp'],
+    command: 'npx @browserbasehq/mcp',
     envKeys: ['BROWSERBASE_API_KEY', 'BROWSERBASE_PROJECT_ID'],
   },
   {
@@ -64,8 +76,7 @@ const PRESETS: PresetConfig[] = [
   {
     name: 'Convex',
     type: 'local',
-    command: 'npx',
-    args: ['-y', 'convex@latest', 'mcp', 'start'],
+    command: 'npx -y convex@latest mcp start',
   },
   {
     name: 'Figma',
@@ -90,8 +101,7 @@ const PRESETS: PresetConfig[] = [
   {
     name: 'Playwright',
     type: 'local',
-    command: 'npx',
-    args: ['-y', '@playwright/mcp@latest'],
+    command: 'npx -y @playwright/mcp@latest',
   },
   {
     name: 'Supabase',
@@ -100,29 +110,91 @@ const PRESETS: PresetConfig[] = [
   },
 ]
 
-export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
-  const [state, formAction, pending] = useActionState(createConnector, initialState)
+export function ConnectorDialog({ open, onOpenChange, editingConnector, onSuccess, onBack }: ConnectorDialogProps) {
+  const isEditing = !!editingConnector
+  const [state, formAction, pending] = useActionState(
+    isEditing ? updateConnector : createConnector,
+    initialState
+  )
   const { refreshConnectors } = useConnectors()
   const [serverType, setServerType] = useState<'local' | 'remote'>('remote')
   const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>([])
-  const [args, setArgs] = useState<string[]>([''])
   const [selectedPreset, setSelectedPreset] = useState<PresetConfig | null>(null)
   const [view, setView] = useState<'presets' | 'form'>('presets')
+  const [visibleEnvVars, setVisibleEnvVars] = useState<Set<number>>(new Set())
+  const lastStateRef = useRef<{ success: boolean; message: string }>({ success: false, message: '' })
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
+  // Pre-fill form when editing
   useEffect(() => {
-    if (state.success) {
-      toast.success(state.message)
-      refreshConnectors() // Refresh after successful creation
-      // Reset form
+    if (editingConnector && open) {
+      setServerType(editingConnector.type)
+      setView('form')
+      setSelectedPreset(null)
+      
+      // Set env vars if they exist
+      if (editingConnector.env) {
+        const envArray = Object.entries(editingConnector.env).map(([key, value]) => ({ key, value: String(value) }))
+        setEnvVars(envArray)
+      } else {
+        setEnvVars([])
+      }
+      setVisibleEnvVars(new Set())
+    } else if (!editingConnector && open) {
+      // Only reset to presets view when dialog opens without editing
+      setView('presets')
       setServerType('remote')
       setEnvVars([])
-      setArgs([''])
       setSelectedPreset(null)
-      setView('presets')
-    } else if (state.message && !state.success) {
-      toast.error(state.message)
+      setVisibleEnvVars(new Set())
     }
-  }, [state, refreshConnectors])
+    
+    // Reset the state ref when dialog opens/closes or when switching between create/edit
+    if (!open) {
+      lastStateRef.current = { success: false, message: '' }
+    }
+  }, [editingConnector, open])
+
+  useEffect(() => {
+    // Only show toast if state has actually changed (not just reference)
+    const stateChanged = 
+      state.success !== lastStateRef.current.success || 
+      state.message !== lastStateRef.current.message
+    
+    if (stateChanged && state.message) {
+      if (state.success) {
+        toast.success(state.message)
+        refreshConnectors() // Refresh after successful creation/update
+        onOpenChange(false) // Close dialog on success
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess()
+        }
+      } else {
+        toast.error(state.message)
+      }
+      
+      // Update the ref to the current state
+      lastStateRef.current = { success: state.success, message: state.message }
+    }
+  }, [state.success, state.message, refreshConnectors, onOpenChange, onSuccess])
+
+  // Reset form state after dialog closes (to prevent flash)
+  useEffect(() => {
+    if (!open && !isEditing) {
+      // Delay reset to ensure dialog animation completes (typical dialog animations are 200-300ms)
+      const timer = setTimeout(() => {
+        setServerType('remote')
+        setEnvVars([])
+        setSelectedPreset(null)
+        setView('presets')
+        setVisibleEnvVars(new Set())
+      }, 300)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [open, isEditing])
 
   const addEnvVar = () => {
     setEnvVars([...envVars, { key: '', value: '' }])
@@ -130,6 +202,16 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
 
   const removeEnvVar = (index: number) => {
     setEnvVars(envVars.filter((_, i) => i !== index))
+    // Update visible indices after removal
+    const newVisible = new Set<number>()
+    visibleEnvVars.forEach((i) => {
+      if (i < index) {
+        newVisible.add(i)
+      } else if (i > index) {
+        newVisible.add(i - 1)
+      }
+    })
+    setVisibleEnvVars(newVisible)
   }
 
   const updateEnvVar = (index: number, field: 'key' | 'value', value: string) => {
@@ -138,38 +220,52 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     setEnvVars(newEnvVars)
   }
 
-  const addArg = () => {
-    setArgs([...args, ''])
+  const handleDelete = async () => {
+    if (!editingConnector) return
+
+    setIsDeleting(true)
+    try {
+      const result = await deleteConnector(editingConnector.id)
+      if (result.success) {
+        toast.success(result.message)
+        refreshConnectors()
+        onOpenChange(false)
+        // Go back to the MCP servers list after successful deletion
+        if (onBack) {
+          onBack()
+        }
+      } else {
+        toast.error(result.message)
+      }
+    } catch {
+      toast.error('Failed to delete MCP server')
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
+    }
   }
 
-  const removeArg = (index: number) => {
-    setArgs(args.filter((_, i) => i !== index))
-  }
-
-  const updateArg = (index: number, value: string) => {
-    const newArgs = [...args]
-    newArgs[index] = value
-    setArgs(newArgs)
+  const toggleEnvVarVisibility = (index: number) => {
+    const newVisible = new Set(visibleEnvVars)
+    if (newVisible.has(index)) {
+      newVisible.delete(index)
+    } else {
+      newVisible.add(index)
+    }
+    setVisibleEnvVars(newVisible)
   }
 
   const handleSelectPreset = (preset: PresetConfig) => {
     setSelectedPreset(preset)
     setServerType(preset.type)
-    
+
     // Set env vars based on preset's envKeys
     if (preset.envKeys && preset.envKeys.length > 0) {
-      setEnvVars(preset.envKeys.map(key => ({ key, value: '' })))
+      setEnvVars(preset.envKeys.map((key) => ({ key, value: '' })))
     } else {
       setEnvVars([])
     }
-    
-    // Set args for local presets
-    if (preset.type === 'local' && preset.args) {
-      setArgs(preset.args)
-    } else {
-      setArgs([''])
-    }
-    
+
     // Switch to form view
     setView('form')
   }
@@ -178,7 +274,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     setSelectedPreset(null)
     setServerType('remote')
     setEnvVars([])
-    setArgs([''])
+    setVisibleEnvVars(new Set())
     setView('form')
   }
 
@@ -186,26 +282,22 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     setSelectedPreset(null)
     setServerType('remote')
     setEnvVars([])
-    setArgs([''])
+    setVisibleEnvVars(new Set())
     setView('presets')
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>
-            {view === 'form' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="mr-2 -ml-2"
-              >
+            {view === 'form' && !isEditing && (
+              <Button variant="ghost" size="sm" onClick={handleBack} className="mr-2 -ml-2">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            MCP Servers
+            {isEditing ? 'Edit MCP Server' : 'MCP Servers'}
           </DialogTitle>
           <DialogDescription>Allow agents to reference other apps and services for more context.</DialogDescription>
         </DialogHeader>
@@ -243,11 +335,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                 </button>
               ))}
             </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleAddCustom}
-            >
+            <Button variant="outline" className="w-full" onClick={handleAddCustom}>
               Add Custom MCP Server
             </Button>
           </div>
@@ -255,9 +343,14 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
           <div className="space-y-4 overflow-y-auto max-h-[60vh]">
             <form
               action={(formData) => {
+                // Add ID field when editing
+                if (editingConnector) {
+                  formData.append('id', editingConnector.id)
+                }
+
                 // Add type field
                 formData.append('type', serverType)
-                
+
                 // For presets, ensure command/baseUrl are added even if disabled
                 if (selectedPreset) {
                   if (selectedPreset.type === 'local' && selectedPreset.command) {
@@ -266,7 +359,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     formData.set('baseUrl', selectedPreset.url)
                   }
                 }
-                
+
                 // Add env vars as JSON
                 const envObj = envVars.reduce(
                   (acc, { key, value }) => {
@@ -278,15 +371,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                 if (Object.keys(envObj).length > 0) {
                   formData.append('env', JSON.stringify(envObj))
                 }
-                
-                // Add args as JSON for local servers
-                if (serverType === 'local') {
-                  const filteredArgs = args.filter((arg) => arg.trim() !== '')
-                  if (filteredArgs.length > 0) {
-                    formData.append('args', JSON.stringify(filteredArgs))
-                  }
-                }
-                
+
                 formAction(formData)
               }}
               className="space-y-4"
@@ -319,12 +404,11 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setSelectedPreset(null)
-                      setEnvVars([])
-                      setArgs([''])
-                      setServerType('remote')
-                    }}
+                  onClick={() => {
+                    setSelectedPreset(null)
+                    setEnvVars([])
+                    setServerType('remote')
+                  }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -337,13 +421,13 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                   id="name"
                   name="name"
                   placeholder="Example MCP Server"
-                  defaultValue={selectedPreset?.name || ''}
+                  defaultValue={editingConnector?.name || selectedPreset?.name || ''}
                   required
                 />
                 {state.errors?.name && <p className="text-sm text-red-600">{state.errors.name}</p>}
               </div>
 
-              {!selectedPreset && (
+              {!selectedPreset && !isEditing && (
                 <div className="space-y-2">
                   <Label>Server Type</Label>
                   <RadioGroup value={serverType} onValueChange={(value) => setServerType(value as 'local' | 'remote')}>
@@ -372,35 +456,13 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                       name="baseUrl"
                       type="url"
                       placeholder="https://api.example.com"
-                      defaultValue={selectedPreset?.url || ''}
+                      defaultValue={editingConnector?.baseUrl || selectedPreset?.url || ''}
                       required={serverType === 'remote'}
                       disabled={!!selectedPreset}
                     />
                     {state.errors?.baseUrl && <p className="text-sm text-red-600">{state.errors.baseUrl}</p>}
                   </div>
-
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="advanced" className="border-none">
-                      <AccordionTrigger className="text-sm py-2">Advanced Settings</AccordionTrigger>
-                      <AccordionContent className="space-y-4 pt-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="oauthClientId">OAuth Client ID (optional)</Label>
-                          <Input id="oauthClientId" name="oauthClientId" placeholder="OAuth Client ID (optional)" />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="oauthClientSecret">OAuth Client Secret (optional)</Label>
-                          <Input
-                            id="oauthClientSecret"
-                            name="oauthClientSecret"
-                            type="password"
-                            placeholder="OAuth Client Secret (optional)"
-                          />
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                    </>
+                </>
               ) : (
                 <>
                   <div className="space-y-2">
@@ -408,54 +470,23 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     <Input
                       id="command"
                       name="command"
-                      placeholder="npx"
-                      defaultValue={selectedPreset?.command || ''}
+                      placeholder="npx @browserbasehq/mcp"
+                      defaultValue={editingConnector?.command || selectedPreset?.command || ''}
                       required={serverType === 'local'}
                       disabled={!!selectedPreset}
                     />
+                    <p className="text-xs text-muted-foreground">Full command including all arguments</p>
                     {state.errors?.command && <p className="text-sm text-red-600">{state.errors.command}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Arguments</Label>
-                      <Button type="button" size="sm" variant="outline" onClick={addArg}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Argument
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {args.map((arg, index) => {
-                        const isPresetArg = selectedPreset?.args && index < selectedPreset.args.length
-                        return (
-                          <div key={index} className="flex gap-2">
-                            <Input
-                              placeholder={`Argument ${index + 1}`}
-                              value={arg}
-                              onChange={(e) => updateArg(index, e.target.value)}
-                              disabled={isPresetArg}
-                            />
-                            {args.length > 1 && !isPresetArg && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeArg(index)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
                   </div>
                 </>
               )}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Environment Variables {selectedPreset && selectedPreset.envKeys && selectedPreset.envKeys.length > 0 ? '' : '(optional)'}</Label>
+                  <Label>
+                    Environment Variables{' '}
+                    {selectedPreset && selectedPreset.envKeys && selectedPreset.envKeys.length > 0 ? '' : '(optional)'}
+                  </Label>
                   <Button type="button" size="sm" variant="outline" onClick={addEnvVar}>
                     <Plus className="h-4 w-4 mr-1" />
                     Add Variable
@@ -470,14 +501,31 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                           value={envVar.key}
                           onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
                           disabled={selectedPreset?.envKeys?.includes(envVar.key)}
+                          className="flex-1"
                         />
-                        <Input
-                          placeholder="value"
-                          type="password"
-                          value={envVar.value}
-                          onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
-                        />
-                        {!(selectedPreset?.envKeys?.includes(envVar.key)) && (
+                        <div className="relative flex-1">
+                          <Input
+                            placeholder="value"
+                            type={visibleEnvVars.has(index) ? 'text' : 'password'}
+                            value={envVar.value}
+                            onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full hover:bg-transparent"
+                            onClick={() => toggleEnvVarVisibility(index)}
+                          >
+                            {visibleEnvVars.has(index) ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                        {!selectedPreset?.envKeys?.includes(envVar.key) && (
                           <Button type="button" variant="ghost" size="icon" onClick={() => removeEnvVar(index)}>
                             <X className="h-4 w-4" />
                           </Button>
@@ -488,22 +536,113 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                 )}
               </div>
 
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button type="submit" disabled={pending}>
-                  {pending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    'Add MCP Server'
-                  )}
-                </Button>
+              {serverType === 'remote' && (
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="advanced" className="border-none">
+                    <AccordionTrigger className="text-sm py-2">Advanced Settings</AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="oauthClientId">OAuth Client ID (optional)</Label>
+                        <Input id="oauthClientId" name="oauthClientId" placeholder="OAuth Client ID (optional)" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="oauthClientSecret">OAuth Client Secret (optional)</Label>
+                        <Input
+                          id="oauthClientSecret"
+                          name="oauthClientSecret"
+                          type="password"
+                          placeholder="OAuth Client Secret (optional)"
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
+
+              <div className="flex justify-between items-center pt-4">
+                {isEditing && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setShowDeleteDialog(true)
+                    }}
+                    disabled={pending || isDeleting}
+                  >
+                    Delete
+                  </Button>
+                )}
+                <div className={`flex space-x-2 ${isEditing ? 'ml-auto' : 'w-full justify-end'}`}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (isEditing && onBack) {
+                        // When editing, close this dialog and reopen the list
+                        onOpenChange(false)
+                        onBack()
+                      } else if (!isEditing) {
+                        // When creating, go back to presets view
+                        handleBack()
+                      } else {
+                        // Fallback: just close the dialog
+                        onOpenChange(false)
+                      }
+                    }}
+                    disabled={pending || isDeleting}
+                  >
+                    Back
+                  </Button>
+                  <Button type="submit" disabled={pending || isDeleting}>
+                    {pending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {isEditing ? 'Saving...' : 'Creating...'}
+                      </>
+                    ) : (
+                      isEditing ? 'Save Changes' : 'Add MCP Server'
+                    )}
+                  </Button>
+                </div>
               </div>
             </form>
           </div>
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete MCP Server</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete &quot;{editingConnector?.name}&quot;? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   )
 }

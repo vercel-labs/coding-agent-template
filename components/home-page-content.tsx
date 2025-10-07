@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { TaskForm } from '@/components/task-form'
 import { HomePageHeader } from '@/components/home-page-header'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useTasks } from '@/components/app-layout'
-import { getSelectedOwner, setSelectedOwner, getSelectedRepo, setSelectedRepo } from '@/lib/utils/cookies'
+import { setSelectedOwner, setSelectedRepo } from '@/lib/utils/cookies'
 
 interface HomePageContentProps {
   initialSelectedOwner?: string
@@ -99,8 +99,10 @@ export function HomePageContent({
           onOwnerChange={handleOwnerChange}
           onRepoChange={handleRepoChange}
         />
+      </div>
 
-        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-auto">
           <TaskForm
             onSubmit={handleTaskSubmit}
             isSubmitting={isSubmitting}

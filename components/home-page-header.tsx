@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Cable, MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react'
+import { MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
@@ -119,10 +119,6 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setShowConnectorDialog(true)}>
-            <Cable className="h-4 w-4 mr-2" />
-            MCP Servers
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Repositories

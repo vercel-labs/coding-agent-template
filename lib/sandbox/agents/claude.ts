@@ -89,12 +89,8 @@ export async function installClaudeCLI(
           const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
           if (server.type === 'local') {
-            // Local STDIO server - use command format
+            // Local STDIO server - command string contains both executable and args
             let addMcpCmd = `${envPrefix} claude mcp add "${serverName}" -- ${server.command}`
-
-            if (server.args && server.args.length > 0) {
-              addMcpCmd += ` ${server.args.join(' ')}`
-            }
 
             // Add env vars if provided
             if (server.env && Object.keys(server.env).length > 0) {

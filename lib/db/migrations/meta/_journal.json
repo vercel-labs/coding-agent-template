@@ -57,6 +57,20 @@
       "when": 1759862728155,
       "tag": "0007_lethal_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1759868368263,
+      "tag": "0008_last_adam_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1759869871375,
+      "tag": "0009_stale_shiver_man",
+      "breakpoints": true
     }
   ]
 }

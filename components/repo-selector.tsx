@@ -76,7 +76,6 @@ export function RepoSelector({
         // Fetch both user and organizations
         const [userResponse, orgsResponse] = await Promise.all([fetch('/api/github/user'), fetch('/api/github/orgs')])
 
-        const ownersList: GitHubOwner[] = []
         let personalAccount: GitHubOwner | null = null
 
         // Get user (personal account)
@@ -182,6 +181,7 @@ export function RepoSelector({
         }
       }, 100)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repoDropdownOpen, repos?.length])
 
   // Filter repos based on search
@@ -191,9 +191,20 @@ export function RepoSelector({
       repo.description?.toLowerCase().includes(repoFilter.toLowerCase()),
   )
 
-  // Show first 50 filtered repos
-  const displayedRepos = filteredRepos.slice(0, 50)
+  // Show first 50 filtered repos, but always include the selected repo if it exists
+  let displayedRepos = filteredRepos.slice(0, 50)
   const hasMoreRepos = filteredRepos.length > 50
+  
+  // Ensure selected repo is in the displayed list (if it matches current filter)
+  if (selectedRepo && repos.length > 0) {
+    const isInFilteredRepos = filteredRepos.find(repo => repo.name === selectedRepo)
+    const isInDisplayedRepos = displayedRepos.find(repo => repo.name === selectedRepo)
+    
+    if (isInFilteredRepos && !isInDisplayedRepos) {
+      // Selected repo matches filter but is not in the first 50, so add it at the beginning
+      displayedRepos = [isInFilteredRepos, ...displayedRepos.slice(0, 49)]
+    }
+  }
 
   const handleOwnerChange = (value: string) => {
     onOwnerChange(value)

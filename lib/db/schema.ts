@@ -28,6 +28,7 @@ export const tasks = pgTable('tasks', {
   error: text('error'),
   branchName: text('branch_name'),
   sandboxUrl: text('sandbox_url'),
+  mcpServerIds: jsonb('mcp_server_ids').$type<string[]>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
@@ -48,6 +49,7 @@ export const insertTaskSchema = z.object({
   error: z.string().optional(),
   branchName: z.string().optional(),
   sandboxUrl: z.string().optional(),
+  mcpServerIds: z.array(z.string()).optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   completedAt: z.date().optional(),
@@ -67,6 +69,7 @@ export const selectTaskSchema = z.object({
   error: z.string().nullable(),
   branchName: z.string().nullable(),
   sandboxUrl: z.string().nullable(),
+  mcpServerIds: z.array(z.string()).nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
   completedAt: z.date().nullable(),
@@ -90,7 +93,6 @@ export const connectors = pgTable('connectors', {
   oauthClientSecret: text('oauth_client_secret'),
   // For local MCP servers
   command: text('command'),
-  args: jsonb('args').$type<string[]>(),
   // Environment variables (for both local and remote)
   env: jsonb('env').$type<Record<string, string>>(),
   status: text('status', {
@@ -113,9 +115,8 @@ export const insertConnectorSchema = z.object({
   oauthClientSecret: z.string().optional(),
   // For local MCP servers
   command: z.string().optional(),
-  args: z.array(z.string()).optional(),
   // Environment variables (for both local and remote)
-  env: z.record(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
   status: z.enum(['connected', 'disconnected']).default('disconnected'),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
@@ -132,9 +133,8 @@ export const selectConnectorSchema = z.object({
   oauthClientSecret: z.string().nullable(),
   // For local MCP servers
   command: z.string().nullable(),
-  args: z.array(z.string()).nullable(),
   // Environment variables (for both local and remote)
-  env: z.record(z.string()).nullable(),
+  env: z.record(z.string(), z.string()).nullable(),
   status: z.enum(['connected', 'disconnected']),
   createdAt: z.date(),
   updatedAt: z.date(),

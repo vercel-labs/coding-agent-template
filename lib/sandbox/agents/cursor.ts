@@ -155,10 +155,14 @@ export async function executeCursorInSandbox(
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
         if (server.type === 'local') {
-          // Local STDIO server
+          // Local STDIO server - parse command string into command and args
+          const commandParts = server.command!.trim().split(/\s+/)
+          const executable = commandParts[0]
+          const args = commandParts.slice(1)
+
           mcpConfig.mcpServers[serverName] = {
-            command: server.command!,
-            ...(server.args && server.args.length > 0 ? { args: server.args } : {}),
+            command: executable,
+            ...(args.length > 0 ? { args } : {}),
             ...(server.env ? { env: server.env } : {}),
           }
           await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
@@ -232,7 +236,6 @@ EOF`
     // Log what we're about to execute
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
     const logCommand = `cursor-agent -p --force --output-format json${modelFlag} "${instruction}"`
-    await logger.command(logCommand)
     if (logger) {
       await logger.command(logCommand)
       if (selectedModel) {

@@ -6,9 +6,8 @@ import { generateId } from '@/lib/utils/id'
 import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
-import { registerSandbox, unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
+import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
 import { eq, desc, or } from 'drizzle-orm'
-import { createInfoLog } from '@/lib/utils/logging'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 import { decrypt } from '@/lib/crypto'
@@ -378,6 +377,15 @@ async function processTask(
         await logger.info(
           `Found ${mcpServers.length} connected MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`,
         )
+
+        // Store MCP server IDs in the task
+        await db
+          .update(tasks)
+          .set({
+            mcpServerIds: JSON.parse(JSON.stringify(mcpServers.map((s) => s.id))),
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId))
       }
     } catch (mcpError) {
       console.error('Failed to fetch MCP servers:', mcpError)

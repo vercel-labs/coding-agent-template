@@ -153,15 +153,12 @@ export async function executeOpenCodeInSandbox(
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
 
         if (server.type === 'local') {
-          // Local MCP server
-          const command = [server.command!]
-          if (server.args && server.args.length > 0) {
-            command.push(...server.args)
-          }
+          // Local MCP server - parse command string into executable and args
+          const commandParts = server.command!.trim().split(/\s+/)
 
           opencodeConfig.mcp[serverName] = {
             type: 'local',
-            command: command,
+            command: commandParts,
             enabled: true,
             ...(server.env ? { environment: server.env } : {}),
           }
