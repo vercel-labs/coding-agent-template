@@ -181,7 +181,7 @@ EOF`
 
       if (configResult.success) {
         await logger.info('OpenCode configuration file (~/.opencode/config.json) created successfully')
-        
+
         // Verify the file was created (without logging sensitive contents)
         const verifyConfig = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.opencode/config.json'])
         if (verifyConfig.success) {

@@ -173,7 +173,7 @@ EOF`
 
       if (mcpConfigResult.success) {
         await logger.info('MCP configuration file (~/.cursor/mcp.json) created successfully')
-        
+
         // Verify the file was created (without logging sensitive contents)
         const verifyMcpConfig = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.cursor/mcp.json'])
         if (verifyMcpConfig.success) {

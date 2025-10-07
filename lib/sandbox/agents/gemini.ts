@@ -132,7 +132,7 @@ EOF`
 
       if (settingsResult.success) {
         await logger.info('Gemini settings.json file created successfully')
-        
+
         // Verify the file was created (without logging sensitive contents)
         const verifySettings = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.gemini/settings.json'])
         if (verifySettings.success) {
