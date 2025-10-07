@@ -144,7 +144,7 @@ export async function executeOpenCodeInSandbox(
 
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
-        
+
         // Configure as remote MCP server
         opencodeConfig.mcp[serverName] = {
           type: 'remote',
@@ -170,19 +170,19 @@ export async function executeOpenCodeInSandbox(
         await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
       }
 
-      // Write the opencode.json file to the project directory
+      // Write the opencode.json file to the OpenCode config directory (not project directory)
       const opencodeConfigJson = JSON.stringify(opencodeConfig, null, 2)
-      const createConfigCmd = `cat > opencode.json << 'EOF'
+      const createConfigCmd = `mkdir -p ~/.opencode && cat > ~/.opencode/config.json << 'EOF'
 ${opencodeConfigJson}
 EOF`
 
       const configResult = await runAndLogCommand(sandbox, 'sh', ['-c', createConfigCmd], logger)
 
       if (configResult.success) {
-        await logger.info('OpenCode configuration file (opencode.json) created successfully')
+        await logger.info('OpenCode configuration file (~/.opencode/config.json) created successfully')
         
         // Verify the file was created
-        const verifyConfig = await runAndLogCommand(sandbox, 'cat', ['opencode.json'], logger)
+        const verifyConfig = await runAndLogCommand(sandbox, 'cat', ['~/.opencode/config.json'], logger)
         if (verifyConfig.success) {
           await logger.info('OpenCode MCP configuration verified')
         }

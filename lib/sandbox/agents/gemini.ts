@@ -97,7 +97,7 @@ export async function executeGeminiInSandbox(
 
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
-        
+
         // Configure as remote HTTP server
         settingsConfig.mcpServers[serverName] = {
           httpUrl: server.baseUrl,
@@ -131,7 +131,7 @@ EOF`
 
       if (settingsResult.success) {
         await logger.info('Gemini settings.json file created successfully')
-        
+
         // Verify the file was created
         const verifySettings = await runAndLogCommand(sandbox, 'cat', ['~/.gemini/settings.json'], logger)
         if (verifySettings.success) {

@@ -162,19 +162,19 @@ export async function executeCursorInSandbox(
         await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
       }
 
-      // Write the mcp.json file to the project directory
+      // Write the mcp.json file to the Cursor config directory (not project directory)
       const mcpConfigJson = JSON.stringify(mcpConfig, null, 2)
-      const createMcpConfigCmd = `cat > mcp.json << 'EOF'
+      const createMcpConfigCmd = `mkdir -p ~/.cursor && cat > ~/.cursor/mcp.json << 'EOF'
 ${mcpConfigJson}
 EOF`
 
       const mcpConfigResult = await runAndLogCommand(sandbox, 'sh', ['-c', createMcpConfigCmd], logger)
 
       if (mcpConfigResult.success) {
-        await logger.info('MCP configuration file (mcp.json) created successfully')
-
+        await logger.info('MCP configuration file (~/.cursor/mcp.json) created successfully')
+        
         // Verify the file was created
-        const verifyMcpConfig = await runAndLogCommand(sandbox, 'cat', ['mcp.json'], logger)
+        const verifyMcpConfig = await runAndLogCommand(sandbox, 'cat', ['~/.cursor/mcp.json'], logger)
         if (verifyMcpConfig.success) {
           await logger.info('MCP configuration verified')
         }
