@@ -14,8 +14,7 @@ import { useActionState } from 'react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import { useConnectors } from '@/components/connectors-provider'
-import { Cable, Loader2, MoreHorizontal, Trash2 } from 'lucide-react'
-import { Badge } from '../ui/badge'
+import { Loader2, MoreHorizontal, Trash2 } from 'lucide-react'
 
 interface ConnectorDialogProps {
   open: boolean
@@ -100,18 +99,14 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>
-            Connectors
-            <Cable className="inline mx-2" size={16} />
-            <Badge>Beta (Claude only)</Badge>
-          </DialogTitle>
-          <DialogDescription>Allow Claude to reference other apps and services for more context.</DialogDescription>
+          <DialogTitle>Connectors</DialogTitle>
+          <DialogDescription>Allow agents to reference other apps and services for more context.</DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="connectors" className="h-full">
           <TabsList className="grid w-full grid-cols-2 mb-2">
             <TabsTrigger value="connectors">Connectors</TabsTrigger>
-            <TabsTrigger value="add-custom">Add custom connector</TabsTrigger>
+            <TabsTrigger value="add-custom">Add Custom</TabsTrigger>
           </TabsList>
 
           <TabsContent value="connectors" className="space-y-4 overflow-y-auto max-h-[60vh]">
