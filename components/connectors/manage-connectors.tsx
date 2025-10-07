@@ -188,11 +188,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
 
                   <div className="space-y-2">
                     <Label htmlFor="description">Description (optional)</Label>
-                    <Input
-                      id="description"
-                      name="description"
-                      placeholder="Example description (optional)"
-                    />
+                    <Input id="description" name="description" placeholder="Example description (optional)" />
                   </div>
 
                   <div className="space-y-2">
