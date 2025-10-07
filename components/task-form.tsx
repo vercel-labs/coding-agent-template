@@ -327,7 +327,12 @@ export function TaskForm({
   }
 
   // Function to determine which icon to show for a connector
-  const getConnectorIcon = (connector: { name: string; type: string; baseUrl: string | null; command: string | null }) => {
+  const getConnectorIcon = (connector: {
+    name: string
+    type: string
+    baseUrl: string | null
+    command: string | null
+  }) => {
     const lowerName = connector.name.toLowerCase()
     const url = connector.baseUrl?.toLowerCase() || ''
     const cmd = connector.command?.toLowerCase() || ''

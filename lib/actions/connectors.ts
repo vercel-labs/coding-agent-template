@@ -111,7 +111,7 @@ export async function toggleConnectorStatus(id: string, status: 'connected' | 'd
 export async function updateConnector(_: FormState, formData: FormData): Promise<FormState> {
   try {
     const id = formData.get('id') as string
-    
+
     if (!id) {
       return {
         success: false,

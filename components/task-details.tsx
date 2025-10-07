@@ -173,7 +173,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       }
 
       setLoadingMcpServers(true)
-      
+
       try {
         const response = await fetch('/api/connectors')
         if (response.ok) {
@@ -465,10 +465,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                 ) : mcpServers.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {mcpServers.map((server) => (
-                      <div
-                        key={server.id}
-                        className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm"
-                      >
+                      <div key={server.id} className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm">
                         {getConnectorIcon(server)}
                         <span>{server.name}</span>
                       </div>

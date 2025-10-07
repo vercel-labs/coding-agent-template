@@ -112,10 +112,7 @@ const PRESETS: PresetConfig[] = [
 
 export function ConnectorDialog({ open, onOpenChange, editingConnector, onSuccess, onBack }: ConnectorDialogProps) {
   const isEditing = !!editingConnector
-  const [state, formAction, pending] = useActionState(
-    isEditing ? updateConnector : createConnector,
-    initialState
-  )
+  const [state, formAction, pending] = useActionState(isEditing ? updateConnector : createConnector, initialState)
   const { refreshConnectors } = useConnectors()
   const [serverType, setServerType] = useState<'local' | 'remote'>('remote')
   const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>([])
@@ -132,7 +129,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
       setServerType(editingConnector.type)
       setView('form')
       setSelectedPreset(null)
-      
+
       // Set env vars if they exist
       if (editingConnector.env) {
         const envArray = Object.entries(editingConnector.env).map(([key, value]) => ({ key, value: String(value) }))
@@ -149,7 +146,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
       setSelectedPreset(null)
       setVisibleEnvVars(new Set())
     }
-    
+
     // Reset the state ref when dialog opens/closes or when switching between create/edit
     if (!open) {
       lastStateRef.current = { success: false, message: '' }
@@ -158,10 +155,9 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
 
   useEffect(() => {
     // Only show toast if state has actually changed (not just reference)
-    const stateChanged = 
-      state.success !== lastStateRef.current.success || 
-      state.message !== lastStateRef.current.message
-    
+    const stateChanged =
+      state.success !== lastStateRef.current.success || state.message !== lastStateRef.current.message
+
     if (stateChanged && state.message) {
       if (state.success) {
         toast.success(state.message)
@@ -174,7 +170,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
       } else {
         toast.error(state.message)
       }
-      
+
       // Update the ref to the current state
       lastStateRef.current = { success: state.success, message: state.message }
     }
@@ -191,7 +187,7 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
         setView('presets')
         setVisibleEnvVars(new Set())
       }, 300)
-      
+
       return () => clearTimeout(timer)
     }
   }, [open, isEditing])
@@ -288,361 +284,368 @@ export function ConnectorDialog({ open, onOpenChange, editingConnector, onSucces
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>
-            {view === 'form' && !isEditing && (
-              <Button variant="ghost" size="sm" onClick={handleBack} className="mr-2 -ml-2">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            {isEditing ? 'Edit MCP Server' : 'MCP Servers'}
-          </DialogTitle>
-          <DialogDescription>Allow agents to reference other apps and services for more context.</DialogDescription>
-        </DialogHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>
+              {view === 'form' && !isEditing && (
+                <Button variant="ghost" size="sm" onClick={handleBack} className="mr-2 -ml-2">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {isEditing ? 'Edit MCP Server' : 'MCP Servers'}
+            </DialogTitle>
+            <DialogDescription>Allow agents to reference other apps and services for more context.</DialogDescription>
+          </DialogHeader>
 
-        {view === 'presets' ? (
-          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
-            <div className="grid grid-cols-3 gap-6">
-              {PRESETS.map((preset) => (
-                <button
-                  key={preset.name}
-                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                  onClick={() => handleSelectPreset(preset)}
-                  type="button"
-                >
-                  {preset.name === 'Browserbase' ? (
-                    <BrowserbaseIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Context7' ? (
-                    <Context7Icon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Convex' ? (
-                    <ConvexIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Figma' ? (
-                    <FigmaIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Hugging Face' ? (
-                    <HuggingFaceIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Linear' ? (
-                    <LinearIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Notion' ? (
-                    <NotionIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Playwright' ? (
-                    <PlaywrightIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : preset.name === 'Supabase' ? (
-                    <SupabaseIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                  ) : null}
-                  <span className="text-sm font-medium text-center">{preset.name}</span>
-                </button>
-              ))}
-            </div>
-            <Button variant="outline" className="w-full" onClick={handleAddCustom}>
-              Add Custom MCP Server
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
-            <form
-              action={(formData) => {
-                // Add ID field when editing
-                if (editingConnector) {
-                  formData.append('id', editingConnector.id)
-                }
-
-                // Add type field
-                formData.append('type', serverType)
-
-                // For presets, ensure command/baseUrl are added even if disabled
-                if (selectedPreset) {
-                  if (selectedPreset.type === 'local' && selectedPreset.command) {
-                    formData.set('command', selectedPreset.command)
-                  } else if (selectedPreset.type === 'remote' && selectedPreset.url) {
-                    formData.set('baseUrl', selectedPreset.url)
-                  }
-                }
-
-                // Add env vars as JSON
-                const envObj = envVars.reduce(
-                  (acc, { key, value }) => {
-                    if (key && value) acc[key] = value
-                    return acc
-                  },
-                  {} as Record<string, string>,
-                )
-                if (Object.keys(envObj).length > 0) {
-                  formData.append('env', JSON.stringify(envObj))
-                }
-
-                formAction(formData)
-              }}
-              className="space-y-4"
-            >
-              {selectedPreset && (
-                <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                  {selectedPreset.name === 'Browserbase' ? (
-                    <BrowserbaseIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Context7' ? (
-                    <Context7Icon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Convex' ? (
-                    <ConvexIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Figma' ? (
-                    <FigmaIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Hugging Face' ? (
-                    <HuggingFaceIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Linear' ? (
-                    <LinearIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Notion' ? (
-                    <NotionIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Playwright' ? (
-                    <PlaywrightIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : selectedPreset.name === 'Supabase' ? (
-                    <SupabaseIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                  ) : null}
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Configuring {selectedPreset.name}</p>
-                  </div>
-                  <Button
+          {view === 'presets' ? (
+            <div className="space-y-4 overflow-y-auto max-h-[60vh]">
+              <div className="grid grid-cols-3 gap-6">
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                    onClick={() => handleSelectPreset(preset)}
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                  onClick={() => {
-                    setSelectedPreset(null)
-                    setEnvVars([])
-                    setServerType('remote')
-                  }}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Example MCP Server"
-                  defaultValue={editingConnector?.name || selectedPreset?.name || ''}
-                  required
-                />
-                {state.errors?.name && <p className="text-sm text-red-600">{state.errors.name}</p>}
+                    {preset.name === 'Browserbase' ? (
+                      <BrowserbaseIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Context7' ? (
+                      <Context7Icon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Convex' ? (
+                      <ConvexIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Figma' ? (
+                      <FigmaIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Hugging Face' ? (
+                      <HuggingFaceIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Linear' ? (
+                      <LinearIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Notion' ? (
+                      <NotionIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Playwright' ? (
+                      <PlaywrightIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Supabase' ? (
+                      <SupabaseIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : null}
+                    <span className="text-sm font-medium text-center">{preset.name}</span>
+                  </button>
+                ))}
               </div>
+              <Button variant="outline" className="w-full" onClick={handleAddCustom}>
+                Add Custom MCP Server
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 overflow-y-auto max-h-[60vh]">
+              <form
+                action={(formData) => {
+                  // Add ID field when editing
+                  if (editingConnector) {
+                    formData.append('id', editingConnector.id)
+                  }
 
-              {!selectedPreset && !isEditing && (
-                <div className="space-y-2">
-                  <Label>Server Type</Label>
-                  <RadioGroup value={serverType} onValueChange={(value) => setServerType(value as 'local' | 'remote')}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="remote" id="remote" />
-                      <Label htmlFor="remote" className="font-normal cursor-pointer">
-                        Remote (HTTP/SSE)
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="local" id="local" />
-                      <Label htmlFor="local" className="font-normal cursor-pointer">
-                        Local (STDIO)
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              )}
+                  // Add type field
+                  formData.append('type', serverType)
 
-              {serverType === 'remote' ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="baseUrl">Base URL</Label>
-                    <Input
-                      id="baseUrl"
-                      name="baseUrl"
-                      type="url"
-                      placeholder="https://api.example.com"
-                      defaultValue={editingConnector?.baseUrl || selectedPreset?.url || ''}
-                      required={serverType === 'remote'}
-                      disabled={!!selectedPreset}
-                    />
-                    {state.errors?.baseUrl && <p className="text-sm text-red-600">{state.errors.baseUrl}</p>}
+                  // For presets, ensure command/baseUrl are added even if disabled
+                  if (selectedPreset) {
+                    if (selectedPreset.type === 'local' && selectedPreset.command) {
+                      formData.set('command', selectedPreset.command)
+                    } else if (selectedPreset.type === 'remote' && selectedPreset.url) {
+                      formData.set('baseUrl', selectedPreset.url)
+                    }
+                  }
+
+                  // Add env vars as JSON
+                  const envObj = envVars.reduce(
+                    (acc, { key, value }) => {
+                      if (key && value) acc[key] = value
+                      return acc
+                    },
+                    {} as Record<string, string>,
+                  )
+                  if (Object.keys(envObj).length > 0) {
+                    formData.append('env', JSON.stringify(envObj))
+                  }
+
+                  formAction(formData)
+                }}
+                className="space-y-4"
+              >
+                {selectedPreset && (
+                  <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                    {selectedPreset.name === 'Browserbase' ? (
+                      <BrowserbaseIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Context7' ? (
+                      <Context7Icon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Convex' ? (
+                      <ConvexIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Figma' ? (
+                      <FigmaIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Hugging Face' ? (
+                      <HuggingFaceIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Linear' ? (
+                      <LinearIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Notion' ? (
+                      <NotionIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Playwright' ? (
+                      <PlaywrightIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Supabase' ? (
+                      <SupabaseIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : null}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Configuring {selectedPreset.name}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedPreset(null)
+                        setEnvVars([])
+                        setServerType('remote')
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Example MCP Server"
+                    defaultValue={editingConnector?.name || selectedPreset?.name || ''}
+                    required
+                  />
+                  {state.errors?.name && <p className="text-sm text-red-600">{state.errors.name}</p>}
+                </div>
+
+                {!selectedPreset && !isEditing && (
+                  <div className="space-y-2">
+                    <Label>Server Type</Label>
+                    <RadioGroup
+                      value={serverType}
+                      onValueChange={(value) => setServerType(value as 'local' | 'remote')}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="remote" id="remote" />
+                        <Label htmlFor="remote" className="font-normal cursor-pointer">
+                          Remote (HTTP/SSE)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="local" id="local" />
+                        <Label htmlFor="local" className="font-normal cursor-pointer">
+                          Local (STDIO)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+
+                {serverType === 'remote' ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="baseUrl">Base URL</Label>
+                      <Input
+                        id="baseUrl"
+                        name="baseUrl"
+                        type="url"
+                        placeholder="https://api.example.com"
+                        defaultValue={editingConnector?.baseUrl || selectedPreset?.url || ''}
+                        required={serverType === 'remote'}
+                        disabled={!!selectedPreset}
+                      />
+                      {state.errors?.baseUrl && <p className="text-sm text-red-600">{state.errors.baseUrl}</p>}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="command">Command</Label>
+                      <Input
+                        id="command"
+                        name="command"
+                        placeholder="npx @browserbasehq/mcp"
+                        defaultValue={editingConnector?.command || selectedPreset?.command || ''}
+                        required={serverType === 'local'}
+                        disabled={!!selectedPreset}
+                      />
+                      <p className="text-xs text-muted-foreground">Full command including all arguments</p>
+                      {state.errors?.command && <p className="text-sm text-red-600">{state.errors.command}</p>}
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>
+                      Environment Variables{' '}
+                      {selectedPreset && selectedPreset.envKeys && selectedPreset.envKeys.length > 0
+                        ? ''
+                        : '(optional)'}
+                    </Label>
+                    <Button type="button" size="sm" variant="outline" onClick={addEnvVar}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Variable
+                    </Button>
+                  </div>
+                  {envVars.length > 0 && (
+                    <div className="space-y-2">
+                      {envVars.map((envVar, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input
+                            placeholder="KEY"
+                            value={envVar.key}
+                            onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
+                            disabled={selectedPreset?.envKeys?.includes(envVar.key)}
+                            className="flex-1"
+                          />
+                          <div className="relative flex-1">
+                            <Input
+                              placeholder="value"
+                              type={visibleEnvVars.has(index) ? 'text' : 'password'}
+                              value={envVar.value}
+                              onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
+                              className="pr-10"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full hover:bg-transparent"
+                              onClick={() => toggleEnvVarVisibility(index)}
+                            >
+                              {visibleEnvVars.has(index) ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                          {!selectedPreset?.envKeys?.includes(envVar.key) && (
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeEnvVar(index)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {serverType === 'remote' && (
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="advanced" className="border-none">
+                      <AccordionTrigger className="text-sm py-2">Advanced Settings</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="oauthClientId">OAuth Client ID (optional)</Label>
+                          <Input id="oauthClientId" name="oauthClientId" placeholder="OAuth Client ID (optional)" />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="oauthClientSecret">OAuth Client Secret (optional)</Label>
+                          <Input
+                            id="oauthClientSecret"
+                            name="oauthClientSecret"
+                            type="password"
+                            placeholder="OAuth Client Secret (optional)"
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+
+                <div className="flex justify-between items-center pt-4">
+                  {isEditing && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setShowDeleteDialog(true)
+                      }}
+                      disabled={pending || isDeleting}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                  <div className={`flex space-x-2 ${isEditing ? 'ml-auto' : 'w-full justify-end'}`}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (isEditing && onBack) {
+                          // When editing, close this dialog and reopen the list
+                          onOpenChange(false)
+                          onBack()
+                        } else if (!isEditing) {
+                          // When creating, go back to presets view
+                          handleBack()
+                        } else {
+                          // Fallback: just close the dialog
+                          onOpenChange(false)
+                        }
+                      }}
+                      disabled={pending || isDeleting}
+                    >
+                      Back
+                    </Button>
+                    <Button type="submit" disabled={pending || isDeleting}>
+                      {pending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {isEditing ? 'Saving...' : 'Creating...'}
+                        </>
+                      ) : isEditing ? (
+                        'Save Changes'
+                      ) : (
+                        'Add MCP Server'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete MCP Server</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{editingConnector?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
                 </>
               ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="command">Command</Label>
-                    <Input
-                      id="command"
-                      name="command"
-                      placeholder="npx @browserbasehq/mcp"
-                      defaultValue={editingConnector?.command || selectedPreset?.command || ''}
-                      required={serverType === 'local'}
-                      disabled={!!selectedPreset}
-                    />
-                    <p className="text-xs text-muted-foreground">Full command including all arguments</p>
-                    {state.errors?.command && <p className="text-sm text-red-600">{state.errors.command}</p>}
-                  </div>
-                </>
+                'Delete'
               )}
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>
-                    Environment Variables{' '}
-                    {selectedPreset && selectedPreset.envKeys && selectedPreset.envKeys.length > 0 ? '' : '(optional)'}
-                  </Label>
-                  <Button type="button" size="sm" variant="outline" onClick={addEnvVar}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Variable
-                  </Button>
-                </div>
-                {envVars.length > 0 && (
-                  <div className="space-y-2">
-                    {envVars.map((envVar, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          placeholder="KEY"
-                          value={envVar.key}
-                          onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
-                          disabled={selectedPreset?.envKeys?.includes(envVar.key)}
-                          className="flex-1"
-                        />
-                        <div className="relative flex-1">
-                          <Input
-                            placeholder="value"
-                            type={visibleEnvVars.has(index) ? 'text' : 'password'}
-                            value={envVar.value}
-                            onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
-                            className="pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-0 top-0 h-full hover:bg-transparent"
-                            onClick={() => toggleEnvVarVisibility(index)}
-                          >
-                            {visibleEnvVars.has(index) ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </Button>
-                        </div>
-                        {!selectedPreset?.envKeys?.includes(envVar.key) && (
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeEnvVar(index)}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {serverType === 'remote' && (
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="advanced" className="border-none">
-                    <AccordionTrigger className="text-sm py-2">Advanced Settings</AccordionTrigger>
-                    <AccordionContent className="space-y-4 pt-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="oauthClientId">OAuth Client ID (optional)</Label>
-                        <Input id="oauthClientId" name="oauthClientId" placeholder="OAuth Client ID (optional)" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="oauthClientSecret">OAuth Client Secret (optional)</Label>
-                        <Input
-                          id="oauthClientSecret"
-                          name="oauthClientSecret"
-                          type="password"
-                          placeholder="OAuth Client Secret (optional)"
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
-
-              <div className="flex justify-between items-center pt-4">
-                {isEditing && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setShowDeleteDialog(true)
-                    }}
-                    disabled={pending || isDeleting}
-                  >
-                    Delete
-                  </Button>
-                )}
-                <div className={`flex space-x-2 ${isEditing ? 'ml-auto' : 'w-full justify-end'}`}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      if (isEditing && onBack) {
-                        // When editing, close this dialog and reopen the list
-                        onOpenChange(false)
-                        onBack()
-                      } else if (!isEditing) {
-                        // When creating, go back to presets view
-                        handleBack()
-                      } else {
-                        // Fallback: just close the dialog
-                        onOpenChange(false)
-                      }
-                    }}
-                    disabled={pending || isDeleting}
-                  >
-                    Back
-                  </Button>
-                  <Button type="submit" disabled={pending || isDeleting}>
-                    {pending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {isEditing ? 'Saving...' : 'Creating...'}
-                      </>
-                    ) : (
-                      isEditing ? 'Save Changes' : 'Add MCP Server'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-
-    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete MCP Server</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete &quot;{editingConnector?.name}&quot;? This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Delete'
-            )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

@@ -194,12 +194,12 @@ export function RepoSelector({
   // Show first 50 filtered repos, but always include the selected repo if it exists
   let displayedRepos = filteredRepos.slice(0, 50)
   const hasMoreRepos = filteredRepos.length > 50
-  
+
   // Ensure selected repo is in the displayed list (if it matches current filter)
   if (selectedRepo && repos.length > 0) {
-    const isInFilteredRepos = filteredRepos.find(repo => repo.name === selectedRepo)
-    const isInDisplayedRepos = displayedRepos.find(repo => repo.name === selectedRepo)
-    
+    const isInFilteredRepos = filteredRepos.find((repo) => repo.name === selectedRepo)
+    const isInDisplayedRepos = displayedRepos.find((repo) => repo.name === selectedRepo)
+
     if (isInFilteredRepos && !isInDisplayedRepos) {
       // Selected repo matches filter but is not in the first 50, so add it at the beginning
       displayedRepos = [isInFilteredRepos, ...displayedRepos.slice(0, 49)]
