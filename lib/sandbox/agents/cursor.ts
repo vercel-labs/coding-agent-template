@@ -3,6 +3,9 @@ import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
+import { connectors } from '@/lib/db/schema'
+
+type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and collect
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
@@ -27,6 +30,7 @@ export async function executeCursorInSandbox(
   instruction: string,
   logger: TaskLogger,
   selectedModel?: string,
+  mcpServers?: Connector[],
 ): Promise<AgentExecutionResult> {
   try {
     // Executing Cursor CLI with instruction
@@ -129,6 +133,53 @@ export async function executeCursorInSandbox(
         error: 'CURSOR_API_KEY not found. Please set the API key to use Cursor agent.',
         cliName: 'cursor',
         changesDetected: false,
+      }
+    }
+
+    // Configure MCP servers if provided
+    if (mcpServers && mcpServers.length > 0) {
+      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+
+      // Create mcp.json configuration file
+      const mcpConfig: Record<string, any> = {
+        mcpServers: {},
+      }
+
+      for (const server of mcpServers) {
+        const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        
+        mcpConfig.mcpServers[serverName] = {
+          url: server.baseUrl,
+        }
+
+        // Add headers if authentication is provided
+        if (server.oauthClientSecret) {
+          mcpConfig.mcpServers[serverName].headers = {
+            Authorization: `Bearer ${server.oauthClientSecret}`,
+          }
+        }
+
+        await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
+      }
+
+      // Write the mcp.json file to the project directory
+      const mcpConfigJson = JSON.stringify(mcpConfig, null, 2)
+      const createMcpConfigCmd = `cat > mcp.json << 'EOF'
+${mcpConfigJson}
+EOF`
+
+      const mcpConfigResult = await runAndLogCommand(sandbox, 'sh', ['-c', createMcpConfigCmd], logger)
+
+      if (mcpConfigResult.success) {
+        await logger.info('MCP configuration file (mcp.json) created successfully')
+        
+        // Verify the file was created
+        const verifyMcpConfig = await runAndLogCommand(sandbox, 'cat', ['mcp.json'], logger)
+        if (verifyMcpConfig.success) {
+          await logger.info('MCP configuration verified')
+        }
+      } else {
+        await logger.info('Warning: Failed to create MCP configuration file')
       }
     }
 

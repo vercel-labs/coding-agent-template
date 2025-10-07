@@ -177,18 +177,18 @@ log_requests = true
 
       for (const server of mcpServers) {
         const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
-        
+
         configToml += `
 [mcp_servers.${serverName}]
 url = "${server.baseUrl}"
 `
-        
+
         // Add bearer token if available (using oauthClientSecret)
         if (server.oauthClientSecret) {
           configToml += `bearer_token = "${server.oauthClientSecret}"
 `
         }
-        
+
         await logger.info(`Added MCP server configuration: ${server.name} (${server.baseUrl})`)
       }
     }

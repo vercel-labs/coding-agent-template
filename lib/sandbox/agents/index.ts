@@ -41,7 +41,7 @@ export async function executeAgentInSandbox(
       return executeCodexInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     case 'cursor':
-      return executeCursorInSandbox(sandbox, instruction, logger, selectedModel)
+      return executeCursorInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
     case 'gemini':
       return executeGeminiInSandbox(sandbox, instruction, logger, selectedModel)
