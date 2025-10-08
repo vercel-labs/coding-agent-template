@@ -1,0 +1,23 @@
+{
+  "mcp": {
+    "dev3000": {
+      "type": "local",
+      "command": [
+        "npx",
+        "@modelcontextprotocol/inspector",
+        "http://localhost:3684/mcp"
+      ],
+      "enabled": true
+    },
+    "dev3000-chrome-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "chrome-devtools-mcp@latest",
+        "--browserUrl",
+        "http://127.0.0.1:9222"
+      ],
+      "enabled": true
+    }
+  }
+}

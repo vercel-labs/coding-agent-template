@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "dev3000": {
+      "type": "http",
+      "url": "http://localhost:3684/mcp"
+    },
+    "dev3000-chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--browserUrl",
+        "http://127.0.0.1:9222"
+      ]
+    }
+  }
+}
