@@ -385,8 +385,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               <p className="text-sm bg-muted p-3 rounded-md">{task.prompt}</p>
             </div>
 
-            {(task.selectedAgent || task.selectedModel) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(task.selectedAgent || task.selectedModel || task.sandboxType || task.inngestRunId) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {task.selectedAgent && (
                   <div className="min-w-0">
                     <h4 className="font-medium mb-2">Agent</h4>
@@ -408,6 +408,33 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                     </p>
                   </div>
                 )}
+
+                {task.sandboxType && (
+                  <div className="min-w-0">
+                    <h4 className="font-medium mb-2">Sandbox</h4>
+                    <p className="text-sm text-muted-foreground truncate capitalize">
+                      {task.sandboxType === 'vercel' && 'Vercel (Cloud)'}
+                      {task.sandboxType === 'docker' && 'Docker (Local)'}
+                      {task.sandboxType === 'e2b' && 'E2B (Cloud)'}
+                      {task.sandboxType === 'daytona' && 'Daytona (Cloud - Fast)'}
+                      {task.sandboxType === 'local' && 'Local (Direct)'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {task.inngestRunId && (
+              <div className="min-w-0">
+                <h4 className="font-medium mb-2">Inngest Run ID</h4>
+                <a
+                  href={`http://localhost:8288/runs/${task.inngestRunId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-500 hover:text-blue-600 font-mono truncate block"
+                >
+                  {task.inngestRunId}
+                </a>
               </div>
             )}
 

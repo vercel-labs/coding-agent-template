@@ -52,6 +52,7 @@ export function HomePageContent({
     selectedModel: string
     installDependencies: boolean
     maxDuration: number
+    sandboxType: string
   }) => {
     setIsSubmitting(true)
 
