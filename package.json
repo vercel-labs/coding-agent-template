@@ -17,6 +17,9 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.906.0",
+    "@daytonaio/sdk": "^0.108.1",
+    "@e2b/code-interpreter": "^2.0.1",
     "@neondatabase/serverless": "^0.10.1",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -39,6 +42,8 @@
     "clsx": "^2.1.1",
     "drizzle-kit": "^0.30.0",
     "drizzle-orm": "^0.36.4",
+    "e2b": "^2.2.2",
+    "inngest": "^3.44.2",
     "jotai": "^2.15.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.544.0",
@@ -56,9 +61,11 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.13",
+    "@types/dockerode": "^3.3.44",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dockerode": "^4.0.9",
     "dotenv-cli": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",

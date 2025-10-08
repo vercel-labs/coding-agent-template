@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  serverExternalPackages: ['dockerode', 'ssh2', 'cpu-features'],
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [...(config.externals || []), 'dockerode', 'ssh2', 'cpu-features']
+    }
+    return config
+  },
 }
 
 export default nextConfig
