@@ -5,7 +5,6 @@ import { generateId } from '@/lib/utils/id'
 import { eq, desc, or } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
-import { inngest } from '@/lib/inngest/client'
 
 export async function GET() {
   try {
@@ -104,9 +103,12 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Trigger Inngest function to process the task
+    // Trigger orchestrator to process the task
     after(async () => {
       try {
+        const { getOrchestrator } = await import('@/lib/orchestration')
+        const orchestratorType = (process.env.ORCHESTRATOR || 'inngest') as 'inngest' | 'agentuity'
+
         // Get the AI-generated branch name if available
         let aiBranchName: string | undefined
 
@@ -118,22 +120,21 @@ export async function POST(request: NextRequest) {
           aiBranchName = taskWithBranch.branchName
         }
 
-        await inngest.send({
-          name: 'task/execute',
-          data: {
-            taskId: newTask.id,
-            prompt: validatedData.prompt,
-            repoUrl: validatedData.repoUrl || '',
-            selectedAgent: validatedData.selectedAgent || 'claude',
-            selectedModel: validatedData.selectedModel,
-            installDependencies: validatedData.installDependencies || false,
-            maxDuration: validatedData.maxDuration || 5,
-            sandboxType: validatedData.sandboxType || 'vercel',
-            aiBranchName,
-          },
+        const orchestrator = getOrchestrator(orchestratorType)
+
+        await orchestrator.submitTask({
+          taskId: newTask.id,
+          prompt: validatedData.prompt,
+          repoUrl: validatedData.repoUrl || '',
+          selectedAgent: validatedData.selectedAgent || 'claude',
+          selectedModel: validatedData.selectedModel,
+          installDependencies: validatedData.installDependencies || false,
+          maxDuration: validatedData.maxDuration || 5,
+          sandboxType: validatedData.sandboxType || 'vercel',
+          aiBranchName,
         })
       } catch (error) {
-        console.error('Failed to trigger Inngest function:', error)
+        console.error('Failed to trigger orchestrator:', error)
       }
     })
 

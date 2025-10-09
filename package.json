@@ -17,6 +17,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@agentuity/sdk": "^0.0.154",
     "@aws-sdk/client-s3": "^3.906.0",
     "@daytonaio/sdk": "^0.108.1",
     "@e2b/code-interpreter": "^2.0.1",

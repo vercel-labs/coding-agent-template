@@ -1,0 +1,17 @@
+{
+  "name": "coding-task-executor",
+  "version": "1.0.0",
+  "description": "Agentuity agent for executing coding tasks with AI agents in sandboxes",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "agentuity dev",
+    "deploy": "agentuity deploy"
+  },
+  "dependencies": {
+    "@agentuity/sdk": "^0.0.154"
+  },
+  "devDependencies": {
+    "@agentuity/cli": "latest",
+    "typescript": "^5.0.0"
+  }
+}

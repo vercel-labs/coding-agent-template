@@ -1,6 +1,6 @@
 # Coding Agent Template
 
-A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, Cursor CLI, Google Gemini CLI, and opencode with **multiple sandbox providers** (Vercel, Docker, E2B, Daytona) to automatically execute coding tasks on your repositories.
+A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, Cursor CLI, Google Gemini CLI, and opencode with **multiple sandbox providers** (Vercel, Docker, E2B, Daytona) and **multiple orchestrators** (Inngest, Agentuity) to automatically execute coding tasks on your repositories.
 
 ![Coding Agent Template Screenshot](screenshot.png)
 
@@ -20,7 +20,10 @@ You can deploy your own version of the coding agent template to Vercel with one 
   - **Daytona** - Fast cloud sandboxes with native Git API (sub-90ms creation)
 - **AI Gateway Integration**: Built for seamless integration with [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) for model routing and observability
 - **AI-Generated Branch Names**: Automatically generates descriptive Git branch names using AI SDK 5 + AI Gateway
-- **Task Management**: Track task progress with real-time updates via Inngest orchestration
+- **Multiple Orchestrators**:
+  - **Inngest** - Step-based workflow orchestration with local dev dashboard
+  - **Agentuity** - Cloud-native agent platform with built-in storage and streaming
+- **Task Management**: Track task progress with real-time updates
 - **Persistent Storage**: Tasks stored in Postgres database
 - **Git Integration**: Automatically creates branches and commits changes
 - **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
@@ -34,6 +37,15 @@ You can deploy your own version of the coding agent template to Vercel with one 
 | **Docker**  | Local    | Fast         | Shell      | Local development & testing  |
 | **E2B**     | Cloud    | Medium       | Shell      | Code interpretation tasks    |
 | **Daytona** | Cloud    | **Sub-90ms** | **Native** | Fast iteration & development |
+
+## Orchestrators
+
+| Orchestrator  | Type                | Local Dev          | Best For                                     |
+| ------------- | ------------------- | ------------------ | -------------------------------------------- |
+| **Inngest**   | Step-based workflow | Dashboard at :8288 | Complex multi-step tasks with retries        |
+| **Agentuity** | Agent platform      | `agentuity dev`    | Cloud-native agents with storage & streaming |
+
+Both orchestrators use the same sandbox providers and task execution logic.
 
 ## Setup
 
@@ -54,12 +66,13 @@ pnpm install
 
 Create a `.env.local` file with your values:
 
-#### Required for all providers:
+#### Core Configuration:
 
 - `POSTGRES_URL`: Your PostgreSQL connection string (works with any PostgreSQL database)
 - `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
 - `GITHUB_TOKEN`: GitHub personal access token (for repository access)
 - `AI_GATEWAY_API_KEY`: Your AI Gateway API key for AI-generated branch names and Codex agent support
+- `ORCHESTRATOR`: Choose `inngest` (default) or `agentuity`
 
 #### Sandbox provider keys (choose one or more):
 
@@ -77,6 +90,16 @@ Create a `.env.local` file with your values:
 
 - **Daytona** (Cloud):
   - `DAYTONA_API_KEY`: Your Daytona API key ([get one here](https://app.daytona.io/dashboard/keys))
+
+#### Orchestrator keys (based on your choice):
+
+- **Inngest** (default):
+  - Automatically configured for local dev
+  - No additional keys needed
+
+- **Agentuity**:
+  - `AGENTUITY_API_KEY`: Your Agentuity API key
+  - `AGENTUITY_AGENT_URL`: Agent URL (default: `http://localhost:3001` for local dev)
 
 #### Optional environment variables:
 
