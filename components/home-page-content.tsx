@@ -91,8 +91,8 @@ export function HomePageContent({
   }
 
   return (
-    <div className="flex-1 bg-background">
-      <div className="mx-auto p-3">
+    <div className="flex-1 bg-background flex flex-col">
+      <div className="p-3">
         <HomePageHeader
           selectedOwner={selectedOwner}
           selectedRepo={selectedRepo}
@@ -101,17 +101,15 @@ export function HomePageContent({
         />
       </div>
 
-      <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-        <div className="pointer-events-auto">
-          <TaskForm
-            onSubmit={handleTaskSubmit}
-            isSubmitting={isSubmitting}
-            selectedOwner={selectedOwner}
-            selectedRepo={selectedRepo}
-            initialInstallDependencies={initialInstallDependencies}
-            initialMaxDuration={initialMaxDuration}
-          />
-        </div>
+      <div className="flex-1 flex items-center justify-center">
+        <TaskForm
+          onSubmit={handleTaskSubmit}
+          isSubmitting={isSubmitting}
+          selectedOwner={selectedOwner}
+          selectedRepo={selectedRepo}
+          initialInstallDependencies={initialInstallDependencies}
+          initialMaxDuration={initialMaxDuration}
+        />
       </div>
     </div>
   )
