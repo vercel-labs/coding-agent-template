@@ -21,7 +21,7 @@ export function LogsPane({ task }: LogsPaneProps) {
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
-  const { isSidebarOpen } = useTasks()
+  const { isSidebarOpen, isSidebarResizing } = useTasks()
 
   // Initialize height from cookie on mount
   useEffect(() => {
@@ -111,9 +111,9 @@ export function LogsPane({ task }: LogsPaneProps) {
 
   return (
     <div 
-      className={`fixed bottom-0 right-0 z-10 bg-background ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+      className={`fixed bottom-0 right-0 z-10 bg-background ${isResizing || isSidebarResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
       style={{
-        left: isSidebarOpen ? 'calc(var(--sidebar-width) + 4px)' : '0px',
+        left: isSidebarOpen ? 'var(--sidebar-width)' : '0px',
         height: isCollapsed ? 'auto' : `${paneHeight}px`,
       }}
     >

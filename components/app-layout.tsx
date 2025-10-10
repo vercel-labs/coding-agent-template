@@ -21,6 +21,7 @@ interface TasksContextType {
   refreshTasks: () => Promise<void>
   toggleSidebar: () => void
   isSidebarOpen: boolean
+  isSidebarResizing: boolean
   addTaskOptimistically: (taskData: {
     prompt: string
     repoUrl: string
@@ -265,7 +266,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
   }, [isResizing])
 
   return (
-    <TasksContext.Provider value={{ refreshTasks: fetchTasks, toggleSidebar, isSidebarOpen, addTaskOptimistically }}>
+    <TasksContext.Provider value={{ refreshTasks: fetchTasks, toggleSidebar, isSidebarOpen, isSidebarResizing: isResizing, addTaskOptimistically }}>
       <ConnectorsProvider>
         <div
           className="h-screen flex relative"
@@ -309,7 +310,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
           {/* Resize Handle - Desktop Only, when sidebar is open */}
           <div
             className={`
-            hidden lg:block fixed inset-y-0 cursor-col-resize group z-41 hover:bg-primary/20
+            hidden lg:block fixed inset-y-0 cursor-col-resize group z-50 hover:bg-primary/20
             ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}
             ${isSidebarOpen ? 'w-1 opacity-100' : 'w-0 opacity-0'}
           `}
