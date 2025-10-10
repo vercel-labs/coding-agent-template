@@ -42,6 +42,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const [loadingDiffs, setLoadingDiffs] = useState(false)
+  const [hasRemoteChanges, setHasRemoteChanges] = useState(false)
   const { refreshTasks } = useTasks()
 
   // Helper function to format dates - show only time if same day as today
@@ -65,6 +66,11 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       setOptimisticStatus(null)
     }
   }, [task.status, optimisticStatus])
+
+  // Reset hasRemoteChanges when task changes
+  useEffect(() => {
+    setHasRemoteChanges(false)
+  }, [task.id, task.branchName])
 
   const getAgentLogo = (agent: string | null) => {
     if (!agent) return null
@@ -206,6 +212,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   // Fetch all diffs when files list changes
   const fetchAllDiffs = async (filesList: string[]) => {
     if (!filesList.length || loadingDiffs) return
+
+    // Mark that we have remote changes
+    setHasRemoteChanges(true)
 
     setLoadingDiffs(true)
     const newDiffsCache: Record<string, DiffData> = {}
@@ -473,7 +482,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       </div>
 
       {/* Changes Section */}
-      {task.branchName ? (
+      {task.branchName && hasRemoteChanges ? (
         <div className="flex-1 flex gap-6 px-6 pt-6 pb-6 min-h-0 overflow-hidden">
           {/* File Browser */}
           <div className="w-1/3 overflow-y-auto min-h-0">
