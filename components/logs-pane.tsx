@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
+import { getLogsPaneHeight, setLogsPaneHeight } from '@/lib/utils/cookies'
 
 interface LogsPaneProps {
   task: Task
@@ -15,10 +16,52 @@ interface LogsPaneProps {
 export function LogsPane({ task }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [paneHeight, setPaneHeight] = useState(200)
+  const [isResizing, setIsResizing] = useState(false)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
   const { isSidebarOpen } = useTasks()
+
+  // Initialize height from cookie on mount
+  useEffect(() => {
+    setPaneHeight(getLogsPaneHeight())
+  }, [])
+
+  // Handle resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return
+
+      // Calculate new height (resize from top, so subtract from window height)
+      const newHeight = window.innerHeight - e.clientY
+      const minHeight = 100
+      const maxHeight = 600
+
+      if (newHeight >= minHeight && newHeight <= maxHeight) {
+        setPaneHeight(newHeight)
+        setLogsPaneHeight(newHeight)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'row-resize'
+      document.body.style.userSelect = 'none'
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing])
 
   // Scroll to bottom on initial load
   useEffect(() => {
@@ -51,7 +94,6 @@ export function LogsPane({ task }: LogsPaneProps) {
 
       await navigator.clipboard.writeText(logsText)
       setCopiedLogs(true)
-      toast.success('Logs copied to clipboard!')
       setTimeout(() => setCopiedLogs(false), 2000)
     } catch {
       toast.error('Failed to copy logs to clipboard')
@@ -62,16 +104,33 @@ export function LogsPane({ task }: LogsPaneProps) {
     return null
   }
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }
+
   return (
     <div 
-      className="fixed bottom-0 right-0 z-10 border-t bg-background transition-all duration-300 ease-in-out"
+      className={`fixed bottom-0 right-0 z-10 bg-background ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
       style={{
         left: isSidebarOpen ? 'calc(var(--sidebar-width) + 4px)' : '0px',
+        height: isCollapsed ? 'auto' : `${paneHeight}px`,
       }}
     >
-      <div className="flex flex-col">
-        <div className="border-b flex items-center justify-between">
-          <div 
+      {/* Resize Handle */}
+      {!isCollapsed && (
+        <div
+          className={`absolute top-0 left-0 right-0 h-1 cursor-row-resize group hover:bg-primary/20 ${isResizing ? '' : 'transition-colors'}`}
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute inset-x-0 top-0 h-2 -mt-0.5" />
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      )}
+
+      <div className="flex flex-col h-full border-t">
+        <div className="border-b flex items-center justify-between flex-shrink-0">
+          <div
             className="flex items-center gap-1.5 py-1.5 px-3 flex-1 cursor-pointer hover:bg-accent/50"
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
@@ -93,46 +152,45 @@ export function LogsPane({ task }: LogsPaneProps) {
         {!isCollapsed && (
           <div
             ref={logsContainerRef}
-            className="bg-black text-green-400 p-2 font-mono text-xs h-48 overflow-y-auto leading-relaxed"
+            className="bg-black text-green-400 p-2 font-mono text-xs flex-1 overflow-y-auto leading-relaxed"
           >
-              {(task.logs || []).map((log, index) => {
-                const getLogColor = (logType: LogEntry['type']) => {
-                  switch (logType) {
-                    case 'command':
-                      return 'text-gray-400'
-                    case 'error':
-                      return 'text-red-400'
-                    case 'success':
-                      return 'text-green-400'
-                    case 'info':
-                    default:
-                      return 'text-white'
-                  }
+            {(task.logs || []).map((log, index) => {
+              const getLogColor = (logType: LogEntry['type']) => {
+                switch (logType) {
+                  case 'command':
+                    return 'text-gray-400'
+                  case 'error':
+                    return 'text-red-400'
+                  case 'success':
+                    return 'text-green-400'
+                  case 'info':
+                  default:
+                    return 'text-white'
                 }
+              }
 
-                const formatTime = (timestamp: Date) => {
-                  return new Date(timestamp).toLocaleTimeString('en-US', {
-                    hour12: false,
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    fractionalSecondDigits: 3,
-                  })
-                }
+              const formatTime = (timestamp: Date) => {
+                return new Date(timestamp).toLocaleTimeString('en-US', {
+                  hour12: false,
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  fractionalSecondDigits: 3,
+                })
+              }
 
-                return (
-                  <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
-                    <span className="text-gray-500 text-[10px] shrink-0 opacity-60">
-                      [{formatTime(log.timestamp || new Date())}]
-                    </span>
-                    <span className="flex-1">{log.message}</span>
-                  </div>
-                )
-              })}
+              return (
+                <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
+                  <span className="text-gray-500 text-[10px] shrink-0 opacity-60">
+                    [{formatTime(log.timestamp || new Date())}]
+                  </span>
+                  <span className="flex-1">{log.message}</span>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
     </div>
   )
 }
-
