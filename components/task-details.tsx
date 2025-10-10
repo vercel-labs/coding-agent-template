@@ -4,7 +4,19 @@ import { Task, LogEntry, Connector } from '@/lib/db/schema'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, FileText, Code } from 'lucide-react'
+import {
+  ExternalLink,
+  GitBranch,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Copy,
+  Check,
+  Server,
+  FileText,
+  Code,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -400,147 +412,150 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           <TabsContent value="overview">
             <Card>
               <CardContent className="space-y-4">
-            {/* Status, Created, Completed, and Duration */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <div>
-                <h4 className="font-medium mb-1">Status</h4>
-                <div className={cn('flex items-center gap-2 text-sm', getStatusColor(currentStatus))}>
-                  {getStatusIcon(currentStatus)}
-                  <span>{getStatusText(currentStatus)}</span>
-                  {currentStatus === 'processing' && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleStopTask}
-                      disabled={isStopping}
-                      className="h-5 w-5 p-0 rounded-full"
-                      title="Stop task"
-                    >
-                      <div className="h-2.5 w-2.5 bg-current" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-1">Created</h4>
-                <p className="text-sm text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</p>
-              </div>
-              <div>
-                <h4 className="font-medium mb-1">Completed</h4>
-                <p className="text-sm text-muted-foreground">
-                  {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
-                </p>
-              </div>
-              <TaskDuration task={task} />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium">Prompt</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyPromptToClipboard(task.prompt)}
-                  className="h-8 w-8 p-0"
-                  title="Copy prompt to clipboard"
-                >
-                  {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-sm bg-muted p-3 rounded-md">{task.prompt}</p>
-            </div>
-
-            {(task.selectedAgent || task.selectedModel) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {task.selectedAgent && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Agent</h4>
-                    <div className="flex items-center gap-2 text-sm">
-                      {(() => {
-                        const AgentLogo = getAgentLogo(task.selectedAgent)
-                        return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
-                      })()}
-                      <span className="capitalize truncate">{task.selectedAgent}</span>
-                    </div>
-                  </div>
-                )}
-
-                {task.selectedModel && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Model</h4>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {getModelName(task.selectedModel, task.selectedAgent)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {(task.repoUrl || task.branchName) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {task.repoUrl && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Repo</h4>
-                    <div className="flex items-center gap-2 text-sm">
-                      <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <a
-                        href={task.repoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground truncate"
-                      >
-                        {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {task.branchName && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Branch</h4>
-                    <div className="flex items-center gap-2 text-sm">
-                      <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      {task.repoUrl ? (
-                        <a
-                          href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-muted-foreground hover:text-foreground truncate"
+                {/* Status, Created, Completed, and Duration */}
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <div>
+                    <h4 className="font-medium mb-1">Status</h4>
+                    <div className={cn('flex items-center gap-2 text-sm', getStatusColor(currentStatus))}>
+                      {getStatusIcon(currentStatus)}
+                      <span>{getStatusText(currentStatus)}</span>
+                      {currentStatus === 'processing' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={handleStopTask}
+                          disabled={isStopping}
+                          className="h-5 w-5 p-0 rounded-full"
+                          title="Stop task"
                         >
-                          {task.branchName}
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground truncate">{task.branchName}</span>
+                          <div className="h-2.5 w-2.5 bg-current" />
+                        </Button>
                       )}
                     </div>
                   </div>
-                )}
-              </div>
-            )}
+                  <div>
+                    <h4 className="font-medium mb-1">Created</h4>
+                    <p className="text-sm text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-1">Completed</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
+                    </p>
+                  </div>
+                  <TaskDuration task={task} />
+                </div>
 
-            {task.mcpServerIds && task.mcpServerIds.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">MCP Servers</h4>
-                {loadingMcpServers ? (
-                  <div className="flex flex-wrap gap-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="h-10 w-32 bg-muted rounded-md animate-pulse" />
-                    ))}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Prompt</h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyPromptToClipboard(task.prompt)}
+                      className="h-8 w-8 p-0"
+                      title="Copy prompt to clipboard"
+                    >
+                      {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                    </Button>
                   </div>
-                ) : mcpServers.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {mcpServers.map((server) => (
-                      <div key={server.id} className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm">
-                        {getConnectorIcon(server)}
-                        <span>{server.name}</span>
+                  <p className="text-sm bg-muted p-3 rounded-md">{task.prompt}</p>
+                </div>
+
+                {(task.selectedAgent || task.selectedModel) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {task.selectedAgent && (
+                      <div className="min-w-0">
+                        <h4 className="font-medium mb-2">Agent</h4>
+                        <div className="flex items-center gap-2 text-sm">
+                          {(() => {
+                            const AgentLogo = getAgentLogo(task.selectedAgent)
+                            return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
+                          })()}
+                          <span className="capitalize truncate">{task.selectedAgent}</span>
+                        </div>
                       </div>
-                    ))}
+                    )}
+
+                    {task.selectedModel && (
+                      <div className="min-w-0">
+                        <h4 className="font-medium mb-2">Model</h4>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {getModelName(task.selectedModel, task.selectedAgent)}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No MCP servers found</p>
                 )}
-              </div>
-            )}
+
+                {(task.repoUrl || task.branchName) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {task.repoUrl && (
+                      <div className="min-w-0">
+                        <h4 className="font-medium mb-2">Repo</h4>
+                        <div className="flex items-center gap-2 text-sm">
+                          <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                          <a
+                            href={task.repoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground truncate"
+                          >
+                            {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {task.branchName && (
+                      <div className="min-w-0">
+                        <h4 className="font-medium mb-2">Branch</h4>
+                        <div className="flex items-center gap-2 text-sm">
+                          <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                          {task.repoUrl ? (
+                            <a
+                              href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-foreground truncate"
+                            >
+                              {task.branchName}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground truncate">{task.branchName}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {task.mcpServerIds && task.mcpServerIds.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">MCP Servers</h4>
+                    {loadingMcpServers ? (
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="h-10 w-32 bg-muted rounded-md animate-pulse" />
+                        ))}
+                      </div>
+                    ) : mcpServers.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {mcpServers.map((server) => (
+                          <div
+                            key={server.id}
+                            className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm"
+                          >
+                            {getConnectorIcon(server)}
+                            <span>{server.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No MCP servers found</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

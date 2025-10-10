@@ -215,4 +215,3 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
     </div>
   )
 }
-

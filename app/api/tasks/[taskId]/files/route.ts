@@ -223,4 +223,3 @@ function addToFileTree(tree: { [key: string]: FileTreeNode }, filename: string, 
     }
   }
 }
-

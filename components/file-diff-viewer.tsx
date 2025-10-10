@@ -206,4 +206,3 @@ export function FileDiffViewer({ selectedFile, diffsCache }: FileDiffViewerProps
     )
   }
 }
-

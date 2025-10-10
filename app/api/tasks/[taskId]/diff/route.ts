@@ -79,10 +79,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     if (!task.branchName || !task.repoUrl) {
-      return NextResponse.json(
-        { error: 'Task does not have branch or repository information' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'Task does not have branch or repository information' }, { status: 400 })
     }
 
     // Parse GitHub repository URL to get owner and repo
@@ -145,4 +142,3 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     )
   }
 }
-
