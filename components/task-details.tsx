@@ -3,13 +3,16 @@
 import { Task, LogEntry, Connector } from '@/lib/db/schema'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check, Server } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, FileText, Code } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
 import { TaskDuration } from '@/components/task-duration'
+import { FileBrowser } from '@/components/file-browser'
+import { FileDiffViewer } from '@/components/file-diff-viewer'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
 import ConvexIcon from '@/components/icons/convex-icon'
@@ -24,6 +27,13 @@ interface TaskDetailsProps {
   task: Task
 }
 
+interface DiffData {
+  filename: string
+  oldContent: string
+  newContent: string
+  language: string
+}
+
 export function TaskDetails({ task }: TaskDetailsProps) {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [copiedLogs, setCopiedLogs] = useState(false)
@@ -31,6 +41,10 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
+  const [files, setFiles] = useState<string[]>([])
+  const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
+  const [loadingDiffs, setLoadingDiffs] = useState(false)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
@@ -221,6 +235,40 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     prevLogsLengthRef.current = currentLogsLength
   }, [task.logs])
 
+  // Fetch all diffs when files list changes
+  const fetchAllDiffs = async (filesList: string[]) => {
+    if (!filesList.length || loadingDiffs) return
+
+    setLoadingDiffs(true)
+    const newDiffsCache: Record<string, DiffData> = {}
+
+    try {
+      // Fetch all diffs in parallel
+      const diffPromises = filesList.map(async (filename) => {
+        try {
+          const params = new URLSearchParams()
+          params.set('filename', filename)
+
+          const response = await fetch(`/api/tasks/${task.id}/diff?${params.toString()}`)
+          const result = await response.json()
+
+          if (response.ok && result.success) {
+            newDiffsCache[filename] = result.data
+          }
+        } catch (err) {
+          console.error(`Error fetching diff for ${filename}:`, err)
+        }
+      })
+
+      await Promise.all(diffPromises)
+      setDiffsCache(newDiffsCache)
+    } catch (error) {
+      console.error('Error fetching diffs:', error)
+    } finally {
+      setLoadingDiffs(false)
+    }
+  }
+
   const copyPromptToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -332,9 +380,26 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Task Details */}
-        <Card>
-          <CardContent className="space-y-4">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview">
+              <FileText className="w-4 h-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="changes">
+              <Code className="w-4 h-4" />
+              Changes
+            </TabsTrigger>
+            <TabsTrigger value="logs">
+              <FileText className="w-4 h-4" />
+              Logs
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview">
+            <Card>
+              <CardContent className="space-y-4">
             {/* Status, Created, Completed, and Duration */}
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <div>
@@ -476,72 +541,114 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Logs */}
-        {task.logs && task.logs.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Execution Logs</CardTitle>
-                  <CardDescription>Detailed logs from the task execution</CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyLogsToClipboard}
-                  className="h-8 w-8 p-0"
-                  title="Copy logs to clipboard"
-                >
-                  {copiedLogs ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div
-                ref={logsContainerRef}
-                className="bg-black text-green-400 p-4 rounded-md font-mono text-sm max-h-96 overflow-y-auto"
-              >
-                {(task.logs || []).map((log, index) => {
-                  const getLogColor = (logType: LogEntry['type']) => {
-                    switch (logType) {
-                      case 'command':
-                        return 'text-gray-400'
-                      case 'error':
-                        return 'text-red-400'
-                      case 'success':
-                        return 'text-green-400'
-                      case 'info':
-                      default:
-                        return 'text-white'
-                    }
-                  }
+          {/* Changes Tab */}
+          <TabsContent value="changes">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* File Browser */}
+              <Card className="lg:col-span-1">
+                <FileBrowser
+                  taskId={task.id}
+                  branchName={task.branchName}
+                  onFileSelect={setSelectedFile}
+                  onFilesLoaded={fetchAllDiffs}
+                  selectedFile={selectedFile}
+                />
+              </Card>
 
-                  const formatTime = (timestamp: Date) => {
-                    return new Date(timestamp).toLocaleTimeString('en-US', {
-                      hour12: false,
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                      fractionalSecondDigits: 3,
-                    })
-                  }
-
-                  return (
-                    <div key={index} className={cn('mb-1 flex gap-2', getLogColor(log.type))}>
-                      <span className="text-gray-500 text-xs shrink-0 mt-0.5">
-                        [{formatTime(log.timestamp || new Date())}]
-                      </span>
-                      <span className="flex-1">{log.message}</span>
+              {/* Diff Viewer */}
+              <Card className="lg:col-span-2">
+                <CardContent className="p-4">
+                  {loadingDiffs ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                        <p className="text-sm text-muted-foreground">Loading all diffs...</p>
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  ) : (
+                    <FileDiffViewer selectedFile={selectedFile} diffsCache={diffsCache} />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Logs Tab */}
+          <TabsContent value="logs">
+            {task.logs && task.logs.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Execution Logs</CardTitle>
+                      <CardDescription>Detailed logs from the task execution</CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyLogsToClipboard}
+                      className="h-8 w-8 p-0"
+                      title="Copy logs to clipboard"
+                    >
+                      {copiedLogs ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div
+                    ref={logsContainerRef}
+                    className="bg-black text-green-400 p-4 rounded-md font-mono text-sm max-h-96 overflow-y-auto"
+                  >
+                    {(task.logs || []).map((log, index) => {
+                      const getLogColor = (logType: LogEntry['type']) => {
+                        switch (logType) {
+                          case 'command':
+                            return 'text-gray-400'
+                          case 'error':
+                            return 'text-red-400'
+                          case 'success':
+                            return 'text-green-400'
+                          case 'info':
+                          default:
+                            return 'text-white'
+                        }
+                      }
+
+                      const formatTime = (timestamp: Date) => {
+                        return new Date(timestamp).toLocaleTimeString('en-US', {
+                          hour12: false,
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          fractionalSecondDigits: 3,
+                        })
+                      }
+
+                      return (
+                        <div key={index} className={cn('mb-1 flex gap-2', getLogColor(log.type))}>
+                          <span className="text-gray-500 text-xs shrink-0 mt-0.5">
+                            [{formatTime(log.timestamp || new Date())}]
+                          </span>
+                          <span className="flex-1">{log.message}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center text-muted-foreground">No logs available yet</div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )
