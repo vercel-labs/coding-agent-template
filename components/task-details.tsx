@@ -3,7 +3,7 @@
 import { Task, LogEntry, Connector } from '@/lib/db/schema'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   ExternalLink,
   GitBranch,
@@ -14,8 +14,7 @@ import {
   Copy,
   Check,
   Server,
-  FileText,
-  Code,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
@@ -346,24 +345,11 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-6">
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList>
-            <TabsTrigger value="overview">
-              <FileText className="w-4 h-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="changes">
-              <Code className="w-4 h-4" />
-              Changes
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview">
-            <Card>
-              <CardContent className="space-y-4">
-                {/* Status, Created, Completed, and Duration */}
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* Overview Section */}
+        <Card>
+          <CardContent className="space-y-4">
+                {/* Status and Duration */}
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-medium mb-1">Status</h4>
                     <div className={cn('flex items-center gap-2 text-sm', getStatusColor(currentStatus))}>
@@ -384,16 +370,30 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-1">Created</h4>
-                    <p className="text-sm text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</p>
+                    <h4 className="font-medium mb-1 flex items-center gap-1">
+                      Duration
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="space-y-1">
+                            <div>
+                              <span className="font-medium">Created:</span>{' '}
+                              <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium">Completed:</span>{' '}
+                              <span className="text-muted-foreground">
+                                {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
+                              </span>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </h4>
+                    <TaskDuration task={task} hideTitle={true} />
                   </div>
-                  <div>
-                    <h4 className="font-medium mb-1">Completed</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
-                    </p>
-                  </div>
-                  <TaskDuration task={task} />
                 </div>
 
                 <div>
@@ -506,42 +506,40 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                     )}
                   </div>
                 )}
+          </CardContent>
+        </Card>
+
+        {/* Changes Section */}
+        {task.branchName && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* File Browser */}
+            <Card className="lg:col-span-1">
+              <FileBrowser
+                taskId={task.id}
+                branchName={task.branchName}
+                onFileSelect={setSelectedFile}
+                onFilesLoaded={fetchAllDiffs}
+                selectedFile={selectedFile}
+              />
+            </Card>
+
+            {/* Diff Viewer */}
+            <Card className="lg:col-span-2">
+              <CardContent className="p-4">
+                {loadingDiffs ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                      <p className="text-sm text-muted-foreground">Loading all diffs...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <FileDiffViewer selectedFile={selectedFile} diffsCache={diffsCache} />
+                )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Changes Tab */}
-          <TabsContent value="changes">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* File Browser */}
-              <Card className="lg:col-span-1">
-                <FileBrowser
-                  taskId={task.id}
-                  branchName={task.branchName}
-                  onFileSelect={setSelectedFile}
-                  onFilesLoaded={fetchAllDiffs}
-                  selectedFile={selectedFile}
-                />
-              </Card>
-
-              {/* Diff Viewer */}
-              <Card className="lg:col-span-2">
-                <CardContent className="p-4">
-                  {loadingDiffs ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                        <p className="text-sm text-muted-foreground">Loading all diffs...</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <FileDiffViewer selectedFile={selectedFile} diffsCache={diffsCache} />
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </div>
   )

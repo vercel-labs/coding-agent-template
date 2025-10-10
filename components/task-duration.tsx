@@ -5,9 +5,10 @@ import { Task } from '@/lib/db/schema'
 
 interface TaskDurationProps {
   task: Task
+  hideTitle?: boolean
 }
 
-export function TaskDuration({ task }: TaskDurationProps) {
+export function TaskDuration({ task, hideTitle = false }: TaskDurationProps) {
   const [currentTime, setCurrentTime] = useState(Date.now())
 
   useEffect(() => {
@@ -38,6 +39,10 @@ export function TaskDuration({ task }: TaskDurationProps) {
     } else {
       return `${seconds}s`
     }
+  }
+
+  if (hideTitle) {
+    return <p className="text-sm text-muted-foreground">{formatDuration()}</p>
   }
 
   return (
