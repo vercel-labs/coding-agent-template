@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from 'lucide-react'
 import { useTasks } from '@/components/app-layout'
+import { LogsPane } from '@/components/logs-pane'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 interface TaskPageClientProps {
@@ -91,8 +92,8 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
   }
 
   return (
-    <div className="flex-1 bg-background">
-      <div className="mx-auto p-3">
+    <div className="flex-1 bg-background relative">
+      <div className="mx-auto p-3 pb-16">
         <TaskPageHeader task={task} />
 
         {/* Task details */}
@@ -100,6 +101,9 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
           <TaskDetails task={task} />
         </div>
       </div>
+
+      {/* Logs pane at bottom */}
+      <LogsPane task={task} />
     </div>
   )
 }

@@ -48,18 +48,13 @@ interface DiffData {
 
 export function TaskDetails({ task }: TaskDetailsProps) {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
-  const [copiedLogs, setCopiedLogs] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
-  const [files, setFiles] = useState<string[]>([])
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const [loadingDiffs, setLoadingDiffs] = useState(false)
-  const logsContainerRef = useRef<HTMLDivElement>(null)
-  const prevLogsLengthRef = useRef<number>(0)
-  const hasInitialScrolled = useRef<boolean>(false)
   const { refreshTasks } = useTasks()
 
   // Helper function to format dates - show only time if same day as today
@@ -219,34 +214,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(task.mcpServerIds)])
 
-  // Scroll to bottom on initial load
-  useEffect(() => {
-    if (task.logs && task.logs.length > 0 && !hasInitialScrolled.current && logsContainerRef.current) {
-      // Use setTimeout to ensure the DOM is fully rendered
-      setTimeout(() => {
-        if (logsContainerRef.current) {
-          logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
-          hasInitialScrolled.current = true
-        }
-      }, 100)
-    }
-  }, [task.logs])
-
-  // Auto-scroll to bottom when new logs are added (after initial load)
-  useEffect(() => {
-    const currentLogsLength = task.logs?.length || 0
-
-    // Only scroll if new logs were added (not on initial load)
-    if (currentLogsLength > prevLogsLengthRef.current && prevLogsLengthRef.current > 0) {
-      if (logsContainerRef.current) {
-        logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
-      }
-    }
-
-    // Update the previous logs length
-    prevLogsLengthRef.current = currentLogsLength
-  }, [task.logs])
-
   // Fetch all diffs when files list changes
   const fetchAllDiffs = async (filesList: string[]) => {
     if (!filesList.length || loadingDiffs) return
@@ -289,19 +256,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       setTimeout(() => setCopiedPrompt(false), 2000)
     } catch {
       toast.error('Failed to copy to clipboard')
-    }
-  }
-
-  const copyLogsToClipboard = async () => {
-    try {
-      const logsText = (task.logs || []).map((log) => log.message).join('\n')
-
-      await navigator.clipboard.writeText(logsText)
-      setCopiedLogs(true)
-      toast.success('Logs copied to clipboard!')
-      setTimeout(() => setCopiedLogs(false), 2000)
-    } catch {
-      toast.error('Failed to copy logs to clipboard')
     }
   }
 
@@ -401,10 +355,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             <TabsTrigger value="changes">
               <Code className="w-4 h-4" />
               Changes
-            </TabsTrigger>
-            <TabsTrigger value="logs">
-              <FileText className="w-4 h-4" />
-              Logs
             </TabsTrigger>
           </TabsList>
 
@@ -590,78 +540,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          {/* Logs Tab */}
-          <TabsContent value="logs">
-            {task.logs && task.logs.length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Execution Logs</CardTitle>
-                      <CardDescription>Detailed logs from the task execution</CardDescription>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={copyLogsToClipboard}
-                      className="h-8 w-8 p-0"
-                      title="Copy logs to clipboard"
-                    >
-                      {copiedLogs ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div
-                    ref={logsContainerRef}
-                    className="bg-black text-green-400 p-4 rounded-md font-mono text-sm max-h-96 overflow-y-auto"
-                  >
-                    {(task.logs || []).map((log, index) => {
-                      const getLogColor = (logType: LogEntry['type']) => {
-                        switch (logType) {
-                          case 'command':
-                            return 'text-gray-400'
-                          case 'error':
-                            return 'text-red-400'
-                          case 'success':
-                            return 'text-green-400'
-                          case 'info':
-                          default:
-                            return 'text-white'
-                        }
-                      }
-
-                      const formatTime = (timestamp: Date) => {
-                        return new Date(timestamp).toLocaleTimeString('en-US', {
-                          hour12: false,
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                          fractionalSecondDigits: 3,
-                        })
-                      }
-
-                      return (
-                        <div key={index} className={cn('mb-1 flex gap-2', getLogColor(log.type))}>
-                          <span className="text-gray-500 text-xs shrink-0 mt-0.5">
-                            [{formatTime(log.timestamp || new Date())}]
-                          </span>
-                          <span className="flex-1">{log.message}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="text-center text-muted-foreground">No logs available yet</div>
-                </CardContent>
-              </Card>
-            )}
           </TabsContent>
         </Tabs>
       </div>
