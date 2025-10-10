@@ -1,11 +1,11 @@
 'use client'
 
-import { Task, LogEntry, Connector } from '@/lib/db/schema'
+import { Task, Connector } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { GitBranch, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, Cable, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
@@ -42,7 +42,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const [loadingDiffs, setLoadingDiffs] = useState(false)
-  const [hasRemoteChanges, setHasRemoteChanges] = useState(false)
   const { refreshTasks } = useTasks()
 
   // Helper function to format dates - show only time if same day as today
@@ -66,11 +65,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       setOptimisticStatus(null)
     }
   }, [task.status, optimisticStatus])
-
-  // Reset hasRemoteChanges when task changes
-  useEffect(() => {
-    setHasRemoteChanges(false)
-  }, [task.id, task.branchName])
 
   const getAgentLogo = (agent: string | null) => {
     if (!agent) return null
@@ -212,9 +206,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const fetchAllDiffs = async (filesList: string[]) => {
     if (!filesList.length || loadingDiffs) return
 
-    // Mark that we have remote changes
-    setHasRemoteChanges(true)
-
     setLoadingDiffs(true)
     const newDiffsCache: Record<string, DiffData> = {}
 
@@ -303,23 +294,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         return <AlertCircle className="h-4 w-4" />
       default:
         return <AlertCircle className="h-4 w-4" />
-    }
-  }
-
-  const getStatusText = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'Waiting to start'
-      case 'processing':
-        return 'In progress'
-      case 'completed':
-        return 'Completed'
-      case 'error':
-        return 'Failed'
-      case 'stopped':
-        return 'Stopped'
-      default:
-        return 'Unknown'
     }
   }
 

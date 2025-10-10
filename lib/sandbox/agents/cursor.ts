@@ -231,7 +231,6 @@ EOF`
 
     // Use the correct flags: -p for print mode (non-interactive), --force for file modifications
     // Try multiple approaches to find and execute cursor-agent
-    let result
 
     // Log what we're about to execute
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
@@ -339,7 +338,7 @@ EOF`
       }
     }
 
-    result = {
+    const result = {
       success: true, // We'll determine actual success based on git changes
       output: capturedOutput,
       error: capturedError,

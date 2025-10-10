@@ -144,8 +144,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         comparison.data.files?.map((file) => ({
           filename: file.filename,
           status: file.status as 'added' | 'modified' | 'deleted' | 'renamed',
-          additions: file.additions || undefined,
-          deletions: file.deletions || undefined,
+          additions: file.additions || 0,
+          deletions: file.deletions || 0,
           changes: file.changes || 0,
         })) || []
 
