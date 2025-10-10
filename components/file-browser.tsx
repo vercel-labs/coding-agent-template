@@ -122,7 +122,7 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
         return (
           <div key={fullPath}>
             <div
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-accent cursor-pointer rounded-sm"
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-card/50 cursor-pointer rounded-sm"
               onClick={() => toggleFolder(fullPath)}
             >
               {isExpanded ? (
@@ -141,8 +141,8 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
         return (
           <div
             key={fullPath}
-            className={`flex items-center gap-2 px-3 py-1.5 hover:bg-accent cursor-pointer rounded-sm ${
-              isSelected ? 'bg-accent' : ''
+            className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-sm ${
+              isSelected ? 'bg-card' : 'hover:bg-card/50'
             }`}
             onClick={() => onFileSelect?.(node.filename!)}
           >

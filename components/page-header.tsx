@@ -29,7 +29,9 @@ export function PageHeader({
             <Button onClick={onToggleMobileMenu} variant="ghost" size="sm" className="h-8 w-8 p-0">
               <Menu className="h-4 w-4" />
             </Button>
-            {showPlatformName && <span className="text-sm font-semibold text-muted-foreground">Coding Agent Template</span>}
+            {showPlatformName && (
+              <span className="text-sm font-semibold text-muted-foreground">Coding Agent Template</span>
+            )}
           </>
         )}
         {leftActions}

@@ -343,7 +343,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overview Section */}
-      <div className="space-y-3 pb-6 border-b px-6 flex-shrink-0">
+      <div className="space-y-3 pb-6 border-b pl-6 pr-3 flex-shrink-0">
         {/* Prompt */}
         <div className="flex items-center gap-2">
           <p className="text-2xl flex-1 truncate">{task.prompt}</p>
@@ -482,7 +482,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
       {/* Changes Section */}
       {task.branchName ? (
-        <div className="flex-1 flex gap-6 px-6 pt-6 pb-6 min-h-0 overflow-hidden">
+        <div className="flex-1 flex gap-6 pl-3 pr-6 pt-6 pb-6 min-h-0 overflow-hidden">
           {/* File Browser */}
           <div className="w-1/3 overflow-y-auto min-h-0">
             <FileBrowser
@@ -510,7 +510,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           </div>
         </div>
       ) : currentStatus === 'pending' || currentStatus === 'processing' ? (
-        <div className="flex-1 flex items-center justify-center px-6">
+        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Working...</p>
