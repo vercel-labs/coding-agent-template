@@ -3,6 +3,7 @@ import Cookies from 'js-cookie'
 const SIDEBAR_WIDTH_COOKIE = 'sidebar-width'
 const SIDEBAR_OPEN_COOKIE = 'sidebar-open'
 const LOGS_PANE_HEIGHT_COOKIE = 'logs-pane-height'
+const LOGS_PANE_COLLAPSED_COOKIE = 'logs-pane-collapsed'
 const INSTALL_DEPENDENCIES_COOKIE = 'install-dependencies'
 const MAX_DURATION_COOKIE = 'max-duration'
 const SELECTED_OWNER_COOKIE = 'selected-owner'
@@ -10,6 +11,7 @@ const SELECTED_REPO_COOKIE = 'selected-repo'
 const DEFAULT_SIDEBAR_WIDTH = 288
 const DEFAULT_SIDEBAR_OPEN = false // Default to false to avoid hydration issues
 const DEFAULT_LOGS_PANE_HEIGHT = 200
+const DEFAULT_LOGS_PANE_COLLAPSED = true // Default to collapsed
 const DEFAULT_INSTALL_DEPENDENCIES = false
 const DEFAULT_MAX_DURATION = 5
 
@@ -136,6 +138,29 @@ export function setLogsPaneHeight(height: number): void {
       sameSite: 'strict',
     })
   }
+}
+
+// Logs pane collapsed state functions
+export function getLogsPaneCollapsed(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_LOGS_PANE_COLLAPSED
+  }
+
+  const cookieValue = Cookies.get(LOGS_PANE_COLLAPSED_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_LOGS_PANE_COLLAPSED
+}
+
+export function setLogsPaneCollapsed(isCollapsed: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(LOGS_PANE_COLLAPSED_COOKIE, isCollapsed.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
 }
 
 // Task options functions

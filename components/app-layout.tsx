@@ -266,7 +266,15 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
   }, [isResizing])
 
   return (
-    <TasksContext.Provider value={{ refreshTasks: fetchTasks, toggleSidebar, isSidebarOpen, isSidebarResizing: isResizing, addTaskOptimistically }}>
+    <TasksContext.Provider
+      value={{
+        refreshTasks: fetchTasks,
+        toggleSidebar,
+        isSidebarOpen,
+        isSidebarResizing: isResizing,
+        addTaskOptimistically,
+      }}
+    >
       <ConnectorsProvider>
         <div
           className="h-screen flex relative"

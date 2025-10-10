@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
-import { getLogsPaneHeight, setLogsPaneHeight } from '@/lib/utils/cookies'
+import { getLogsPaneHeight, setLogsPaneHeight, getLogsPaneCollapsed, setLogsPaneCollapsed } from '@/lib/utils/cookies'
 
 interface LogsPaneProps {
   task: Task
@@ -15,7 +15,7 @@ interface LogsPaneProps {
 
 export function LogsPane({ task }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(true)
+  const [isCollapsed, setIsCollapsedState] = useState(true)
   const [paneHeight, setPaneHeight] = useState(200)
   const [isResizing, setIsResizing] = useState(false)
   const logsContainerRef = useRef<HTMLDivElement>(null)
@@ -23,10 +23,17 @@ export function LogsPane({ task }: LogsPaneProps) {
   const hasInitialScrolled = useRef<boolean>(false)
   const { isSidebarOpen, isSidebarResizing } = useTasks()
 
-  // Initialize height from cookie on mount
+  // Initialize height and collapsed state from cookies on mount
   useEffect(() => {
     setPaneHeight(getLogsPaneHeight())
+    setIsCollapsedState(getLogsPaneCollapsed())
   }, [])
+
+  // Wrapper to update both state and cookie
+  const setIsCollapsed = (collapsed: boolean) => {
+    setIsCollapsedState(collapsed)
+    setLogsPaneCollapsed(collapsed)
+  }
 
   // Handle resize
   useEffect(() => {
@@ -110,7 +117,7 @@ export function LogsPane({ task }: LogsPaneProps) {
   }
 
   return (
-    <div 
+    <div
       className={`fixed bottom-0 right-0 z-10 bg-background ${isResizing || isSidebarResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
       style={{
         left: isSidebarOpen ? 'var(--sidebar-width)' : '0px',
