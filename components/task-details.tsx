@@ -481,7 +481,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       </div>
 
       {/* Changes Section */}
-      {task.branchName && hasRemoteChanges ? (
+      {task.branchName ? (
         <div className="flex-1 flex gap-6 px-6 pt-6 pb-6 min-h-0 overflow-hidden">
           {/* File Browser */}
           <div className="w-1/3 overflow-y-auto min-h-0">
