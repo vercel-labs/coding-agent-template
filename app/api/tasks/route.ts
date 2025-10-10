@@ -110,15 +110,24 @@ export async function POST(request: NextRequest) {
     })
 
     // Process the task asynchronously with timeout
-    processTaskWithTimeout(
-      newTask.id,
-      validatedData.prompt,
-      validatedData.repoUrl || '',
-      validatedData.selectedAgent || 'claude',
-      validatedData.selectedModel,
-      validatedData.installDependencies || false,
-      validatedData.maxDuration || 5,
-    )
+    // CRITICAL: Wrap in after() to ensure Vercel doesn't kill the function after response
+    // Without this, serverless functions terminate immediately after sending the response
+    after(async () => {
+      try {
+        await processTaskWithTimeout(
+          newTask.id,
+          validatedData.prompt,
+          validatedData.repoUrl || '',
+          validatedData.selectedAgent || 'claude',
+          validatedData.selectedModel,
+          validatedData.installDependencies || false,
+          validatedData.maxDuration || 5,
+        )
+      } catch (error) {
+        console.error('Task processing failed:', error)
+        // Error handling is already done inside processTaskWithTimeout
+      }
+    })
 
     return NextResponse.json({ task: newTask })
   } catch (error) {
@@ -229,8 +238,11 @@ async function processTask(
 ) {
   let sandbox: Sandbox | null = null
   const logger = createTaskLogger(taskId)
+  const taskStartTime = Date.now()
 
   try {
+    console.log(`[TASK ${taskId}] Starting task processing at ${new Date().toISOString()}`)
+
     // Update task status to processing with real-time logging
     await logger.updateStatus('processing', 'Task created, preparing to start...')
     await logger.updateProgress(10, 'Initializing task execution...')
@@ -257,6 +269,7 @@ async function processTask(
     }
 
     await logger.updateProgress(15, 'Creating sandbox environment...')
+    console.log(`[TASK ${taskId}] Creating sandbox at ${new Date().toISOString()}`)
 
     // Create sandbox with progress callback and 5-minute timeout
     const sandboxResult = await createSandbox(
@@ -309,6 +322,7 @@ async function processTask(
 
     const { sandbox: createdSandbox, domain, branchName } = sandboxResult
     sandbox = createdSandbox || null
+    console.log(`[TASK ${taskId}] Sandbox created successfully at ${new Date().toISOString()}`)
 
     // Update sandbox URL and branch name (only update branch name if not already set by AI)
     const updateData: { sandboxUrl?: string; updatedAt: Date; branchName?: string } = {
@@ -331,6 +345,7 @@ async function processTask(
 
     // Log agent execution start
     await logger.updateProgress(50, `Installing and executing ${selectedAgent} agent...`)
+    console.log(`[TASK ${taskId}] Starting ${selectedAgent} agent execution at ${new Date().toISOString()}`)
 
     // Execute selected agent with timeout (different timeouts per agent)
     const getAgentTimeout = (agent: string) => {
@@ -397,6 +412,8 @@ async function processTask(
       agentTimeoutPromise,
     ])
 
+    console.log(`[TASK ${taskId}] Agent execution completed at ${new Date().toISOString()}`)
+
     if (agentResult.success) {
       // Log agent completion
       await logger.success(`${selectedAgent} agent execution completed`)
@@ -431,6 +448,11 @@ async function processTask(
         // Update task as completed
         await logger.updateStatus('completed')
         await logger.updateProgress(100, 'Task completed successfully')
+
+        const totalTaskTime = ((Date.now() - taskStartTime) / 1000).toFixed(2)
+        console.log(
+          `[TASK ${taskId}] Task completed successfully at ${new Date().toISOString()} (total time: ${totalTaskTime}s)`,
+        )
       }
     } else {
       // Agent failed, but we still want to capture its logs
