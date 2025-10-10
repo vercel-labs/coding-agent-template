@@ -16,9 +16,10 @@ interface DiffData {
 interface FileDiffViewerProps {
   selectedFile?: string
   diffsCache?: Record<string, DiffData>
+  isInitialLoading?: boolean
 }
 
-export function FileDiffViewer({ selectedFile, diffsCache }: FileDiffViewerProps) {
+export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: FileDiffViewerProps) {
   const params = useParams()
   const taskId = params.taskId as string
 
@@ -134,17 +135,24 @@ export function FileDiffViewer({ selectedFile, diffsCache }: FileDiffViewerProps
   }, [diffData, mounted, theme])
 
   if (!selectedFile) {
+    // Don't show "No file selected" during initial loading
+    if (isInitialLoading) {
+      return null
+    }
+    
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <div className="mb-2">No file selected</div>
-        <div className="text-sm">Click on a file in the file tree to view its diff</div>
+      <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+        <div>
+          <div className="mb-2">No file selected</div>
+          <div className="text-sm">Click on a file in the file tree to view its diff</div>
+        </div>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
           <p className="text-sm text-muted-foreground">Loading diff...</p>
@@ -155,7 +163,7 @@ export function FileDiffViewer({ selectedFile, diffsCache }: FileDiffViewerProps
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-destructive mb-2 text-sm">{error}</p>
           <p className="text-xs text-muted-foreground">Unable to load diff for {selectedFile}</p>
@@ -170,7 +178,7 @@ export function FileDiffViewer({ selectedFile, diffsCache }: FileDiffViewerProps
 
   if (!diffFile) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-destructive mb-2 text-sm">Error generating diff</p>
         </div>

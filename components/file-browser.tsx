@@ -200,7 +200,7 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
         ) : files.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">No files changed</div>
         ) : (
-          <div className="py-2 px-1">{renderFileTree(fileTree)}</div>
+          <div>{renderFileTree(fileTree)}</div>
         )}
       </div>
     </div>

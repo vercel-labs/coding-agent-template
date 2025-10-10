@@ -1,10 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { useTask } from '@/lib/hooks/use-task'
 import { TaskDetails } from '@/components/task-details'
 import { TaskPageHeader } from '@/components/task-page-header'
 import { PageHeader } from '@/components/page-header'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from 'lucide-react'
 import { useTasks } from '@/components/app-layout'
@@ -18,11 +18,12 @@ interface TaskPageClientProps {
 export function TaskPageClient({ taskId }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
   const { toggleSidebar } = useTasks()
+  const [logsPaneHeight, setLogsPaneHeight] = useState(40) // Default to collapsed height
 
   if (isLoading) {
     return (
       <div className="flex-1 bg-background">
-        <div className="mx-auto p-3">
+        <div className="p-3">
           <PageHeader
             showMobileMenu={true}
             onToggleMobileMenu={toggleSidebar}
@@ -55,20 +56,6 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
               </div>
             }
           />
-
-          <div className="flex-1 overflow-y-auto px-6">
-            <div className="space-y-6">
-              {/* Task Info Skeleton - 339px height */}
-              <Card className="h-[339px]">
-                <CardContent className="space-y-4"></CardContent>
-              </Card>
-
-              {/* Logs Skeleton - 512px height */}
-              <Card className="h-[512px]">
-                <CardContent></CardContent>
-              </Card>
-            </div>
-          </div>
         </div>
       </div>
     )
@@ -96,12 +83,15 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
       </div>
 
       {/* Task details */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-16">
+      <div
+        className="flex-1 flex flex-col min-h-0 overflow-hidden"
+        style={{ paddingBottom: `${logsPaneHeight}px` }}
+      >
         <TaskDetails task={task} />
       </div>
 
       {/* Logs pane at bottom */}
-      <LogsPane task={task} />
+      <LogsPane task={task} onHeightChange={setLogsPaneHeight} />
     </div>
   )
 }

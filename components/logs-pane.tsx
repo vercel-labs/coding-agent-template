@@ -11,9 +11,10 @@ import { getLogsPaneHeight, setLogsPaneHeight, getLogsPaneCollapsed, setLogsPane
 
 interface LogsPaneProps {
   task: Task
+  onHeightChange?: (height: number) => void
 }
 
-export function LogsPane({ task }: LogsPaneProps) {
+export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
   const [isCollapsed, setIsCollapsedState] = useState(true)
   const [paneHeight, setPaneHeight] = useState(200)
@@ -25,15 +26,28 @@ export function LogsPane({ task }: LogsPaneProps) {
 
   // Initialize height and collapsed state from cookies on mount
   useEffect(() => {
-    setPaneHeight(getLogsPaneHeight())
-    setIsCollapsedState(getLogsPaneCollapsed())
-  }, [])
+    const savedHeight = getLogsPaneHeight()
+    const savedCollapsed = getLogsPaneCollapsed()
+    setPaneHeight(savedHeight)
+    setIsCollapsedState(savedCollapsed)
+    // Notify parent of initial height
+    onHeightChange?.(savedCollapsed ? 40 : savedHeight)
+  }, [onHeightChange])
 
   // Wrapper to update both state and cookie
   const setIsCollapsed = (collapsed: boolean) => {
     setIsCollapsedState(collapsed)
     setLogsPaneCollapsed(collapsed)
+    // Notify parent of height change (collapsed = ~40px, expanded = paneHeight)
+    onHeightChange?.(collapsed ? 40 : paneHeight)
   }
+
+  // Notify parent when paneHeight changes
+  useEffect(() => {
+    if (!isCollapsed) {
+      onHeightChange?.(paneHeight)
+    }
+  }, [paneHeight, isCollapsed, onHeightChange])
 
   // Handle resize
   useEffect(() => {

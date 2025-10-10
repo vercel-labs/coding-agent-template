@@ -4,21 +4,19 @@ import { Task, LogEntry, Connector } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
-  ExternalLink,
   GitBranch,
-  Clock,
   CheckCircle,
   AlertCircle,
   Loader2,
   Copy,
   Check,
   Server,
-  HelpCircle,
+  Cable,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
+import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
 import { TaskDuration } from '@/components/task-duration'
 import { FileBrowser } from '@/components/file-browser'
@@ -87,6 +85,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         return Codex
       case 'cursor':
         return Cursor
+      case 'gemini':
+        return Gemini
       case 'opencode':
         return OpenCode
       default:
@@ -293,7 +293,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-4 w-4" />
+        return <AlertCircle className="h-4 w-4" />
       case 'processing':
         return <Loader2 className="h-4 w-4 animate-spin" />
       case 'completed':
@@ -303,7 +303,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       case 'stopped':
         return <AlertCircle className="h-4 w-4" />
       default:
-        return <Clock className="h-4 w-4" />
+        return <AlertCircle className="h-4 w-4" />
     }
   }
 
@@ -345,144 +345,141 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overview Section */}
       <div className="space-y-3 pb-6 border-b px-6 flex-shrink-0">
-            {/* Prompt */}
-            <div className="flex items-center gap-2">
-              <p className="text-base flex-1 truncate">{task.prompt}</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyPromptToClipboard(task.prompt)}
-                className="h-8 w-8 p-0 flex-shrink-0"
-                title="Copy prompt to clipboard"
-              >
-                {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
+         {/* Prompt */}
+         <div className="flex items-center gap-2">
+           <p className="text-2xl flex-1 truncate">{task.prompt}</p>
+           <Button
+             variant="ghost"
+             size="sm"
+             onClick={() => copyPromptToClipboard(task.prompt)}
+             className="h-8 w-8 p-0 flex-shrink-0"
+             title="Copy prompt to clipboard"
+           >
+             {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+           </Button>
+         </div>
 
-            {/* Compact info row */}
-            <div className="flex items-center gap-4 flex-wrap text-sm">
-              {/* Status */}
-              <div className={cn('flex items-center gap-2', getStatusColor(currentStatus))}>
-                {getStatusIcon(currentStatus)}
-                <span>{getStatusText(currentStatus)}</span>
-                {currentStatus === 'processing' && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleStopTask}
-                    disabled={isStopping}
-                    className="h-5 w-5 p-0 rounded-full"
-                    title="Stop task"
-                  >
-                    <div className="h-2.5 w-2.5 bg-current" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Duration */}
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <TaskDuration task={task} hideTitle={true} />
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-3.5 w-3.5 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="space-y-1">
-                      <div>
-                        <span className="font-medium">Created:</span>{' '}
-                        <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Completed:</span>{' '}
-                        <span className="text-muted-foreground">
-                          {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
-                        </span>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-
-              {/* Agent */}
-              {(task.selectedAgent || task.selectedModel) && (
-                <div className="flex items-center gap-2">
-                  {task.selectedAgent && (() => {
-                    const AgentLogo = getAgentLogo(task.selectedAgent)
-                    return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
-                  })()}
-                  {task.selectedModel && (
-                    <span>
-                      {getModelName(task.selectedModel, task.selectedAgent)}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Repo */}
-              {task.repoUrl && (
-                <div className="flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                  <a
-                    href={task.repoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground truncate"
-                  >
-                    {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
-                  </a>
-                </div>
-              )}
-
-              {/* Branch */}
-              {task.branchName && (
-                <div className="flex items-center gap-2">
-                  <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                  {task.repoUrl ? (
-                    <a
-                      href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-foreground truncate"
+        {/* Compact info row */}
+        <div className="flex items-center gap-4 flex-wrap text-sm">
+          {/* Status + Duration */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn('flex items-center gap-2 cursor-help', getStatusColor(currentStatus))}>
+                  {getStatusIcon(currentStatus)}
+                  <span className="text-muted-foreground">
+                    <TaskDuration task={task} hideTitle={true} />
+                  </span>
+                  {currentStatus === 'processing' && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleStopTask}
+                      disabled={isStopping}
+                      className="h-5 w-5 p-0 rounded-full"
+                      title="Stop task"
                     >
-                      {task.branchName}
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground truncate">{task.branchName}</span>
+                      <div className="h-2.5 w-2.5 bg-current" />
+                    </Button>
                   )}
                 </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="space-y-1">
+                <div>
+                  <span className="font-medium">Created:</span>{' '}
+                  <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Completed:</span>{' '}
+                  <span className="text-muted-foreground">
+                    {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Repo */}
+          {task.repoUrl && (
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4 flex-shrink-0 text-muted-foreground" fill="currentColor" viewBox="0 0 24 24">
+                <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+              </svg>
+              <a
+                href={task.repoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground truncate"
+              >
+                {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
+              </a>
+            </div>
+          )}
+
+          {/* Branch */}
+          {task.branchName && (
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              {task.repoUrl ? (
+                <a
+                  href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground truncate"
+                >
+                  {task.branchName}
+                </a>
+              ) : (
+                <span className="text-muted-foreground truncate">{task.branchName}</span>
               )}
             </div>
+          )}
 
-            {/* MCP Servers */}
-            {task.mcpServerIds && task.mcpServerIds.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap text-sm">
-                <Server className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                {loadingMcpServers ? (
-                  <div className="flex gap-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="h-6 w-20 bg-muted rounded animate-pulse" />
+          {/* Agent */}
+          {(task.selectedAgent || task.selectedModel) && (
+            <div className="flex items-center gap-2">
+              {task.selectedAgent &&
+                (() => {
+                  const AgentLogo = getAgentLogo(task.selectedAgent)
+                  return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
+                })()}
+              {task.selectedModel && (
+                <span className="text-muted-foreground">{getModelName(task.selectedModel, task.selectedAgent)}</span>
+              )}
+            </div>
+          )}
+
+          {/* MCP Servers */}
+          {!loadingMcpServers && mcpServers.length > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help text-muted-foreground">
+                    <Cable className="h-4 w-4 flex-shrink-0" />
+                    <span>{mcpServers.length} MCP Server{mcpServers.length !== 1 ? 's' : ''}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <div className="space-y-1">
+                    {mcpServers.map((server) => (
+                      <div key={server.id} className="flex items-center gap-1.5">
+                        {getConnectorIcon(server)}
+                        <span>{server.name}</span>
+                      </div>
                     ))}
                   </div>
-                ) : mcpServers.length > 0 ? (
-                  mcpServers.map((server) => (
-                    <div key={server.id} className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded text-xs">
-                      {getConnectorIcon(server)}
-                      <span>{server.name}</span>
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-muted-foreground text-xs">No MCP servers found</span>
-                )}
-              </div>
-            )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </div>
 
       {/* Changes Section */}
-      {task.branchName && (
-        <div className="flex-1 flex gap-4 px-6 py-6 min-h-0 overflow-hidden">
+      {task.branchName ? (
+        <div className="flex-1 flex gap-6 px-6 pt-6 pb-6 min-h-0 overflow-hidden">
           {/* File Browser */}
-          <div className="flex-1 lg:flex-[0_0_33.333333%] overflow-y-auto min-h-0">
+          <div className="w-1/3 overflow-y-auto min-h-0">
             <FileBrowser
               taskId={task.id}
               branchName={task.branchName}
@@ -493,22 +490,28 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           </div>
 
           {/* Diff Viewer */}
-          <div className="flex-[2] lg:flex-[0_0_66.666667%] min-h-0 bg-muted rounded-md border overflow-hidden">
+          <div className="flex-1 min-h-0 bg-card rounded-md border overflow-hidden">
             <div className="overflow-y-auto h-full">
               {loadingDiffs ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                    <p className="text-sm text-muted-foreground">Loading all diffs...</p>
-                  </div>
-                </div>
+                <div className="h-full w-full animate-pulse bg-muted/50" />
               ) : (
-                <FileDiffViewer selectedFile={selectedFile} diffsCache={diffsCache} />
+                <FileDiffViewer 
+                  selectedFile={selectedFile} 
+                  diffsCache={diffsCache} 
+                  isInitialLoading={Object.keys(diffsCache).length === 0} 
+                />
               )}
             </div>
           </div>
         </div>
-      )}
+      ) : (currentStatus === 'pending' || currentStatus === 'processing') ? (
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Working...</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
