@@ -42,7 +42,7 @@ export function TaskDuration({ task, hideTitle = false }: TaskDurationProps) {
   }
 
   if (hideTitle) {
-    return <p className="text-sm text-muted-foreground">{formatDuration()}</p>
+    return <p className="text-sm text-muted-foreground min-w-[50px] inline-block">{formatDuration()}</p>
   }
 
   return (

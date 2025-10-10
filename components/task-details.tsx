@@ -3,7 +3,7 @@
 import { Task, LogEntry, Connector } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { GitBranch, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, Cable } from 'lucide-react'
+import { GitBranch, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, Cable, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -108,13 +108,12 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     ],
     cursor: [
       { value: 'auto', label: 'Auto' },
+      { value: 'sonnet-4.5', label: 'Sonnet 4.5' },
+      { value: 'sonnet-4.5-thinking', label: 'Sonnet 4.5 Thinking' },
       { value: 'gpt-5', label: 'GPT-5' },
-      { value: 'gpt-5-mini', label: 'GPT-5 mini' },
-      { value: 'gpt-5-nano', label: 'GPT-5 nano' },
-      { value: 'gpt-4.1', label: 'GPT-4.1' },
-      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+      { value: 'gpt-5-codex', label: 'GPT-5 Codex' },
+      { value: 'opus-4.1', label: 'Opus 4.1' },
+      { value: 'grok', label: 'Grok' },
     ],
     gemini: [
       { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
@@ -348,6 +347,18 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         {/* Prompt */}
         <div className="flex items-center gap-2">
           <p className="text-2xl flex-1 truncate">{task.prompt}</p>
+          {currentStatus === 'processing' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleStopTask}
+              disabled={isStopping}
+              className="h-8 w-8 p-0 flex-shrink-0"
+              title="Stop task"
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -370,18 +381,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                   <span className="text-muted-foreground">
                     <TaskDuration task={task} hideTitle={true} />
                   </span>
-                  {currentStatus === 'processing' && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleStopTask}
-                      disabled={isStopping}
-                      className="h-5 w-5 p-0 rounded-full"
-                      title="Stop task"
-                    >
-                      <div className="h-2.5 w-2.5 bg-current" />
-                    </Button>
-                  )}
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="space-y-1">
