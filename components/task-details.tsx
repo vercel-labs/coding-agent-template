@@ -1,15 +1,17 @@
 'use client'
 
-import { Task, LogEntry, Connector } from '@/lib/db/schema'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Task, Connector } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, GitBranch, Clock, CheckCircle, AlertCircle, Loader2, Copy, Check, Server } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { GitBranch, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, Cable, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Claude, Codex, Cursor, OpenCode } from '@/components/logos'
+import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
 import { TaskDuration } from '@/components/task-duration'
+import { FileBrowser } from '@/components/file-browser'
+import { FileDiffViewer } from '@/components/file-diff-viewer'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
 import ConvexIcon from '@/components/icons/convex-icon'
@@ -24,16 +26,22 @@ interface TaskDetailsProps {
   task: Task
 }
 
+interface DiffData {
+  filename: string
+  oldContent: string
+  newContent: string
+  language: string
+}
+
 export function TaskDetails({ task }: TaskDetailsProps) {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
-  const [copiedLogs, setCopiedLogs] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
-  const logsContainerRef = useRef<HTMLDivElement>(null)
-  const prevLogsLengthRef = useRef<number>(0)
-  const hasInitialScrolled = useRef<boolean>(false)
+  const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
+  const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
+  const [loadingDiffs, setLoadingDiffs] = useState(false)
   const { refreshTasks } = useTasks()
 
   // Helper function to format dates - show only time if same day as today
@@ -68,6 +76,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         return Codex
       case 'cursor':
         return Cursor
+      case 'gemini':
+        return Gemini
       case 'opencode':
         return OpenCode
       default:
@@ -92,13 +102,12 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     ],
     cursor: [
       { value: 'auto', label: 'Auto' },
+      { value: 'sonnet-4.5', label: 'Sonnet 4.5' },
+      { value: 'sonnet-4.5-thinking', label: 'Sonnet 4.5 Thinking' },
       { value: 'gpt-5', label: 'GPT-5' },
-      { value: 'gpt-5-mini', label: 'GPT-5 mini' },
-      { value: 'gpt-5-nano', label: 'GPT-5 nano' },
-      { value: 'gpt-4.1', label: 'GPT-4.1' },
-      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+      { value: 'gpt-5-codex', label: 'GPT-5 Codex' },
+      { value: 'opus-4.1', label: 'Opus 4.1' },
+      { value: 'grok', label: 'Grok' },
     ],
     gemini: [
       { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
@@ -193,33 +202,39 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(task.mcpServerIds)])
 
-  // Scroll to bottom on initial load
-  useEffect(() => {
-    if (task.logs && task.logs.length > 0 && !hasInitialScrolled.current && logsContainerRef.current) {
-      // Use setTimeout to ensure the DOM is fully rendered
-      setTimeout(() => {
-        if (logsContainerRef.current) {
-          logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
-          hasInitialScrolled.current = true
+  // Fetch all diffs when files list changes
+  const fetchAllDiffs = async (filesList: string[]) => {
+    if (!filesList.length || loadingDiffs) return
+
+    setLoadingDiffs(true)
+    const newDiffsCache: Record<string, DiffData> = {}
+
+    try {
+      // Fetch all diffs in parallel
+      const diffPromises = filesList.map(async (filename) => {
+        try {
+          const params = new URLSearchParams()
+          params.set('filename', filename)
+
+          const response = await fetch(`/api/tasks/${task.id}/diff?${params.toString()}`)
+          const result = await response.json()
+
+          if (response.ok && result.success) {
+            newDiffsCache[filename] = result.data
+          }
+        } catch (err) {
+          console.error(`Error fetching diff for ${filename}:`, err)
         }
-      }, 100)
+      })
+
+      await Promise.all(diffPromises)
+      setDiffsCache(newDiffsCache)
+    } catch (error) {
+      console.error('Error fetching diffs:', error)
+    } finally {
+      setLoadingDiffs(false)
     }
-  }, [task.logs])
-
-  // Auto-scroll to bottom when new logs are added (after initial load)
-  useEffect(() => {
-    const currentLogsLength = task.logs?.length || 0
-
-    // Only scroll if new logs were added (not on initial load)
-    if (currentLogsLength > prevLogsLengthRef.current && prevLogsLengthRef.current > 0) {
-      if (logsContainerRef.current) {
-        logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
-      }
-    }
-
-    // Update the previous logs length
-    prevLogsLengthRef.current = currentLogsLength
-  }, [task.logs])
+  }
 
   const copyPromptToClipboard = async (text: string) => {
     try {
@@ -229,19 +244,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       setTimeout(() => setCopiedPrompt(false), 2000)
     } catch {
       toast.error('Failed to copy to clipboard')
-    }
-  }
-
-  const copyLogsToClipboard = async () => {
-    try {
-      const logsText = (task.logs || []).map((log) => log.message).join('\n')
-
-      await navigator.clipboard.writeText(logsText)
-      setCopiedLogs(true)
-      toast.success('Logs copied to clipboard!')
-      setTimeout(() => setCopiedLogs(false), 2000)
-    } catch {
-      toast.error('Failed to copy logs to clipboard')
     }
   }
 
@@ -281,7 +283,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-4 w-4" />
+        return <AlertCircle className="h-4 w-4" />
       case 'processing':
         return <Loader2 className="h-4 w-4 animate-spin" />
       case 'completed':
@@ -291,24 +293,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       case 'stopped':
         return <AlertCircle className="h-4 w-4" />
       default:
-        return <Clock className="h-4 w-4" />
-    }
-  }
-
-  const getStatusText = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'Waiting to start'
-      case 'processing':
-        return 'In progress'
-      case 'completed':
-        return 'Completed'
-      case 'error':
-        return 'Failed'
-      case 'stopped':
-        return 'Stopped'
-      default:
-        return 'Unknown'
+        return <AlertCircle className="h-4 w-4" />
     }
   }
 
@@ -330,219 +315,182 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   }
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Task Details */}
-        <Card>
-          <CardContent className="space-y-4">
-            {/* Status, Created, Completed, and Duration */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <div>
-                <h4 className="font-medium mb-1">Status</h4>
-                <div className={cn('flex items-center gap-2 text-sm', getStatusColor(currentStatus))}>
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Overview Section */}
+      <div className="space-y-3 pb-6 border-b pl-6 pr-3 flex-shrink-0">
+        {/* Prompt */}
+        <div className="flex items-center gap-2">
+          <p className="text-2xl flex-1 truncate">{task.prompt}</p>
+          {currentStatus === 'processing' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleStopTask}
+              disabled={isStopping}
+              className="h-8 w-8 p-0 flex-shrink-0"
+              title="Stop task"
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => copyPromptToClipboard(task.prompt)}
+            className="h-8 w-8 p-0 flex-shrink-0"
+            title="Copy prompt to clipboard"
+          >
+            {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {/* Compact info row */}
+        <div className="flex items-center gap-4 flex-wrap text-sm">
+          {/* Status + Duration */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn('flex items-center gap-2 cursor-help', getStatusColor(currentStatus))}>
                   {getStatusIcon(currentStatus)}
-                  <span>{getStatusText(currentStatus)}</span>
-                  {currentStatus === 'processing' && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleStopTask}
-                      disabled={isStopping}
-                      className="h-5 w-5 p-0 rounded-full"
-                      title="Stop task"
-                    >
-                      <div className="h-2.5 w-2.5 bg-current" />
-                    </Button>
-                  )}
+                  <span className="text-muted-foreground">
+                    <TaskDuration task={task} hideTitle={true} />
+                  </span>
                 </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-1">Created</h4>
-                <p className="text-sm text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</p>
-              </div>
-              <div>
-                <h4 className="font-medium mb-1">Completed</h4>
-                <p className="text-sm text-muted-foreground">
-                  {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
-                </p>
-              </div>
-              <TaskDuration task={task} />
-            </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="space-y-1">
+                <div>
+                  <span className="font-medium">Created:</span>{' '}
+                  <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Completed:</span>{' '}
+                  <span className="text-muted-foreground">
+                    {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
+                  </span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium">Prompt</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyPromptToClipboard(task.prompt)}
-                  className="h-8 w-8 p-0"
-                  title="Copy prompt to clipboard"
+          {/* Repo */}
+          {task.repoUrl && (
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4 flex-shrink-0 text-muted-foreground" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  fillRule="evenodd"
+                  d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <a
+                href={task.repoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground truncate"
+              >
+                {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
+              </a>
+            </div>
+          )}
+
+          {/* Branch */}
+          {task.branchName && (
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              {task.repoUrl ? (
+                <a
+                  href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground truncate"
                 >
-                  {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-sm bg-muted p-3 rounded-md">{task.prompt}</p>
+                  {task.branchName}
+                </a>
+              ) : (
+                <span className="text-muted-foreground truncate">{task.branchName}</span>
+              )}
             </div>
+          )}
 
-            {(task.selectedAgent || task.selectedModel) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {task.selectedAgent && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Agent</h4>
-                    <div className="flex items-center gap-2 text-sm">
-                      {(() => {
-                        const AgentLogo = getAgentLogo(task.selectedAgent)
-                        return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
-                      })()}
-                      <span className="capitalize truncate">{task.selectedAgent}</span>
-                    </div>
-                  </div>
-                )}
+          {/* Agent */}
+          {(task.selectedAgent || task.selectedModel) && (
+            <div className="flex items-center gap-2">
+              {task.selectedAgent &&
+                (() => {
+                  const AgentLogo = getAgentLogo(task.selectedAgent)
+                  return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
+                })()}
+              {task.selectedModel && (
+                <span className="text-muted-foreground">{getModelName(task.selectedModel, task.selectedAgent)}</span>
+              )}
+            </div>
+          )}
 
-                {task.selectedModel && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Model</h4>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {getModelName(task.selectedModel, task.selectedAgent)}
-                    </p>
+          {/* MCP Servers */}
+          {!loadingMcpServers && mcpServers.length > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help text-muted-foreground">
+                    <Cable className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                      {mcpServers.length} MCP Server{mcpServers.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-
-            {(task.repoUrl || task.branchName) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {task.repoUrl && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Repo</h4>
-                    <div className="flex items-center gap-2 text-sm">
-                      <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <a
-                        href={task.repoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground truncate"
-                      >
-                        {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {task.branchName && (
-                  <div className="min-w-0">
-                    <h4 className="font-medium mb-2">Branch</h4>
-                    <div className="flex items-center gap-2 text-sm">
-                      <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      {task.repoUrl ? (
-                        <a
-                          href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-muted-foreground hover:text-foreground truncate"
-                        >
-                          {task.branchName}
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground truncate">{task.branchName}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {task.mcpServerIds && task.mcpServerIds.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">MCP Servers</h4>
-                {loadingMcpServers ? (
-                  <div className="flex flex-wrap gap-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="h-10 w-32 bg-muted rounded-md animate-pulse" />
-                    ))}
-                  </div>
-                ) : mcpServers.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <div className="space-y-1">
                     {mcpServers.map((server) => (
-                      <div key={server.id} className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm">
+                      <div key={server.id} className="flex items-center gap-1.5">
                         {getConnectorIcon(server)}
                         <span>{server.name}</span>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No MCP servers found</p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Logs */}
-        {task.logs && task.logs.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Execution Logs</CardTitle>
-                  <CardDescription>Detailed logs from the task execution</CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyLogsToClipboard}
-                  className="h-8 w-8 p-0"
-                  title="Copy logs to clipboard"
-                >
-                  {copiedLogs ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div
-                ref={logsContainerRef}
-                className="bg-black text-green-400 p-4 rounded-md font-mono text-sm max-h-96 overflow-y-auto"
-              >
-                {(task.logs || []).map((log, index) => {
-                  const getLogColor = (logType: LogEntry['type']) => {
-                    switch (logType) {
-                      case 'command':
-                        return 'text-gray-400'
-                      case 'error':
-                        return 'text-red-400'
-                      case 'success':
-                        return 'text-green-400'
-                      case 'info':
-                      default:
-                        return 'text-white'
-                    }
-                  }
-
-                  const formatTime = (timestamp: Date) => {
-                    return new Date(timestamp).toLocaleTimeString('en-US', {
-                      hour12: false,
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                      fractionalSecondDigits: 3,
-                    })
-                  }
-
-                  return (
-                    <div key={index} className={cn('mb-1 flex gap-2', getLogColor(log.type))}>
-                      <span className="text-gray-500 text-xs shrink-0 mt-0.5">
-                        [{formatTime(log.timestamp || new Date())}]
-                      </span>
-                      <span className="flex-1">{log.message}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </div>
+
+      {/* Changes Section */}
+      {task.branchName ? (
+        <div className="flex-1 flex gap-6 pl-3 pr-6 pt-6 pb-6 min-h-0 overflow-hidden">
+          {/* File Browser */}
+          <div className="w-1/3 overflow-y-auto min-h-0">
+            <FileBrowser
+              taskId={task.id}
+              branchName={task.branchName}
+              onFileSelect={setSelectedFile}
+              onFilesLoaded={fetchAllDiffs}
+              selectedFile={selectedFile}
+            />
+          </div>
+
+          {/* Diff Viewer */}
+          <div className="flex-1 min-h-0 bg-card rounded-md border overflow-hidden">
+            <div className="overflow-y-auto h-full">
+              {loadingDiffs ? (
+                <div className="h-full w-full animate-pulse bg-muted/50" />
+              ) : (
+                <FileDiffViewer
+                  selectedFile={selectedFile}
+                  diffsCache={diffsCache}
+                  isInitialLoading={Object.keys(diffsCache).length === 0}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : currentStatus === 'pending' || currentStatus === 'processing' ? (
+        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Working...</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

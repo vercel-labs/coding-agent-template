@@ -231,7 +231,6 @@ EOF`
 
     // Use the correct flags: -p for print mode (non-interactive), --force for file modifications
     // Try multiple approaches to find and execute cursor-agent
-    let result
 
     // Log what we're about to execute
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
@@ -312,16 +311,20 @@ EOF`
       await logger.info('Cursor command started with output capture, monitoring for completion...')
     }
 
-    // Poll for completion instead of waiting for the API
+    // Wait for completion - let sandbox timeout handle the hard limit
     let attempts = 0
-    const maxAttempts = 60 // 60 seconds max
 
-    while (!isCompleted && attempts < maxAttempts) {
+    while (!isCompleted) {
       await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait 1 second
       attempts++
 
-      if (attempts % 10 === 0 && logger) {
-        await logger.info(`Still waiting for completion... ${attempts}s elapsed`)
+      // Safety check: if we've been waiting over 4 minutes, break and check git status
+      // (sandbox timeout is 5 minutes, so we leave a buffer)
+      if (attempts > 240) {
+        if (logger) {
+          await logger.info('Approaching sandbox timeout, checking for changes...')
+        }
+        break
       }
     }
 
@@ -329,65 +332,55 @@ EOF`
       if (logger) {
         await logger.info(`Cursor completed successfully in ${attempts} seconds`)
       }
-
-      result = {
-        success: true,
-        output: capturedOutput,
-        error: capturedError,
-        command: logCommand,
-      }
     } else {
       if (logger) {
-        await logger.info('Timeout waiting for completion, but may have succeeded')
+        await logger.info(`Cursor execution ended after ${attempts} seconds, checking for changes...`)
       }
+    }
 
-      result = {
-        success: false,
-        output: capturedOutput,
-        error: capturedError || 'Timeout waiting for completion',
-        command: logCommand,
-      }
+    const result = {
+      success: true, // We'll determine actual success based on git changes
+      output: capturedOutput,
+      error: capturedError,
+      command: logCommand,
     }
 
     // Log the output and error results (similar to Claude)
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
       await logger.info(redactedOutput)
-      if (logger) {
-        await logger.info(redactedOutput)
-      }
     }
 
-    if (!result.success && result.error) {
+    if (result.error && result.error.trim()) {
       const redactedError = redactSensitiveInfo(result.error)
-      await logger.error(redactedError)
-      if (logger) {
-        await logger.error(redactedError)
-      }
+      await logger.info(`Cursor stderr: ${redactedError}`)
     }
 
     // Cursor CLI execution completed
 
-    // Check if any files were modified
+    // Check if any files were modified - this is the real indicator of success
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
-    if (result.success) {
+    // Determine success based on whether changes were made
+    const actualSuccess = !!hasChanges
+
+    if (actualSuccess) {
       return {
         success: true,
-        output: `Cursor CLI executed successfully${hasChanges ? ' (Changes detected)' : ' (No changes made)'}`,
+        output: `Cursor CLI executed successfully (Changes detected)`,
         agentResponse: result.output || 'Cursor CLI completed the task',
         cliName: 'cursor',
-        changesDetected: !!hasChanges,
+        changesDetected: true,
         error: undefined,
       }
     } else {
       return {
         success: false,
-        error: `Cursor CLI failed: ${result.error || 'No error message'}`,
+        error: `Cursor CLI failed: No changes were made to the repository`,
         agentResponse: result.output,
         cliName: 'cursor',
-        changesDetected: !!hasChanges,
+        changesDetected: false,
       }
     }
   } catch (error: unknown) {

@@ -5,9 +5,10 @@ import { Task } from '@/lib/db/schema'
 
 interface TaskDurationProps {
   task: Task
+  hideTitle?: boolean
 }
 
-export function TaskDuration({ task }: TaskDurationProps) {
+export function TaskDuration({ task, hideTitle = false }: TaskDurationProps) {
   const [currentTime, setCurrentTime] = useState(Date.now())
 
   useEffect(() => {
@@ -27,17 +28,15 @@ export function TaskDuration({ task }: TaskDurationProps) {
     const durationMs = endTime - startTime
     const durationSeconds = Math.floor(durationMs / 1000)
 
-    const hours = Math.floor(durationSeconds / 3600)
-    const minutes = Math.floor((durationSeconds % 3600) / 60)
+    const minutes = Math.floor(durationSeconds / 60)
     const seconds = durationSeconds % 60
 
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`
-    } else {
-      return `${seconds}s`
-    }
+    // Format as MM:SS with zero padding
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  if (hideTitle) {
+    return <p className="text-sm text-muted-foreground min-w-[40px] inline-block">{formatDuration()}</p>
   }
 
   return (
