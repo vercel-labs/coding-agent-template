@@ -139,7 +139,7 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
     if (isInitialLoading) {
       return null
     }
-    
+
     return (
       <div className="flex items-center justify-center h-full text-center text-muted-foreground">
         <div>

@@ -83,10 +83,7 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
       </div>
 
       {/* Task details */}
-      <div
-        className="flex-1 flex flex-col min-h-0 overflow-hidden"
-        style={{ paddingBottom: `${logsPaneHeight}px` }}
-      >
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ paddingBottom: `${logsPaneHeight}px` }}>
         <TaskDetails task={task} />
       </div>
 
