@@ -192,15 +192,6 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
-        <h3 className="text-lg font-semibold">Changed Files</h3>
-        {files.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {files.length} file{files.length !== 1 ? 's' : ''} changed
-          </p>
-        )}
-      </div>
-
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-4 text-center text-sm text-muted-foreground">Loading files...</div>

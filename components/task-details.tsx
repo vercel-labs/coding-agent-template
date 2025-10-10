@@ -1,7 +1,6 @@
 'use client'
 
 import { Task, LogEntry, Connector } from '@/lib/db/schema'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -343,204 +342,173 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   }
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Overview Section */}
-        <Card>
-          <CardContent className="space-y-4">
-                {/* Status and Duration */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium mb-1">Status</h4>
-                    <div className={cn('flex items-center gap-2 text-sm', getStatusColor(currentStatus))}>
-                      {getStatusIcon(currentStatus)}
-                      <span>{getStatusText(currentStatus)}</span>
-                      {currentStatus === 'processing' && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={handleStopTask}
-                          disabled={isStopping}
-                          className="h-5 w-5 p-0 rounded-full"
-                          title="Stop task"
-                        >
-                          <div className="h-2.5 w-2.5 bg-current" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-1 flex items-center gap-1">
-                      Duration
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent className="space-y-1">
-                            <div>
-                              <span className="font-medium">Created:</span>{' '}
-                              <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
-                            </div>
-                            <div>
-                              <span className="font-medium">Completed:</span>{' '}
-                              <span className="text-muted-foreground">
-                                {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
-                              </span>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </h4>
-                    <TaskDuration task={task} hideTitle={true} />
-                  </div>
-                </div>
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Overview Section */}
+      <div className="space-y-3 pb-6 border-b px-6 flex-shrink-0">
+            {/* Prompt */}
+            <div className="flex items-center gap-2">
+              <p className="text-base flex-1 truncate">{task.prompt}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyPromptToClipboard(task.prompt)}
+                className="h-8 w-8 p-0 flex-shrink-0"
+                title="Copy prompt to clipboard"
+              >
+                {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Prompt</h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyPromptToClipboard(task.prompt)}
-                      className="h-8 w-8 p-0"
-                      title="Copy prompt to clipboard"
+            {/* Compact info row */}
+            <div className="flex items-center gap-4 flex-wrap text-sm">
+              {/* Status */}
+              <div className={cn('flex items-center gap-2', getStatusColor(currentStatus))}>
+                {getStatusIcon(currentStatus)}
+                <span>{getStatusText(currentStatus)}</span>
+                {currentStatus === 'processing' && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleStopTask}
+                    disabled={isStopping}
+                    className="h-5 w-5 p-0 rounded-full"
+                    title="Stop task"
+                  >
+                    <div className="h-2.5 w-2.5 bg-current" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Duration */}
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <TaskDuration task={task} hideTitle={true} />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="space-y-1">
+                      <div>
+                        <span className="font-medium">Created:</span>{' '}
+                        <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Completed:</span>{' '}
+                        <span className="text-muted-foreground">
+                          {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
+                        </span>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              {/* Agent */}
+              {(task.selectedAgent || task.selectedModel) && (
+                <div className="flex items-center gap-2">
+                  {task.selectedAgent && (() => {
+                    const AgentLogo = getAgentLogo(task.selectedAgent)
+                    return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
+                  })()}
+                  {task.selectedModel && (
+                    <span>
+                      {getModelName(task.selectedModel, task.selectedAgent)}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Repo */}
+              {task.repoUrl && (
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  <a
+                    href={task.repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground truncate"
+                  >
+                    {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
+                  </a>
+                </div>
+              )}
+
+              {/* Branch */}
+              {task.branchName && (
+                <div className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  {task.repoUrl ? (
+                    <a
+                      href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-foreground truncate"
                     >
-                      {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <p className="text-sm bg-muted p-3 rounded-md">{task.prompt}</p>
+                      {task.branchName}
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground truncate">{task.branchName}</span>
+                  )}
                 </div>
+              )}
+            </div>
 
-                {(task.selectedAgent || task.selectedModel) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {task.selectedAgent && (
-                      <div className="min-w-0">
-                        <h4 className="font-medium mb-2">Agent</h4>
-                        <div className="flex items-center gap-2 text-sm">
-                          {(() => {
-                            const AgentLogo = getAgentLogo(task.selectedAgent)
-                            return AgentLogo ? <AgentLogo className="w-4 h-4 flex-shrink-0" /> : null
-                          })()}
-                          <span className="capitalize truncate">{task.selectedAgent}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {task.selectedModel && (
-                      <div className="min-w-0">
-                        <h4 className="font-medium mb-2">Model</h4>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {getModelName(task.selectedModel, task.selectedAgent)}
-                        </p>
-                      </div>
-                    )}
+            {/* MCP Servers */}
+            {task.mcpServerIds && task.mcpServerIds.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap text-sm">
+                <Server className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                {loadingMcpServers ? (
+                  <div className="flex gap-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="h-6 w-20 bg-muted rounded animate-pulse" />
+                    ))}
                   </div>
-                )}
-
-                {(task.repoUrl || task.branchName) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {task.repoUrl && (
-                      <div className="min-w-0">
-                        <h4 className="font-medium mb-2">Repo</h4>
-                        <div className="flex items-center gap-2 text-sm">
-                          <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                          <a
-                            href={task.repoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground truncate"
-                          >
-                            {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {task.branchName && (
-                      <div className="min-w-0">
-                        <h4 className="font-medium mb-2">Branch</h4>
-                        <div className="flex items-center gap-2 text-sm">
-                          <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                          {task.repoUrl ? (
-                            <a
-                              href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-muted-foreground hover:text-foreground truncate"
-                            >
-                              {task.branchName}
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground truncate">{task.branchName}</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {task.mcpServerIds && task.mcpServerIds.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-2">MCP Servers</h4>
-                    {loadingMcpServers ? (
-                      <div className="flex flex-wrap gap-2">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div key={i} className="h-10 w-32 bg-muted rounded-md animate-pulse" />
-                        ))}
-                      </div>
-                    ) : mcpServers.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {mcpServers.map((server) => (
-                          <div
-                            key={server.id}
-                            className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm"
-                          >
-                            {getConnectorIcon(server)}
-                            <span>{server.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No MCP servers found</p>
-                    )}
-                  </div>
-                )}
-          </CardContent>
-        </Card>
-
-        {/* Changes Section */}
-        {task.branchName && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* File Browser */}
-            <Card className="lg:col-span-1">
-              <FileBrowser
-                taskId={task.id}
-                branchName={task.branchName}
-                onFileSelect={setSelectedFile}
-                onFilesLoaded={fetchAllDiffs}
-                selectedFile={selectedFile}
-              />
-            </Card>
-
-            {/* Diff Viewer */}
-            <Card className="lg:col-span-2">
-              <CardContent className="p-4">
-                {loadingDiffs ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                      <p className="text-sm text-muted-foreground">Loading all diffs...</p>
+                ) : mcpServers.length > 0 ? (
+                  mcpServers.map((server) => (
+                    <div key={server.id} className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded text-xs">
+                      {getConnectorIcon(server)}
+                      <span>{server.name}</span>
                     </div>
-                  </div>
+                  ))
                 ) : (
-                  <FileDiffViewer selectedFile={selectedFile} diffsCache={diffsCache} />
+                  <span className="text-muted-foreground text-xs">No MCP servers found</span>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              </div>
+            )}
       </div>
+
+      {/* Changes Section */}
+      {task.branchName && (
+        <div className="flex-1 flex gap-4 px-6 py-6 min-h-0 overflow-hidden">
+          {/* File Browser */}
+          <div className="flex-1 lg:flex-[0_0_33.333333%] overflow-y-auto min-h-0">
+            <FileBrowser
+              taskId={task.id}
+              branchName={task.branchName}
+              onFileSelect={setSelectedFile}
+              onFilesLoaded={fetchAllDiffs}
+              selectedFile={selectedFile}
+            />
+          </div>
+
+          {/* Diff Viewer */}
+          <div className="flex-[2] lg:flex-[0_0_66.666667%] min-h-0 bg-muted rounded-md border overflow-hidden">
+            <div className="overflow-y-auto h-full">
+              {loadingDiffs ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p className="text-sm text-muted-foreground">Loading all diffs...</p>
+                  </div>
+                </div>
+              ) : (
+                <FileDiffViewer selectedFile={selectedFile} diffsCache={diffsCache} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

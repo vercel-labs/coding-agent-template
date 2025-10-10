@@ -180,18 +180,16 @@ export function FileDiffViewer({ selectedFile, diffsCache }: FileDiffViewerProps
 
   try {
     return (
-      <div className="border rounded-md overflow-hidden">
-        <div className="git-diff-view-container">
-          <DiffView
-            key={`${selectedFile}-${diffData?.filename}`}
-            diffFile={diffFile}
-            diffViewMode={diffViewMode}
-            diffViewTheme={mounted ? theme : 'light'}
-            diffViewHighlight={true}
-            diffViewWrap={true}
-            diffViewFontSize={12}
-          />
-        </div>
+      <div className="git-diff-view-container">
+        <DiffView
+          key={`${selectedFile}-${diffData?.filename}`}
+          diffFile={diffFile}
+          diffViewMode={diffViewMode}
+          diffViewTheme={mounted ? theme : 'light'}
+          diffViewHighlight={true}
+          diffViewWrap={true}
+          diffViewFontSize={12}
+        />
       </div>
     )
   } catch (error) {

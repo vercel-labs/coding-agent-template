@@ -56,19 +56,17 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
             }
           />
 
-          <div className="max-w-4xl mx-auto">
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div className="max-w-4xl mx-auto space-y-6">
-                {/* Task Info Skeleton - 339px height */}
-                <Card className="h-[339px]">
-                  <CardContent className="space-y-4"></CardContent>
-                </Card>
+          <div className="flex-1 overflow-y-auto px-6">
+            <div className="space-y-6">
+              {/* Task Info Skeleton - 339px height */}
+              <Card className="h-[339px]">
+                <CardContent className="space-y-4"></CardContent>
+              </Card>
 
-                {/* Logs Skeleton - 512px height */}
-                <Card className="h-[512px]">
-                  <CardContent></CardContent>
-                </Card>
-              </div>
+              {/* Logs Skeleton - 512px height */}
+              <Card className="h-[512px]">
+                <CardContent></CardContent>
+              </Card>
             </div>
           </div>
         </div>
@@ -92,14 +90,14 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
   }
 
   return (
-    <div className="flex-1 bg-background relative">
-      <div className="mx-auto p-3 pb-16">
+    <div className="flex-1 bg-background relative flex flex-col h-full overflow-hidden">
+      <div className="flex-shrink-0 p-3">
         <TaskPageHeader task={task} />
+      </div>
 
-        {/* Task details */}
-        <div className="max-w-4xl mx-auto">
-          <TaskDetails task={task} />
-        </div>
+      {/* Task details */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-16">
+        <TaskDetails task={task} />
       </div>
 
       {/* Logs pane at bottom */}
