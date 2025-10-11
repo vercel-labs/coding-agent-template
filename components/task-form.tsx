@@ -328,7 +328,7 @@ export function TaskForm({
 
           {/* Agent Selection */}
           <div className="p-4">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2">
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 {/* Agent Selection */}
                 <Select
@@ -340,7 +340,7 @@ export function TaskForm({
                   }}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger className="w-auto min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
+                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
                     <SelectValue placeholder="Agent" />
                   </SelectTrigger>
                   <SelectContent>
@@ -365,7 +365,7 @@ export function TaskForm({
                   }}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger className="w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
+                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
                     <SelectValue placeholder="Model" />
                   </SelectTrigger>
                   <SelectContent>
@@ -377,9 +377,9 @@ export function TaskForm({
                   </SelectContent>
                 </Select>
 
-                {/* Option Chips */}
+                {/* Option Chips - Only visible on desktop */}
                 {(!installDependencies || maxDuration !== 5) && (
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="hidden sm:flex items-center gap-2 flex-wrap">
                     {!installDependencies && (
                       <Badge
                         variant="secondary"
@@ -425,7 +425,57 @@ export function TaskForm({
               </div>
 
               {/* Options and Submit Buttons */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2">
+                {/* Option Chips - Mobile version (left side) */}
+                <div className="flex sm:hidden items-center gap-2 flex-wrap">
+                  {(!installDependencies || maxDuration !== 5) && (
+                    <>
+                      {!installDependencies && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                          onClick={() => setShowOptionsDialog(true)}
+                        >
+                          Skip Install
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-3 w-3 p-0 hover:bg-transparent"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              updateInstallDependencies(true)
+                            }}
+                          >
+                            <X className="h-2 w-2" />
+                          </Button>
+                        </Badge>
+                      )}
+                      {maxDuration !== 5 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                          onClick={() => setShowOptionsDialog(true)}
+                        >
+                          {maxDuration}m
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-3 w-3 p-0 hover:bg-transparent"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              updateMaxDuration(5)
+                            }}
+                          >
+                            <X className="h-2 w-2" />
+                          </Button>
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Buttons - right side */}
+                <div className="flex items-center gap-2">
                 <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -522,6 +572,7 @@ export function TaskForm({
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
                 </Button>
+                </div>
               </div>
             </div>
           </div>
