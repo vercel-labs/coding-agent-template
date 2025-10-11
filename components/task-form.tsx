@@ -313,60 +313,37 @@ export function TaskForm({
     fetchRepos()
   }, [selectedOwner])
 
-  // Check if user has required API keys for selected agent
-  const checkApiKeyRequirements = (): boolean => {
-    let requirements: Provider[] = AGENT_API_KEY_REQUIREMENTS[selectedAgent] || []
-
-    // For opencode, determine requirements based on selected model
-    if (selectedAgent === 'opencode') {
-      requirements = getOpenCodeRequiredKeys(selectedModel)
-    }
-
-    if (!requirements || requirements.length === 0) return true
-
-    const missingKeys = requirements.filter((key) => !savedApiKeys.has(key))
-
-    if (missingKeys.length > 0) {
-      const providerNames = missingKeys.map((key) => {
-        switch (key) {
-          case 'anthropic':
-            return 'Anthropic'
-          case 'openai':
-            return 'OpenAI'
-          case 'cursor':
-            return 'Cursor'
-          case 'gemini':
-            return 'Gemini'
-          case 'aigateway':
-            return 'AI Gateway'
-          default:
-            return key
-        }
-      })
-
-      // Better error message for opencode
-      const modelInfo = selectedAgent === 'opencode' ? ` with ${selectedModel}` : ''
-
-      toast.error(`Missing API Key${missingKeys.length > 1 ? 's' : ''}`, {
-        description: `Please add your ${providerNames.join(' and ')} API key${missingKeys.length > 1 ? 's' : ''} to use ${selectedAgent}${modelInfo}.`,
-        action: {
-          label: 'Add Keys',
-          onClick: () => setShowApiKeysDialog(true),
-        },
-        duration: 5000,
-      })
-
-      return false
-    }
-
-    return true
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim() && selectedOwner && selectedRepo) {
-      // Check if user has required API keys
-      if (!checkApiKeyRequirements()) {
+      // Check if API key is required and available for the selected agent and model
+      try {
+        const response = await fetch(`/api/api-keys/check?agent=${selectedAgent}&model=${selectedModel}`)
+        const data = await response.json()
+
+        if (!data.hasKey) {
+          // Show error message with provider name
+          const providerNames: Record<string, string> = {
+            anthropic: 'Anthropic',
+            openai: 'OpenAI',
+            cursor: 'Cursor',
+            gemini: 'Gemini',
+            aigateway: 'AI Gateway',
+          }
+          const providerName = providerNames[data.provider] || data.provider
+
+          toast.error(`${providerName} API key required`, {
+            description: `Please add your ${providerName} API key to use the ${data.agentName} agent with this model.`,
+            action: {
+              label: 'Add API Key',
+              onClick: () => setShowApiKeysDialog(true),
+            },
+          })
+          return
+        }
+      } catch (error) {
+        console.error('Error checking API key:', error)
+        toast.error('Failed to validate API key availability')
         return
       }
 
