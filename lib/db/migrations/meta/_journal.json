@@ -71,6 +71,13 @@
       "when": 1759869871375,
       "tag": "0009_stale_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1760154706524,
+      "tag": "0010_curvy_veda",
+      "breakpoints": true
     }
   ]
 }

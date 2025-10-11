@@ -10,6 +10,7 @@ import { MoreHorizontal } from 'lucide-react'
 import { useTasks } from '@/components/app-layout'
 import { LogsPane } from '@/components/logs-pane'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
+import { User } from '@/components/auth/user'
 
 interface TaskPageClientProps {
   taskId: string
@@ -53,6 +54,9 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
+
+                {/* User Authentication */}
+                <User />
               </div>
             }
           />
@@ -64,6 +68,14 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
   if (error || !task) {
     return (
       <div className="flex-1 bg-background">
+        <div className="p-3">
+          <PageHeader
+            showMobileMenu={true}
+            onToggleMobileMenu={toggleSidebar}
+            showPlatformName={true}
+            actions={<User />}
+          />
+        </div>
         <div className="mx-auto p-3">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">

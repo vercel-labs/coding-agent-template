@@ -58,6 +58,21 @@ Optional environment variables:
 - `NPM_TOKEN`: For private npm packages
 - `ENCRYPTION_KEY`: 32-byte hex string for encrypting MCP OAuth secrets (required only when using MCP connectors). Generate with: `openssl rand -hex 32`
 
+**Sign in with Vercel** (Optional):
+
+- `VERCEL_CLIENT_ID`: Your Vercel OAuth client ID
+- `VERCEL_CLIENT_SECRET`: Your Vercel OAuth client secret
+- `JWE_SECRET`: Base64-encoded secret for session encryption (generate with: `openssl rand -base64 32`)
+
+> See [Sign in with Vercel documentation](docs/SIGN_IN_WITH_VERCEL.md) for detailed setup instructions.
+
+**GitHub OAuth - Per-User Authentication** (Optional but Recommended):
+
+- `GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID
+- `GITHUB_CLIENT_SECRET`: Your GitHub OAuth app client secret
+
+> See [GitHub OAuth documentation](docs/GITHUB_OAUTH.md) for detailed setup instructions. This allows each user to connect their own GitHub account instead of using a shared `GITHUB_TOKEN`.
+
 ### 4. Set up the database
 
 Generate and run database migrations:

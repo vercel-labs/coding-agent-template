@@ -3,11 +3,25 @@
 import { Task } from '@/lib/db/schema'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, Plus } from 'lucide-react'
+import { AlertCircle, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { useTasks } from '@/components/app-layout'
 
 // Model mappings for human-friendly names
 const AGENT_MODELS = {
@@ -56,6 +70,46 @@ interface TaskSidebarProps {
 
 export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarProps) {
   const pathname = usePathname()
+  const { refreshTasks } = useTasks()
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteCompleted, setDeleteCompleted] = useState(true)
+  const [deleteFailed, setDeleteFailed] = useState(true)
+  const [deleteStopped, setDeleteStopped] = useState(true)
+
+  const handleDeleteTasks = async () => {
+    if (!deleteCompleted && !deleteFailed && !deleteStopped) {
+      toast.error('Please select at least one task type to delete')
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const actions = []
+      if (deleteCompleted) actions.push('completed')
+      if (deleteFailed) actions.push('failed')
+      if (deleteStopped) actions.push('stopped')
+
+      const response = await fetch(`/api/tasks?action=${actions.join(',')}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(result.message)
+        await refreshTasks()
+        setShowDeleteDialog(false)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to delete tasks')
+      }
+    } catch (error) {
+      console.error('Error deleting tasks:', error)
+      toast.error('Failed to delete tasks')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   const getHumanFriendlyModelName = (agent: string | null, model: string | null) => {
     if (!agent || !model) return model
@@ -93,11 +147,23 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
           <h2 className="text-base font-semibold">
             {tasks.length} Task{tasks.length !== 1 ? 's' : ''}
           </h2>
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Plus className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+              title="Delete Tasks"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
-          </Link>
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -185,6 +251,70 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
           })
         )}
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tasks</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select which types of tasks you want to delete. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="delete-completed"
+                  checked={deleteCompleted}
+                  onCheckedChange={(checked) => setDeleteCompleted(checked === true)}
+                />
+                <label
+                  htmlFor="delete-completed"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Delete Completed Tasks
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="delete-failed"
+                  checked={deleteFailed}
+                  onCheckedChange={(checked) => setDeleteFailed(checked === true)}
+                />
+                <label
+                  htmlFor="delete-failed"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Delete Failed Tasks
+                </label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="delete-stopped"
+                  checked={deleteStopped}
+                  onCheckedChange={(checked) => setDeleteStopped(checked === true)}
+                />
+                <label
+                  htmlFor="delete-stopped"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Delete Stopped Tasks
+                </label>
+              </div>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTasks}
+              disabled={isDeleting || (!deleteCompleted && !deleteFailed && !deleteStopped)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Tasks'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -142,3 +142,48 @@ export const selectConnectorSchema = z.object({
 
 export type Connector = z.infer<typeof selectConnectorSchema>
 export type InsertConnector = z.infer<typeof insertConnectorSchema>
+
+// User connections table for storing OAuth tokens (GitHub, etc.)
+export const userConnections = pgTable('user_connections', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(), // Vercel user ID
+  provider: text('provider', {
+    enum: ['github'],
+  }).notNull(),
+  accessToken: text('access_token').notNull(),
+  refreshToken: text('refresh_token'),
+  expiresAt: timestamp('expires_at'),
+  scope: text('scope'),
+  username: text('username'), // Provider username (e.g., GitHub username)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const insertUserConnectionSchema = z.object({
+  id: z.string().optional(),
+  userId: z.string(),
+  provider: z.enum(['github']),
+  accessToken: z.string(),
+  refreshToken: z.string().optional(),
+  expiresAt: z.date().optional(),
+  scope: z.string().optional(),
+  username: z.string().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+})
+
+export const selectUserConnectionSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  provider: z.enum(['github']),
+  accessToken: z.string(),
+  refreshToken: z.string().nullable(),
+  expiresAt: z.date().nullable(),
+  scope: z.string().nullable(),
+  username: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export type UserConnection = z.infer<typeof selectUserConnectionSchema>
+export type InsertUserConnection = z.infer<typeof insertUserConnectionSchema>

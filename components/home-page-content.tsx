@@ -7,12 +7,14 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useTasks } from '@/components/app-layout'
 import { setSelectedOwner, setSelectedRepo } from '@/lib/utils/cookies'
+import type { Session } from '@/lib/session/types'
 
 interface HomePageContentProps {
   initialSelectedOwner?: string
   initialSelectedRepo?: string
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
+  user?: Session['user'] | null
 }
 
 export function HomePageContent({
@@ -20,6 +22,7 @@ export function HomePageContent({
   initialSelectedRepo = '',
   initialInstallDependencies = false,
   initialMaxDuration = 5,
+  user = null,
 }: HomePageContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)
@@ -98,6 +101,7 @@ export function HomePageContent({
           selectedRepo={selectedRepo}
           onOwnerChange={handleOwnerChange}
           onRepoChange={handleRepoChange}
+          user={user}
         />
       </div>
 
