@@ -4,6 +4,7 @@ import type { Session } from './types'
 import { SESSION_COOKIE_NAME } from './constants'
 import { encryptJWE } from '@/lib/jwe/encrypt'
 import { upsertUser } from '@/lib/db/users'
+import { encrypt } from '@/lib/crypto'
 import ms from 'ms'
 
 interface GitHubUser {
@@ -54,7 +55,7 @@ export async function createGitHubSession(accessToken: string, scope?: string): 
   const userId = await upsertUser({
     provider: 'github',
     externalId: `${githubUser.id}`, // GitHub numeric ID
-    accessToken,
+    accessToken: encrypt(accessToken), // Encrypt before storing
     refreshToken: undefined, // GitHub OAuth doesn't provide refresh tokens
     scope: scope || undefined,
     username: githubUser.login,

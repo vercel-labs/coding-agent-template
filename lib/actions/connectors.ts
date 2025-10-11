@@ -6,7 +6,7 @@ import { nanoid } from 'nanoid'
 import { revalidatePath } from 'next/cache'
 import { ZodError } from 'zod'
 import { eq, and } from 'drizzle-orm'
-import { encrypt } from '@/lib/crypto'
+import { encrypt, decrypt } from '@/lib/crypto'
 import { getServerSession } from '@/lib/session/get-server-session'
 
 type FormState = {
@@ -62,7 +62,7 @@ export async function createConnector(_: FormState, formData: FormData): Promise
       oauthClientId: validatedData.oauthClientId || null,
       oauthClientSecret: validatedData.oauthClientSecret ? encrypt(validatedData.oauthClientSecret) : null,
       command: validatedData.command || null,
-      env: validatedData.env ? JSON.parse(JSON.stringify(validatedData.env)) : null,
+      env: validatedData.env ? encrypt(JSON.stringify(validatedData.env)) : null,
       status: validatedData.status,
     })
 
@@ -189,7 +189,7 @@ export async function updateConnector(_: FormState, formData: FormData): Promise
         oauthClientId: validatedData.oauthClientId || null,
         oauthClientSecret: validatedData.oauthClientSecret ? encrypt(validatedData.oauthClientSecret) : null,
         command: validatedData.command || null,
-        env: validatedData.env ? JSON.parse(JSON.stringify(validatedData.env)) : null,
+        env: validatedData.env ? encrypt(JSON.stringify(validatedData.env)) : null,
         status: validatedData.status,
         updatedAt: new Date(),
       })
@@ -273,9 +273,16 @@ export async function getConnectors() {
 
     const userConnectors = await db.select().from(connectors).where(eq(connectors.userId, session.user.id))
 
+    // Decrypt sensitive fields
+    const decryptedConnectors = userConnectors.map((connector) => ({
+      ...connector,
+      oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
+      env: connector.env ? JSON.parse(decrypt(connector.env)) : null,
+    }))
+
     return {
       success: true,
-      data: userConnectors,
+      data: decryptedConnectors,
     }
   } catch (error) {
     console.error('Error fetching connectors:', error)

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const session = await createSession({
     accessToken: tokens.accessToken(),
     expiresAt: tokens.accessTokenExpiresAt().getTime(),
-    refreshToken: tokens.refreshToken(),
+    refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : undefined,
   })
 
   if (!session) {

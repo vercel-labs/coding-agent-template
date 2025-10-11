@@ -167,8 +167,8 @@ export const connectors = pgTable('connectors', {
   oauthClientSecret: text('oauth_client_secret'),
   // For local MCP servers
   command: text('command'),
-  // Environment variables (for both local and remote)
-  env: jsonb('env').$type<Record<string, string>>(),
+  // Environment variables (for both local and remote) - stored encrypted
+  env: text('env'),
   status: text('status', {
     enum: ['connected', 'disconnected'],
   })
@@ -190,7 +190,7 @@ export const insertConnectorSchema = z.object({
   oauthClientSecret: z.string().optional(),
   // For local MCP servers
   command: z.string().optional(),
-  // Environment variables (for both local and remote)
+  // Environment variables (for both local and remote) - will be encrypted
   env: z.record(z.string(), z.string()).optional(),
   status: z.enum(['connected', 'disconnected']).default('disconnected'),
   createdAt: z.date().optional(),
@@ -209,8 +209,8 @@ export const selectConnectorSchema = z.object({
   oauthClientSecret: z.string().nullable(),
   // For local MCP servers
   command: z.string().nullable(),
-  // Environment variables (for both local and remote)
-  env: z.record(z.string(), z.string()).nullable(),
+  // Environment variables (for both local and remote) - stored encrypted as string
+  env: z.string().nullable(),
   status: z.enum(['connected', 'disconnected']),
   createdAt: z.date(),
   updatedAt: z.date(),

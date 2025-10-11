@@ -7,6 +7,7 @@ import { fetchTeams } from '@/lib/vercel-client/teams'
 import { fetchUser } from '@/lib/vercel-client/user'
 import { getHighestAccountLevel } from '@/lib/vercel-client/utils'
 import { upsertUser } from '@/lib/db/users'
+import { encrypt } from '@/lib/crypto'
 import ms from 'ms'
 
 export async function createSession(tokens: Tokens): Promise<Session | undefined> {
@@ -25,8 +26,8 @@ export async function createSession(tokens: Tokens): Promise<Session | undefined
   const userId = await upsertUser({
     provider: 'vercel',
     externalId,
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken || undefined,
+    accessToken: encrypt(tokens.accessToken), // Encrypt before storing
+    refreshToken: tokens.refreshToken ? encrypt(tokens.refreshToken) : undefined, // Encrypt if present
     scope: undefined, // Vercel doesn't provide scope
     username: user.username,
     email: user.email,

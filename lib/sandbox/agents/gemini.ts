@@ -110,10 +110,20 @@ export async function executeGeminiInSandbox(
           const executable = commandParts[0]
           const args = commandParts.slice(1)
 
+          // Parse env from JSON string if present
+          let envObject: Record<string, string> | undefined
+          if (server.env) {
+            try {
+              envObject = JSON.parse(server.env)
+            } catch (e) {
+              await logger.info(`Warning: Failed to parse env for ${server.name}`)
+            }
+          }
+
           settingsConfig.mcpServers[serverName] = {
             command: executable,
             ...(args.length > 0 ? { args } : {}),
-            ...(server.env ? { env: server.env } : {}),
+            ...(envObject ? { env: envObject } : {}),
           }
           await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
         } else {
