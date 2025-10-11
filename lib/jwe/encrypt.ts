@@ -1,6 +1,6 @@
 import { EncryptJWT, base64url } from 'jose'
 
-export async function encryptJWE<T extends string | object = any>(
+export async function encryptJWE<T extends string | object = unknown>(
   payload: T,
   expirationTime: string,
   secret: string | undefined = process.env.JWE_SECRET,
@@ -9,7 +9,7 @@ export async function encryptJWE<T extends string | object = any>(
     throw new Error('Missing JWE secret')
   }
 
-  return new EncryptJWT(payload as any)
+  return new EncryptJWT(payload as Record<string, unknown>)
     .setExpirationTime(expirationTime)
     .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
     .encrypt(base64url.decode(secret))

@@ -1,6 +1,6 @@
 import { jwtDecrypt, base64url } from 'jose'
 
-export async function decryptJWE<T extends string | object = any>(
+export async function decryptJWE<T extends string | object = unknown>(
   cyphertext: string,
   secret: string | undefined = process.env.JWE_SECRET,
 ): Promise<T | undefined> {
@@ -14,8 +14,8 @@ export async function decryptJWE<T extends string | object = any>(
     const { payload } = await jwtDecrypt(cyphertext, base64url.decode(secret))
     const decoded = payload as T
     if (typeof decoded === 'object' && decoded !== null) {
-      delete (decoded as Record<string, any>).iat
-      delete (decoded as Record<string, any>).exp
+      delete (decoded as Record<string, unknown>).iat
+      delete (decoded as Record<string, unknown>).exp
     }
     return decoded
   } catch {

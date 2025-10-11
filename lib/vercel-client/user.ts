@@ -23,12 +23,17 @@ export async function fetchUser(accessToken: string) {
   }
 
   // Try to parse response - format may vary by endpoint
-  const data = (await response.json()) as any
-  const user = data.user || data
+  const data = (await response.json()) as { user?: VercelUser } | VercelUser
+  const user = 'user' in data ? data.user : data
+
+  if (!user) {
+    console.error('No user data in response')
+    return undefined
+  }
 
   console.log('Successfully fetched user:', user.username)
   console.log('User object keys:', Object.keys(user))
   console.log('User uid:', user.uid)
   console.log('User id:', user.id)
-  return user as VercelUser
+  return user
 }

@@ -25,7 +25,7 @@ export async function createSession(tokens: Tokens): Promise<Session | undefined
       avatar: `https://vercel.com/api/www/avatar/?u=${user.username}`,
       email: user.email,
       highestTeamId: plan.team?.id,
-      id: user.uid || (user as any).id,
+      id: user.uid || user.id || '',
       name: user.name,
       plan: plan.plan,
       username: user.username,
