@@ -316,12 +316,12 @@ export function TaskForm({
   // Check if user has required API keys for selected agent
   const checkApiKeyRequirements = (): boolean => {
     let requirements: Provider[] = AGENT_API_KEY_REQUIREMENTS[selectedAgent] || []
-    
+
     // For opencode, determine requirements based on selected model
     if (selectedAgent === 'opencode') {
       requirements = getOpenCodeRequiredKeys(selectedModel)
     }
-    
+
     if (!requirements || requirements.length === 0) return true
 
     const missingKeys = requirements.filter((key) => !savedApiKeys.has(key))

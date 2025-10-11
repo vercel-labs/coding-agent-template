@@ -18,7 +18,7 @@ export function User(props: { user?: Session['user'] | null; authProvider?: Sess
   // Only update from session after initialization is complete
   useEffect(() => {
     if (initialized) {
-      setUser(session.user)
+      setUser(session.user ?? null)
       setAuthProvider(session.authProvider ?? 'vercel')
     }
   }, [initialized, session.user, session.authProvider])

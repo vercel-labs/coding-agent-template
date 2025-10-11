@@ -33,9 +33,11 @@ export function validateEnvironmentVariables(
     // We require at least one to be present
     const hasAiGateway = apiKeys?.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_API_KEY
     const hasAnthropic = apiKeys?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY
-    
+
     if (!hasAiGateway && !hasAnthropic) {
-      errors.push('Either AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY is required for OpenCode CLI. Please add at least one API key in your profile.')
+      errors.push(
+        'Either AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY is required for OpenCode CLI. Please add at least one API key in your profile.',
+      )
     }
   }
 
