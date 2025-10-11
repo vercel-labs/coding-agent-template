@@ -1,6 +1,6 @@
 import { jwtDecrypt, base64url } from 'jose'
 
-export async function decryptJWE<T extends string | object = unknown>(
+export async function decryptJWE<T extends string | object = string | object>(
   cyphertext: string,
   secret: string | undefined = process.env.JWE_SECRET,
 ): Promise<T | undefined> {

@@ -1,6 +1,6 @@
 import { EncryptJWT, base64url } from 'jose'
 
-export async function encryptJWE<T extends string | object = unknown>(
+export async function encryptJWE<T extends string | object = string | object>(
   payload: T,
   expirationTime: string,
   secret: string | undefined = process.env.JWE_SECRET,

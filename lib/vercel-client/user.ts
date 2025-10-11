@@ -1,6 +1,6 @@
 import type { VercelUser } from './types'
 
-export async function fetchUser(accessToken: string) {
+export async function fetchUser(accessToken: string): Promise<VercelUser | undefined> {
   // Try the user endpoint
   let response = await fetch('https://api.vercel.com/v2/user', {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -24,7 +24,7 @@ export async function fetchUser(accessToken: string) {
 
   // Try to parse response - format may vary by endpoint
   const data = (await response.json()) as { user?: VercelUser } | VercelUser
-  const user = 'user' in data ? data.user : data
+  const user: VercelUser | undefined = 'user' in data && data.user ? data.user : ('username' in data ? data : undefined)
 
   if (!user) {
     console.error('No user data in response')
