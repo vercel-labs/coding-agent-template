@@ -9,6 +9,7 @@ interface PageHeaderProps {
   onToggleMobileMenu?: () => void
   actions?: React.ReactNode
   leftActions?: React.ReactNode
+  showPlatformName?: boolean
 }
 
 export function PageHeader({
@@ -17,6 +18,7 @@ export function PageHeader({
   onToggleMobileMenu,
   actions,
   leftActions,
+  showPlatformName = false,
 }: PageHeaderProps) {
   return (
     <div className="relative px-3 pt-3">

@@ -17,7 +17,7 @@ export interface Session {
 interface User {
   id: string
   username: string
-  email: string
+  email: string | undefined
   avatar: string
   name?: string
   plan: BillingPlan
