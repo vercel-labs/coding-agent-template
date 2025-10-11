@@ -98,7 +98,7 @@ export async function executeOpenCodeInSandbox(
 
       if (npmBinCheck.success && npmBinCheck.output) {
         const globalBinPath = npmBinCheck.output.trim()
-        console.log(`Global npm bin path: ${globalBinPath}`)
+        console.log('Global npm bin path retrieved')
 
         // Try running opencode from the global bin path
         const directPathCheck = await runAndLogCommand(
@@ -134,7 +134,7 @@ export async function executeOpenCodeInSandbox(
 
     // Configure MCP servers if provided
     if (mcpServers && mcpServers.length > 0) {
-      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+      await logger.info('Configuring MCP servers')
 
       // Create OpenCode opencode.json configuration file
       const opencodeConfig: {
@@ -162,7 +162,7 @@ export async function executeOpenCodeInSandbox(
             try {
               envObject = JSON.parse(server.env)
             } catch (e) {
-              await logger.info(`Warning: Failed to parse env for ${server.name}`)
+              await logger.info('Warning: Failed to parse env for MCP server')
             }
           }
 
@@ -173,7 +173,7 @@ export async function executeOpenCodeInSandbox(
             ...(envObject ? { environment: envObject } : {}),
           }
 
-          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+          await logger.info('Added local MCP server')
         } else {
           // Remote MCP server
           opencodeConfig.mcp[serverName] = {
@@ -194,7 +194,7 @@ export async function executeOpenCodeInSandbox(
             opencodeConfig.mcp[serverName].headers = headers
           }
 
-          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
+          await logger.info('Added remote MCP server')
         }
       }
 
@@ -304,7 +304,7 @@ EOF`
     if (logger) {
       await logger.info('Executing OpenCode run command in non-interactive mode...')
       if (selectedModel) {
-        await logger.info(`Using selected model: ${selectedModel}`)
+        await logger.info('Using selected model')
       }
     }
 
@@ -357,7 +357,7 @@ EOF`
       if (hasChanges) {
         console.log('OpenCode made changes to files:', hasChanges)
         if (logger) {
-          await logger.info(`Files changed: ${hasChanges}`)
+          await logger.info('Files checked for changes')
         }
       }
 

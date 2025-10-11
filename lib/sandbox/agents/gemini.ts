@@ -88,7 +88,7 @@ export async function executeGeminiInSandbox(
 
     // Configure MCP servers if provided
     if (mcpServers && mcpServers.length > 0) {
-      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+      await logger.info('Configuring MCP servers')
 
       // Create Gemini settings.json configuration file
       const settingsConfig: {
@@ -116,7 +116,7 @@ export async function executeGeminiInSandbox(
             try {
               envObject = JSON.parse(server.env)
             } catch (e) {
-              await logger.info(`Warning: Failed to parse env for ${server.name}`)
+              await logger.info('Warning: Failed to parse env for MCP server')
             }
           }
 
@@ -125,7 +125,7 @@ export async function executeGeminiInSandbox(
             ...(args.length > 0 ? { args } : {}),
             ...(envObject ? { env: envObject } : {}),
           }
-          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+          await logger.info('Added local MCP server')
         } else {
           // Remote HTTP server
           settingsConfig.mcpServers[serverName] = {
@@ -144,7 +144,7 @@ export async function executeGeminiInSandbox(
             settingsConfig.mcpServers[serverName].headers = headers
           }
 
-          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
+          await logger.info('Added remote MCP server')
         }
       }
 
@@ -205,7 +205,7 @@ EOF`
     // Add model selection if provided
     if (selectedModel) {
       args.push('-m', selectedModel)
-      await logger.info(`Using model: ${selectedModel}`)
+      await logger.info('Using selected model')
     }
 
     // Use YOLO mode to auto-approve all tools (bypass approval prompts)
@@ -218,7 +218,7 @@ EOF`
     args.push(instruction)
 
     // Log what we're trying to do
-    await logger.info(`Executing Gemini CLI with ${authMethod} authentication`)
+    await logger.info('Executing Gemini CLI with authentication')
     const redactedCommand = `gemini ${args.slice(0, -1).join(' ')} "${instruction.substring(0, 100)}..."`
     await logger.command(redactedCommand)
 
@@ -285,12 +285,12 @@ EOF`
     }
 
     // Log more details for debugging
-    await logger.info(`Gemini CLI exit code: ${result.exitCode}`)
+    await logger.info('Gemini CLI execution completed')
     if (result.output) {
-      await logger.info(`Gemini CLI output length: ${result.output.length} characters`)
+      await logger.info('Gemini CLI output available')
     }
     if (result.error) {
-      await logger.error(`Gemini CLI error: ${result.error}`)
+      await logger.error('Gemini CLI error occurred')
     }
 
     // Check if any files were modified

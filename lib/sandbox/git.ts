@@ -22,7 +22,7 @@ export async function pushChangesToBranch(
     // Add all changes
     const addResult = await runCommandInSandbox(sandbox, 'git', ['add', '.'])
     if (!addResult.success) {
-      await logger.info(`Failed to add changes: ${addResult.error}`)
+      await logger.info('Failed to add changes')
       return { success: false }
     }
 
@@ -30,7 +30,7 @@ export async function pushChangesToBranch(
     const commitResult = await runCommandInSandbox(sandbox, 'git', ['commit', '-m', commitMessage])
 
     if (!commitResult.success) {
-      await logger.info(`Failed to commit changes: ${commitResult.error}`)
+      await logger.info('Failed to commit changes')
       return { success: false }
     }
 
@@ -40,11 +40,11 @@ export async function pushChangesToBranch(
     const pushResult = await runCommandInSandbox(sandbox, 'git', ['push', 'origin', branchName])
 
     if (pushResult.success) {
-      await logger.info(`Successfully pushed changes to branch: ${branchName}`)
+      await logger.info('Successfully pushed changes to branch')
       return { success: true }
     } else {
       const errorMsg = pushResult.error || 'Unknown error'
-      await logger.info(`Failed to push to branch ${branchName}: ${errorMsg}`)
+      await logger.info('Failed to push to branch')
 
       // Check if it's a permission issue
       if (errorMsg.includes('Permission') || errorMsg.includes('access_denied') || errorMsg.includes('403')) {
@@ -59,7 +59,7 @@ export async function pushChangesToBranch(
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    await logger.info(`Error pushing changes: ${errorMessage}`)
+    await logger.info('Error pushing changes')
     return { success: false }
   }
 }

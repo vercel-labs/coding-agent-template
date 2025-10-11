@@ -93,7 +93,7 @@ export async function executeCodexInSandbox(
 
     if (logger) {
       const keyType = isVercelKey ? 'Vercel AI Gateway' : 'OpenAI'
-      await logger.info(`Using ${keyType} API key: ${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 4)}`)
+      await logger.info('Using API key for authentication')
     }
 
     // According to the official Codex CLI docs, we should use 'exec' for non-interactive execution
@@ -128,7 +128,7 @@ export async function executeCodexInSandbox(
     })
 
     if (logger) {
-      await logger.info(`Codex CLI version test: ${versionTestResult.exitCode === 0 ? 'SUCCESS' : 'FAILED'}`)
+      await logger.info('Codex CLI version test completed')
     }
 
     // Create configuration file based on API key type
@@ -170,7 +170,7 @@ log_requests = true
 
     // Add MCP servers configuration if provided
     if (mcpServers && mcpServers.length > 0) {
-      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+      await logger.info('Configuring MCP servers')
 
       // Check if we need experimental RMCP client (for remote servers)
       const hasRemoteServers = mcpServers.some((s) => s.type === 'remote')
@@ -203,7 +203,7 @@ command = "${executable}"
               .join(', ')} }\n`
           }
 
-          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+          await logger.info('Added local MCP server')
         } else {
           // Remote HTTP/SSE server
           configToml += `
@@ -215,7 +215,7 @@ url = "${server.baseUrl}"
             configToml += `bearer_token = "${server.oauthClientSecret}"\n`
           }
 
-          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
+          await logger.info('Added remote MCP server')
         }
       }
     }
@@ -232,7 +232,7 @@ url = "${server.baseUrl}"
     })
 
     if (logger) {
-      await logger.info(`Codex config setup: ${configSetupResult.exitCode === 0 ? 'SUCCESS' : 'FAILED'}`)
+      await logger.info('Codex config setup completed')
     }
 
     // Debug: Check if the config file was created correctly (without logging sensitive contents)
@@ -250,13 +250,13 @@ url = "${server.baseUrl}"
     // Debug: List files in the current directory before running Codex
     const lsDebugResult = await runCommandInSandbox(sandbox, 'ls', ['-la'])
     if (logger) {
-      await logger.info(`Current directory contents:\n${lsDebugResult.output || 'No output from ls -la'}`)
+      await logger.info('Current directory contents retrieved')
     }
 
     // Debug: Show current working directory
     const pwdResult = await runCommandInSandbox(sandbox, 'pwd', [])
     if (logger) {
-      await logger.info(`Current working directory: ${pwdResult.output || 'Unknown'}`)
+      await logger.info('Current working directory retrieved')
     }
 
     // Use exec command with Vercel AI Gateway configuration

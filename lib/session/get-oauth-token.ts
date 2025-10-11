@@ -78,7 +78,7 @@ export async function getOAuthToken(
 
     return null
   } catch (error) {
-    console.error(`Error fetching ${provider} token for user ${userId}:`, error)
+    console.error('Error fetching OAuth token:', error)
     return null
   }
 }

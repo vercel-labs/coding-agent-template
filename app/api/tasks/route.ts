@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(tasks.id, taskId))
 
-        await logger.success(`Generated AI branch name: ${aiBranchName}`)
+        await logger.success('Generated AI branch name')
       } catch (error) {
         console.error('Error generating AI branch name:', error)
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
             .where(eq(tasks.id, taskId))
 
           const logger = createTaskLogger(taskId)
-          await logger.info(`Using fallback branch name: ${fallbackBranchName}`)
+          await logger.info('Using fallback branch name')
         } catch (dbError) {
           console.error('Error updating task with fallback branch name:', dbError)
         }
@@ -278,7 +278,7 @@ async function processTask(
   const taskStartTime = Date.now()
 
   try {
-    console.log(`[TASK ${taskId}] Starting task processing at ${new Date().toISOString()}`)
+    console.log('Starting task processing')
 
     // Update task status to processing with real-time logging
     await logger.updateStatus('processing', 'Task created, preparing to start...')
@@ -310,13 +310,13 @@ async function processTask(
     }
 
     if (aiBranchName) {
-      await logger.info(`Using AI-generated branch name: ${aiBranchName}`)
+      await logger.info('Using AI-generated branch name')
     } else {
       await logger.info('AI branch name not ready, will use fallback during sandbox creation')
     }
 
-    await logger.updateProgress(15, 'Creating sandbox environment...')
-    console.log(`[TASK ${taskId}] Creating sandbox at ${new Date().toISOString()}`)
+    await logger.updateProgress(15, 'Creating sandbox environment')
+    console.log('Creating sandbox')
 
     // Create sandbox with progress callback and 5-minute timeout
     const sandboxResult = await createSandbox(
@@ -371,7 +371,7 @@ async function processTask(
 
     const { sandbox: createdSandbox, domain, branchName } = sandboxResult
     sandbox = createdSandbox || null
-    console.log(`[TASK ${taskId}] Sandbox created successfully at ${new Date().toISOString()}`)
+    console.log('Sandbox created successfully')
 
     // Update sandbox URL and branch name (only update branch name if not already set by AI)
     const updateData: { sandboxUrl?: string; updatedAt: Date; branchName?: string } = {
@@ -393,8 +393,8 @@ async function processTask(
     }
 
     // Log agent execution start
-    await logger.updateProgress(50, `Installing and executing ${selectedAgent} agent...`)
-    console.log(`[TASK ${taskId}] Starting ${selectedAgent} agent execution at ${new Date().toISOString()}`)
+    await logger.updateProgress(50, 'Installing and executing agent')
+    console.log('Starting agent execution')
 
     // Execute selected agent with timeout (different timeouts per agent)
     const getAgentTimeout = (agent: string) => {
@@ -447,9 +447,7 @@ async function processTask(
         })
 
         if (mcpServers.length > 0) {
-          await logger.info(
-            `Found ${mcpServers.length} connected MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`,
-          )
+          await logger.info('Found connected MCP servers')
 
           // Store MCP server IDs in the task
           await db
@@ -484,15 +482,15 @@ async function processTask(
       agentTimeoutPromise,
     ])
 
-    console.log(`[TASK ${taskId}] Agent execution completed at ${new Date().toISOString()}`)
+    console.log('Agent execution completed')
 
     if (agentResult.success) {
       // Log agent completion
-      await logger.success(`${selectedAgent} agent execution completed`)
-      await logger.info(agentResult.output || 'Code changes applied successfully')
+      await logger.success('Agent execution completed')
+      await logger.info('Code changes applied successfully')
 
       if (agentResult.agentResponse) {
-        await logger.info(`Agent Response: ${agentResult.agentResponse}`)
+        await logger.info('Agent response received')
       }
 
       // Agent execution logs are already logged in real-time by the agent
@@ -508,7 +506,7 @@ async function processTask(
       if (shutdownResult.success) {
         await logger.success('Sandbox shutdown completed')
       } else {
-        await logger.error(`Sandbox shutdown failed: ${shutdownResult.error}`)
+        await logger.error('Sandbox shutdown failed')
       }
 
       // Check if push failed and handle accordingly
@@ -521,14 +519,11 @@ async function processTask(
         await logger.updateStatus('completed')
         await logger.updateProgress(100, 'Task completed successfully')
 
-        const totalTaskTime = ((Date.now() - taskStartTime) / 1000).toFixed(2)
-        console.log(
-          `[TASK ${taskId}] Task completed successfully at ${new Date().toISOString()} (total time: ${totalTaskTime}s)`,
-        )
+        console.log('Task completed successfully')
       }
     } else {
       // Agent failed, but we still want to capture its logs
-      await logger.error(`${selectedAgent} agent execution failed`)
+      await logger.error('Agent execution failed')
 
       // Agent execution logs are already logged in real-time by the agent
       // No need to log them again here
@@ -546,7 +541,7 @@ async function processTask(
         if (shutdownResult.success) {
           await logger.info('Sandbox shutdown completed after error')
         } else {
-          await logger.error(`Sandbox shutdown failed: ${shutdownResult.error}`)
+          await logger.error('Sandbox shutdown failed')
         }
       } catch (shutdownError) {
         console.error('Failed to shutdown sandbox after error:', shutdownError)
@@ -557,7 +552,7 @@ async function processTask(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
 
     // Log the error and update task status
-    await logger.error(`Error: ${errorMessage}`)
+    await logger.error('Error occurred during task processing')
     await logger.updateStatus('error', errorMessage)
   }
 }

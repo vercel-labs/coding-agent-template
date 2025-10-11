@@ -61,7 +61,7 @@ export async function executeCursorInSandbox(
     for (const checkCmd of postInstallChecks) {
       const checkResult = await runAndLogCommand(sandbox, 'sh', ['-c', checkCmd], logger)
       if (logger && checkResult.output) {
-        await logger.info(`Post-install check "${checkCmd}": ${checkResult.output}`)
+        await logger.info('Post-install check completed')
       }
     }
 
@@ -114,7 +114,7 @@ export async function executeCursorInSandbox(
       for (const searchCmd of searchPaths) {
         const searchResult = await runAndLogCommand(sandbox, 'sh', ['-c', searchCmd], logger)
         if (logger && searchResult.output) {
-          await logger.info(`Search result for "${searchCmd}": ${searchResult.output}`)
+          await logger.info('Search completed')
         }
       }
 
@@ -138,7 +138,7 @@ export async function executeCursorInSandbox(
 
     // Configure MCP servers if provided
     if (mcpServers && mcpServers.length > 0) {
-      await logger.info(`Configuring ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+      await logger.info('Configuring MCP servers')
 
       // Create mcp.json configuration file
       const mcpConfig: {
@@ -166,7 +166,7 @@ export async function executeCursorInSandbox(
             try {
               envObject = JSON.parse(server.env)
             } catch (e) {
-              await logger.info(`Warning: Failed to parse env for ${server.name}`)
+              await logger.info('Warning: Failed to parse env for MCP server')
             }
           }
 
@@ -175,7 +175,7 @@ export async function executeCursorInSandbox(
             ...(args.length > 0 ? { args } : {}),
             ...(envObject ? { env: envObject } : {}),
           }
-          await logger.info(`Added local MCP server: ${server.name} (${server.command})`)
+          await logger.info('Added local MCP server')
         } else {
           // Remote HTTP/SSE server
           mcpConfig.mcpServers[serverName] = {
@@ -194,7 +194,7 @@ export async function executeCursorInSandbox(
             mcpConfig.mcpServers[serverName].headers = headers
           }
 
-          await logger.info(`Added remote MCP server: ${server.name} (${server.baseUrl})`)
+          await logger.info('Added remote MCP server')
         }
       }
 
@@ -233,9 +233,9 @@ EOF`
       logger,
     )
     if (logger) {
-      await logger.info(`Pre-execution cursor-agent check: ${preExecCheck.success ? 'FOUND' : 'NOT FOUND'}`)
+      await logger.info('Pre-execution cursor-agent check completed')
       if (preExecCheck.output) {
-        await logger.info(`cursor-agent location: ${preExecCheck.output}`)
+        await logger.info('cursor-agent location found')
       }
     }
 
@@ -248,7 +248,7 @@ EOF`
     if (logger) {
       await logger.command(logCommand)
       if (selectedModel) {
-        await logger.info(`Executing cursor-agent with model: ${selectedModel}`)
+        await logger.info('Executing cursor-agent with model')
       }
       await logger.info('Executing cursor-agent directly without shell wrapper')
     }
@@ -340,11 +340,11 @@ EOF`
 
     if (isCompleted) {
       if (logger) {
-        await logger.info(`Cursor completed successfully in ${attempts} seconds`)
+        await logger.info('Cursor completed successfully')
       }
     } else {
       if (logger) {
-        await logger.info(`Cursor execution ended after ${attempts} seconds, checking for changes...`)
+        await logger.info('Cursor execution ended, checking for changes')
       }
     }
 
@@ -363,7 +363,7 @@ EOF`
 
     if (result.error && result.error.trim()) {
       const redactedError = redactSensitiveInfo(result.error)
-      await logger.info(`Cursor stderr: ${redactedError}`)
+      await logger.info('Cursor stderr available')
     }
 
     // Cursor CLI execution completed
