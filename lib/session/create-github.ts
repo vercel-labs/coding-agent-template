@@ -60,10 +60,6 @@ export async function createGitHubSession(accessToken: string): Promise<Session 
       plan: 'hobby', // Default plan for GitHub users
       username: githubUser.login,
     },
-    tokens: {
-      accessToken,
-      expiresAt: Date.now() + ms('1y'), // GitHub tokens don't expire by default
-    },
   }
 
   console.log('Created GitHub session with user ID:', session.user.id)

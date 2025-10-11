@@ -10,7 +10,6 @@ export interface Tokens {
 
 export interface Session {
   created: number
-  tokens: Tokens
   user: User
 }
 

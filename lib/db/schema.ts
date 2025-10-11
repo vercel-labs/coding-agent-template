@@ -152,12 +152,12 @@ export const selectConnectorSchema = z.object({
 export type Connector = z.infer<typeof selectConnectorSchema>
 export type InsertConnector = z.infer<typeof insertConnectorSchema>
 
-// User connections table for storing OAuth tokens (GitHub, etc.)
+// User connections table for storing OAuth tokens (GitHub, Vercel, etc.)
 export const userConnections = pgTable('user_connections', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull(), // Vercel user ID
+  userId: text('user_id').notNull(), // User ID
   provider: text('provider', {
-    enum: ['github', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway'],
+    enum: ['github', 'vercel', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway'],
   }).notNull(),
   accessToken: text('access_token').notNull(),
   refreshToken: text('refresh_token'),
@@ -171,7 +171,7 @@ export const userConnections = pgTable('user_connections', {
 export const insertUserConnectionSchema = z.object({
   id: z.string().optional(),
   userId: z.string(),
-  provider: z.enum(['github', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
+  provider: z.enum(['github', 'vercel', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
   accessToken: z.string(),
   refreshToken: z.string().optional(),
   expiresAt: z.date().optional(),
@@ -184,7 +184,7 @@ export const insertUserConnectionSchema = z.object({
 export const selectUserConnectionSchema = z.object({
   id: z.string(),
   userId: z.string(),
-  provider: z.enum(['github', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
+  provider: z.enum(['github', 'vercel', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
   accessToken: z.string(),
   refreshToken: z.string().nullable(),
   expiresAt: z.date().nullable(),

@@ -2,6 +2,11 @@ import { type NextRequest } from 'next/server'
 import { OAuth2Client, type OAuth2Tokens } from 'arctic'
 import { createSession, saveSession } from '@/lib/session/create'
 import { cookies } from 'next/headers'
+import { db } from '@/lib/db/client'
+import { userConnections } from '@/lib/db/schema'
+import { eq, and } from 'drizzle-orm'
+import { nanoid } from 'nanoid'
+import { encrypt } from '@/lib/crypto'
 
 export async function GET(req: NextRequest): Promise<Response> {
   const code = req.nextUrl.searchParams.get('code')
@@ -51,6 +56,49 @@ export async function GET(req: NextRequest): Promise<Response> {
     accessToken: tokens.accessToken(),
     expiresAt: tokens.accessTokenExpiresAt().getTime(),
   })
+
+  if (!session) {
+    console.error('[Vercel Callback] Failed to create session')
+    return new Response('Failed to create session', { status: 500 })
+  }
+
+  // Store Vercel token in database (encrypted)
+  const encryptedToken = encrypt(tokens.accessToken())
+  const expiresAt = tokens.accessTokenExpiresAt()
+
+  try {
+    const existingConnection = await db
+      .select()
+      .from(userConnections)
+      .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, 'vercel')))
+      .limit(1)
+
+    if (existingConnection.length > 0) {
+      // Update existing connection
+      await db
+        .update(userConnections)
+        .set({
+          accessToken: encryptedToken,
+          expiresAt: expiresAt,
+          username: session.user.username,
+          updatedAt: new Date(),
+        })
+        .where(eq(userConnections.id, existingConnection[0].id))
+    } else {
+      // Insert new connection
+      await db.insert(userConnections).values({
+        id: nanoid(),
+        userId: session.user.id,
+        provider: 'vercel',
+        accessToken: encryptedToken,
+        expiresAt: expiresAt,
+        username: session.user.username,
+      })
+    }
+  } catch (error) {
+    console.error('[Vercel Callback] Failed to store token in database:', error)
+    // Continue anyway - token is in session for now
+  }
 
   await saveSession(response, session)
 

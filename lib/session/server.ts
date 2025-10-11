@@ -8,11 +8,6 @@ export async function getSessionFromCookie(cookieValue?: string): Promise<Sessio
     const decrypted = await decryptJWE<Session>(cookieValue)
     if (decrypted) {
       return {
-        tokens: {
-          accessToken: decrypted.tokens.accessToken,
-          expiresAt: decrypted.tokens.expiresAt,
-          refreshToken: decrypted.tokens.refreshToken,
-        },
         created: decrypted.created,
         user: decrypted.user,
       }

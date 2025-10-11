@@ -30,7 +30,6 @@ export async function createSession(tokens: Tokens): Promise<Session | undefined
       plan: plan.plan,
       username: user.username,
     },
-    tokens,
   }
 
   console.log('Created session with user ID:', session.user.id)
