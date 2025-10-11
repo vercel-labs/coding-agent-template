@@ -14,32 +14,23 @@ const AGENT_PROVIDER_MAP: Record<string, Provider> = {
 
 // Check if a model is an Anthropic model
 function isAnthropicModel(model: string): boolean {
-  const anthropicPatterns = [
-    'claude',
-    'sonnet',
-    'opus',
-  ]
+  const anthropicPatterns = ['claude', 'sonnet', 'opus']
   const lowerModel = model.toLowerCase()
-  return anthropicPatterns.some(pattern => lowerModel.includes(pattern))
+  return anthropicPatterns.some((pattern) => lowerModel.includes(pattern))
 }
 
 // Check if a model is an OpenAI model
 function isOpenAIModel(model: string): boolean {
-  const openaiPatterns = [
-    'gpt',
-    'openai',
-  ]
+  const openaiPatterns = ['gpt', 'openai']
   const lowerModel = model.toLowerCase()
-  return openaiPatterns.some(pattern => lowerModel.includes(pattern))
+  return openaiPatterns.some((pattern) => lowerModel.includes(pattern))
 }
 
 // Check if a model is a Gemini model
 function isGeminiModel(model: string): boolean {
-  const geminiPatterns = [
-    'gemini',
-  ]
+  const geminiPatterns = ['gemini']
   const lowerModel = model.toLowerCase()
-  return geminiPatterns.some(pattern => lowerModel.includes(pattern))
+  return geminiPatterns.some((pattern) => lowerModel.includes(pattern))
 }
 
 export async function GET(req: NextRequest) {
@@ -85,4 +76,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to check API key' }, { status: 500 })
   }
 }
-
