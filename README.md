@@ -8,7 +8,7 @@ A template for building AI-powered coding agents that supports Claude Code, Open
 
 You can deploy your own version of the coding agent template to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=POSTGRES_URL,ANTHROPIC_API_KEY,GITHUB_TOKEN,VERCEL_TEAM_ID,VERCEL_PROJECT_ID,VERCEL_TOKEN,AI_GATEWAY_API_KEY&envDescription=Required+environment+variables+for+the+coding+agent+template.+Optional+variables+(CURSOR_API_KEY+for+Cursor+agent,+NPM_TOKEN+for+private+packages)+can+be+added+later+in+your+Vercel+project+settings.&project-name=coding-agent-template&repository-name=coding-agent-template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=POSTGRES_URL,VERCEL_TOKEN,VERCEL_TEAM_ID,VERCEL_PROJECT_ID,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+infrastructure+environment+variables.+You+will+also+need+to+configure+OAuth+(Vercel+or+GitHub)+for+user+authentication.+Optional+API+keys+can+be+added+later.&project-name=coding-agent-template&repository-name=coding-agent-template)
 
 ## Features
 
@@ -41,39 +41,54 @@ pnpm install
 
 Create a `.env.local` file with your values:
 
-Required environment variables:
+#### Required Environment Variables (App Infrastructure)
+
+These are set once by you (the app developer) and are used for core infrastructure:
 
 - `POSTGRES_URL`: Your PostgreSQL connection string (works with any PostgreSQL database)
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
-- `GITHUB_TOKEN`: GitHub personal access token (for repository access)
-- `VERCEL_TEAM_ID`: Your Vercel team ID
-- `VERCEL_PROJECT_ID`: Your Vercel project ID
-- `VERCEL_TOKEN`: Your Vercel API token
-- `AI_GATEWAY_API_KEY`: Your AI Gateway API key for AI-generated branch names and Codex agent support
-
-Optional environment variables:
-
-- `CURSOR_API_KEY`: For Cursor agent support
-- `GEMINI_API_KEY`: For Google Gemini agent support
-- `NPM_TOKEN`: For private npm packages
-- `ENCRYPTION_KEY`: 32-byte hex string for encrypting MCP OAuth secrets (required only when using MCP connectors). Generate with: `openssl rand -hex 32`
-
-**User Authentication** (Optional but Recommended):
-
-You can enable user authentication with either Vercel or GitHub (or both):
-
-**Sign in with Vercel**:
-- `VERCEL_CLIENT_ID`: Your Vercel OAuth client ID
-- `VERCEL_CLIENT_SECRET`: Your Vercel OAuth client secret
+- `VERCEL_TOKEN`: Your Vercel API token (for creating sandboxes)
+- `VERCEL_TEAM_ID`: Your Vercel team ID (for sandbox creation)
+- `VERCEL_PROJECT_ID`: Your Vercel project ID (for sandbox creation)
 - `JWE_SECRET`: Base64-encoded secret for session encryption (generate with: `openssl rand -base64 32`)
+- `ENCRYPTION_KEY`: 32-byte hex string for encrypting user API keys and tokens (generate with: `openssl rand -hex 32`)
 
-**Sign in with GitHub**:
+#### User Authentication (Required)
+
+**You must configure at least one authentication method** (Vercel or GitHub):
+
+**Option 1: Sign in with Vercel**
+- `VERCEL_CLIENT_ID`: Your Vercel OAuth app client ID
+- `VERCEL_CLIENT_SECRET`: Your Vercel OAuth app client secret
+
+**Option 2: Sign in with GitHub**
 - `GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID
 - `GITHUB_CLIENT_SECRET`: Your GitHub OAuth app client secret
-- `NEXT_PUBLIC_GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID (same as above, but exposed to the client)
-- `JWE_SECRET`: Base64-encoded secret for session encryption (generate with: `openssl rand -base64 32`)
+- `NEXT_PUBLIC_GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID (same as above, exposed to client)
 
-> When users sign in with GitHub, their GitHub access token is automatically stored and used for repository access, eliminating the need for a shared `GITHUB_TOKEN`. Users who sign in with Vercel can optionally connect their GitHub account separately.
+**You can enable both** to let users choose their preferred sign-in method.
+
+#### API Keys (Optional - Can be per-user)
+
+These API keys can be set globally (fallback for all users) or left unset to require users to provide their own:
+
+- `ANTHROPIC_API_KEY`: Anthropic API key for Claude agent (users can override in their profile)
+- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation and Codex (users can override)
+- `CURSOR_API_KEY`: For Cursor agent support (users can override)
+- `GEMINI_API_KEY`: For Google Gemini agent support (users can override)
+- `OPENAI_API_KEY`: For Codex and OpenCode agents (users can override)
+
+> **Note**: Users can provide their own API keys in their profile settings, which take precedence over global environment variables.
+
+#### GitHub Repository Access
+
+- ~~`GITHUB_TOKEN`~~: **No longer needed!** Users authenticate with their own GitHub accounts.
+  - Users who sign in with GitHub automatically get repository access via their OAuth token
+  - Users who sign in with Vercel can connect their GitHub account from their profile
+
+#### Optional Environment Variables
+
+- `NPM_TOKEN`: For private npm packages
+- `GITHUB_TOKEN`: Only needed if you want to provide fallback repository access for Vercel users who haven't connected GitHub
 
 ### 4. Set up the database
 
@@ -110,22 +125,13 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Environment Variables
 
-### Required
+See the [Set up environment variables](#3-set-up-environment-variables) section above for a complete guide.
 
-- `POSTGRES_URL`: PostgreSQL connection string
-- `ANTHROPIC_API_KEY`: Claude API key
-- `GITHUB_TOKEN`: GitHub token for repository access
-- `VERCEL_TEAM_ID`: Vercel team ID for sandbox creation
-- `VERCEL_PROJECT_ID`: Vercel project ID for sandbox creation
-- `VERCEL_TOKEN`: Vercel API token for sandbox creation
-- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation and Codex agent support
-
-### Optional
-
-- `CURSOR_API_KEY`: Cursor agent API key
-- `GEMINI_API_KEY`: Google Gemini agent API key (get yours at [Google AI Studio](https://aistudio.google.com/apikey))
-- `NPM_TOKEN`: NPM token for private packages
-- `ENCRYPTION_KEY`: 32-byte hex string for encrypting MCP OAuth secrets (required only when using MCP connectors). Generate with: `openssl rand -hex 32`
+**Key Points:**
+- **Infrastructure**: Set `POSTGRES_URL`, `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, `JWE_SECRET`, and `ENCRYPTION_KEY` as the app developer
+- **Authentication**: Configure at least one OAuth method (Vercel or GitHub) for user sign-in
+- **API Keys**: Can be set globally or left for users to provide their own (per-user keys take precedence)
+- **GitHub Access**: Users authenticate with their own GitHub accounts - no shared `GITHUB_TOKEN` needed!
 
 ## AI Branch Name Generation
 
