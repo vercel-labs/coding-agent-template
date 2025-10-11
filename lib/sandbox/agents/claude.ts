@@ -7,9 +7,6 @@ import { connectors } from '@/lib/db/schema'
 
 type Connector = typeof connectors.$inferSelect
 
-// Execute Claude CLI with proper environment and instruction
-const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
-
 // Helper function to run command and collect logs
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
@@ -90,6 +87,7 @@ export async function installClaudeCLI(
 
           if (server.type === 'local') {
             // Local STDIO server - command string contains both executable and args
+            const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
             let addMcpCmd = `${envPrefix} claude mcp add "${serverName}" -- ${server.command}`
 
             // Add env vars if provided
@@ -110,6 +108,7 @@ export async function installClaudeCLI(
             }
           } else {
             // Remote HTTP/SSE server
+            const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
             let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
 
             if (server.oauthClientSecret) {
@@ -234,6 +233,7 @@ export async function executeClaudeInSandbox(
     }
 
     // Check MCP configuration status
+    const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
     const mcpList = await runCommandInSandbox(sandbox, 'sh', ['-c', `${envPrefix} claude mcp list`])
     await logger.info('MCP servers list retrieved')
     if (mcpList.error) {

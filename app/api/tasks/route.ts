@@ -146,6 +146,10 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Get user's API keys and GitHub token BEFORE entering after() block (where session is not accessible)
+    const userApiKeys = await getUserApiKeys()
+    const userGithubToken = await getUserGitHubToken()
+
     // Process the task asynchronously with timeout
     // CRITICAL: Wrap in after() to ensure Vercel doesn't kill the function after response
     // Without this, serverless functions terminate immediately after sending the response
@@ -159,6 +163,8 @@ export async function POST(request: NextRequest) {
           validatedData.selectedModel,
           validatedData.installDependencies || false,
           validatedData.maxDuration || 5,
+          userApiKeys,
+          userGithubToken,
         )
       } catch (error) {
         console.error('Task processing failed:', error)
@@ -181,6 +187,14 @@ async function processTaskWithTimeout(
   selectedModel?: string,
   installDependencies: boolean = false,
   maxDuration: number = 5,
+  apiKeys?: {
+    OPENAI_API_KEY?: string
+    GEMINI_API_KEY?: string
+    CURSOR_API_KEY?: string
+    ANTHROPIC_API_KEY?: string
+    AI_GATEWAY_API_KEY?: string
+  },
+  githubToken?: string | null,
 ) {
   const TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes in milliseconds
 
@@ -205,7 +219,17 @@ async function processTaskWithTimeout(
 
   try {
     await Promise.race([
-      processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel, installDependencies, maxDuration),
+      processTask(
+        taskId,
+        prompt,
+        repoUrl,
+        selectedAgent,
+        selectedModel,
+        installDependencies,
+        maxDuration,
+        apiKeys,
+        githubToken,
+      ),
       timeoutPromise,
     ])
 
@@ -272,6 +296,14 @@ async function processTask(
   selectedModel?: string,
   installDependencies: boolean = false,
   maxDuration: number = 5,
+  apiKeys?: {
+    OPENAI_API_KEY?: string
+    GEMINI_API_KEY?: string
+    CURSOR_API_KEY?: string
+    ANTHROPIC_API_KEY?: string
+    AI_GATEWAY_API_KEY?: string
+  },
+  githubToken?: string | null,
 ) {
   let sandbox: Sandbox | null = null
   const logger = createTaskLogger(taskId)
@@ -284,14 +316,10 @@ async function processTask(
     await logger.updateStatus('processing', 'Task created, preparing to start...')
     await logger.updateProgress(10, 'Initializing task execution...')
 
-    // Get user's GitHub token for repository access
-    const githubToken = await getUserGitHubToken()
+    // GitHub token and API keys are passed as parameters (retrieved before entering after() block)
     if (githubToken) {
       await logger.info('Using authenticated GitHub access')
     }
-
-    // Get user's API keys (with fallback to system keys)
-    const apiKeys = await getUserApiKeys()
     await logger.info('API keys configured for selected agent')
 
     // Check if task was stopped before we even start

@@ -1,0 +1,11 @@
+{
+  "products": [
+    {
+      "type": "integration",
+      "protocol": "storage",
+      "productSlug": "neon",
+      "integrationSlug": "neon"
+    }
+  ]
+}
+

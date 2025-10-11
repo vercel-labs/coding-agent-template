@@ -16,6 +16,7 @@ import { useSetAtom, useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
 import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 import { GitHubIcon } from '@/components/icons/github-icon'
+import { GitHubStarsButton } from '@/components/github-stars-button'
 
 interface HomePageHeaderProps {
   selectedOwner: string
@@ -23,6 +24,7 @@ interface HomePageHeaderProps {
   onOwnerChange: (owner: string) => void
   onRepoChange: (repo: string) => void
   user?: Session['user'] | null
+  initialStars?: number
 }
 
 export function HomePageHeader({
@@ -31,6 +33,7 @@ export function HomePageHeader({
   onOwnerChange,
   onRepoChange,
   user,
+  initialStars = 994,
 }: HomePageHeaderProps) {
   const { toggleSidebar } = useTasks()
   const router = useRouter()
@@ -106,19 +109,22 @@ export function HomePageHeader({
   }
 
   const actions = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-shrink-0">
+      {/* GitHub Stars Button */}
+      <GitHubStarsButton initialStars={initialStars} />
+
       {/* Deploy to Vercel Button */}
       <Button
         asChild
         variant="outline"
         size="sm"
-        className="h-8 px-3 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
+        className="h-8 sm:px-3 px-0 sm:w-auto w-8 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
       >
         <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
           <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
             <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
           </svg>
-          Deploy Your Own
+          <span className="hidden sm:inline">Deploy Your Own</span>
         </a>
       </Button>
 
@@ -147,51 +153,55 @@ export function HomePageHeader({
   // Check if user is authenticated with GitHub (not just connected)
   const isGitHubAuthUser = session.authProvider === 'github'
 
-  const leftActions =
-    githubConnection.connected || isGitHubAuthUser ? (
-      <div className="flex items-center gap-2">
-        <RepoSelector
-          selectedOwner={selectedOwner}
-          selectedRepo={selectedRepo}
-          onOwnerChange={onOwnerChange}
-          onRepoChange={onRepoChange}
-          size="sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="More options">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh Owners
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh Repos
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleReconfigureGitHub}>
-              <Settings className="h-4 w-4 mr-2" />
-              Manage Access
-            </DropdownMenuItem>
-            {/* Only show Disconnect for Vercel users who connected GitHub, not for GitHub-authenticated users */}
-            {!isGitHubAuthUser && (
-              <DropdownMenuItem onClick={handleDisconnectGitHub}>
-                <Unlink className="h-4 w-4 mr-2" />
-                Disconnect GitHub
+  // Always render leftActions container to prevent layout shift
+  const leftActions = (
+    <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1 overflow-hidden">
+      {githubConnection.connected || isGitHubAuthUser ? (
+        <>
+          <RepoSelector
+            selectedOwner={selectedOwner}
+            selectedRepo={selectedRepo}
+            onOwnerChange={onOwnerChange}
+            onRepoChange={onRepoChange}
+            size="sm"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" title="More options">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh Owners
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    ) : user ? (
-      <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8">
-        <GitHubIcon className="h-4 w-4 mr-2" />
-        Connect GitHub
-      </Button>
-    ) : null
+              <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh Repos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleReconfigureGitHub}>
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Access
+              </DropdownMenuItem>
+              {/* Only show Disconnect for Vercel users who connected GitHub, not for GitHub-authenticated users */}
+              {!isGitHubAuthUser && (
+                <DropdownMenuItem onClick={handleDisconnectGitHub}>
+                  <Unlink className="h-4 w-4 mr-2" />
+                  Disconnect GitHub
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      ) : user ? (
+        <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8 flex-shrink-0">
+          <GitHubIcon className="h-4 w-4 mr-2" />
+          Connect GitHub
+        </Button>
+      ) : null}
+    </div>
+  )
 
   return (
     <>

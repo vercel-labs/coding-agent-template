@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { AppLayout } from './app-layout'
 import { getSidebarWidthFromCookie, getSidebarOpenFromCookie } from '@/lib/utils/cookies'
 
@@ -12,8 +12,17 @@ export async function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const initialSidebarWidth = getSidebarWidthFromCookie(cookieString)
   const initialSidebarOpen = getSidebarOpenFromCookie(cookieString)
 
+  // Detect if mobile from user agent
+  const headersList = await headers()
+  const userAgent = headersList.get('user-agent') || ''
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+
   return (
-    <AppLayout initialSidebarWidth={initialSidebarWidth} initialSidebarOpen={initialSidebarOpen}>
+    <AppLayout
+      initialSidebarWidth={initialSidebarWidth}
+      initialSidebarOpen={initialSidebarOpen}
+      initialIsMobile={isMobile}
+    >
       {children}
     </AppLayout>
   )

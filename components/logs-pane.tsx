@@ -19,10 +19,29 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [isCollapsed, setIsCollapsedState] = useState(true)
   const [paneHeight, setPaneHeight] = useState(200)
   const [isResizing, setIsResizing] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [hasMounted, setHasMounted] = useState(false)
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
   const { isSidebarOpen, isSidebarResizing } = useTasks()
+
+  // Check if we're on desktop
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024)
+    }
+
+    checkDesktop()
+
+    // Delay enabling transitions until after the browser has painted the correct position
+    requestAnimationFrame(() => {
+      setHasMounted(true)
+    })
+
+    window.addEventListener('resize', checkDesktop)
+    return () => window.removeEventListener('resize', checkDesktop)
+  }, [])
 
   // Initialize height and collapsed state from cookies on mount
   useEffect(() => {
@@ -132,9 +151,9 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
 
   return (
     <div
-      className={`fixed bottom-0 right-0 z-10 bg-background ${isResizing || isSidebarResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+      className={`fixed bottom-0 right-0 z-10 bg-background ${isResizing || isSidebarResizing || !hasMounted ? '' : 'transition-all duration-300 ease-in-out'}`}
       style={{
-        left: isSidebarOpen ? 'var(--sidebar-width)' : '0px',
+        left: isDesktop && isSidebarOpen ? 'var(--sidebar-width)' : '0px',
         height: isCollapsed ? 'auto' : `${paneHeight}px`,
       }}
     >

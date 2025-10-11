@@ -21,22 +21,21 @@ export function PageHeader({
   showPlatformName = false,
 }: PageHeaderProps) {
   return (
-    <div className="relative px-3 pt-3">
-      {/* Left side - Menu Button and Left Actions */}
-      <div className="absolute top-0 left-0 z-10 flex items-center gap-2">
-        {showMobileMenu && (
-          <Button onClick={onToggleMobileMenu} variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <Menu className="h-4 w-4" />
-          </Button>
-        )}
-        {leftActions}
+    <div className="px-0 md:px-3 pt-0.5 md:pt-3 pb-1.5 md:pb-4">
+      <div className="flex items-center justify-between gap-2 h-8 min-w-0">
+        {/* Left side - Menu Button and Left Actions */}
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-hidden">
+          {showMobileMenu && (
+            <Button onClick={onToggleMobileMenu} variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0">
+              <Menu className="h-4 w-4" />
+            </Button>
+          )}
+          {leftActions}
+        </div>
+
+        {/* Actions - Right side */}
+        {actions && <div className="flex items-center flex-shrink-0">{actions}</div>}
       </div>
-
-      {/* Actions - Absolute positioned in top-right */}
-      {actions && <div className="absolute top-0 right-0 z-10">{actions}</div>}
-
-      {/* Title - Centered with padding for buttons */}
-      <div className="px-12 text-center mb-4">{title && <h1 className="text-3xl font-bold mb-2">{title}</h1>}</div>
     </div>
   )
 }

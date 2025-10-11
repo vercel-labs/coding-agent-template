@@ -20,8 +20,8 @@ export function validateEnvironmentVariables(
     errors.push('CURSOR_API_KEY is required for Cursor CLI. Please add your API key in your profile.')
   }
 
-  if (selectedAgent === 'codex' && !apiKeys?.OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
-    errors.push('OPENAI_API_KEY is required for Codex CLI. Please add your API key in your profile.')
+  if (selectedAgent === 'codex' && !apiKeys?.AI_GATEWAY_API_KEY && !process.env.AI_GATEWAY_API_KEY) {
+    errors.push('AI_GATEWAY_API_KEY is required for Codex CLI. Please add your API key in your profile.')
   }
 
   if (selectedAgent === 'gemini' && !apiKeys?.GEMINI_API_KEY && !process.env.GEMINI_API_KEY) {
@@ -29,11 +29,15 @@ export function validateEnvironmentVariables(
   }
 
   if (selectedAgent === 'opencode') {
-    if (!apiKeys?.OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
-      errors.push('OPENAI_API_KEY is required for OpenCode CLI. Please add your API key in your profile.')
-    }
-    if (!apiKeys?.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-      errors.push('ANTHROPIC_API_KEY is required for OpenCode CLI. Please add your API key in your profile.')
+    // OpenCode can use either AI Gateway (for GPT models) or Anthropic (for Claude models)
+    // We require at least one to be present
+    const hasAiGateway = apiKeys?.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_API_KEY
+    const hasAnthropic = apiKeys?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY
+
+    if (!hasAiGateway && !hasAnthropic) {
+      errors.push(
+        'Either AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY is required for OpenCode CLI. Please add at least one API key in your profile.',
+      )
     }
   }
 

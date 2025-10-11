@@ -72,13 +72,20 @@ interface TaskSidebarProps {
 
 export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarProps) {
   const pathname = usePathname()
-  const { refreshTasks } = useTasks()
+  const { refreshTasks, toggleSidebar } = useTasks()
   const session = useAtomValue(sessionAtom)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
   const [deleteFailed, setDeleteFailed] = useState(true)
   const [deleteStopped, setDeleteStopped] = useState(true)
+
+  // Close sidebar on mobile when navigating
+  const handleNewTaskClick = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      toggleSidebar()
+    }
+  }
 
   const handleDeleteTasks = async () => {
     if (!deleteCompleted && !deleteFailed && !deleteStopped) {
@@ -146,10 +153,13 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
   // Show logged out state if no user is authenticated
   if (!session.user) {
     return (
-      <div className="h-full border-r bg-muted p-3 overflow-y-auto flex flex-col" style={{ width: `${width}px` }}>
-        <div className="mb-3">
+      <div
+        className="h-full border-r bg-muted px-2 md:px-3 pt-3 md:pt-5.5 pb-3 md:pb-4 overflow-y-auto flex flex-col"
+        style={{ width: `${width}px` }}
+      >
+        <div className="mb-3 md:mb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Tasks</h2>
+            <h2 className="text-sm md:text-base font-semibold pl-3">Tasks</h2>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -161,7 +171,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
-              <Link href="/">
+              <Link href="/" onClick={handleNewTaskClick}>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -181,12 +191,13 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
   }
 
   return (
-    <div className="h-full border-r bg-muted p-3 overflow-y-auto" style={{ width: `${width}px` }}>
-      <div className="mb-3">
+    <div
+      className="h-full border-r bg-muted px-2 md:px-3 pt-3 md:pt-5.5 pb-3 md:pb-4 overflow-y-auto"
+      style={{ width: `${width}px` }}
+    >
+      <div className="mb-3 md:mb-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">
-            {tasks.length} Task{tasks.length !== 1 ? 's' : ''}
-          </h2>
+          <h2 className="text-sm md:text-base font-semibold pl-3">Tasks</h2>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -198,7 +209,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-            <Link href="/">
+            <Link href="/" onClick={handleNewTaskClick}>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
                 <Plus className="h-4 w-4" />
               </Button>

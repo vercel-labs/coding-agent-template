@@ -141,10 +141,10 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
     }
 
     return (
-      <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+      <div className="flex items-center justify-center h-full text-center text-muted-foreground p-4">
         <div>
-          <div className="mb-2">No file selected</div>
-          <div className="text-sm">Click on a file in the file tree to view its diff</div>
+          <div className="mb-2 text-sm md:text-base">No file selected</div>
+          <div className="text-xs md:text-sm">Click on a file in the file tree to view its diff</div>
         </div>
       </div>
     )
@@ -152,10 +152,10 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-sm text-muted-foreground">Loading diff...</p>
+          <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-xs md:text-sm text-muted-foreground">Loading diff...</p>
         </div>
       </div>
     )
@@ -163,9 +163,9 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full p-4">
         <div className="text-center">
-          <p className="text-destructive mb-2 text-sm">{error}</p>
+          <p className="text-destructive mb-2 text-xs md:text-sm">{error}</p>
           <p className="text-xs text-muted-foreground">Unable to load diff for {selectedFile}</p>
         </div>
       </div>
@@ -178,9 +178,9 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
 
   if (!diffFile) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full p-4">
         <div className="text-center">
-          <p className="text-destructive mb-2 text-sm">Error generating diff</p>
+          <p className="text-destructive mb-2 text-xs md:text-sm">Error generating diff</p>
         </div>
       </div>
     )
@@ -188,7 +188,7 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
 
   try {
     return (
-      <div className="git-diff-view-container">
+      <div className="git-diff-view-container w-full">
         <DiffView
           key={`${selectedFile}-${diffData?.filename}`}
           diffFile={diffFile}
@@ -203,9 +203,9 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
   } catch (error) {
     console.error('Error rendering diff:', error)
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-8 md:py-12 p-4">
         <div className="text-center">
-          <p className="text-destructive mb-2 text-sm">Error rendering diff</p>
+          <p className="text-destructive mb-2 text-xs md:text-sm">Error rendering diff</p>
           <p className="text-xs text-muted-foreground">{error instanceof Error ? error.message : 'Unknown error'}</p>
         </div>
       </div>
