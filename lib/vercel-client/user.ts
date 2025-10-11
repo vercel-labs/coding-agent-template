@@ -24,7 +24,7 @@ export async function fetchUser(accessToken: string): Promise<VercelUser | undef
 
   // Try to parse response - format may vary by endpoint
   const data = (await response.json()) as { user?: VercelUser } | VercelUser
-  const user: VercelUser | undefined = 'user' in data && data.user ? data.user : ('username' in data ? data : undefined)
+  const user: VercelUser | undefined = 'user' in data && data.user ? data.user : 'username' in data ? data : undefined
 
   if (!user) {
     console.error('No user data in response')
