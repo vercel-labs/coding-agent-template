@@ -139,7 +139,7 @@ export function HomePageContent({
         />
       </div>
 
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center px-4">
         <TaskForm
           onSubmit={handleTaskSubmit}
           isSubmitting={isSubmitting}

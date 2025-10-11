@@ -339,9 +339,9 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
 
           {/* Main Content */}
           <div
-            className={`flex-1 overflow-auto flex flex-col lg:ml-0 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+            className={`flex-1 overflow-auto flex flex-col ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
             style={{
-              marginLeft: isSidebarOpen ? `${sidebarWidth + 4}px` : '0px',
+              marginLeft: isDesktop && isSidebarOpen ? `${sidebarWidth + 4}px` : '0px',
             }}
           >
             {children}
