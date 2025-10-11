@@ -22,6 +22,12 @@ export function redactSensitiveInfo(message: string): string {
     /Bearer\s+([a-zA-Z0-9_-]{20,})/gi,
     // Generic tokens
     /TOKEN[=\s]*["']?([a-zA-Z0-9_-]{20,})/gi,
+    // Vercel Team IDs (team_xxxx or alphanumeric strings after VERCEL_TEAM_ID)
+    /VERCEL_TEAM_ID[=\s:]*["']?([a-zA-Z0-9_-]{8,})/gi,
+    // Vercel Project IDs (prj_xxxx or alphanumeric strings after VERCEL_PROJECT_ID)
+    /VERCEL_PROJECT_ID[=\s:]*["']?([a-zA-Z0-9_-]{8,})/gi,
+    // Vercel tokens (any alphanumeric strings after VERCEL_TOKEN)
+    /VERCEL_TOKEN[=\s:]*["']?([a-zA-Z0-9_-]{20,})/gi,
   ]
 
   // Apply redaction patterns
@@ -47,9 +53,14 @@ export function redactSensitiveInfo(message: string): string {
     })
   })
 
+  // Redact JSON field patterns (for teamId, projectId in JSON objects)
+  redacted = redacted.replace(/"(teamId|projectId)"[\s:]*"([^"]+)"/gi, (match, fieldName) => {
+    return `"${fieldName}": "[REDACTED]"`
+  })
+
   // Redact environment variable assignments with sensitive values
   redacted = redacted.replace(
-    /([A-Z_]*(?:KEY|TOKEN|SECRET|PASSWORD)[A-Z_]*)[=\s]*["']?([a-zA-Z0-9_-]{8,})["']?/gi,
+    /([A-Z_]*(?:KEY|TOKEN|SECRET|PASSWORD|TEAM_ID|PROJECT_ID)[A-Z_]*)[=\s:]*["']?([a-zA-Z0-9_-]{8,})["']?/gi,
     (match, varName, value) => {
       const redactedValue =
         value.length > 8

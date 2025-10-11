@@ -77,18 +77,6 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       resources: { vcpus: config.resources?.vcpus || 4 },
     }
 
-    await logger.info(
-      `Sandbox config: ${JSON.stringify(
-        {
-          ...sandboxConfig,
-          token: '[REDACTED]',
-          source: { ...sandboxConfig.source, url: '[REDACTED]' },
-        },
-        null,
-        2,
-      )}`,
-    )
-
     // Call progress callback before sandbox creation
     if (config.onProgress) {
       await config.onProgress(25, 'Validating configuration...')
@@ -132,7 +120,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.error(`Sandbox creation failed: ${errorMessage}`)
       if (errorResponse) {
         await logger.error(`HTTP Status: ${errorResponse.status}`)
-        await logger.error(`Response: ${JSON.stringify(errorResponse.data)}`)
+        await logger.error(`Response: ${redactSensitiveInfo(JSON.stringify(errorResponse.data))}`)
       }
       throw error
     }
