@@ -7,7 +7,7 @@ export function validateEnvironmentVariables(
     CURSOR_API_KEY?: string
     ANTHROPIC_API_KEY?: string
     AI_GATEWAY_API_KEY?: string
-  }
+  },
 ) {
   const errors: string[] = []
 

@@ -144,50 +144,51 @@ export function HomePageHeader({
   // Check if user is authenticated with GitHub (not just connected)
   const isGitHubAuthUser = user?.id?.startsWith('github-')
 
-  const leftActions = githubConnection.connected || isGitHubAuthUser ? (
-    <div className="flex items-center gap-2">
-      <RepoSelector
-        selectedOwner={selectedOwner}
-        selectedRepo={selectedRepo}
-        onOwnerChange={onOwnerChange}
-        onRepoChange={onRepoChange}
-        size="sm"
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="More options">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh Owners
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh Repos
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleReconfigureGitHub}>
-            <Settings className="h-4 w-4 mr-2" />
-            Manage Access
-          </DropdownMenuItem>
-          {/* Only show Disconnect for Vercel users who connected GitHub, not for GitHub-authenticated users */}
-          {!isGitHubAuthUser && (
-            <DropdownMenuItem onClick={handleDisconnectGitHub}>
-              <Unlink className="h-4 w-4 mr-2" />
-              Disconnect GitHub
+  const leftActions =
+    githubConnection.connected || isGitHubAuthUser ? (
+      <div className="flex items-center gap-2">
+        <RepoSelector
+          selectedOwner={selectedOwner}
+          selectedRepo={selectedRepo}
+          onOwnerChange={onOwnerChange}
+          onRepoChange={onRepoChange}
+          size="sm"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="More options">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh Owners
             </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  ) : user ? (
-    <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8">
-      <GitHubIcon className="h-4 w-4 mr-2" />
-      Connect GitHub
-    </Button>
-  ) : null
+            <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh Repos
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleReconfigureGitHub}>
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Access
+            </DropdownMenuItem>
+            {/* Only show Disconnect for Vercel users who connected GitHub, not for GitHub-authenticated users */}
+            {!isGitHubAuthUser && (
+              <DropdownMenuItem onClick={handleDisconnectGitHub}>
+                <Unlink className="h-4 w-4 mr-2" />
+                Disconnect GitHub
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    ) : user ? (
+      <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8">
+        <GitHubIcon className="h-4 w-4 mr-2" />
+        Connect GitHub
+      </Button>
+    ) : null
 
   return (
     <>

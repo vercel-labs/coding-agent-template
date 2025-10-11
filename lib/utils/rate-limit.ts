@@ -8,7 +8,7 @@ export async function checkRateLimit(userId: string): Promise<{ allowed: boolean
   // Get start of today (UTC)
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
-  
+
   // Get end of today (UTC)
   const tomorrow = new Date(today)
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
@@ -17,13 +17,7 @@ export async function checkRateLimit(userId: string): Promise<{ allowed: boolean
   const tasksToday = await db
     .select()
     .from(tasks)
-    .where(
-      and(
-        eq(tasks.userId, userId),
-        gte(tasks.createdAt, today),
-        isNull(tasks.deletedAt)
-      )
-    )
+    .where(and(eq(tasks.userId, userId), gte(tasks.createdAt, today), isNull(tasks.deletedAt)))
 
   const count = tasksToday.length
   const remaining = Math.max(0, DAILY_TASK_LIMIT - count)
@@ -35,4 +29,3 @@ export async function checkRateLimit(userId: string): Promise<{ allowed: boolean
     resetAt: tomorrow,
   }
 }
-

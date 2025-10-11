@@ -12,17 +12,14 @@ export async function GET(req: NextRequest) {
     if (isGitHubUser) {
       // Revoke GitHub token
       try {
-        await fetch(
-          `https://api.github.com/applications/${process.env.GITHUB_CLIENT_ID}/token`,
-          {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Basic ${Buffer.from(`${process.env.GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64')}`,
-              Accept: 'application/vnd.github.v3+json',
-            },
-            body: JSON.stringify({ access_token: session.tokens.accessToken }),
-          }
-        )
+        await fetch(`https://api.github.com/applications/${process.env.GITHUB_CLIENT_ID}/token`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${process.env.GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64')}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+          body: JSON.stringify({ access_token: session.tokens.accessToken }),
+        })
       } catch (error) {
         console.error('Failed to revoke GitHub token:', error)
       }

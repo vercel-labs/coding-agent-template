@@ -7,7 +7,7 @@ import { getSessionFromReq } from '@/lib/session/server'
 export async function GET(req: NextRequest): Promise<Response> {
   // Check if user is already authenticated with Vercel
   const session = await getSessionFromReq(req)
-  
+
   const clientId = process.env.GITHUB_CLIENT_ID
   const redirectUri = `${req.nextUrl.origin}/api/auth/github/callback`
 
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   // Otherwise, treat it as a "Sign in with GitHub" flow
   const isSignInFlow = !session?.user
   const authMode = isSignInFlow ? 'signin' : 'connect'
-  
+
   // Add a query parameter to show a toast message after redirect
   if (!isSignInFlow) {
     const redirectUrl = new URL(redirectTo, req.nextUrl.origin)
@@ -68,4 +68,3 @@ export async function GET(req: NextRequest): Promise<Response> {
   // Redirect directly to GitHub
   return Response.redirect(url)
 }
-

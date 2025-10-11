@@ -19,7 +19,8 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   // Try both cookie patterns (new unified flow vs legacy oauth flow)
   const storedState = cookieStore.get(authMode ? `github_auth_state` : `github_oauth_state`)?.value ?? null
-  const storedRedirectTo = cookieStore.get(authMode ? `github_auth_redirect_to` : `github_oauth_redirect_to`)?.value ?? null
+  const storedRedirectTo =
+    cookieStore.get(authMode ? `github_auth_redirect_to` : `github_oauth_redirect_to`)?.value ?? null
   const storedUserId = cookieStore.get(`github_oauth_user_id`)?.value ?? null // Required for connect flow
 
   // For sign-in flow, we don't need storedUserId
@@ -31,7 +32,13 @@ export async function GET(req: NextRequest): Promise<Response> {
     }
   } else {
     // For connect flow (including legacy oauth flow), we need storedUserId
-    if (code === null || state === null || storedState !== state || storedRedirectTo === null || storedUserId === null) {
+    if (
+      code === null ||
+      state === null ||
+      storedState !== state ||
+      storedRedirectTo === null ||
+      storedUserId === null
+    ) {
       return new Response('Invalid OAuth state', {
         status: 400,
       })
@@ -49,7 +56,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   try {
     console.log('[GitHub Callback] Starting OAuth flow, mode:', authMode)
-    
+
     // Exchange code for access token
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -83,7 +90,10 @@ export async function GET(req: NextRequest): Promise<Response> {
 
     if (!tokenData.access_token) {
       console.error('[GitHub Callback] Failed to get GitHub access token:', tokenData)
-      return new Response(`Failed to authenticate with GitHub: ${tokenData.error_description || tokenData.error || 'Unknown error'}`, { status: 400 })
+      return new Response(
+        `Failed to authenticate with GitHub: ${tokenData.error_description || tokenData.error || 'Unknown error'}`,
+        { status: 400 },
+      )
     }
 
     // Fetch GitHub user info
@@ -214,6 +224,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   } catch (error) {
     console.error('[GitHub Callback] OAuth callback error:', error)
     console.error('[GitHub Callback] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    return new Response(`Failed to complete GitHub authentication: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 })
+    return new Response(
+      `Failed to complete GitHub authentication: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { status: 500 },
+    )
   }
 }

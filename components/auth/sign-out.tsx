@@ -126,7 +126,10 @@ export function SignOut({ user }: Pick<Session, 'user'>) {
                 Disconnect
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onClick={() => window.location.href = '/api/auth/github/signin'} className="cursor-pointer">
+              <DropdownMenuItem
+                onClick={() => (window.location.href = '/api/auth/github/signin')}
+                className="cursor-pointer"
+              >
                 <GitHubIcon className="h-4 w-4 mr-2" />
                 Connect
               </DropdownMenuItem>

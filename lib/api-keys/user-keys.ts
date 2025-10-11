@@ -35,14 +35,11 @@ export async function getUserApiKeys(): Promise<{
   }
 
   try {
-    const connections = await db
-      .select()
-      .from(userConnections)
-      .where(eq(userConnections.userId, session.user.id))
+    const connections = await db.select().from(userConnections).where(eq(userConnections.userId, session.user.id))
 
     connections.forEach((connection) => {
       const decryptedKey = decrypt(connection.accessToken)
-      
+
       switch (connection.provider) {
         case 'openai':
           keys.OPENAI_API_KEY = decryptedKey
@@ -105,4 +102,3 @@ export async function getUserApiKey(provider: Provider): Promise<string | undefi
 
   return systemKeys[provider]
 }
-

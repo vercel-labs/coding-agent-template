@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
           eq(userConnections.userId, session.user.id),
           // Only get API key providers (not OAuth like GitHub)
           // Using SQL OR with multiple conditions
-          eq(userConnections.provider, 'openai')
-        )
+          eq(userConnections.provider, 'openai'),
+        ),
       )
 
     // Get all API key providers
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       .where(eq(userConnections.userId, session.user.id))
 
     const apiKeyProviders = allConnections.filter((c) =>
-      ['openai', 'gemini', 'cursor', 'anthropic', 'aigateway'].includes(c.provider)
+      ['openai', 'gemini', 'cursor', 'anthropic', 'aigateway'].includes(c.provider),
     )
 
     return NextResponse.json({
@@ -133,4 +133,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete API key' }, { status: 500 })
   }
 }
-

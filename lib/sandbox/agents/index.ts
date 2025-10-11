@@ -40,7 +40,7 @@ export async function executeAgentInSandbox(
       changesDetected: false,
     }
   }
-  
+
   // Temporarily override process.env with user's API keys if provided
   const originalEnv = {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,

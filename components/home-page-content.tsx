@@ -155,9 +155,7 @@ export function HomePageContent({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Sign in to continue</DialogTitle>
-            <DialogDescription>
-              You need to sign in to create tasks. Choose how you want to sign in.
-            </DialogDescription>
+            <DialogDescription>You need to sign in to create tasks. Choose how you want to sign in.</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-3 py-4">
@@ -176,7 +174,14 @@ export function HomePageContent({
                     fill="none"
                     viewBox="0 0 24 24"
                   >
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
                     <path
                       className="opacity-75"
                       fill="currentColor"
@@ -210,7 +215,14 @@ export function HomePageContent({
                     fill="none"
                     viewBox="0 0 24 24"
                   >
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
                     <path
                       className="opacity-75"
                       fill="currentColor"

@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           remaining: rateLimit.remaining,
           resetAt: rateLimit.resetAt.toISOString(),
         },
-        { status: 429 }
+        { status: 429 },
       )
     }
 
@@ -468,7 +468,16 @@ async function processTask(
     }
 
     const agentResult = await Promise.race([
-      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel, mcpServers, undefined, apiKeys),
+      executeAgentInSandbox(
+        sandbox,
+        prompt,
+        selectedAgent as AgentType,
+        logger,
+        selectedModel,
+        mcpServers,
+        undefined,
+        apiKeys,
+      ),
       agentTimeoutPromise,
     ])
 
