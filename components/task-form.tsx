@@ -106,28 +106,28 @@ const DEFAULT_MODELS = {
 } as const
 
 // API key requirements for each agent
-const AGENT_API_KEY_REQUIREMENTS = {
+const AGENT_API_KEY_REQUIREMENTS: Record<string, Provider[]> = {
   claude: ['anthropic'],
-  codex: ['openai'],
+  codex: ['aigateway'], // Uses AI Gateway for OpenAI proxy
   cursor: ['cursor'],
   gemini: ['gemini'],
   opencode: [], // Will be determined dynamically based on selected model
-} as const
+}
 
 type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
 
 // Helper to determine which API key is needed for opencode based on model
-const getOpenCodeRequiredKeys = (model: string): ('openai' | 'anthropic')[] => {
+const getOpenCodeRequiredKeys = (model: string): Provider[] => {
   // Check if it's an Anthropic model (claude models)
   if (model.includes('claude') || model.includes('sonnet') || model.includes('opus')) {
     return ['anthropic']
   }
-  // Check if it's an OpenAI model (gpt models)
+  // Check if it's an OpenAI/GPT model (uses AI Gateway)
   if (model.includes('gpt')) {
-    return ['openai']
+    return ['aigateway']
   }
   // Fallback to both if we can't determine
-  return ['openai', 'anthropic']
+  return ['aigateway', 'anthropic']
 }
 
 export function TaskForm({
@@ -315,16 +315,16 @@ export function TaskForm({
 
   // Check if user has required API keys for selected agent
   const checkApiKeyRequirements = (): boolean => {
-    let requirements = AGENT_API_KEY_REQUIREMENTS[selectedAgent as keyof typeof AGENT_API_KEY_REQUIREMENTS]
-
+    let requirements: Provider[] = AGENT_API_KEY_REQUIREMENTS[selectedAgent] || []
+    
     // For opencode, determine requirements based on selected model
     if (selectedAgent === 'opencode') {
       requirements = getOpenCodeRequiredKeys(selectedModel)
     }
-
+    
     if (!requirements || requirements.length === 0) return true
 
-    const missingKeys = requirements.filter((key) => !savedApiKeys.has(key as Provider))
+    const missingKeys = requirements.filter((key) => !savedApiKeys.has(key))
 
     if (missingKeys.length > 0) {
       const providerNames = missingKeys.map((key) => {
@@ -337,6 +337,8 @@ export function TaskForm({
             return 'Cursor'
           case 'gemini':
             return 'Gemini'
+          case 'aigateway':
+            return 'AI Gateway'
           default:
             return key
         }
