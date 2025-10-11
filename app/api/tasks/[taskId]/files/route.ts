@@ -104,7 +104,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       } catch (branchError: unknown) {
         if (branchError && typeof branchError === 'object' && 'status' in branchError && branchError.status === 404) {
           // Branch doesn't exist yet (task is still processing)
-          console.log(`Branch ${task.branchName} doesn't exist yet, returning empty file list`)
+          console.log('Branch does not exist yet, returning empty file list')
           return NextResponse.json({
             success: true,
             files: [],
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               masterError.status === 404
             ) {
               // Neither main nor master exists, or head branch doesn't exist
-              console.log(`Could not compare branches for ${task.branchName}`)
+              console.log('Could not compare branches')
               return NextResponse.json({
                 success: true,
                 files: [],
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           changes: file.changes || 0,
         })) || []
 
-      console.log(`Found ${files.length} changed files in branch ${task.branchName}`)
+      console.log('Found changed files in branch')
     } catch (error: unknown) {
       console.error('Error fetching file changes from GitHub:', error)
 

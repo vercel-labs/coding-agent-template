@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           if (killResult.success) {
             await logger.success('Sandbox killed successfully')
           } else {
-            await logger.error(`Failed to kill sandbox: ${killResult.error}`)
+            await logger.error('Failed to kill sandbox')
           }
         } catch (killError) {
           console.error('Failed to kill sandbox during stop:', killError)

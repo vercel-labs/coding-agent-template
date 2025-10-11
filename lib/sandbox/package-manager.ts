@@ -10,19 +10,19 @@ export async function detectPackageManager(sandbox: Sandbox, logger: TaskLogger)
   // Check for lock files in order of preference
   const pnpmLockCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'pnpm-lock.yaml'])
   if (pnpmLockCheck.success) {
-    await logger.info('Detected pnpm (pnpm-lock.yaml found)')
+    await logger.info('Detected pnpm package manager')
     return 'pnpm'
   }
 
   const yarnLockCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'yarn.lock'])
   if (yarnLockCheck.success) {
-    await logger.info('Detected yarn (yarn.lock found)')
+    await logger.info('Detected yarn package manager')
     return 'yarn'
   }
 
   const npmLockCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'package-lock.json'])
   if (npmLockCheck.success) {
-    await logger.info('Detected npm (package-lock.json found)')
+    await logger.info('Detected npm package manager')
     return 'npm'
   }
 
@@ -50,19 +50,19 @@ export async function installDependencies(
       if (!configStore.success) {
         await logger.error('Failed to configure pnpm store directory')
       } else {
-        await logger.info('Configured pnpm to use /tmp/pnpm-store')
+        await logger.info('Configured pnpm store directory')
       }
 
       installCommand = ['pnpm', 'install', '--frozen-lockfile']
-      logMessage = `Attempting pnpm install with ${timeoutMinutes}-minute timeout using /tmp/pnpm-store...`
+      logMessage = 'Attempting pnpm install with timeout'
       break
     case 'yarn':
       installCommand = ['yarn', 'install', '--frozen-lockfile']
-      logMessage = `Attempting yarn install with ${timeoutMinutes}-minute timeout...`
+      logMessage = 'Attempting yarn install with timeout'
       break
     case 'npm':
       installCommand = ['npm', 'install', '--no-audit', '--no-fund']
-      logMessage = `Attempting npm install with ${timeoutMinutes}-minute timeout...`
+      logMessage = 'Attempting npm install with timeout'
       break
   }
 
@@ -82,21 +82,21 @@ export async function installDependencies(
   ])
 
   if (installWithTimeout.success) {
-    await logger.info(`Node.js dependencies installed with ${packageManager}`)
+    await logger.info('Node.js dependencies installed')
     return { success: true }
   } else if ('timedOut' in installWithTimeout && installWithTimeout.timedOut) {
-    await logger.error(`${packageManager} install timed out`)
+    await logger.error('Package manager install timed out')
     return { success: false, error: installWithTimeout.error }
   } else {
-    await logger.error(`${packageManager} install failed`)
+    await logger.error('Package manager install failed')
 
     // Type guard to ensure we have a CommandResult
     if ('exitCode' in installWithTimeout) {
-      await logger.error(`${packageManager} exit code: ${installWithTimeout.exitCode}`)
-      if (installWithTimeout.output) await logger.error(`${packageManager} stdout: ${installWithTimeout.output}`)
-      if (installWithTimeout.error) await logger.error(`${packageManager} stderr: ${installWithTimeout.error}`)
+      await logger.error('Install failed with exit code')
+      if (installWithTimeout.output) await logger.error('Install stdout available')
+      if (installWithTimeout.error) await logger.error('Install stderr available')
     } else {
-      await logger.error(`${packageManager} error: ${installWithTimeout.error}`)
+      await logger.error('Install error occurred')
     }
 
     return { success: false, error: installWithTimeout.error }

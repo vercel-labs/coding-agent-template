@@ -239,7 +239,7 @@ export function TaskForm({
             setLoadingRepos(false)
             return
           } catch {
-            console.warn(`Failed to parse cached repos for ${selectedOwner}, fetching fresh data`)
+            console.warn('Failed to parse cached repos, fetching fresh data')
             sessionStorage.removeItem(cacheKey)
           }
         }

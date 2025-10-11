@@ -83,7 +83,7 @@ export async function installClaudeCLI(
       // Use selectedModel if provided, otherwise fall back to default
 
       if (mcpServers && mcpServers.length > 0) {
-        await logger.info(`Adding ${mcpServers.length} MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`)
+        await logger.info('Adding MCP servers')
 
         for (const server of mcpServers) {
           const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
@@ -103,10 +103,10 @@ export async function installClaudeCLI(
             const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
 
             if (addResult.success) {
-              await logger.info(`Successfully added local MCP server: ${server.name}`)
+              await logger.info('Successfully added local MCP server')
             } else {
               const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
-              await logger.info(`Failed to add MCP server ${server.name}: ${redactedError}`)
+              await logger.info('Failed to add MCP server')
             }
           } else {
             // Remote HTTP/SSE server
@@ -123,10 +123,10 @@ export async function installClaudeCLI(
             const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
 
             if (addResult.success) {
-              await logger.info(`Successfully added remote MCP server: ${server.name}`)
+              await logger.info('Successfully added remote MCP server')
             } else {
               const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
-              await logger.info(`Failed to add MCP server ${server.name}: ${redactedError}`)
+              await logger.info('Failed to add MCP server')
             }
           }
         }
@@ -235,9 +235,9 @@ export async function executeClaudeInSandbox(
 
     // Check MCP configuration status
     const mcpList = await runCommandInSandbox(sandbox, 'sh', ['-c', `${envPrefix} claude mcp list`])
-    await logger.info(`MCP servers list: ${JSON.stringify(mcpList.output)}`)
+    await logger.info('MCP servers list retrieved')
     if (mcpList.error) {
-      await logger.info(`MCP list error: ${JSON.stringify(mcpList.error)}`)
+      await logger.info('MCP list error occurred')
     }
 
     // Try multiple command formats to see what works
@@ -274,7 +274,7 @@ export async function executeClaudeInSandbox(
 
     // Log the output
     if (result.output && result.output.trim()) {
-      await logger.info(`everything: ${JSON.stringify(result.output)}`)
+      await logger.info('Claude CLI execution output available')
 
       const redactedOutput = redactSensitiveInfo(result.output.trim())
       await logger.info(redactedOutput)
@@ -295,12 +295,12 @@ export async function executeClaudeInSandbox(
 
     // Log more details for debugging
     if (logger) {
-      await logger.info(`Claude CLI exit code: ${result.exitCode}`)
+      await logger.info('Claude CLI execution completed')
       if (result.output) {
-        await logger.info(`Claude CLI output length: ${result.output.length} characters`)
+        await logger.info('Claude CLI output available')
       }
       if (result.error) {
-        await logger.error(`Claude CLI error: ${result.error}`)
+        await logger.error('Claude CLI error occurred')
       }
     }
 

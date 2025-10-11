@@ -97,7 +97,7 @@ export async function getUserApiKey(provider: Provider): Promise<string | undefi
       return decrypt(userKey[0].value)
     }
   } catch (error) {
-    console.error(`Error fetching user API key for ${provider}:`, error)
+    console.error('Error fetching user API key:', error)
   }
 
   return systemKeys[provider]

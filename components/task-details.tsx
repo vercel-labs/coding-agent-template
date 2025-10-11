@@ -306,7 +306,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             newDiffsCache[filename] = result.data
           }
         } catch (err) {
-          console.error(`Error fetching diff for ${filename}:`, err)
+          console.error('Error fetching diff for file:', err)
         }
       })
 

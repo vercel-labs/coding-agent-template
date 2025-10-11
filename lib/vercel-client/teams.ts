@@ -20,6 +20,6 @@ export async function fetchTeams(accessToken: string) {
   }
 
   const { teams } = (await response.json()) as { teams: VercelTeam[] }
-  console.log(`Successfully fetched ${teams?.length || 0} teams`)
+  console.log('Successfully fetched teams')
   return teams || []
 }
