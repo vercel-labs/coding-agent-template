@@ -141,7 +141,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       // Convert GitHub API response to our FileChange format
       files =
-        comparison.data.files?.map((file) => ({
+        comparison.data.files?.map((file: any) => ({
           filename: file.filename,
           status: file.status as 'added' | 'modified' | 'deleted' | 'renamed',
           additions: file.additions || 0,
