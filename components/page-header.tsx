@@ -25,14 +25,9 @@ export function PageHeader({
       {/* Left side - Menu Button and Left Actions */}
       <div className="absolute top-0 left-0 z-10 flex items-center gap-2">
         {showMobileMenu && (
-          <>
-            <Button onClick={onToggleMobileMenu} variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Menu className="h-4 w-4" />
-            </Button>
-            {showPlatformName && (
-              <span className="text-sm font-semibold text-muted-foreground">Coding Agent Template</span>
-            )}
-          </>
+          <Button onClick={onToggleMobileMenu} variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Menu className="h-4 w-4" />
+          </Button>
         )}
         {leftActions}
       </div>

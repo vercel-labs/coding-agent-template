@@ -5,92 +5,103 @@ import { RepoSelector } from '@/components/repo-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Checkbox } from '@/components/ui/checkbox'
-import { MoreHorizontal, RefreshCw, Trash2 } from 'lucide-react'
+import { MoreHorizontal, RefreshCw, Unlink, Settings } from 'lucide-react'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
-import { ConnectorDialog } from '@/components/connectors/manage-connectors'
+import { User } from '@/components/auth/user'
+import type { Session } from '@/lib/session/types'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { useSetAtom, useAtomValue } from 'jotai'
+import { sessionAtom } from '@/lib/atoms/session'
+import { githubConnectionAtom } from '@/lib/atoms/github-connection'
+import { GitHubIcon } from '@/components/icons/github-icon'
 
 interface HomePageHeaderProps {
   selectedOwner: string
   selectedRepo: string
   onOwnerChange: (owner: string) => void
   onRepoChange: (repo: string) => void
+  user?: Session['user'] | null
 }
 
-export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onRepoChange }: HomePageHeaderProps) {
-  const { toggleSidebar, refreshTasks } = useTasks()
+export function HomePageHeader({
+  selectedOwner,
+  selectedRepo,
+  onOwnerChange,
+  onRepoChange,
+  user,
+}: HomePageHeaderProps) {
+  const { toggleSidebar } = useTasks()
+  const router = useRouter()
+  const githubConnection = useAtomValue(githubConnectionAtom)
+  const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [showConnectorDialog, setShowConnectorDialog] = useState(false)
-  const [deleteCompleted, setDeleteCompleted] = useState(true)
-  const [deleteFailed, setDeleteFailed] = useState(true)
-  const [deleteStopped, setDeleteStopped] = useState(true)
 
-  const handleRefreshRepos = async () => {
+  const handleRefreshOwners = async () => {
     setIsRefreshing(true)
     try {
-      // Clear all GitHub-related caches
+      // Clear only owners cache
       sessionStorage.removeItem('github-owners')
-      Object.keys(sessionStorage).forEach((key) => {
-        if (key.startsWith('github-repos-')) {
-          sessionStorage.removeItem(key)
-        }
-      })
+      toast.success('Refreshing owners...')
 
       // Reload the page to fetch fresh data
       window.location.reload()
     } catch (error) {
-      console.error('Error refreshing repositories:', error)
+      console.error('Error refreshing owners:', error)
+      toast.error('Failed to refresh owners')
     } finally {
       setIsRefreshing(false)
     }
   }
 
-  const handleDeleteTasks = async () => {
-    if (!deleteCompleted && !deleteFailed && !deleteStopped) {
-      toast.error('Please select at least one task type to delete')
-      return
-    }
-
-    setIsDeleting(true)
+  const handleRefreshRepos = async () => {
+    setIsRefreshing(true)
     try {
-      const actions = []
-      if (deleteCompleted) actions.push('completed')
-      if (deleteFailed) actions.push('failed')
-      if (deleteStopped) actions.push('stopped')
+      // Clear repos cache for current owner
+      if (selectedOwner) {
+        sessionStorage.removeItem(`github-repos-${selectedOwner}`)
+        toast.success('Refreshing repositories...')
 
-      const response = await fetch(`/api/tasks?action=${actions.join(',')}`, {
-        method: 'DELETE',
+        // Reload the page to fetch fresh data
+        window.location.reload()
+      } else {
+        // Clear all repos if no owner selected
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith('github-repos-')) {
+            sessionStorage.removeItem(key)
+          }
+        })
+        toast.success('Refreshing all repositories...')
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('Error refreshing repositories:', error)
+      toast.error('Failed to refresh repositories')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const handleDisconnectGitHub = async () => {
+    try {
+      const response = await fetch('/api/auth/github/disconnect', {
+        method: 'POST',
+        credentials: 'include', // Ensure cookies are sent
       })
 
       if (response.ok) {
-        const result = await response.json()
-        toast.success(result.message)
-        // Refresh the tasks list to update the sidebar
-        await refreshTasks()
-        setShowDeleteDialog(false)
+        toast.success('GitHub disconnected')
+        setGitHubConnection({ connected: false })
+        router.refresh()
       } else {
         const error = await response.json()
-        toast.error(error.error || 'Failed to delete tasks')
+        console.error('Failed to disconnect GitHub:', error)
+        toast.error(error.error || 'Failed to disconnect GitHub')
       }
     } catch (error) {
-      console.error('Error deleting tasks:', error)
-      toast.error('Failed to delete tasks')
-    } finally {
-      setIsDeleting(false)
+      console.error('Failed to disconnect GitHub:', error)
+      toast.error('Failed to disconnect GitHub')
     }
   }
 
@@ -101,46 +112,86 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
         asChild
         variant="outline"
         size="sm"
-        className="h-8 px-3 text-xs bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
+        className="h-8 px-3 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
       >
         <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
           <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
             <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
           </svg>
-          Deploy to Vercel
+          Deploy Your Own
         </a>
       </Button>
 
-      {/* More Actions Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh Repositories
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} disabled={isDeleting}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Tasks
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* User Authentication */}
+      <User user={user} />
     </div>
   )
 
-  const leftActions = (
-    <RepoSelector
-      selectedOwner={selectedOwner}
-      selectedRepo={selectedRepo}
-      onOwnerChange={onOwnerChange}
-      onRepoChange={onRepoChange}
-      size="sm"
-    />
-  )
+  const handleConnectGitHub = () => {
+    window.location.href = '/api/auth/github/signin'
+  }
+
+  const handleReconfigureGitHub = () => {
+    // Link to GitHub's OAuth app settings page where users can reconfigure access
+    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
+    if (clientId) {
+      window.open(`https://github.com/settings/connections/applications/${clientId}`, '_blank')
+    } else {
+      // Fallback to OAuth flow if client ID is not available
+      window.location.href = '/api/auth/github/signin'
+    }
+  }
+
+  // Get session to check auth provider
+  const session = useAtomValue(sessionAtom)
+  // Check if user is authenticated with GitHub (not just connected)
+  const isGitHubAuthUser = session.authProvider === 'github'
+
+  const leftActions =
+    githubConnection.connected || isGitHubAuthUser ? (
+      <div className="flex items-center gap-2">
+        <RepoSelector
+          selectedOwner={selectedOwner}
+          selectedRepo={selectedRepo}
+          onOwnerChange={onOwnerChange}
+          onRepoChange={onRepoChange}
+          size="sm"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="More options">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh Owners
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh Repos
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleReconfigureGitHub}>
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Access
+            </DropdownMenuItem>
+            {/* Only show Disconnect for Vercel users who connected GitHub, not for GitHub-authenticated users */}
+            {!isGitHubAuthUser && (
+              <DropdownMenuItem onClick={handleDisconnectGitHub}>
+                <Unlink className="h-4 w-4 mr-2" />
+                Disconnect GitHub
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    ) : user ? (
+      <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8">
+        <GitHubIcon className="h-4 w-4 mr-2" />
+        Connect GitHub
+      </Button>
+    ) : null
 
   return (
     <>
@@ -150,72 +201,6 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
         actions={actions}
         leftActions={leftActions}
       />
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Tasks</AlertDialogTitle>
-            <AlertDialogDescription>
-              Select which types of tasks you want to delete. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="delete-completed"
-                  checked={deleteCompleted}
-                  onCheckedChange={(checked) => setDeleteCompleted(checked === true)}
-                />
-                <label
-                  htmlFor="delete-completed"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Delete Completed Tasks
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="delete-failed"
-                  checked={deleteFailed}
-                  onCheckedChange={(checked) => setDeleteFailed(checked === true)}
-                />
-                <label
-                  htmlFor="delete-failed"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Delete Failed Tasks
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="delete-stopped"
-                  checked={deleteStopped}
-                  onCheckedChange={(checked) => setDeleteStopped(checked === true)}
-                />
-                <label
-                  htmlFor="delete-stopped"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Delete Stopped Tasks
-                </label>
-              </div>
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteTasks}
-              disabled={isDeleting || (!deleteCompleted && !deleteFailed && !deleteStopped)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? 'Deleting...' : 'Delete Tasks'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <ConnectorDialog open={showConnectorDialog} onOpenChange={setShowConnectorDialog} />
     </>
   )
 }

@@ -156,11 +156,21 @@ export async function executeOpenCodeInSandbox(
           // Local MCP server - parse command string into executable and args
           const commandParts = server.command!.trim().split(/\s+/)
 
+          // Parse env from JSON string if present
+          let envObject: Record<string, string> | undefined
+          if (server.env) {
+            try {
+              envObject = JSON.parse(server.env)
+            } catch (e) {
+              await logger.info(`Warning: Failed to parse env for ${server.name}`)
+            }
+          }
+
           opencodeConfig.mcp[serverName] = {
             type: 'local',
             command: commandParts,
             enabled: true,
-            ...(server.env ? { environment: server.env } : {}),
+            ...(envObject ? { environment: envObject } : {}),
           }
 
           await logger.info(`Added local MCP server: ${server.name} (${server.command})`)

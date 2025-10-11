@@ -3,7 +3,18 @@
 import { Task, Connector } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { GitBranch, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, Cable, Square } from 'lucide-react'
+import {
+  GitBranch,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Server,
+  Cable,
+  Square,
+  GitPullRequest,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -12,6 +23,18 @@ import { useTasks } from '@/components/app-layout'
 import { TaskDuration } from '@/components/task-duration'
 import { FileBrowser } from '@/components/file-browser'
 import { FileDiffViewer } from '@/components/file-diff-viewer'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useRouter } from 'next/navigation'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
 import ConvexIcon from '@/components/icons/convex-icon'
@@ -33,8 +56,61 @@ interface DiffData {
   language: string
 }
 
+const CODING_AGENTS = [
+  { value: 'claude', label: 'Claude', icon: Claude },
+  { value: 'codex', label: 'Codex', icon: Codex },
+  { value: 'cursor', label: 'Cursor', icon: Cursor },
+  { value: 'gemini', label: 'Gemini', icon: Gemini },
+  { value: 'opencode', label: 'opencode', icon: OpenCode },
+] as const
+
+const AGENT_MODELS = {
+  claude: [
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+  ],
+  codex: [
+    { value: 'openai/gpt-5', label: 'GPT-5' },
+    { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
+    { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
+    { value: 'gpt-5-pro', label: 'GPT-5 pro' },
+    { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
+  ],
+  cursor: [
+    { value: 'auto', label: 'Auto' },
+    { value: 'sonnet-4.5', label: 'Sonnet 4.5' },
+    { value: 'sonnet-4.5-thinking', label: 'Sonnet 4.5 Thinking' },
+    { value: 'gpt-5', label: 'GPT-5' },
+    { value: 'gpt-5-codex', label: 'GPT-5 Codex' },
+    { value: 'opus-4.1', label: 'Opus 4.1' },
+    { value: 'grok', label: 'Grok' },
+  ],
+  gemini: [
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  ],
+  opencode: [
+    { value: 'gpt-5', label: 'GPT-5' },
+    { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
+    { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+  ],
+} as const
+
+const DEFAULT_MODELS = {
+  claude: 'claude-sonnet-4-5-20250929',
+  codex: 'openai/gpt-5',
+  cursor: 'auto',
+  gemini: 'gemini-2.5-pro',
+  opencode: 'gpt-5',
+} as const
+
 export function TaskDetails({ task }: TaskDetailsProps) {
-  const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
@@ -42,7 +118,14 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const [loadingDiffs, setLoadingDiffs] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showTryAgainDialog, setShowTryAgainDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isTryingAgain, setIsTryingAgain] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState(task.selectedAgent || 'claude')
+  const [selectedModel, setSelectedModel] = useState<string>(task.selectedModel || DEFAULT_MODELS.claude)
   const { refreshTasks } = useTasks()
+  const router = useRouter()
 
   // Helper function to format dates - show only time if same day as today
   const formatDateTime = (date: Date) => {
@@ -236,14 +319,84 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
   }
 
-  const copyPromptToClipboard = async (text: string) => {
+  // Update model when agent changes
+  useEffect(() => {
+    if (selectedAgent) {
+      const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
+      const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
+      if (defaultModel && agentModels) {
+        setSelectedModel(defaultModel)
+      }
+    }
+  }, [selectedAgent])
+
+  const getPRUrl = () => {
+    if (!task.repoUrl || !task.branchName) return null
+    const baseUrl = task.repoUrl.replace('.git', '')
+    return `${baseUrl}/compare/main...${task.branchName}`
+  }
+
+  const handleOpenPR = () => {
+    const prUrl = getPRUrl()
+    if (prUrl) {
+      window.open(prUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const handleTryAgain = async () => {
+    setIsTryingAgain(true)
     try {
-      await navigator.clipboard.writeText(text)
-      setCopiedPrompt(true)
-      toast.success('Prompt copied to clipboard!')
-      setTimeout(() => setCopiedPrompt(false), 2000)
-    } catch {
-      toast.error('Failed to copy to clipboard')
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: task.prompt,
+          repoUrl: task.repoUrl,
+          selectedAgent,
+          selectedModel,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success('New task created successfully!')
+        setShowTryAgainDialog(false)
+        router.push(`/tasks/${result.task.id}`)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to create new task')
+      }
+    } catch (error) {
+      console.error('Error creating new task:', error)
+      toast.error('Failed to create new task')
+    } finally {
+      setIsTryingAgain(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/tasks/${task.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Task deleted successfully!')
+        refreshTasks() // Refresh the sidebar
+        router.push('/')
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to delete task')
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      toast.error('Failed to delete task')
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
     }
   }
 
@@ -333,14 +486,34 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               <Square className="h-4 w-4" />
             </Button>
           )}
+          {currentStatus === 'completed' && getPRUrl() && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenPR}
+              className="h-8 w-8 p-0 flex-shrink-0"
+              title="Open PR"
+            >
+              <GitPullRequest className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => copyPromptToClipboard(task.prompt)}
+            onClick={() => setShowTryAgainDialog(true)}
             className="h-8 w-8 p-0 flex-shrink-0"
-            title="Copy prompt to clipboard"
+            title="Try Again"
           >
-            {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            className="h-8 w-8 p-0 flex-shrink-0"
+            title="Delete Task"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
 
@@ -455,7 +628,14 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       </div>
 
       {/* Changes Section */}
-      {task.branchName ? (
+      {currentStatus === 'pending' || currentStatus === 'processing' ? (
+        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Working...</p>
+          </div>
+        </div>
+      ) : task.branchName ? (
         <div className="flex-1 flex gap-6 pl-3 pr-6 pt-6 pb-6 min-h-0 overflow-hidden">
           {/* File Browser */}
           <div className="w-1/3 overflow-y-auto min-h-0">
@@ -483,14 +663,76 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             </div>
           </div>
         </div>
-      ) : currentStatus === 'pending' || currentStatus === 'processing' ? (
-        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Working...</p>
-          </div>
-        </div>
       ) : null}
+
+      {/* Try Again Dialog */}
+      <AlertDialog open={showTryAgainDialog} onOpenChange={setShowTryAgainDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Try Again</AlertDialogTitle>
+            <AlertDialogDescription>Create a new task with the same prompt and repository.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CODING_AGENTS.map((agent) => (
+                      <SelectItem key={agent.value} value={agent.value}>
+                        <div className="flex items-center gap-2">
+                          <agent.icon className="w-4 h-4" />
+                          <span>{agent.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        {model.label}
+                      </SelectItem>
+                    )) || []}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTryAgain} disabled={isTryingAgain}>
+              {isTryingAgain ? 'Creating...' : 'Create Task'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

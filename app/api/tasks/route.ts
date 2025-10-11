@@ -7,15 +7,31 @@ import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
-import { eq, desc, or } from 'drizzle-orm'
+import { eq, desc, or, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 import { decrypt } from '@/lib/crypto'
+import { getServerSession } from '@/lib/session/get-server-session'
+import { getUserGitHubToken } from '@/lib/github/user-token'
+import { getUserApiKeys } from '@/lib/api-keys/user-keys'
+import { checkRateLimit } from '@/lib/utils/rate-limit'
 
 export async function GET() {
   try {
-    const allTasks = await db.select().from(tasks).orderBy(desc(tasks.createdAt))
-    return NextResponse.json({ tasks: allTasks })
+    // Get user session
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get tasks for this user only (exclude soft-deleted tasks)
+    const userTasks = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .orderBy(desc(tasks.createdAt))
+
+    return NextResponse.json({ tasks: userTasks })
   } catch (error) {
     console.error('Error fetching tasks:', error)
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 })
@@ -24,6 +40,26 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user session
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check rate limit
+    const rateLimit = await checkRateLimit(session.user.id)
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `You have reached the daily limit of 5 tasks. Your limit will reset at ${rateLimit.resetAt.toISOString()}`,
+          remaining: rateLimit.remaining,
+          resetAt: rateLimit.resetAt.toISOString(),
+        },
+        { status: 429 },
+      )
+    }
+
     const body = await request.json()
 
     // Use provided ID or generate a new one
@@ -31,6 +67,7 @@ export async function POST(request: NextRequest) {
     const validatedData = insertTaskSchema.parse({
       ...body,
       id: taskId,
+      userId: session.user.id,
       status: 'pending',
       progress: 0,
       logs: [],
@@ -247,6 +284,16 @@ async function processTask(
     await logger.updateStatus('processing', 'Task created, preparing to start...')
     await logger.updateProgress(10, 'Initializing task execution...')
 
+    // Get user's GitHub token for repository access
+    const githubToken = await getUserGitHubToken()
+    if (githubToken) {
+      await logger.info('Using authenticated GitHub access')
+    }
+
+    // Get user's API keys (with fallback to system keys)
+    const apiKeys = await getUserApiKeys()
+    await logger.info('API keys configured for selected agent')
+
     // Check if task was stopped before we even start
     if (await isTaskStopped(taskId)) {
       await logger.info('Task was stopped before execution began')
@@ -276,6 +323,8 @@ async function processTask(
       {
         taskId,
         repoUrl,
+        githubToken,
+        apiKeys,
         timeout: `${maxDuration}m`,
         ports: [3000],
         runtime: 'node22',
@@ -378,29 +427,43 @@ async function processTask(
     let mcpServers: Connector[] = []
 
     try {
-      const allConnectors = await db.select().from(connectors)
-      mcpServers = allConnectors
-        .filter((connector: Connector) => connector.status === 'connected')
-        .map((connector: Connector) => {
+      // Get current user session to filter connectors
+      const session = await getServerSession()
+
+      if (session?.user?.id) {
+        const userConnectors = await db
+          .select()
+          .from(connectors)
+          .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
+
+        mcpServers = userConnectors.map((connector: Connector) => {
+          // Decrypt sensitive fields
+          const decryptedEnv = connector.env ? JSON.parse(decrypt(connector.env)) : null
           return {
             ...connector,
+            env: decryptedEnv,
             oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
           }
         })
 
-      if (mcpServers.length > 0) {
-        await logger.info(
-          `Found ${mcpServers.length} connected MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`,
-        )
+        if (mcpServers.length > 0) {
+          await logger.info(
+            `Found ${mcpServers.length} connected MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`,
+          )
 
-        // Store MCP server IDs in the task
-        await db
-          .update(tasks)
-          .set({
-            mcpServerIds: JSON.parse(JSON.stringify(mcpServers.map((s) => s.id))),
-            updatedAt: new Date(),
-          })
-          .where(eq(tasks.id, taskId))
+          // Store MCP server IDs in the task
+          await db
+            .update(tasks)
+            .set({
+              mcpServerIds: JSON.parse(JSON.stringify(mcpServers.map((s) => s.id))),
+              updatedAt: new Date(),
+            })
+            .where(eq(tasks.id, taskId))
+        } else {
+          await logger.info('No connected MCP servers found for current user')
+        }
+      } else {
+        await logger.info('No user session found, continuing without MCP servers')
       }
     } catch (mcpError) {
       console.error('Failed to fetch MCP servers:', mcpError)
@@ -408,7 +471,16 @@ async function processTask(
     }
 
     const agentResult = await Promise.race([
-      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel, mcpServers),
+      executeAgentInSandbox(
+        sandbox,
+        prompt,
+        selectedAgent as AgentType,
+        logger,
+        selectedModel,
+        mcpServers,
+        undefined,
+        apiKeys,
+      ),
       agentTimeoutPromise,
     ])
 
@@ -492,6 +564,12 @@ async function processTask(
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const url = new URL(request.url)
     const action = url.searchParams.get('action')
 
@@ -512,24 +590,25 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Build the where conditions
-    const conditions = []
+    // Build the where conditions for task status
+    const statusConditions = []
     if (actions.includes('completed')) {
-      conditions.push(eq(tasks.status, 'completed'))
+      statusConditions.push(eq(tasks.status, 'completed'))
     }
     if (actions.includes('failed')) {
-      conditions.push(eq(tasks.status, 'error'))
+      statusConditions.push(eq(tasks.status, 'error'))
     }
     if (actions.includes('stopped')) {
-      conditions.push(eq(tasks.status, 'stopped'))
+      statusConditions.push(eq(tasks.status, 'stopped'))
     }
 
-    if (conditions.length === 0) {
+    if (statusConditions.length === 0) {
       return NextResponse.json({ error: 'No valid actions specified' }, { status: 400 })
     }
 
-    // Delete tasks based on conditions
-    const whereClause = conditions.length === 1 ? conditions[0] : or(...conditions)
+    // Delete tasks based on conditions AND user ownership
+    const statusClause = statusConditions.length === 1 ? statusConditions[0] : or(...statusConditions)
+    const whereClause = and(statusClause, eq(tasks.userId, session.user.id))
     const deletedTasks = await db.delete(tasks).where(whereClause).returning()
 
     // Build response message

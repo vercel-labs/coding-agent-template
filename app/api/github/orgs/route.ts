@@ -1,14 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getUserGitHubToken } from '@/lib/github/user-token'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    if (!process.env.GITHUB_TOKEN) {
-      return NextResponse.json({ error: 'GitHub token not configured' }, { status: 500 })
+    const token = await getUserGitHubToken(req)
+
+    if (!token) {
+      return NextResponse.json({ error: 'GitHub not connected' }, { status: 401 })
     }
 
     const response = await fetch('https://api.github.com/user/orgs', {
       headers: {
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
       },
     })

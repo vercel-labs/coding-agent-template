@@ -1,22 +1,46 @@
-export function validateEnvironmentVariables(selectedAgent: string = 'claude') {
+export function validateEnvironmentVariables(
+  selectedAgent: string = 'claude',
+  githubToken?: string | null,
+  apiKeys?: {
+    OPENAI_API_KEY?: string
+    GEMINI_API_KEY?: string
+    CURSOR_API_KEY?: string
+    ANTHROPIC_API_KEY?: string
+    AI_GATEWAY_API_KEY?: string
+  },
+) {
   const errors: string[] = []
 
   // Check for required environment variables based on selected agent
-  if (selectedAgent === 'claude' && !process.env.ANTHROPIC_API_KEY) {
-    errors.push('ANTHROPIC_API_KEY is required for Claude CLI')
+  if (selectedAgent === 'claude' && !apiKeys?.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    errors.push('ANTHROPIC_API_KEY is required for Claude CLI. Please add your API key in your profile.')
   }
 
-  if (selectedAgent === 'cursor' && !process.env.CURSOR_API_KEY) {
-    errors.push('CURSOR_API_KEY is required for Cursor CLI')
+  if (selectedAgent === 'cursor' && !apiKeys?.CURSOR_API_KEY && !process.env.CURSOR_API_KEY) {
+    errors.push('CURSOR_API_KEY is required for Cursor CLI. Please add your API key in your profile.')
   }
 
-  if (selectedAgent === 'codex' && !process.env.OPENAI_API_KEY) {
-    errors.push('OPENAI_API_KEY is required for Codex CLI')
+  if (selectedAgent === 'codex' && !apiKeys?.OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
+    errors.push('OPENAI_API_KEY is required for Codex CLI. Please add your API key in your profile.')
+  }
+
+  if (selectedAgent === 'gemini' && !apiKeys?.GEMINI_API_KEY && !process.env.GEMINI_API_KEY) {
+    errors.push('GEMINI_API_KEY is required for Gemini CLI. Please add your API key in your profile.')
+  }
+
+  if (selectedAgent === 'opencode') {
+    if (!apiKeys?.OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
+      errors.push('OPENAI_API_KEY is required for OpenCode CLI. Please add your API key in your profile.')
+    }
+    if (!apiKeys?.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+      errors.push('ANTHROPIC_API_KEY is required for OpenCode CLI. Please add your API key in your profile.')
+    }
   }
 
   // Check for GitHub token for private repositories
-  if (!process.env.GITHUB_TOKEN) {
-    errors.push('GITHUB_TOKEN is required for repository access')
+  // Use user's token if provided, otherwise fall back to GITHUB_TOKEN
+  if (!githubToken && !process.env.GITHUB_TOKEN) {
+    errors.push('GITHUB_TOKEN is required for repository access. Please connect your GitHub account.')
   }
 
   // Check for Vercel sandbox environment variables
@@ -38,8 +62,11 @@ export function validateEnvironmentVariables(selectedAgent: string = 'claude') {
   }
 }
 
-export function createAuthenticatedRepoUrl(repoUrl: string): string {
-  if (!process.env.GITHUB_TOKEN) {
+export function createAuthenticatedRepoUrl(repoUrl: string, githubToken?: string | null): string {
+  // Use user's token if provided, otherwise fall back to GITHUB_TOKEN
+  const token = githubToken || process.env.GITHUB_TOKEN
+
+  if (!token) {
     return repoUrl
   }
 
@@ -47,7 +74,7 @@ export function createAuthenticatedRepoUrl(repoUrl: string): string {
     const url = new URL(repoUrl)
     if (url.hostname === 'github.com') {
       // Add GitHub token for authentication
-      url.username = process.env.GITHUB_TOKEN
+      url.username = token
       url.password = 'x-oauth-basic'
     }
     return url.toString()
