@@ -1,6 +1,6 @@
 {
   "name": "coding-agent-template",
-  "version": "0.1.0",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -10,10 +10,10 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx}\"",
-    "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
-    "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
-    "db:push": "dotenv -e .env.local -- drizzle-kit push",
-    "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
     "prepare": "husky"
   },
   "dependencies": {
@@ -21,7 +21,10 @@
     "@aws-sdk/client-s3": "^3.906.0",
     "@daytonaio/sdk": "^0.108.1",
     "@e2b/code-interpreter": "^2.0.1",
+    "@git-diff-view/file": "^0.0.32",
+    "@git-diff-view/react": "^0.0.32",
     "@neondatabase/serverless": "^0.10.1",
+    "@octokit/rest": "^22.0.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.10",
