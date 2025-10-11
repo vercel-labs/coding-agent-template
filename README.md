@@ -4,6 +4,214 @@ A template for building AI-powered coding agents that supports Claude Code, Open
 
 ![Coding Agent Template Screenshot](screenshot.png)
 
+## Changelog
+
+### Version 2.0.0 - Major Update: User Authentication & Security
+
+This release introduces **user authentication** and **major security improvements**, but contains **breaking changes** that require migration for existing deployments.
+
+#### New Features
+
+- **User Authentication System**
+  - Sign in with Vercel
+  - Sign in with GitHub
+  - Session management with encrypted tokens
+  - User profile management
+
+- **Multi-User Support**
+  - Each user has their own tasks and connectors
+  - Users can manage their own API keys (Anthropic, OpenAI, Cursor, Gemini, AI Gateway)
+  - GitHub account connection for repository access
+
+- **Security Enhancements**
+  - **CRITICAL FIX**: Removed shared `GITHUB_TOKEN` usage in API endpoints - now uses per-user GitHub tokens
+  - All sensitive data (tokens, API keys, env vars) encrypted at rest
+  - Session-based authentication with JWT encryption
+  - User-scoped authorization - users can only access their own resources
+
+- **Database Enhancements**
+  - New `users` table for user profiles and OAuth accounts
+  - New `accounts` table for linked accounts (e.g., Vercel users connecting GitHub)
+  - New `keys` table for user-provided API keys
+  - Foreign key relationships ensure data integrity
+  - Soft delete support for tasks
+
+#### Breaking Changes
+
+**These changes require action if upgrading from v1.x:**
+
+1. **Database Schema Changes**
+   - `tasks` table now requires `userId` (foreign key to `users.id`)
+   - `connectors` table now requires `userId` (foreign key to `users.id`)
+   - `connectors.env` changed from `jsonb` to encrypted `text`
+   - Added `tasks.deletedAt` for soft deletes
+
+2. **API Changes**
+   - All API endpoints now require authentication
+   - Task creation requires `userId` in request body
+   - Tasks are now filtered by user ownership
+   - GitHub API access uses user's own GitHub token (no shared token fallback)
+
+3. **Environment Variables**
+   - **New Required Variables:**
+     - `JWE_SECRET`: Base64-encoded secret for session encryption (generate: `openssl rand -base64 32`)
+     - `ENCRYPTION_KEY`: 32-byte hex string for encrypting sensitive data (generate: `openssl rand -hex 32`)
+     - `NEXT_PUBLIC_AUTH_PROVIDERS`: Configure which auth providers to enable (`github`, `vercel`, or both)
+   
+   - **New OAuth Configuration (at least one required):**
+     - GitHub: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `NEXT_PUBLIC_GITHUB_CLIENT_ID`
+     - Vercel: `VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`
+   
+   - **Removed Fallback:**
+     - `GITHUB_TOKEN` no longer used as fallback in API routes (security fix)
+     - Users must connect their own GitHub account for repository access
+
+4. **Authentication Required**
+   - All routes now require user authentication
+   - No anonymous access to tasks or API endpoints
+   - Users must sign in with GitHub or Vercel before creating tasks
+
+#### Migration Guide for Existing Deployments
+
+If you're upgrading from v1.x to v2.0.0, follow these steps:
+
+##### Step 1: Backup Your Database
+
+```bash
+# Create a backup of your existing database
+pg_dump $POSTGRES_URL > backup-before-v2-migration.sql
+```
+
+##### Step 2: Add Required Environment Variables
+
+Add these new variables to your `.env.local` or Vercel project settings:
+
+```bash
+# Session encryption (REQUIRED)
+JWE_SECRET=$(openssl rand -base64 32)
+ENCRYPTION_KEY=$(openssl rand -hex 32)
+
+# Configure auth providers (REQUIRED - choose at least one)
+NEXT_PUBLIC_AUTH_PROVIDERS=github  # or "vercel" or "github,vercel"
+
+# GitHub OAuth (if using GitHub authentication)
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+NEXT_PUBLIC_GITHUB_CLIENT_ID=your_github_client_id
+
+# Vercel OAuth (if using Vercel authentication)
+VERCEL_CLIENT_ID=your_vercel_client_id
+VERCEL_CLIENT_SECRET=your_vercel_client_secret
+```
+
+##### Step 3: Set Up OAuth Applications
+
+Create OAuth applications for your chosen authentication provider(s). See the [Setup](#4-set-up-oauth-applications) section for detailed instructions.
+
+##### Step 4: Prepare Database Migration
+
+Before running migrations, you need to handle existing data:
+
+**Option A: Fresh Start (Recommended for Development)**
+
+If you don't have production data to preserve:
+
+```bash
+# Drop existing tables and start fresh
+pnpm db:push --force
+
+# This will create all new tables with proper structure
+```
+
+**Option B: Preserve Existing Data (Production)**
+
+If you have existing tasks/connectors to preserve:
+
+1. **Create a system user first:**
+
+```sql
+-- Connect to your database and run:
+INSERT INTO users (id, provider, external_id, access_token, username, email, created_at, updated_at, last_login_at)
+VALUES (
+  'system-user-migration',
+  'github',
+  'system-migration',
+  'encrypted-placeholder-token',  -- You'll need to encrypt a placeholder
+  'System Migration User',
+  NULL,
+  NOW(),
+  NOW(),
+  NOW()
+);
+```
+
+2. **Update existing records:**
+
+```sql
+-- Add userId to existing tasks
+ALTER TABLE tasks ADD COLUMN user_id TEXT;
+UPDATE tasks SET user_id = 'system-user-migration' WHERE user_id IS NULL;
+ALTER TABLE tasks ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE tasks ADD CONSTRAINT tasks_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- Add userId to existing connectors
+ALTER TABLE connectors ADD COLUMN user_id TEXT;
+UPDATE connectors SET user_id = 'system-user-migration' WHERE user_id IS NULL;
+ALTER TABLE connectors ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE connectors ADD CONSTRAINT connectors_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- Convert connector env from jsonb to encrypted text (requires app-level encryption)
+-- Note: You'll need to manually encrypt existing env values using your ENCRYPTION_KEY
+```
+
+3. **Run the standard migrations:**
+
+```bash
+pnpm db:generate
+pnpm db:push
+```
+
+##### Step 5: Update Your Code
+
+Pull the latest changes:
+
+```bash
+git pull origin main
+pnpm install
+```
+
+##### Step 6: Test Authentication
+
+1. Start the development server: `pnpm dev`
+2. Navigate to `http://localhost:3000`
+3. Sign in with your configured OAuth provider
+4. Verify you can create and view tasks
+
+##### Step 7: Verify Security Fix
+
+Confirm that:
+- Users can only see their own tasks
+- File diff/files endpoints require GitHub connection
+- Users without GitHub connection see "GitHub authentication required" errors
+- No `GITHUB_TOKEN` fallback is being used in API routes
+
+#### Important Notes
+
+- **All users will need to sign in** after this upgrade - no anonymous access
+- **Existing tasks** will be owned by the system user if using Option B migration
+- **Users must connect GitHub** (if they signed in with Vercel) to access repositories
+- **API keys** can now be per-user - users can override global API keys in their profile
+- **Breaking API changes**: If you have external integrations calling your API, they'll need to be updated to include authentication
+
+#### Security Improvements
+
+This release fixes a **critical authorization bypass vulnerability** where users could access any repository the shared `GITHUB_TOKEN` had access to. Now:
+
+- Each user uses their own GitHub token
+- Users can only access repositories they have permission for
+- Proper authorization enforced at the GitHub API level
+- No shared credentials that could be exploited
+
 ## Deploy Your Own
 
 You can deploy your own version of the coding agent template to Vercel with one click:
