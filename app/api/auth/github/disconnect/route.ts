@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
     return Response.json({ success: true })
   } catch (error) {
     console.error('Error disconnecting GitHub:', error)
-    return Response.json({ error: 'Failed to disconnect', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
+    return Response.json(
+      { error: 'Failed to disconnect', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 },
+    )
   }
 }

@@ -5,4 +5,3 @@ export function GitHubIcon({ className }: { className?: string }) {
     </svg>
   )
 }
-

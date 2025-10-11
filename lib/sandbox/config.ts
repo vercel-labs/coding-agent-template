@@ -42,7 +42,7 @@ export function validateEnvironmentVariables(selectedAgent: string = 'claude', g
 export function createAuthenticatedRepoUrl(repoUrl: string, githubToken?: string | null): string {
   // Use user's token if provided, otherwise fall back to GITHUB_TOKEN
   const token = githubToken || process.env.GITHUB_TOKEN
-  
+
   if (!token) {
     return repoUrl
   }

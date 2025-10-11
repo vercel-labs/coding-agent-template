@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromReq(req)
-  
+
   if (!session?.user) {
     return Response.json({ connected: false })
   }

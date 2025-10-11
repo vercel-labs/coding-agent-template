@@ -389,13 +389,13 @@ async function processTask(
     try {
       // Get current user session to filter connectors
       const session = await getServerSession()
-      
+
       if (session?.user?.id) {
         const userConnectors = await db
           .select()
           .from(connectors)
           .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
-          
+
         mcpServers = userConnectors.map((connector: Connector) => {
           return {
             ...connector,

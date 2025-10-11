@@ -43,7 +43,7 @@ export function HomePageHeader({
       // Clear only owners cache
       sessionStorage.removeItem('github-owners')
       toast.success('Refreshing owners...')
-      
+
       // Reload the page to fetch fresh data
       window.location.reload()
     } catch (error) {
@@ -61,7 +61,7 @@ export function HomePageHeader({
       if (selectedOwner) {
         sessionStorage.removeItem(`github-repos-${selectedOwner}`)
         toast.success('Refreshing repositories...')
-        
+
         // Reload the page to fetch fresh data
         window.location.reload()
       } else {

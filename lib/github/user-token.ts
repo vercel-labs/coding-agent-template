@@ -10,7 +10,7 @@ import type { NextRequest } from 'next/server'
 /**
  * Get the GitHub access token for the currently authenticated user
  * Returns null if user is not authenticated or hasn't connected GitHub
- * 
+ *
  * @param req - Optional NextRequest for API routes
  */
 export async function getUserGitHubToken(req?: NextRequest): Promise<string | null> {

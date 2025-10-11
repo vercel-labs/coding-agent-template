@@ -3,7 +3,20 @@
 import { Task, Connector } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { GitBranch, CheckCircle, AlertCircle, Loader2, Copy, Check, Server, Cable, Square, GitPullRequest, RotateCcw, Trash2 } from 'lucide-react'
+import {
+  GitBranch,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Copy,
+  Check,
+  Server,
+  Cable,
+  Square,
+  GitPullRequest,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
