@@ -316,12 +316,12 @@ export function TaskForm({
   // Check if user has required API keys for selected agent
   const checkApiKeyRequirements = (): boolean => {
     let requirements = AGENT_API_KEY_REQUIREMENTS[selectedAgent as keyof typeof AGENT_API_KEY_REQUIREMENTS]
-    
+
     // For opencode, determine requirements based on selected model
     if (selectedAgent === 'opencode') {
       requirements = getOpenCodeRequiredKeys(selectedModel)
     }
-    
+
     if (!requirements || requirements.length === 0) return true
 
     const missingKeys = requirements.filter((key) => !savedApiKeys.has(key as Provider))
@@ -344,7 +344,7 @@ export function TaskForm({
 
       // Better error message for opencode
       const modelInfo = selectedAgent === 'opencode' ? ` with ${selectedModel}` : ''
-      
+
       toast.error(`Missing API Key${missingKeys.length > 1 ? 's' : ''}`, {
         description: `Please add your ${providerNames.join(' and ')} API key${missingKeys.length > 1 ? 's' : ''} to use ${selectedAgent}${modelInfo}.`,
         action: {

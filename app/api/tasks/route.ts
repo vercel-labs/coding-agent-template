@@ -219,7 +219,17 @@ async function processTaskWithTimeout(
 
   try {
     await Promise.race([
-      processTask(taskId, prompt, repoUrl, selectedAgent, selectedModel, installDependencies, maxDuration, apiKeys, githubToken),
+      processTask(
+        taskId,
+        prompt,
+        repoUrl,
+        selectedAgent,
+        selectedModel,
+        installDependencies,
+        maxDuration,
+        apiKeys,
+        githubToken,
+      ),
       timeoutPromise,
     ])
 

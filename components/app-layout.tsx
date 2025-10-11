@@ -109,11 +109,11 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
   // Verify screen size after mount and update if needed
   useEffect(() => {
     const actualIsDesktop = window.innerWidth >= 1024
-    
+
     // Only update if there's a mismatch between user agent detection and actual screen size
     if (actualIsDesktop !== isDesktop) {
       setIsDesktop(actualIsDesktop)
-      
+
       if (!actualIsDesktop) {
         // Screen is actually mobile but user agent said desktop
         setIsSidebarOpen(false)

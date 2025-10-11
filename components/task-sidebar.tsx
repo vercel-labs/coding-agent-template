@@ -153,7 +153,10 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
   // Show logged out state if no user is authenticated
   if (!session.user) {
     return (
-      <div className="h-full border-r bg-muted px-3 pt-5.5 pb-4 overflow-y-auto flex flex-col" style={{ width: `${width}px` }}>
+      <div
+        className="h-full border-r bg-muted px-3 pt-5.5 pb-4 overflow-y-auto flex flex-col"
+        style={{ width: `${width}px` }}
+      >
         <div className="mb-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold">Tasks</h2>

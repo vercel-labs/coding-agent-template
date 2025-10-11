@@ -18,8 +18,8 @@ export async function AppLayoutWrapper({ children }: AppLayoutWrapperProps) {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
 
   return (
-    <AppLayout 
-      initialSidebarWidth={initialSidebarWidth} 
+    <AppLayout
+      initialSidebarWidth={initialSidebarWidth}
       initialSidebarOpen={initialSidebarOpen}
       initialIsMobile={isMobile}
     >
