@@ -81,7 +81,8 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
   })
   const [sidebarWidth, setSidebarWidthState] = useState(initialSidebarWidth || getSidebarWidth())
   const [isResizing, setIsResizing] = useState(false)
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
+  // Always start as false to match SSR, then update in useEffect after hydration
+  const [isDesktop, setIsDesktop] = useState(false)
   const router = useRouter()
 
   // Update sidebar width and save to cookie
