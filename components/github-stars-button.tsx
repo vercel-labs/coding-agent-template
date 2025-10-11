@@ -11,10 +11,10 @@ interface GitHubStarsButtonProps {
 
 export function GitHubStarsButton({ initialStars = 994 }: GitHubStarsButtonProps) {
   return (
-    <Button asChild variant="ghost" size="sm" className="hidden sm:flex h-8 px-3 gap-1.5">
+    <Button asChild variant="ghost" size="sm" className="h-8 px-2 sm:px-3 gap-1.5">
       <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center">
         <Star className="h-3.5 w-3.5" />
-        <span className="text-sm">{initialStars.toLocaleString()}</span>
+        <span className="hidden sm:inline text-sm">{initialStars.toLocaleString()}</span>
       </a>
     </Button>
   )
