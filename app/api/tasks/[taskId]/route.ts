@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { killSandbox } from '@/lib/sandbox/sandbox-registry'
+import { getServerSession } from '@/lib/session/get-server-session'
 
 interface RouteParams {
   params: Promise<{
@@ -13,8 +14,17 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { taskId } = await params
-    const task = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+    const task = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .limit(1)
 
     if (!task[0]) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
@@ -29,11 +39,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { taskId } = await params
     const body = await request.json()
 
-    // Check if task exists first
-    const [existingTask] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+    // Check if task exists and belongs to user
+    const [existingTask] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .limit(1)
 
     if (!existingTask) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
@@ -99,17 +118,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { taskId } = await params
 
-    // Check if task exists first
-    const existingTask = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+    // Check if task exists and belongs to user (and not deleted)
+    const existingTask = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .limit(1)
 
     if (!existingTask[0]) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
 
-    // Delete the task
-    await db.delete(tasks).where(eq(tasks.id, taskId))
+    // Soft delete the task by setting deletedAt
+    await db
+      .update(tasks)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id)))
 
     return NextResponse.json({ message: 'Task deleted successfully' })
   } catch (error) {

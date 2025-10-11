@@ -148,7 +148,7 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
           >
             <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <span className="text-sm flex-1 truncate">{name}</span>
-            {node.changes && node.changes > 0 && (
+            {(node.additions || node.deletions) && (
               <div className="flex items-center gap-1 text-xs flex-shrink-0">
                 {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
                 {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}

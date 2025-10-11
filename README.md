@@ -58,20 +58,22 @@ Optional environment variables:
 - `NPM_TOKEN`: For private npm packages
 - `ENCRYPTION_KEY`: 32-byte hex string for encrypting MCP OAuth secrets (required only when using MCP connectors). Generate with: `openssl rand -hex 32`
 
-**Sign in with Vercel** (Optional):
+**User Authentication** (Optional but Recommended):
 
+You can enable user authentication with either Vercel or GitHub (or both):
+
+**Sign in with Vercel**:
 - `VERCEL_CLIENT_ID`: Your Vercel OAuth client ID
 - `VERCEL_CLIENT_SECRET`: Your Vercel OAuth client secret
 - `JWE_SECRET`: Base64-encoded secret for session encryption (generate with: `openssl rand -base64 32`)
 
-> See [Sign in with Vercel documentation](docs/SIGN_IN_WITH_VERCEL.md) for detailed setup instructions.
-
-**GitHub OAuth - Per-User Authentication** (Optional but Recommended):
-
+**Sign in with GitHub**:
 - `GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID
 - `GITHUB_CLIENT_SECRET`: Your GitHub OAuth app client secret
+- `NEXT_PUBLIC_GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID (same as above, but exposed to the client)
+- `JWE_SECRET`: Base64-encoded secret for session encryption (generate with: `openssl rand -base64 32`)
 
-> See [GitHub OAuth documentation](docs/GITHUB_OAUTH.md) for detailed setup instructions. This allows each user to connect their own GitHub account instead of using a shared `GITHUB_TOKEN`.
+> When users sign in with GitHub, their GitHub access token is automatically stored and used for repository access, eliminating the need for a shared `GITHUB_TOKEN`. Users who sign in with Vercel can optionally connect their GitHub account separately.
 
 ### 4. Set up the database
 

@@ -173,10 +173,13 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
       if (response.ok) {
         const data = await response.json()
         setTasks(data.tasks)
-        setIsLoading(false)
+      } else if (response.status === 401) {
+        // User is not authenticated, show empty tasks
+        setTasks([])
       }
     } catch (error) {
       console.error('Error fetching tasks:', error)
+    } finally {
       setIsLoading(false)
     }
   }
@@ -200,6 +203,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     const id = nanoid()
     const optimisticTask: Task = {
       id,
+      userId: 'temp', // Temporary value, will be replaced by server
       prompt: taskData.prompt,
       repoUrl: taskData.repoUrl,
       selectedAgent: taskData.selectedAgent,
@@ -216,6 +220,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
       createdAt: new Date(),
       updatedAt: new Date(),
       completedAt: null,
+      deletedAt: null,
     }
 
     // Add the optimistic task to the beginning of the tasks array

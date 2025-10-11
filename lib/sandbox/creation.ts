@@ -46,7 +46,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     }
 
     // Validate required environment variables
-    const envValidation = validateEnvironmentVariables(config.selectedAgent, config.githubToken)
+    const envValidation = validateEnvironmentVariables(config.selectedAgent, config.githubToken, config.apiKeys)
     if (!envValidation.valid) {
       throw new Error(envValidation.error!)
     }

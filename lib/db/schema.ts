@@ -12,6 +12,7 @@ export type LogEntry = z.infer<typeof logEntrySchema>
 
 export const tasks = pgTable('tasks', {
   id: text('id').primaryKey(),
+  userId: text('user_id').notNull(), // Vercel user ID
   prompt: text('prompt').notNull(),
   repoUrl: text('repo_url'),
   selectedAgent: text('selected_agent').default('claude'),
@@ -32,11 +33,13 @@ export const tasks = pgTable('tasks', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
+  deletedAt: timestamp('deleted_at'),
 })
 
 // Manual Zod schemas for validation
 export const insertTaskSchema = z.object({
   id: z.string().optional(),
+  userId: z.string().min(1, 'User ID is required'),
   prompt: z.string().min(1, 'Prompt is required'),
   repoUrl: z.string().url('Must be a valid URL').optional(),
   selectedAgent: z.enum(['claude', 'codex', 'cursor', 'gemini', 'opencode']).default('claude'),
@@ -53,10 +56,12 @@ export const insertTaskSchema = z.object({
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   completedAt: z.date().optional(),
+  deletedAt: z.date().optional(),
 })
 
 export const selectTaskSchema = z.object({
   id: z.string(),
+  userId: z.string(),
   prompt: z.string(),
   repoUrl: z.string().nullable(),
   selectedAgent: z.string().nullable(),
@@ -73,6 +78,7 @@ export const selectTaskSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   completedAt: z.date().nullable(),
+  deletedAt: z.date().nullable(),
 })
 
 export type Task = z.infer<typeof selectTaskSchema>
@@ -151,7 +157,7 @@ export const userConnections = pgTable('user_connections', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(), // Vercel user ID
   provider: text('provider', {
-    enum: ['github'],
+    enum: ['github', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway'],
   }).notNull(),
   accessToken: text('access_token').notNull(),
   refreshToken: text('refresh_token'),
@@ -165,7 +171,7 @@ export const userConnections = pgTable('user_connections', {
 export const insertUserConnectionSchema = z.object({
   id: z.string().optional(),
   userId: z.string(),
-  provider: z.enum(['github']),
+  provider: z.enum(['github', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
   accessToken: z.string(),
   refreshToken: z.string().optional(),
   expiresAt: z.date().optional(),
@@ -178,7 +184,7 @@ export const insertUserConnectionSchema = z.object({
 export const selectUserConnectionSchema = z.object({
   id: z.string(),
   userId: z.string(),
-  provider: z.enum(['github']),
+  provider: z.enum(['github', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
   accessToken: z.string(),
   refreshToken: z.string().nullable(),
   expiresAt: z.date().nullable(),

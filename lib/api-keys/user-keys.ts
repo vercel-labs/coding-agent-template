@@ -1,0 +1,108 @@
+import 'server-only'
+
+import { db } from '@/lib/db/client'
+import { userConnections } from '@/lib/db/schema'
+import { eq, and } from 'drizzle-orm'
+import { getServerSession } from '@/lib/session/get-server-session'
+import { decrypt } from '@/lib/crypto'
+
+type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
+
+/**
+ * Get API keys for the currently authenticated user
+ * Returns user's keys if available, otherwise falls back to system env vars
+ */
+export async function getUserApiKeys(): Promise<{
+  OPENAI_API_KEY: string | undefined
+  GEMINI_API_KEY: string | undefined
+  CURSOR_API_KEY: string | undefined
+  ANTHROPIC_API_KEY: string | undefined
+  AI_GATEWAY_API_KEY: string | undefined
+}> {
+  const session = await getServerSession()
+
+  // Default to system keys
+  const keys = {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    CURSOR_API_KEY: process.env.CURSOR_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+  }
+
+  if (!session?.user?.id) {
+    return keys
+  }
+
+  try {
+    const connections = await db
+      .select()
+      .from(userConnections)
+      .where(eq(userConnections.userId, session.user.id))
+
+    connections.forEach((connection) => {
+      const decryptedKey = decrypt(connection.accessToken)
+      
+      switch (connection.provider) {
+        case 'openai':
+          keys.OPENAI_API_KEY = decryptedKey
+          break
+        case 'gemini':
+          keys.GEMINI_API_KEY = decryptedKey
+          break
+        case 'cursor':
+          keys.CURSOR_API_KEY = decryptedKey
+          break
+        case 'anthropic':
+          keys.ANTHROPIC_API_KEY = decryptedKey
+          break
+        case 'aigateway':
+          keys.AI_GATEWAY_API_KEY = decryptedKey
+          break
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching user API keys:', error)
+    // Fall back to system keys on error
+  }
+
+  return keys
+}
+
+/**
+ * Get a specific API key for a provider
+ * Returns user's key if available, otherwise falls back to system env var
+ */
+export async function getUserApiKey(provider: Provider): Promise<string | undefined> {
+  const session = await getServerSession()
+
+  // Default to system key
+  const systemKeys = {
+    openai: process.env.OPENAI_API_KEY,
+    gemini: process.env.GEMINI_API_KEY,
+    cursor: process.env.CURSOR_API_KEY,
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    aigateway: process.env.AI_GATEWAY_API_KEY,
+  }
+
+  if (!session?.user?.id) {
+    return systemKeys[provider]
+  }
+
+  try {
+    const connection = await db
+      .select({ accessToken: userConnections.accessToken })
+      .from(userConnections)
+      .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, provider)))
+      .limit(1)
+
+    if (connection[0]?.accessToken) {
+      return decrypt(connection[0].accessToken)
+    }
+  } catch (error) {
+    console.error(`Error fetching user API key for ${provider}:`, error)
+  }
+
+  return systemKeys[provider]
+}
+

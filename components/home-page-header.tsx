@@ -5,7 +5,7 @@ import { RepoSelector } from '@/components/repo-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, RefreshCw, Unlink } from 'lucide-react'
+import { MoreHorizontal, RefreshCw, Unlink, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { User } from '@/components/auth/user'
@@ -111,13 +111,13 @@ export function HomePageHeader({
         asChild
         variant="outline"
         size="sm"
-        className="h-8 px-3 text-xs bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
+        className="h-8 px-3 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
       >
         <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
           <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
             <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
           </svg>
-          Deploy to Vercel
+          Deploy Your Own
         </a>
       </Button>
 
@@ -130,7 +130,21 @@ export function HomePageHeader({
     window.location.href = '/api/auth/github/signin'
   }
 
-  const leftActions = githubConnection.connected ? (
+  const handleReconfigureGitHub = () => {
+    // Link to GitHub's OAuth app settings page where users can reconfigure access
+    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
+    if (clientId) {
+      window.open(`https://github.com/settings/connections/applications/${clientId}`, '_blank')
+    } else {
+      // Fallback to OAuth flow if client ID is not available
+      window.location.href = '/api/auth/github/signin'
+    }
+  }
+
+  // Check if user is authenticated with GitHub (not just connected)
+  const isGitHubAuthUser = user?.id?.startsWith('github-')
+
+  const leftActions = githubConnection.connected || isGitHubAuthUser ? (
     <div className="flex items-center gap-2">
       <RepoSelector
         selectedOwner={selectedOwner}
@@ -154,19 +168,26 @@ export function HomePageHeader({
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Repos
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDisconnectGitHub}>
-            <Unlink className="h-4 w-4 mr-2" />
-            Disconnect GitHub
+          <DropdownMenuItem onClick={handleReconfigureGitHub}>
+            <Settings className="h-4 w-4 mr-2" />
+            Manage Access
           </DropdownMenuItem>
+          {/* Only show Disconnect for Vercel users who connected GitHub, not for GitHub-authenticated users */}
+          {!isGitHubAuthUser && (
+            <DropdownMenuItem onClick={handleDisconnectGitHub}>
+              <Unlink className="h-4 w-4 mr-2" />
+              Disconnect GitHub
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-  ) : (
+  ) : user ? (
     <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8">
       <GitHubIcon className="h-4 w-4 mr-2" />
       Connect GitHub
     </Button>
-  )
+  ) : null
 
   return (
     <>

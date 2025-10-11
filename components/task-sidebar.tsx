@@ -22,6 +22,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
+import { useAtomValue } from 'jotai'
+import { sessionAtom } from '@/lib/atoms/session'
 
 // Model mappings for human-friendly names
 const AGENT_MODELS = {
@@ -71,6 +73,7 @@ interface TaskSidebarProps {
 export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarProps) {
   const pathname = usePathname()
   const { refreshTasks } = useTasks()
+  const session = useAtomValue(sessionAtom)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
@@ -140,6 +143,43 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
     }
   }
 
+  // Show logged out state if no user is authenticated
+  if (!session.user) {
+    return (
+      <div className="h-full border-r bg-muted p-3 overflow-y-auto flex flex-col" style={{ width: `${width}px` }}>
+        <div className="mb-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">Tasks</h2>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={true}
+                title="Delete Tasks"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Card>
+            <CardContent className="p-3 text-center text-xs text-muted-foreground">
+              Sign in to view and create tasks
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full border-r bg-muted p-3 overflow-y-auto" style={{ width: `${width}px` }}>
       <div className="mb-3">
@@ -153,7 +193,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
               size="sm"
               className="h-8 w-8 p-0"
               onClick={() => setShowDeleteDialog(true)}
-              disabled={isDeleting}
+              disabled={isDeleting || tasks.length === 0}
               title="Delete Tasks"
             >
               <Trash2 className="h-4 w-4" />

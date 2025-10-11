@@ -8,8 +8,6 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
-  Copy,
-  Check,
   Server,
   Cable,
   Square,
@@ -113,7 +111,6 @@ const DEFAULT_MODELS = {
 } as const
 
 export function TaskDetails({ task }: TaskDetailsProps) {
-  const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
@@ -322,17 +319,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
   }
 
-  const copyPromptToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopiedPrompt(true)
-      toast.success('Prompt copied to clipboard!')
-      setTimeout(() => setCopiedPrompt(false), 2000)
-    } catch {
-      toast.error('Failed to copy to clipboard')
-    }
-  }
-
   // Update model when agent changes
   useEffect(() => {
     if (selectedAgent) {
@@ -500,16 +486,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               <Square className="h-4 w-4" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => copyPromptToClipboard(task.prompt)}
-            className="h-8 w-8 p-0 flex-shrink-0"
-            title="Copy prompt to clipboard"
-          >
-            {copiedPrompt ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-          </Button>
-          {getPRUrl() && (
+          {currentStatus === 'completed' && getPRUrl() && (
             <Button
               variant="ghost"
               size="sm"
@@ -533,7 +510,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             variant="ghost"
             size="sm"
             onClick={() => setShowDeleteDialog(true)}
-            className="h-8 w-8 p-0 flex-shrink-0 text-red-600 hover:text-red-700"
+            className="h-8 w-8 p-0 flex-shrink-0"
             title="Delete Task"
           >
             <Trash2 className="h-4 w-4" />
@@ -651,7 +628,14 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       </div>
 
       {/* Changes Section */}
-      {task.branchName ? (
+      {currentStatus === 'pending' || currentStatus === 'processing' ? (
+        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Working...</p>
+          </div>
+        </div>
+      ) : task.branchName ? (
         <div className="flex-1 flex gap-6 pl-3 pr-6 pt-6 pb-6 min-h-0 overflow-hidden">
           {/* File Browser */}
           <div className="w-1/3 overflow-y-auto min-h-0">
@@ -677,13 +661,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                 />
               )}
             </div>
-          </div>
-        </div>
-      ) : currentStatus === 'pending' || currentStatus === 'processing' ? (
-        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Working...</p>
           </div>
         </div>
       ) : null}

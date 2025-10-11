@@ -7,17 +7,31 @@ import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
-import { eq, desc, or, and } from 'drizzle-orm'
+import { eq, desc, or, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 import { decrypt } from '@/lib/crypto'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getUserGitHubToken } from '@/lib/github/user-token'
+import { getUserApiKeys } from '@/lib/api-keys/user-keys'
+import { checkRateLimit } from '@/lib/utils/rate-limit'
 
 export async function GET() {
   try {
-    const allTasks = await db.select().from(tasks).orderBy(desc(tasks.createdAt))
-    return NextResponse.json({ tasks: allTasks })
+    // Get user session
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get tasks for this user only (exclude soft-deleted tasks)
+    const userTasks = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .orderBy(desc(tasks.createdAt))
+
+    return NextResponse.json({ tasks: userTasks })
   } catch (error) {
     console.error('Error fetching tasks:', error)
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 })
@@ -26,6 +40,26 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user session
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check rate limit
+    const rateLimit = await checkRateLimit(session.user.id)
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `You have reached the daily limit of 5 tasks. Your limit will reset at ${rateLimit.resetAt.toISOString()}`,
+          remaining: rateLimit.remaining,
+          resetAt: rateLimit.resetAt.toISOString(),
+        },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
 
     // Use provided ID or generate a new one
@@ -33,6 +67,7 @@ export async function POST(request: NextRequest) {
     const validatedData = insertTaskSchema.parse({
       ...body,
       id: taskId,
+      userId: session.user.id,
       status: 'pending',
       progress: 0,
       logs: [],
@@ -255,6 +290,10 @@ async function processTask(
       await logger.info('Using authenticated GitHub access')
     }
 
+    // Get user's API keys (with fallback to system keys)
+    const apiKeys = await getUserApiKeys()
+    await logger.info('API keys configured for selected agent')
+
     // Check if task was stopped before we even start
     if (await isTaskStopped(taskId)) {
       await logger.info('Task was stopped before execution began')
@@ -285,6 +324,7 @@ async function processTask(
         taskId,
         repoUrl,
         githubToken,
+        apiKeys,
         timeout: `${maxDuration}m`,
         ports: [3000],
         runtime: 'node22',
@@ -428,7 +468,7 @@ async function processTask(
     }
 
     const agentResult = await Promise.race([
-      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel, mcpServers),
+      executeAgentInSandbox(sandbox, prompt, selectedAgent as AgentType, logger, selectedModel, mcpServers, undefined, apiKeys),
       agentTimeoutPromise,
     ])
 
