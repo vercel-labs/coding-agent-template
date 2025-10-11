@@ -22,4 +22,3 @@ export async function getGitHubStars(): Promise<number> {
     return 994 // Fallback value
   }
 }
-

@@ -10,12 +10,16 @@ interface TaskPageProps {
 
 export default async function TaskPage({ params }: TaskPageProps) {
   const { taskId } = await params
-  const [session, stars] = await Promise.all([
-    getServerSession(),
-    getGitHubStars(),
-  ])
+  const [session, stars] = await Promise.all([getServerSession(), getGitHubStars()])
 
-  return <TaskPageClient taskId={taskId} user={session?.user ?? null} authProvider={session?.authProvider ?? null} initialStars={stars} />
+  return (
+    <TaskPageClient
+      taskId={taskId}
+      user={session?.user ?? null}
+      authProvider={session?.authProvider ?? null}
+      initialStars={stars}
+    />
+  )
 }
 
 export async function generateMetadata({ params }: TaskPageProps) {

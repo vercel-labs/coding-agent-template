@@ -50,13 +50,7 @@ function SidebarLoader({ width }: { width: number }) {
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Tasks</h2>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              disabled={true}
-              title="Delete Tasks"
-            >
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={true} title="Delete Tasks">
               <Trash2 className="h-4 w-4" />
             </Button>
             <Link href="/">
@@ -72,9 +66,7 @@ function SidebarLoader({ width }: { width: number }) {
         {/* Loading skeleton for tasks */}
         {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i} className="animate-pulse h-[70px] rounded-lg">
-            <CardContent className="px-3 py-2">
-              {/* Empty skeleton - just the card shape */}
-            </CardContent>
+            <CardContent className="px-3 py-2">{/* Empty skeleton - just the card shape */}</CardContent>
           </Card>
         ))}
       </div>

@@ -31,14 +31,14 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
     const checkDesktop = () => {
       setIsDesktop(window.innerWidth >= 1024)
     }
-    
+
     checkDesktop()
-    
+
     // Delay enabling transitions until after the browser has painted the correct position
     requestAnimationFrame(() => {
       setHasMounted(true)
     })
-    
+
     window.addEventListener('resize', checkDesktop)
     return () => window.removeEventListener('resize', checkDesktop)
   }, [])

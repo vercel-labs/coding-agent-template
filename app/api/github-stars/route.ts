@@ -9,7 +9,7 @@ let lastFetch = 0
 export async function GET() {
   try {
     const now = Date.now()
-    
+
     // Return cached value if still fresh
     if (cachedStars !== null && now - lastFetch < CACHE_DURATION * 1000) {
       return NextResponse.json({ stars: cachedStars })
@@ -39,4 +39,3 @@ export async function GET() {
     return NextResponse.json({ stars: cachedStars || 994 })
   }
 }
-

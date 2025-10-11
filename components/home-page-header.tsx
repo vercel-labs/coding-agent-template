@@ -156,7 +156,7 @@ export function HomePageHeader({
   // Always render leftActions container to prevent layout shift
   const leftActions = (
     <div className="flex items-center gap-2 h-8">
-      {(githubConnection.connected || isGitHubAuthUser) ? (
+      {githubConnection.connected || isGitHubAuthUser ? (
         <>
           <RepoSelector
             selectedOwner={selectedOwner}

@@ -10,10 +10,7 @@ export default async function Home() {
   const installDependencies = cookieStore.get('install-dependencies')?.value === 'true'
   const maxDuration = parseInt(cookieStore.get('max-duration')?.value || '5', 10)
 
-  const [session, stars] = await Promise.all([
-    getServerSession(),
-    getGitHubStars(),
-  ])
+  const [session, stars] = await Promise.all([getServerSession(), getGitHubStars()])
 
   return (
     <HomePageContent

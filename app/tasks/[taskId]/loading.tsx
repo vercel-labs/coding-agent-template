@@ -10,9 +10,9 @@ import { GitHubStarsButton } from '@/components/github-stars-button'
 export default function TaskLoading() {
   const { toggleSidebar } = useTasks()
 
-  // Placeholder actions for loading state
+  // Placeholder actions for loading state - no user avatar to prevent flash
   const loadingActions = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 h-8">
       <GitHubStarsButton />
       {/* Deploy to Vercel Button */}
       <Button
@@ -28,6 +28,8 @@ export default function TaskLoading() {
           <span className="hidden sm:inline">Deploy Your Own</span>
         </a>
       </Button>
+      {/* Empty spacer to reserve space for user avatar */}
+      <div className="w-8" />
     </div>
   )
 
