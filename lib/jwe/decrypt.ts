@@ -22,4 +22,3 @@ export async function decryptJWE<T extends string | object = any>(
     // Do nothing
   }
 }
-

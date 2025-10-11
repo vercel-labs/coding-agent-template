@@ -25,4 +25,3 @@ interface User {
 }
 
 type BillingPlan = 'hobby' | 'pro' | 'enterprise'
-

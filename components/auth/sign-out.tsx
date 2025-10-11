@@ -3,40 +3,31 @@
 import type { Session } from '@/lib/session/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { redirectToSignOut } from '@/lib/session/redirect-to-sign-out'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useSetAtom, useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
 import { githubConnectionAtom } from '@/lib/atoms/github-connection'
-import { Github } from 'lucide-react'
-import { useState } from 'react'
+import { GitHubIcon } from '@/components/icons/github-icon'
 
 export function SignOut({ user }: Pick<Session, 'user'>) {
   const router = useRouter()
   const setSession = useSetAtom(sessionAtom)
   const githubConnection = useAtomValue(githubConnectionAtom)
-  const [isConnecting, setIsConnecting] = useState(false)
 
   const handleSignOut = async () => {
     await redirectToSignOut()
     toast.success('You have been logged out.')
     setSession({ user: undefined })
     router.refresh()
-  }
-
-  const handleGitHubConnect = async () => {
-    setIsConnecting(true)
-    try {
-      const response = await fetch('/api/auth/github/signin', { method: 'POST' })
-      const { url } = await response.json()
-      window.location.href = url
-    } catch (error) {
-      console.error('Failed to connect GitHub:', error)
-      toast.error('Failed to connect GitHub')
-      setIsConnecting(false)
-    }
   }
 
   const handleGitHubDisconnect = async () => {
@@ -57,7 +48,10 @@ export function SignOut({ user }: Pick<Session, 'user'>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="inline-flex items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-full">
+        <button
+          type="button"
+          className="inline-flex items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-full"
+        >
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.avatar ? `${user.avatar}&s=72` : undefined} alt={user.username} />
             <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
@@ -75,28 +69,18 @@ export function SignOut({ user }: Pick<Session, 'user'>) {
           </div>
           {user.email && <div className="text-sm text-muted-foreground">{user.email}</div>}
         </div>
-        <DropdownMenuItem asChild>
-          <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="cursor-pointer">
-            Vercel Homepage
-          </a>
-        </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        {githubConnection.connected ? (
-          <DropdownMenuItem onClick={handleGitHubDisconnect} className="cursor-pointer">
-            <Github className="h-4 w-4 mr-2" />
-            Disconnect GitHub ({githubConnection.username})
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem onClick={handleGitHubConnect} className="cursor-pointer" disabled={isConnecting}>
-            <Github className="h-4 w-4 mr-2" />
-            {isConnecting ? 'Connecting...' : 'Connect GitHub'}
-          </DropdownMenuItem>
+
+        {githubConnection.connected && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleGitHubDisconnect} className="cursor-pointer">
+              <GitHubIcon className="h-4 w-4 mr-2" />
+              Disconnect GitHub ({githubConnection.username})
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
         )}
-        
-        <DropdownMenuSeparator />
-        
+
         <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
           Log Out
         </DropdownMenuItem>
@@ -104,4 +88,3 @@ export function SignOut({ user }: Pick<Session, 'user'>) {
     </DropdownMenu>
   )
 }
-

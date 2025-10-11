@@ -80,6 +80,7 @@ export type InsertTask = z.infer<typeof insertTaskSchema>
 
 export const connectors = pgTable('connectors', {
   id: text('id').primaryKey(),
+  userId: text('user_id').notNull(), // Vercel user ID
   name: text('name').notNull(),
   description: text('description'),
   type: text('type', {
@@ -106,6 +107,7 @@ export const connectors = pgTable('connectors', {
 
 export const insertConnectorSchema = z.object({
   id: z.string().optional(),
+  userId: z.string(),
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
   type: z.enum(['local', 'remote']).default('remote'),
@@ -124,6 +126,7 @@ export const insertConnectorSchema = z.object({
 
 export const selectConnectorSchema = z.object({
   id: z.string(),
+  userId: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   type: z.enum(['local', 'remote']),

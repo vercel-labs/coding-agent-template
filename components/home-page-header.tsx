@@ -4,11 +4,17 @@ import { PageHeader } from '@/components/page-header'
 import { RepoSelector } from '@/components/repo-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import { RefreshCw } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, RefreshCw, Unlink } from 'lucide-react'
 import { useState } from 'react'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { User } from '@/components/auth/user'
 import type { Session } from '@/lib/session/types'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { useSetAtom, useAtomValue } from 'jotai'
+import { githubConnectionAtom } from '@/lib/atoms/github-connection'
+import { GitHubIcon } from '@/components/icons/github-icon'
 
 interface HomePageHeaderProps {
   selectedOwner: string
@@ -18,27 +24,83 @@ interface HomePageHeaderProps {
   user?: Session['user'] | null
 }
 
-export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onRepoChange, user }: HomePageHeaderProps) {
+export function HomePageHeader({
+  selectedOwner,
+  selectedRepo,
+  onOwnerChange,
+  onRepoChange,
+  user,
+}: HomePageHeaderProps) {
   const { toggleSidebar } = useTasks()
+  const router = useRouter()
+  const githubConnection = useAtomValue(githubConnectionAtom)
+  const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefreshOwners = async () => {
+    setIsRefreshing(true)
+    try {
+      // Clear only owners cache
+      sessionStorage.removeItem('github-owners')
+      toast.success('Refreshing owners...')
+      
+      // Reload the page to fetch fresh data
+      window.location.reload()
+    } catch (error) {
+      console.error('Error refreshing owners:', error)
+      toast.error('Failed to refresh owners')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   const handleRefreshRepos = async () => {
     setIsRefreshing(true)
     try {
-      // Clear all GitHub-related caches
-      sessionStorage.removeItem('github-owners')
-      Object.keys(sessionStorage).forEach((key) => {
-        if (key.startsWith('github-repos-')) {
-          sessionStorage.removeItem(key)
-        }
-      })
-
-      // Reload the page to fetch fresh data
-      window.location.reload()
+      // Clear repos cache for current owner
+      if (selectedOwner) {
+        sessionStorage.removeItem(`github-repos-${selectedOwner}`)
+        toast.success('Refreshing repositories...')
+        
+        // Reload the page to fetch fresh data
+        window.location.reload()
+      } else {
+        // Clear all repos if no owner selected
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith('github-repos-')) {
+            sessionStorage.removeItem(key)
+          }
+        })
+        toast.success('Refreshing all repositories...')
+        window.location.reload()
+      }
     } catch (error) {
       console.error('Error refreshing repositories:', error)
+      toast.error('Failed to refresh repositories')
     } finally {
       setIsRefreshing(false)
+    }
+  }
+
+  const handleDisconnectGitHub = async () => {
+    try {
+      const response = await fetch('/api/auth/github/disconnect', {
+        method: 'POST',
+        credentials: 'include', // Ensure cookies are sent
+      })
+
+      if (response.ok) {
+        toast.success('GitHub disconnected')
+        setGitHubConnection({ connected: false })
+        router.refresh()
+      } else {
+        const error = await response.json()
+        console.error('Failed to disconnect GitHub:', error)
+        toast.error(error.error || 'Failed to disconnect GitHub')
+      }
+    } catch (error) {
+      console.error('Failed to disconnect GitHub:', error)
+      toast.error('Failed to disconnect GitHub')
     }
   }
 
@@ -64,7 +126,11 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
     </div>
   )
 
-  const leftActions = (
+  const handleConnectGitHub = () => {
+    window.location.href = '/api/auth/github/signin'
+  }
+
+  const leftActions = githubConnection.connected ? (
     <div className="flex items-center gap-2">
       <RepoSelector
         selectedOwner={selectedOwner}
@@ -73,17 +139,33 @@ export function HomePageHeader({ selectedOwner, selectedRepo, onOwnerChange, onR
         onRepoChange={onRepoChange}
         size="sm"
       />
-      <Button
-        onClick={handleRefreshRepos}
-        disabled={isRefreshing}
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        title="Refresh Repositories"
-      >
-        <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="More options">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh Owners
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh Repos
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDisconnectGitHub}>
+            <Unlink className="h-4 w-4 mr-2" />
+            Disconnect GitHub
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
+  ) : (
+    <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8">
+      <GitHubIcon className="h-4 w-4 mr-2" />
+      Connect GitHub
+    </Button>
   )
 
   return (

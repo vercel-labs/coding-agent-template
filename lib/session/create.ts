@@ -18,20 +18,23 @@ export async function createSession(tokens: Tokens): Promise<Session | undefined
 
   // Teams may fail due to permissions - default to hobby plan if unavailable
   const plan = teams ? getHighestAccountLevel(teams) : { plan: 'hobby' as const, team: null }
-  
-  return {
+
+  const session = {
     created: Date.now(),
     user: {
       avatar: `https://vercel.com/api/www/avatar/?u=${user.username}`,
       email: user.email,
       highestTeamId: plan.team?.id,
-      id: user.uid,
+      id: user.uid || (user as any).id,
       name: user.name,
       plan: plan.plan,
       username: user.username,
     },
     tokens,
   }
+
+  console.log('Created session with user ID:', session.user.id)
+  return session
 }
 
 const COOKIE_TTL = ms('1y')
@@ -53,4 +56,3 @@ export async function saveSession(res: Response, session: Session | undefined): 
   )
   return value
 }
-

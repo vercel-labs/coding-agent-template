@@ -7,10 +7,12 @@ import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
-import { eq, desc, or } from 'drizzle-orm'
+import { eq, desc, or, and } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 import { decrypt } from '@/lib/crypto'
+import { getServerSession } from '@/lib/session/get-server-session'
+import { getUserGitHubToken } from '@/lib/github/user-token'
 
 export async function GET() {
   try {
@@ -247,6 +249,12 @@ async function processTask(
     await logger.updateStatus('processing', 'Task created, preparing to start...')
     await logger.updateProgress(10, 'Initializing task execution...')
 
+    // Get user's GitHub token for repository access
+    const githubToken = await getUserGitHubToken()
+    if (githubToken) {
+      await logger.info('Using authenticated GitHub access')
+    }
+
     // Check if task was stopped before we even start
     if (await isTaskStopped(taskId)) {
       await logger.info('Task was stopped before execution began')
@@ -276,6 +284,7 @@ async function processTask(
       {
         taskId,
         repoUrl,
+        githubToken,
         timeout: `${maxDuration}m`,
         ports: [3000],
         runtime: 'node22',
@@ -378,29 +387,40 @@ async function processTask(
     let mcpServers: Connector[] = []
 
     try {
-      const allConnectors = await db.select().from(connectors)
-      mcpServers = allConnectors
-        .filter((connector: Connector) => connector.status === 'connected')
-        .map((connector: Connector) => {
+      // Get current user session to filter connectors
+      const session = await getServerSession()
+      
+      if (session?.user?.id) {
+        const userConnectors = await db
+          .select()
+          .from(connectors)
+          .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
+          
+        mcpServers = userConnectors.map((connector: Connector) => {
           return {
             ...connector,
             oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
           }
         })
 
-      if (mcpServers.length > 0) {
-        await logger.info(
-          `Found ${mcpServers.length} connected MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`,
-        )
+        if (mcpServers.length > 0) {
+          await logger.info(
+            `Found ${mcpServers.length} connected MCP servers: ${mcpServers.map((s) => s.name).join(', ')}`,
+          )
 
-        // Store MCP server IDs in the task
-        await db
-          .update(tasks)
-          .set({
-            mcpServerIds: JSON.parse(JSON.stringify(mcpServers.map((s) => s.id))),
-            updatedAt: new Date(),
-          })
-          .where(eq(tasks.id, taskId))
+          // Store MCP server IDs in the task
+          await db
+            .update(tasks)
+            .set({
+              mcpServerIds: JSON.parse(JSON.stringify(mcpServers.map((s) => s.id))),
+              updatedAt: new Date(),
+            })
+            .where(eq(tasks.id, taskId))
+        } else {
+          await logger.info('No connected MCP servers found for current user')
+        }
+      } else {
+        await logger.info('No user session found, continuing without MCP servers')
       }
     } catch (mcpError) {
       console.error('Failed to fetch MCP servers:', mcpError)

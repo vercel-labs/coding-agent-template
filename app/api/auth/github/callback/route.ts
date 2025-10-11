@@ -9,18 +9,12 @@ export async function GET(req: NextRequest): Promise<Response> {
   const code = req.nextUrl.searchParams.get('code')
   const state = req.nextUrl.searchParams.get('state')
   const cookieStore = await cookies()
-  
+
   const storedState = cookieStore.get(`github_oauth_state`)?.value ?? null
   const storedRedirectTo = cookieStore.get(`github_oauth_redirect_to`)?.value ?? null
   const storedUserId = cookieStore.get(`github_oauth_user_id`)?.value ?? null
 
-  if (
-    code === null ||
-    state === null ||
-    storedState !== state ||
-    storedRedirectTo === null ||
-    storedUserId === null
-  ) {
+  if (code === null || state === null || storedState !== state || storedRedirectTo === null || storedUserId === null) {
     return new Response('Invalid OAuth state', {
       status: 400,
     })
@@ -116,4 +110,3 @@ export async function GET(req: NextRequest): Promise<Response> {
     return new Response('Failed to complete GitHub authentication', { status: 500 })
   }
 }
-

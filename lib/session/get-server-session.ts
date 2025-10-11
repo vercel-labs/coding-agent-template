@@ -8,4 +8,3 @@ export const getServerSession = cache(async () => {
   const cookieValue = store.get(SESSION_COOKIE_NAME)?.value
   return getSessionFromCookie(cookieValue)
 })
-

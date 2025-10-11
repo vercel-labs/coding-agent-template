@@ -12,4 +12,3 @@ export async function redirectToSignIn(): Promise<void> {
     window.location.reload()
   }
 }
-

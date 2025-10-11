@@ -78,6 +78,13 @@
       "when": 1760154706524,
       "tag": "0010_curvy_veda",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1760156361620,
+      "tag": "0011_complex_kulan_gath",
+      "breakpoints": true
     }
   ]
 }

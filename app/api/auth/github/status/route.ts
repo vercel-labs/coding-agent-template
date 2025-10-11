@@ -11,6 +11,11 @@ export async function GET(req: NextRequest) {
     return Response.json({ connected: false })
   }
 
+  if (!session.user.id) {
+    console.error('GitHub status check: session.user.id is undefined')
+    return Response.json({ connected: false })
+  }
+
   try {
     const connection = await db
       .select({
@@ -35,4 +40,3 @@ export async function GET(req: NextRequest) {
     return Response.json({ connected: false, error: 'Failed to check status' }, { status: 500 })
   }
 }
-

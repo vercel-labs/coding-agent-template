@@ -14,4 +14,3 @@ export async function encryptJWE<T extends string | object = any>(
     .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
     .encrypt(base64url.decode(secret))
 }
-

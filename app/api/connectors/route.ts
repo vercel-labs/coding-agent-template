@@ -1,13 +1,28 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { connectors } from '@/lib/db/schema'
 import { decrypt } from '@/lib/crypto'
+import { getSessionFromReq } from '@/lib/session/server'
+import { eq } from 'drizzle-orm'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const allConnectors = await db.select().from(connectors)
+    const session = await getSessionFromReq(req)
 
-    const decryptedConnectors = allConnectors.map((connector) => ({
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized',
+          data: [],
+        },
+        { status: 401 },
+      )
+    }
+
+    const userConnectors = await db.select().from(connectors).where(eq(connectors.userId, session.user.id))
+
+    const decryptedConnectors = userConnectors.map((connector) => ({
       ...connector,
       oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
     }))

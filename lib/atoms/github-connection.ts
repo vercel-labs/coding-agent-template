@@ -8,4 +8,3 @@ export interface GitHubConnection {
 
 export const githubConnectionAtom = atom<GitHubConnection>({ connected: false })
 export const githubConnectionInitializedAtom = atom(false)
-

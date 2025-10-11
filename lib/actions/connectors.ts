@@ -5,8 +5,9 @@ import { connectors, insertConnectorSchema } from '@/lib/db/schema'
 import { nanoid } from 'nanoid'
 import { revalidatePath } from 'next/cache'
 import { ZodError } from 'zod'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { encrypt } from '@/lib/crypto'
+import { getServerSession } from '@/lib/session/get-server-session'
 
 type FormState = {
   success: boolean
@@ -16,6 +17,16 @@ type FormState = {
 
 export async function createConnector(_: FormState, formData: FormData): Promise<FormState> {
   try {
+    const session = await getServerSession()
+
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        message: 'Unauthorized',
+        errors: {},
+      }
+    }
+
     const name = formData.get('name') as string
     const description = formData.get('description') as string
     const type = (formData.get('type') as string) || 'remote'
@@ -27,6 +38,7 @@ export async function createConnector(_: FormState, formData: FormData): Promise
 
     const connectorData = {
       id: nanoid(),
+      userId: session.user.id,
       name,
       description: description?.trim() || undefined,
       type: type as 'local' | 'remote',
@@ -42,6 +54,7 @@ export async function createConnector(_: FormState, formData: FormData): Promise
 
     await db.insert(connectors).values({
       id: validatedData.id!,
+      userId: validatedData.userId,
       name: validatedData.name,
       description: validatedData.description || null,
       type: validatedData.type,
@@ -90,7 +103,19 @@ export async function toggleConnectorStatus(id: string, status: 'connected' | 'd
   'use server'
 
   try {
-    await db.update(connectors).set({ status }).where(eq(connectors.id, id))
+    const session = await getServerSession()
+
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        message: 'Unauthorized',
+      }
+    }
+
+    await db
+      .update(connectors)
+      .set({ status })
+      .where(and(eq(connectors.id, id), eq(connectors.userId, session.user.id)))
 
     revalidatePath('/')
 
@@ -110,6 +135,16 @@ export async function toggleConnectorStatus(id: string, status: 'connected' | 'd
 
 export async function updateConnector(_: FormState, formData: FormData): Promise<FormState> {
   try {
+    const session = await getServerSession()
+
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        message: 'Unauthorized',
+        errors: {},
+      }
+    }
+
     const id = formData.get('id') as string
 
     if (!id) {
@@ -130,6 +165,7 @@ export async function updateConnector(_: FormState, formData: FormData): Promise
     const envJson = formData.get('env') as string
 
     const connectorData = {
+      userId: session.user.id,
       name,
       description: description?.trim() || undefined,
       type: type as 'local' | 'remote',
@@ -157,7 +193,7 @@ export async function updateConnector(_: FormState, formData: FormData): Promise
         status: validatedData.status,
         updatedAt: new Date(),
       })
-      .where(eq(connectors.id, id))
+      .where(and(eq(connectors.id, id), eq(connectors.userId, session.user.id)))
 
     revalidatePath('/')
 
@@ -196,7 +232,16 @@ export async function deleteConnector(id: string) {
   'use server'
 
   try {
-    await db.delete(connectors).where(eq(connectors.id, id))
+    const session = await getServerSession()
+
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        message: 'Unauthorized',
+      }
+    }
+
+    await db.delete(connectors).where(and(eq(connectors.id, id), eq(connectors.userId, session.user.id)))
 
     revalidatePath('/')
 
@@ -216,11 +261,21 @@ export async function deleteConnector(id: string) {
 
 export async function getConnectors() {
   try {
-    const allConnectors = await db.select().from(connectors)
+    const session = await getServerSession()
+
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        error: 'Unauthorized',
+        data: [],
+      }
+    }
+
+    const userConnectors = await db.select().from(connectors).where(eq(connectors.userId, session.user.id))
 
     return {
       success: true,
-      data: allConnectors,
+      data: userConnectors,
     }
   } catch (error) {
     console.error('Error fetching connectors:', error)

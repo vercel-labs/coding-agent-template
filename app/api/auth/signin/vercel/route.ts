@@ -21,7 +21,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   )
 
   const store = await cookies()
-  const redirectTo = isRelativeUrl(req.nextUrl.searchParams.get('next') ?? '/') ? req.nextUrl.searchParams.get('next') ?? '/' : '/'
+  const redirectTo = isRelativeUrl(req.nextUrl.searchParams.get('next') ?? '/')
+    ? (req.nextUrl.searchParams.get('next') ?? '/')
+    : '/'
 
   for (const [key, value] of [
     [`vercel_oauth_redirect_to`, redirectTo],
@@ -39,4 +41,3 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   return Response.json({ url })
 }
-

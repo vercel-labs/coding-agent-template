@@ -11,7 +11,13 @@ export async function GET(req: NextRequest): Promise<Response> {
   const storedVerifier = cookieStore.get(`vercel_oauth_code_verifier`)?.value ?? null
   const storedRedirectTo = cookieStore.get(`vercel_oauth_redirect_to`)?.value ?? null
 
-  if (code === null || state === null || storedState !== state || storedRedirectTo === null || storedVerifier === null) {
+  if (
+    code === null ||
+    state === null ||
+    storedState !== state ||
+    storedRedirectTo === null ||
+    storedVerifier === null
+  ) {
     return new Response(null, {
       status: 400,
     })
@@ -54,4 +60,3 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   return response
 }
-

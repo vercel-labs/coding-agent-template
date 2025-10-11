@@ -21,4 +21,3 @@ async function getData(session: Session | undefined): Promise<SessionUserInfo> {
     return { user: session.user }
   }
 }
-

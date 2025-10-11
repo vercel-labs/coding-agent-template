@@ -24,4 +24,3 @@ export async function getSessionFromReq(req: NextRequest): Promise<Session | und
   const cookieValue = req.cookies.get(SESSION_COOKIE_NAME)?.value
   return getSessionFromCookie(cookieValue)
 }
-

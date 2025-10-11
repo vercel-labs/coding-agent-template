@@ -2,7 +2,8 @@ export interface VercelUser {
   avatar: string
   email: string
   name: string
-  uid: string
+  uid?: string
+  id?: string
   username: string
 }
 
@@ -33,4 +34,3 @@ interface Billing {
   status?: BillingStatus
   trial: { start: number; end: number } | null
 }
-

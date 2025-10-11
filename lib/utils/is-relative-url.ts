@@ -6,4 +6,3 @@ export function isRelativeUrl(url: string): boolean {
     return true
   }
 }
-

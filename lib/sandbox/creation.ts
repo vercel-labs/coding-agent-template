@@ -46,14 +46,14 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     }
 
     // Validate required environment variables
-    const envValidation = validateEnvironmentVariables(config.selectedAgent)
+    const envValidation = validateEnvironmentVariables(config.selectedAgent, config.githubToken)
     if (!envValidation.valid) {
       throw new Error(envValidation.error!)
     }
     await logger.info('Environment variables validated')
 
     // Handle private repository authentication
-    const authenticatedRepoUrl = createAuthenticatedRepoUrl(config.repoUrl)
+    const authenticatedRepoUrl = createAuthenticatedRepoUrl(config.repoUrl, config.githubToken)
     await logger.info('Added GitHub authentication to repository URL')
 
     // For initial clone, only use existing branch names, not AI-generated ones

@@ -39,4 +39,3 @@ export function getHighestAccountLevel(allTeams: VercelTeam[]): PlanInfo {
 
   return highest
 }
-

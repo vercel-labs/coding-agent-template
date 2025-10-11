@@ -11,4 +11,3 @@ export async function redirectToSignOut(): Promise<void> {
     window.location.reload()
   }
 }
-

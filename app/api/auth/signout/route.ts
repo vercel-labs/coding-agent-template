@@ -23,4 +23,3 @@ export async function GET(req: NextRequest) {
   await saveSession(response, undefined)
   return response
 }
-
