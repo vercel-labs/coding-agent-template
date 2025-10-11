@@ -24,7 +24,7 @@ This release introduces **user authentication** and **major security improvement
   - GitHub account connection for repository access
 
 - **Security Enhancements**
-  - **CRITICAL FIX**: Removed shared `GITHUB_TOKEN` usage in API endpoints - now uses per-user GitHub tokens
+  - Per-user GitHub authentication - each user uses their own GitHub token instead of shared credentials
   - All sensitive data (tokens, API keys, env vars) encrypted at rest
   - Session-based authentication with JWT encryption
   - User-scoped authorization - users can only access their own resources
@@ -62,9 +62,10 @@ This release introduces **user authentication** and **major security improvement
      - GitHub: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `NEXT_PUBLIC_GITHUB_CLIENT_ID`
      - Vercel: `VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`
    
-   - **Removed Fallback:**
-     - `GITHUB_TOKEN` no longer used as fallback in API routes (security fix)
+   - **Changed Authentication:**
+     - `GITHUB_TOKEN` no longer used as fallback in API routes
      - Users must connect their own GitHub account for repository access
+     - Each user's GitHub token is used for their requests
 
 4. **Authentication Required**
    - All routes now require user authentication
@@ -205,12 +206,12 @@ Confirm that:
 
 #### Security Improvements
 
-This release fixes a **critical authorization bypass vulnerability** where users could access any repository the shared `GITHUB_TOKEN` had access to. Now:
+With the introduction of multi-user authentication, the system now properly isolates user access:
 
-- Each user uses their own GitHub token
+- Each user uses their own GitHub token (not a shared credential)
 - Users can only access repositories they have permission for
-- Proper authorization enforced at the GitHub API level
-- No shared credentials that could be exploited
+- Proper user-scoped authorization enforced throughout the application
+- All sensitive data encrypted at rest with per-user encryption
 
 ## Deploy Your Own
 
