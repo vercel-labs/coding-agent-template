@@ -16,11 +16,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowUp, Settings, X, Cable } from 'lucide-react'
+import { Loader2, ArrowUp, Settings, X, Cable, Key } from 'lucide-react'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { setInstallDependencies, setMaxDuration } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
+import { ApiKeysDialog } from '@/components/api-keys-dialog'
+import { toast } from 'sonner'
 
 interface GitHubRepo {
   name: string
@@ -103,6 +105,31 @@ const DEFAULT_MODELS = {
   opencode: 'gpt-5',
 } as const
 
+// API key requirements for each agent
+const AGENT_API_KEY_REQUIREMENTS = {
+  claude: ['anthropic'],
+  codex: ['openai'],
+  cursor: ['cursor'],
+  gemini: ['gemini'],
+  opencode: [], // Will be determined dynamically based on selected model
+} as const
+
+type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
+
+// Helper to determine which API key is needed for opencode based on model
+const getOpenCodeRequiredKeys = (model: string): ('openai' | 'anthropic')[] => {
+  // Check if it's an Anthropic model (claude models)
+  if (model.includes('claude') || model.includes('sonnet') || model.includes('opus')) {
+    return ['anthropic']
+  }
+  // Check if it's an OpenAI model (gpt models)
+  if (model.includes('gpt')) {
+    return ['openai']
+  }
+  // Fallback to both if we can't determine
+  return ['openai', 'anthropic']
+}
+
 export function TaskForm({
   onSubmit,
   isSubmitting,
@@ -122,9 +149,13 @@ export function TaskForm({
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
+  const [showApiKeysDialog, setShowApiKeysDialog] = useState(false)
 
   // Connectors state
   const { connectors } = useConnectors()
+
+  // API keys state
+  const [savedApiKeys, setSavedApiKeys] = useState<Set<Provider>>(new Set())
 
   // Ref for the textarea to focus it programmatically
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -190,6 +221,26 @@ export function TaskForm({
     if (textareaRef.current) {
       textareaRef.current.focus()
     }
+
+    // Fetch user's saved API keys
+    const fetchApiKeys = async () => {
+      try {
+        const response = await fetch('/api/api-keys')
+        const data = await response.json()
+
+        if (data.success) {
+          const saved = new Set<Provider>()
+          data.apiKeys.forEach((key: { provider: Provider }) => {
+            saved.add(key.provider)
+          })
+          setSavedApiKeys(saved)
+        }
+      } catch (error) {
+        console.error('Error fetching API keys:', error)
+      }
+    }
+
+    fetchApiKeys()
   }, [])
 
   // Save prompt to localStorage as user types
@@ -262,9 +313,61 @@ export function TaskForm({
     fetchRepos()
   }, [selectedOwner])
 
+  // Check if user has required API keys for selected agent
+  const checkApiKeyRequirements = (): boolean => {
+    let requirements = AGENT_API_KEY_REQUIREMENTS[selectedAgent as keyof typeof AGENT_API_KEY_REQUIREMENTS]
+    
+    // For opencode, determine requirements based on selected model
+    if (selectedAgent === 'opencode') {
+      requirements = getOpenCodeRequiredKeys(selectedModel)
+    }
+    
+    if (!requirements || requirements.length === 0) return true
+
+    const missingKeys = requirements.filter((key) => !savedApiKeys.has(key as Provider))
+
+    if (missingKeys.length > 0) {
+      const providerNames = missingKeys.map((key) => {
+        switch (key) {
+          case 'anthropic':
+            return 'Anthropic'
+          case 'openai':
+            return 'OpenAI'
+          case 'cursor':
+            return 'Cursor'
+          case 'gemini':
+            return 'Gemini'
+          default:
+            return key
+        }
+      })
+
+      // Better error message for opencode
+      const modelInfo = selectedAgent === 'opencode' ? ` with ${selectedModel}` : ''
+      
+      toast.error(`Missing API Key${missingKeys.length > 1 ? 's' : ''}`, {
+        description: `Please add your ${providerNames.join(' and ')} API key${missingKeys.length > 1 ? 's' : ''} to use ${selectedAgent}${modelInfo}.`,
+        action: {
+          label: 'Add Keys',
+          onClick: () => setShowApiKeysDialog(true),
+        },
+        duration: 5000,
+      })
+
+      return false
+    }
+
+    return true
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim() && selectedOwner && selectedRepo) {
+      // Check if user has required API keys
+      if (!checkApiKeyRequirements()) {
+        return
+      }
+
       const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
       if (selectedRepoData) {
         // Clear the saved prompt since we're submitting it
@@ -484,6 +587,31 @@ export function TaskForm({
                           variant="ghost"
                           size="sm"
                           className="rounded-full h-8 w-8 p-0 relative"
+                          onClick={() => setShowApiKeysDialog(true)}
+                        >
+                          <Key className="h-4 w-4" />
+                          {savedApiKeys.size > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
+                            >
+                              {savedApiKeys.size}
+                            </Badge>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>API Keys</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full h-8 w-8 p-0 relative"
                           onClick={() => setShowMcpServersDialog(true)}
                         >
                           <Cable className="h-4 w-4" />
@@ -579,6 +707,27 @@ export function TaskForm({
         </div>
       </form>
 
+      <ApiKeysDialog
+        open={showApiKeysDialog}
+        onOpenChange={(open) => {
+          setShowApiKeysDialog(open)
+          // Refetch API keys when dialog closes to update the saved keys state
+          if (!open) {
+            fetch('/api/api-keys')
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  const saved = new Set<Provider>()
+                  data.apiKeys.forEach((key: { provider: Provider }) => {
+                    saved.add(key.provider)
+                  })
+                  setSavedApiKeys(saved)
+                }
+              })
+              .catch((error) => console.error('Error refetching API keys:', error))
+          }
+        }}
+      />
       <ConnectorDialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog} />
     </div>
   )

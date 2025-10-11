@@ -16,6 +16,7 @@ interface AppLayoutProps {
   children: React.ReactNode
   initialSidebarWidth?: number
   initialSidebarOpen?: boolean
+  initialIsMobile?: boolean
 }
 
 interface TasksContextType {
@@ -45,8 +46,8 @@ export const useTasks = () => {
 
 function SidebarLoader({ width }: { width: number }) {
   return (
-    <div className="h-full border-r bg-muted p-3 overflow-y-auto" style={{ width: `${width}px` }}>
-      <div className="mb-3">
+    <div className="h-full border-r bg-muted px-3 pb-3 pt-5.5 overflow-y-auto" style={{ width: `${width}px` }}>
+      <div className="mb-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Tasks</h2>
           <div className="flex items-center gap-1">
@@ -74,18 +75,19 @@ function SidebarLoader({ width }: { width: number }) {
   )
 }
 
-export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }: AppLayoutProps) {
+export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, initialIsMobile }: AppLayoutProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  // Initialize sidebar state based on user agent and preferences
+  // On mobile (from user agent): always closed
+  // On desktop: use saved preference or default to open
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    // Always use the server-provided value initially to avoid hydration mismatch
-    return initialSidebarOpen ?? false
+    if (initialIsMobile) return false
+    return initialSidebarOpen ?? true
   })
   const [sidebarWidth, setSidebarWidthState] = useState(initialSidebarWidth || getSidebarWidth())
   const [isResizing, setIsResizing] = useState(false)
-  // If sidebar is initially open (from server/cookies), assume we're on desktop to prevent layout shift
-  // This will be corrected after hydration if needed
-  const [isDesktop, setIsDesktop] = useState(initialSidebarOpen ?? false)
+  const [isDesktop, setIsDesktop] = useState(!initialIsMobile)
   const [hasMounted, setHasMounted] = useState(false)
   const router = useRouter()
 
@@ -104,32 +106,28 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     }
   }, [])
 
-  // Ensure isDesktop is correct after hydration and set proper sidebar state
+  // Verify screen size after mount and update if needed
   useEffect(() => {
-    const newIsDesktop = window.innerWidth >= 1024
-    setIsDesktop(newIsDesktop)
-
-    // On mobile, always close sidebar after hydration
-    if (!newIsDesktop) {
-      setIsSidebarOpen(false)
-    } else {
-      // On desktop, check if there's a saved preference, otherwise default to open
-      const hasCookie = document.cookie.includes('sidebar-open')
-      if (hasCookie) {
-        const cookieValue = getSidebarOpen()
-        setIsSidebarOpen(cookieValue)
-      } else {
-        // No cookie exists, default to open on desktop
-        setIsSidebarOpen(true)
-        setSidebarOpen(true) // Save the default preference
+    const actualIsDesktop = window.innerWidth >= 1024
+    
+    // Only update if there's a mismatch between user agent detection and actual screen size
+    if (actualIsDesktop !== isDesktop) {
+      setIsDesktop(actualIsDesktop)
+      
+      if (!actualIsDesktop) {
+        // Screen is actually mobile but user agent said desktop
+        setIsSidebarOpen(false)
+      } else if (actualIsDesktop && initialIsMobile) {
+        // Screen is actually desktop but user agent said mobile
+        // Use saved preference or default to open
+        const savedPreference = getSidebarOpen()
+        setIsSidebarOpen(savedPreference ?? initialSidebarOpen ?? true)
       }
     }
 
-    // Delay enabling transitions to prevent animation on page load
-    requestAnimationFrame(() => {
-      setHasMounted(true)
-    })
-  }, [])
+    // Mark as mounted to enable transitions
+    setHasMounted(true)
+  }, [isDesktop, initialIsMobile, initialSidebarOpen])
 
   // Fetch tasks on component mount
   useEffect(() => {

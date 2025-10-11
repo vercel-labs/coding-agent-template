@@ -109,7 +109,7 @@ export function HomePageHeader({
   }
 
   const actions = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-shrink-0">
       {/* GitHub Stars Button */}
       <GitHubStarsButton initialStars={initialStars} />
 
@@ -155,7 +155,7 @@ export function HomePageHeader({
 
   // Always render leftActions container to prevent layout shift
   const leftActions = (
-    <div className="flex items-center gap-2 h-8">
+    <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1 overflow-hidden">
       {githubConnection.connected || isGitHubAuthUser ? (
         <>
           <RepoSelector
