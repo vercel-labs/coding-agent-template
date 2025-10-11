@@ -16,7 +16,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
@@ -117,7 +117,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
-  const [loadingDiffs, setLoadingDiffs] = useState(false)
+  const loadingDiffsRef = useRef(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showTryAgainDialog, setShowTryAgainDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -287,9 +287,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
   // Fetch all diffs when files list changes
   const fetchAllDiffs = async (filesList: string[]) => {
-    if (!filesList.length || loadingDiffs) return
+    if (!filesList.length || loadingDiffsRef.current) return
 
-    setLoadingDiffs(true)
+    loadingDiffsRef.current = true
     const newDiffsCache: Record<string, DiffData> = {}
 
     try {
@@ -315,7 +315,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     } catch (error) {
       console.error('Error fetching diffs:', error)
     } finally {
-      setLoadingDiffs(false)
+      loadingDiffsRef.current = false
     }
   }
 
@@ -651,15 +651,11 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           {/* Diff Viewer */}
           <div className="flex-1 min-h-0 bg-card rounded-md border overflow-hidden">
             <div className="overflow-y-auto h-full">
-              {loadingDiffs ? (
-                <div className="h-full w-full animate-pulse bg-muted/50" />
-              ) : (
-                <FileDiffViewer
-                  selectedFile={selectedFile}
-                  diffsCache={diffsCache}
-                  isInitialLoading={Object.keys(diffsCache).length === 0}
-                />
-              )}
+              <FileDiffViewer
+                selectedFile={selectedFile}
+                diffsCache={diffsCache}
+                isInitialLoading={Object.keys(diffsCache).length === 0}
+              />
             </div>
           </div>
         </div>

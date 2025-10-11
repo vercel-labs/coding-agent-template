@@ -6,17 +6,21 @@ import { TaskDetails } from '@/components/task-details'
 import { TaskPageHeader } from '@/components/task-page-header'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
-import { MoreHorizontal } from 'lucide-react'
 import { useTasks } from '@/components/app-layout'
 import { LogsPane } from '@/components/logs-pane'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { User } from '@/components/auth/user'
+import type { Session } from '@/lib/session/types'
+import { GitHubStarsButton } from '@/components/github-stars-button'
 
 interface TaskPageClientProps {
   taskId: string
+  user: Session['user'] | null
+  authProvider: Session['authProvider'] | null
+  initialStars?: number
 }
 
-export function TaskPageClient({ taskId }: TaskPageClientProps) {
+export function TaskPageClient({ taskId, user, authProvider, initialStars = 994 }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
   const { toggleSidebar } = useTasks()
   const [logsPaneHeight, setLogsPaneHeight] = useState(40) // Default to collapsed height
@@ -30,6 +34,7 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
             onToggleMobileMenu={toggleSidebar}
             actions={
               <div className="flex items-center gap-2">
+                <GitHubStarsButton initialStars={initialStars} />
                 {/* Deploy to Vercel Button */}
                 <Button
                   asChild
@@ -50,13 +55,8 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
                   </a>
                 </Button>
 
-                {/* More Actions Menu Placeholder */}
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-
                 {/* User Authentication */}
-                <User />
+                <User user={user} authProvider={authProvider} />
               </div>
             }
           />
@@ -73,7 +73,12 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
             showMobileMenu={true}
             onToggleMobileMenu={toggleSidebar}
             showPlatformName={true}
-            actions={<User />}
+            actions={
+              <div className="flex items-center gap-2">
+                <GitHubStarsButton initialStars={initialStars} />
+                <User user={user} authProvider={authProvider} />
+              </div>
+            }
           />
         </div>
         <div className="mx-auto p-3">
@@ -91,7 +96,7 @@ export function TaskPageClient({ taskId }: TaskPageClientProps) {
   return (
     <div className="flex-1 bg-background relative flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 p-3">
-        <TaskPageHeader task={task} />
+        <TaskPageHeader task={task} user={user} authProvider={authProvider} initialStars={initialStars} />
       </div>
 
       {/* Task details */}

@@ -5,7 +5,8 @@ import { TaskSidebar } from '@/components/task-sidebar'
 import { Task } from '@/lib/db/schema'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { getSidebarWidth, setSidebarWidth, getSidebarOpen, setSidebarOpen } from '@/lib/utils/cookies'
 import { nanoid } from 'nanoid'
@@ -47,25 +48,34 @@ function SidebarLoader({ width }: { width: number }) {
     <div className="h-full border-r bg-muted p-3 overflow-y-auto" style={{ width: `${width}px` }}>
       <div className="mb-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Loading Tasks...</h2>
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <Plus className="h-4 w-4" />
+          <h2 className="text-base font-semibold">Tasks</h2>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              disabled={true}
+              title="Delete Tasks"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
-          </Link>
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {/* Loading skeleton for tasks */}
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="border rounded-lg p-2 h-[68px] flex flex-col justify-center">
-            <div className="flex items-center gap-2 mb-0.5">
-              <div className="w-4 h-4 bg-muted animate-pulse rounded-full"></div>
-              <div className="h-3 bg-muted animate-pulse rounded flex-1"></div>
-            </div>
-            <div className="h-3 bg-muted animate-pulse rounded ml-6 w-3/4"></div>
-          </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="animate-pulse h-[70px] rounded-lg">
+            <CardContent className="px-3 py-2">
+              {/* Empty skeleton - just the card shape */}
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>
@@ -81,8 +91,10 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
   })
   const [sidebarWidth, setSidebarWidthState] = useState(initialSidebarWidth || getSidebarWidth())
   const [isResizing, setIsResizing] = useState(false)
-  // Always start as false to match SSR, then update in useEffect after hydration
-  const [isDesktop, setIsDesktop] = useState(false)
+  // If sidebar is initially open (from server/cookies), assume we're on desktop to prevent layout shift
+  // This will be corrected after hydration if needed
+  const [isDesktop, setIsDesktop] = useState(initialSidebarOpen ?? false)
+  const [hasMounted, setHasMounted] = useState(false)
   const router = useRouter()
 
   // Update sidebar width and save to cookie
@@ -120,6 +132,11 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
         setSidebarOpen(true) // Save the default preference
       }
     }
+
+    // Delay enabling transitions to prevent animation on page load
+    requestAnimationFrame(() => {
+      setHasMounted(true)
+    })
   }, [])
 
   // Fetch tasks on component mount
@@ -299,7 +316,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
           <div
             className={`
             fixed inset-y-0 left-0 z-40
-            ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}
+            ${isResizing || !hasMounted ? '' : 'transition-all duration-300 ease-in-out'}
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             ${isSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'}
           `}
@@ -325,7 +342,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
           <div
             className={`
             hidden lg:block fixed inset-y-0 cursor-col-resize group z-50 hover:bg-primary/20
-            ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}
+            ${isResizing || !hasMounted ? '' : 'transition-all duration-300 ease-in-out'}
             ${isSidebarOpen ? 'w-1 opacity-100' : 'w-0 opacity-0'}
           `}
             onMouseDown={isSidebarOpen ? handleMouseDown : undefined}
@@ -340,7 +357,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
 
           {/* Main Content */}
           <div
-            className={`flex-1 overflow-auto flex flex-col ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+            className={`flex-1 overflow-auto flex flex-col ${isResizing || !hasMounted ? '' : 'transition-all duration-300 ease-in-out'}`}
             style={{
               marginLeft: isDesktop && isSidebarOpen ? `${sidebarWidth + 4}px` : '0px',
             }}

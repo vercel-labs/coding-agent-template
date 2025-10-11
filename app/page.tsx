@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { HomePageContent } from '@/components/home-page-content'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { getGitHubStars } from '@/lib/github-stars'
 
 export default async function Home() {
   const cookieStore = await cookies()
@@ -9,7 +10,10 @@ export default async function Home() {
   const installDependencies = cookieStore.get('install-dependencies')?.value === 'true'
   const maxDuration = parseInt(cookieStore.get('max-duration')?.value || '5', 10)
 
-  const session = await getServerSession()
+  const [session, stars] = await Promise.all([
+    getServerSession(),
+    getGitHubStars(),
+  ])
 
   return (
     <HomePageContent
@@ -18,6 +22,7 @@ export default async function Home() {
       initialInstallDependencies={installDependencies}
       initialMaxDuration={maxDuration}
       user={session?.user ?? null}
+      initialStars={stars}
     />
   )
 }

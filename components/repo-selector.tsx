@@ -222,7 +222,7 @@ export function RepoSelector({
       : 'w-auto min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 h-8">
       <Select
         value={selectedOwner}
         onValueChange={handleOwnerChange}

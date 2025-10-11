@@ -19,6 +19,7 @@ interface HomePageContentProps {
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
   user?: Session['user'] | null
+  initialStars?: number
 }
 
 export function HomePageContent({
@@ -27,6 +28,7 @@ export function HomePageContent({
   initialInstallDependencies = false,
   initialMaxDuration = 5,
   user = null,
+  initialStars = 994,
 }: HomePageContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)
@@ -136,6 +138,7 @@ export function HomePageContent({
           onOwnerChange={handleOwnerChange}
           onRepoChange={handleRepoChange}
           user={user}
+          initialStars={initialStars}
         />
       </div>
 
