@@ -6,6 +6,7 @@ import { encryptJWE } from '@/lib/jwe/encrypt'
 import { fetchTeams } from '@/lib/vercel-client/teams'
 import { fetchUser } from '@/lib/vercel-client/user'
 import { getHighestAccountLevel } from '@/lib/vercel-client/utils'
+import { upsertUser } from '@/lib/db/users'
 import ms from 'ms'
 
 export async function createSession(tokens: Tokens): Promise<Session | undefined> {
@@ -19,20 +20,33 @@ export async function createSession(tokens: Tokens): Promise<Session | undefined
   // Teams may fail due to permissions - default to hobby plan if unavailable
   const plan = teams ? getHighestAccountLevel(teams) : { plan: 'hobby' as const, team: null }
 
+  // Create or update user in database
+  const externalId = user.uid || user.id || ''
+  const userId = await upsertUser({
+    provider: 'vercel',
+    externalId,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken || undefined,
+    scope: undefined, // Vercel doesn't provide scope
+    username: user.username,
+    email: user.email,
+    name: user.name,
+    avatarUrl: `https://vercel.com/api/www/avatar/?u=${user.username}`,
+  })
+
   const session = {
     created: Date.now(),
+    authProvider: 'vercel' as const,
     user: {
-      avatar: `https://vercel.com/api/www/avatar/?u=${user.username}`,
-      email: user.email,
-      highestTeamId: plan.team?.id,
-      id: user.uid || user.id || '',
-      name: user.name,
-      plan: plan.plan,
+      id: userId, // Internal user ID
       username: user.username,
+      email: user.email,
+      name: user.name,
+      avatar: `https://vercel.com/api/www/avatar/?u=${user.username}`,
     },
   }
 
-  console.log('Created session with user ID:', session.user.id)
+  console.log('Created session with internal user ID:', session.user.id)
   return session
 }
 

@@ -7,10 +7,8 @@ import { getOAuthToken } from '@/lib/session/get-oauth-token'
 export async function GET(req: NextRequest) {
   const session = await getSessionFromReq(req)
   if (session) {
-    // Check if this is a GitHub user (ID starts with 'github-')
-    const isGitHubUser = session.user.id.startsWith('github-')
-
-    if (isGitHubUser) {
+    // Check which provider the user authenticated with
+    if (session.authProvider === 'github') {
       // Revoke GitHub token - fetch from database
       try {
         const tokenData = await getOAuthToken(session.user.id, 'github')

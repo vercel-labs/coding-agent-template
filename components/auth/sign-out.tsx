@@ -2,7 +2,6 @@
 
 import type { Session } from '@/lib/session/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +19,7 @@ import { GitHubIcon } from '@/components/icons/github-icon'
 import { ApiKeysDialog } from '@/components/api-keys-dialog'
 import { Key } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { getEnabledAuthProviders } from '@/lib/auth/providers'
 
 interface RateLimitInfo {
   used: number
@@ -27,13 +27,16 @@ interface RateLimitInfo {
   remaining: number
 }
 
-export function SignOut({ user }: Pick<Session, 'user'>) {
+export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProvider'>) {
   const router = useRouter()
   const setSession = useSetAtom(sessionAtom)
   const githubConnection = useAtomValue(githubConnectionAtom)
   const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [showApiKeysDialog, setShowApiKeysDialog] = useState(false)
   const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null)
+
+  // Check which auth providers are enabled
+  const { github: hasGitHub } = getEnabledAuthProviders()
 
   const handleSignOut = async () => {
     await redirectToSignOut()
@@ -96,11 +99,8 @@ export function SignOut({ user }: Pick<Session, 'user'>) {
 
       <DropdownMenuContent align="end" className="w-56">
         <div className="px-2 py-2">
-          <div className="flex justify-between items-center text-sm font-medium">
+          <div className="text-sm font-medium">
             <span>{user.name ?? user.username}</span>
-            <Badge variant="secondary" className="text-xs">
-              {user.plan === 'hobby' ? 'Hobby' : user.plan === 'pro' ? 'Pro' : 'Enterprise'}
-            </Badge>
           </div>
           {user.email && <div className="text-sm text-muted-foreground">{user.email}</div>}
           {rateLimit && (
@@ -117,8 +117,8 @@ export function SignOut({ user }: Pick<Session, 'user'>) {
           API Keys
         </DropdownMenuItem>
 
-        {/* Only show GitHub Connect/Disconnect for Vercel users (not GitHub-authenticated users) */}
-        {!user.id.startsWith('github-') && (
+        {/* Only show GitHub Connect/Disconnect for Vercel users when GitHub is enabled */}
+        {authProvider === 'vercel' && hasGitHub && (
           <>
             {githubConnection.connected ? (
               <DropdownMenuItem onClick={handleGitHubDisconnect} className="cursor-pointer">
@@ -140,7 +140,7 @@ export function SignOut({ user }: Pick<Session, 'user'>) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-          {user.id.startsWith('github-') ? (
+          {authProvider === 'github' ? (
             <>
               <GitHubIcon className="h-4 w-4 mr-2" />
               Log Out

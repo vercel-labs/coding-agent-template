@@ -56,16 +56,38 @@ These are set once by you (the app developer) and are used for core infrastructu
 
 **You must configure at least one authentication method** (Vercel or GitHub):
 
-**Option 1: Sign in with Vercel**
+##### Configure Enabled Providers
+
+- `NEXT_PUBLIC_AUTH_PROVIDERS`: Comma-separated list of enabled auth providers
+  - `"github"` - GitHub only (default)
+  - `"vercel"` - Vercel only
+  - `"github,vercel"` - Both providers enabled
+
+**Examples:**
+
+```bash
+# GitHub authentication only (default)
+NEXT_PUBLIC_AUTH_PROVIDERS=github
+
+# Vercel authentication only
+NEXT_PUBLIC_AUTH_PROVIDERS=vercel
+
+# Both GitHub and Vercel authentication
+NEXT_PUBLIC_AUTH_PROVIDERS=github,vercel
+```
+
+##### Provider Configuration
+
+**Option 1: Sign in with Vercel** (if `vercel` is in `NEXT_PUBLIC_AUTH_PROVIDERS`)
 - `VERCEL_CLIENT_ID`: Your Vercel OAuth app client ID
 - `VERCEL_CLIENT_SECRET`: Your Vercel OAuth app client secret
 
-**Option 2: Sign in with GitHub**
+**Option 2: Sign in with GitHub** (if `github` is in `NEXT_PUBLIC_AUTH_PROVIDERS`)
 - `GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID
 - `GITHUB_CLIENT_SECRET`: Your GitHub OAuth app client secret
 - `NEXT_PUBLIC_GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID (same as above, exposed to client)
 
-**You can enable both** to let users choose their preferred sign-in method.
+> **Note**: Only the providers listed in `NEXT_PUBLIC_AUTH_PROVIDERS` will appear in the sign-in dialog. You must provide the OAuth credentials for each enabled provider.
 
 #### API Keys (Optional - Can be per-user)
 
@@ -83,14 +105,48 @@ These API keys can be set globally (fallback for all users) or left unset to req
 
 - ~~`GITHUB_TOKEN`~~: **No longer needed!** Users authenticate with their own GitHub accounts.
   - Users who sign in with GitHub automatically get repository access via their OAuth token
-  - Users who sign in with Vercel can connect their GitHub account from their profile
+  - Users who sign in with Vercel can connect their GitHub account from their profile to access repositories
+
+**How Authentication Works:**
+- **Sign in with GitHub**: Users get immediate repository access via their GitHub OAuth token
+- **Sign in with Vercel**: Users must connect a GitHub account from their profile to work with repositories
+- **Identity Merging**: If a user signs in with Vercel, connects GitHub, then later signs in directly with GitHub, they'll be recognized as the same user (no duplicate accounts)
 
 #### Optional Environment Variables
 
 - `NPM_TOKEN`: For private npm packages
 - `GITHUB_TOKEN`: Only needed if you want to provide fallback repository access for Vercel users who haven't connected GitHub
 
-### 4. Set up the database
+### 4. Set up OAuth Applications
+
+Based on your `NEXT_PUBLIC_AUTH_PROVIDERS` configuration, you'll need to create OAuth apps:
+
+#### GitHub OAuth App (if using GitHub authentication)
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click "New OAuth App"
+3. Fill in the details:
+   - **Application name**: Your app name (e.g., "My Coding Agent")
+   - **Homepage URL**: `http://localhost:3000` (or your production URL)
+   - **Authorization callback URL**: `http://localhost:3000/api/auth/github/callback`
+4. Click "Register application"
+5. Copy the **Client ID** → use for both `GITHUB_CLIENT_ID` and `NEXT_PUBLIC_GITHUB_CLIENT_ID`
+6. Click "Generate a new client secret" → copy and use for `GITHUB_CLIENT_SECRET`
+
+**Required Scopes**: The app will request `repo` scope to access repositories.
+
+#### Vercel OAuth App (if using Vercel authentication)
+
+1. Go to your [Vercel Dashboard](https://vercel.com/dashboard)
+2. Navigate to Settings → Integrations → Create
+3. Configure the integration:
+   - **Redirect URL**: `http://localhost:3000/api/auth/callback/vercel`
+4. Copy the **Client ID** → use for `VERCEL_CLIENT_ID`
+5. Copy the **Client Secret** → use for `VERCEL_CLIENT_SECRET`
+
+> **Production Deployment**: Remember to add production callback URLs when deploying (e.g., `https://yourdomain.com/api/auth/github/callback`)
+
+### 5. Set up the database
 
 Generate and run database migrations:
 
@@ -99,7 +155,7 @@ pnpm db:generate
 pnpm db:push
 ```
 
-### 5. Start the development server
+### 6. Start the development server
 
 ```bash
 pnpm dev

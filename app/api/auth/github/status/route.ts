@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { getSessionFromReq } from '@/lib/session/server'
 import { db } from '@/lib/db/client'
-import { userConnections } from '@/lib/db/schema'
+import { users, accounts } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
@@ -17,20 +17,39 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const connection = await db
+    // Check if user has GitHub as connected account
+    const account = await db
       .select({
-        username: userConnections.username,
-        createdAt: userConnections.createdAt,
+        username: accounts.username,
+        createdAt: accounts.createdAt,
       })
-      .from(userConnections)
-      .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, 'github')))
+      .from(accounts)
+      .where(and(eq(accounts.userId, session.user.id), eq(accounts.provider, 'github')))
       .limit(1)
 
-    if (connection.length > 0) {
+    if (account.length > 0) {
       return Response.json({
         connected: true,
-        username: connection[0].username,
-        connectedAt: connection[0].createdAt,
+        username: account[0].username,
+        connectedAt: account[0].createdAt,
+      })
+    }
+
+    // Check if user signed in with GitHub (primary account)
+    const user = await db
+      .select({
+        username: users.username,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(and(eq(users.id, session.user.id), eq(users.provider, 'github')))
+      .limit(1)
+
+    if (user.length > 0) {
+      return Response.json({
+        connected: true,
+        username: user[0].username,
+        connectedAt: user[0].createdAt,
       })
     }
 

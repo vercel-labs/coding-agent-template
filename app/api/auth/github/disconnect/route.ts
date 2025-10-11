@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { getSessionFromReq } from '@/lib/session/server'
 import { db } from '@/lib/db/client'
-import { userConnections } from '@/lib/db/schema'
+import { accounts } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
@@ -12,22 +12,22 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  // Debug: Log the entire user object
-  console.log('Session user object:', JSON.stringify(session.user, null, 2))
-
   if (!session.user.id) {
     console.error('Session user.id is undefined. Session:', session)
     return Response.json({ error: 'Invalid session - user ID missing' }, { status: 400 })
   }
 
-  console.log('Disconnecting GitHub for user:', session.user.id)
+  // Can only disconnect if user didn't sign in with GitHub
+  if (session.authProvider === 'github') {
+    return Response.json({ error: 'Cannot disconnect primary authentication method' }, { status: 400 })
+  }
+
+  console.log('Disconnecting GitHub account for user:', session.user.id)
 
   try {
-    const result = await db
-      .delete(userConnections)
-      .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, 'github')))
+    await db.delete(accounts).where(and(eq(accounts.userId, session.user.id), eq(accounts.provider, 'github')))
 
-    console.log('GitHub disconnected successfully for user:', session.user.id)
+    console.log('GitHub account disconnected successfully for user:', session.user.id)
     return Response.json({ success: true })
   } catch (error) {
     console.error('Error disconnecting GitHub:', error)

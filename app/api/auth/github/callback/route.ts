@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db/client'
-import { userConnections } from '@/lib/db/schema'
+import { users, accounts, tasks, connectors, keys } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createGitHubSession, saveSession } from '@/lib/session/create-github'
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     if (isSignInFlow) {
       // SIGN-IN FLOW: Create a new session for the GitHub user
       console.log('[GitHub Callback] Sign-in flow - creating GitHub session')
-      const session = await createGitHubSession(tokenData.access_token)
+      const session = await createGitHubSession(tokenData.access_token, tokenData.scope)
 
       if (!session) {
         console.error('[GitHub Callback] Failed to create GitHub session')
@@ -120,40 +120,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       }
 
       console.log('[GitHub Callback] GitHub session created for user:', session.user.id)
-
-      // Encrypt the access token before storing
-      const encryptedToken = encrypt(tokenData.access_token)
-      console.log('[GitHub Callback] Token encrypted, storing in database')
-
-      // Store GitHub connection in database
-      const existingConnection = await db
-        .select()
-        .from(userConnections)
-        .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, 'github')))
-        .limit(1)
-
-      if (existingConnection.length > 0) {
-        // Update existing connection
-        await db
-          .update(userConnections)
-          .set({
-            accessToken: encryptedToken,
-            scope: tokenData.scope,
-            username: githubUser.login,
-            updatedAt: new Date(),
-          })
-          .where(eq(userConnections.id, existingConnection[0].id))
-      } else {
-        // Insert new connection
-        await db.insert(userConnections).values({
-          id: nanoid(),
-          userId: session.user.id,
-          provider: 'github',
-          accessToken: encryptedToken,
-          scope: tokenData.scope,
-          username: githubUser.login,
-        })
-      }
+      // Note: Tokens are already stored in users table by upsertUser() in createGitHubSession()
 
       // Create response with redirect
       const response = new Response(null, {
@@ -173,34 +140,69 @@ export async function GET(req: NextRequest): Promise<Response> {
 
       return response
     } else {
-      // CONNECT FLOW: Add GitHub connection to existing Vercel user
+      // CONNECT FLOW: Add GitHub account to existing Vercel user
       // Encrypt the access token before storing
       const encryptedToken = encrypt(tokenData.access_token)
 
-      // Store or update connection in database
-      const existingConnection = await db
+      // Check if this GitHub account is already connected somewhere
+      const existingAccount = await db
         .select()
-        .from(userConnections)
-        .where(and(eq(userConnections.userId, storedUserId!), eq(userConnections.provider, 'github')))
+        .from(accounts)
+        .where(and(eq(accounts.provider, 'github'), eq(accounts.externalUserId, `${githubUser.id}`)))
         .limit(1)
 
-      if (existingConnection.length > 0) {
-        // Update existing connection
-        await db
-          .update(userConnections)
-          .set({
-            accessToken: encryptedToken,
-            scope: tokenData.scope,
-            username: githubUser.login,
-            updatedAt: new Date(),
-          })
-          .where(eq(userConnections.id, existingConnection[0].id))
+      if (existingAccount.length > 0) {
+        const connectedUserId = existingAccount[0].userId
+
+        // If the GitHub account belongs to a different user, we need to merge accounts
+        if (connectedUserId !== storedUserId) {
+          console.log(
+            `[GitHub Callback] Merging accounts: GitHub account ${githubUser.id} belongs to user ${connectedUserId}, connecting to user ${storedUserId}`,
+          )
+
+          // Transfer all tasks, connectors, accounts, and keys from old user to new user
+          await db.update(tasks).set({ userId: storedUserId! }).where(eq(tasks.userId, connectedUserId))
+          await db.update(connectors).set({ userId: storedUserId! }).where(eq(connectors.userId, connectedUserId))
+          await db.update(accounts).set({ userId: storedUserId! }).where(eq(accounts.userId, connectedUserId))
+          await db.update(keys).set({ userId: storedUserId! }).where(eq(keys.userId, connectedUserId))
+
+          // Delete the old user record (this will cascade delete their accounts/keys)
+          await db.delete(users).where(eq(users.id, connectedUserId))
+
+          console.log(
+            `[GitHub Callback] Account merge complete. Old user ${connectedUserId} merged into ${storedUserId}`,
+          )
+
+          // Update the GitHub account token
+          await db
+            .update(accounts)
+            .set({
+              userId: storedUserId!,
+              accessToken: encryptedToken,
+              scope: tokenData.scope,
+              username: githubUser.login,
+              updatedAt: new Date(),
+            })
+            .where(eq(accounts.id, existingAccount[0].id))
+        } else {
+          // Same user, just update the token
+          await db
+            .update(accounts)
+            .set({
+              accessToken: encryptedToken,
+              scope: tokenData.scope,
+              username: githubUser.login,
+              updatedAt: new Date(),
+            })
+            .where(eq(accounts.id, existingAccount[0].id))
+        }
       } else {
-        // Insert new connection
-        await db.insert(userConnections).values({
+        // No existing GitHub account connection, create a new one
+        await db.insert(accounts).values({
           id: nanoid(),
           userId: storedUserId!,
           provider: 'github',
+          externalUserId: `${githubUser.id}`, // Store GitHub numeric ID
           accessToken: encryptedToken,
           scope: tokenData.scope,
           username: githubUser.login,

@@ -3,6 +3,7 @@ import 'server-only'
 import type { Session } from './types'
 import { SESSION_COOKIE_NAME } from './constants'
 import { encryptJWE } from '@/lib/jwe/encrypt'
+import { upsertUser } from '@/lib/db/users'
 import ms from 'ms'
 
 interface GitHubUser {
@@ -13,7 +14,7 @@ interface GitHubUser {
   avatar_url: string
 }
 
-export async function createGitHubSession(accessToken: string): Promise<Session | undefined> {
+export async function createGitHubSession(accessToken: string, scope?: string): Promise<Session | undefined> {
   // Fetch GitHub user info
   const userResponse = await fetch('https://api.github.com/user', {
     headers: {
@@ -49,20 +50,32 @@ export async function createGitHubSession(accessToken: string): Promise<Session 
     }
   }
 
+  // Create or update user in database
+  const userId = await upsertUser({
+    provider: 'github',
+    externalId: `${githubUser.id}`, // GitHub numeric ID
+    accessToken,
+    refreshToken: undefined, // GitHub OAuth doesn't provide refresh tokens
+    scope: scope || undefined,
+    username: githubUser.login,
+    email: email || undefined,
+    name: githubUser.name || githubUser.login,
+    avatarUrl: githubUser.avatar_url,
+  })
+
   const session: Session = {
     created: Date.now(),
+    authProvider: 'github',
     user: {
-      avatar: githubUser.avatar_url,
-      email: email || undefined,
-      highestTeamId: undefined,
-      id: `github-${githubUser.id}`,
-      name: githubUser.name || githubUser.login,
-      plan: 'hobby', // Default plan for GitHub users
+      id: userId, // Internal user ID
       username: githubUser.login,
+      email: email || undefined,
+      name: githubUser.name || githubUser.login,
+      avatar: githubUser.avatar_url,
     },
   }
 
-  console.log('Created GitHub session with user ID:', session.user.id)
+  console.log('Created GitHub session with internal user ID:', session.user.id)
   return session
 }
 

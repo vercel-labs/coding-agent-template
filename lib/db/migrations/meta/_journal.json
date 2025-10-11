@@ -75,29 +75,8 @@
     {
       "idx": 10,
       "version": "7",
-      "when": 1760154706524,
-      "tag": "0010_curvy_veda",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1760156361620,
-      "tag": "0011_complex_kulan_gath",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1760160063314,
-      "tag": "0012_gigantic_flatman",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1760163744194,
-      "tag": "0013_lying_mister_sinister",
+      "when": 1760170909274,
+      "tag": "0010_concerned_exodus",
       "breakpoints": true
     }
   ]

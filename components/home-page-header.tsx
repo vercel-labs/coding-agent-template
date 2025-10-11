@@ -13,6 +13,7 @@ import type { Session } from '@/lib/session/types'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useSetAtom, useAtomValue } from 'jotai'
+import { sessionAtom } from '@/lib/atoms/session'
 import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 import { GitHubIcon } from '@/components/icons/github-icon'
 
@@ -141,8 +142,10 @@ export function HomePageHeader({
     }
   }
 
+  // Get session to check auth provider
+  const session = useAtomValue(sessionAtom)
   // Check if user is authenticated with GitHub (not just connected)
-  const isGitHubAuthUser = user?.id?.startsWith('github-')
+  const isGitHubAuthUser = session.authProvider === 'github'
 
   const leftActions =
     githubConnection.connected || isGitHubAuthUser ? (

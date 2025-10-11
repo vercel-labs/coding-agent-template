@@ -8,13 +8,10 @@ import { getOAuthToken } from '@/lib/session/get-oauth-token'
 export async function GET(req: NextRequest) {
   const existingSession = await getSessionFromReq(req)
 
-  // Check if this is a GitHub user (ID starts with 'github-')
-  const isGitHubUser = existingSession?.user?.id?.startsWith('github-')
-
   // For GitHub users, just return the existing session without recreating it
   // For Vercel users, recreate the session to refresh user data
   let session: Session | undefined
-  if (existingSession && isGitHubUser) {
+  if (existingSession && existingSession.authProvider === 'github') {
     session = existingSession
   } else if (existingSession) {
     // Fetch Vercel token from database to recreate session
@@ -36,8 +33,8 @@ export async function GET(req: NextRequest) {
     headers: { 'Content-Type': 'application/json' },
   })
 
-  // Use the appropriate saveSession function based on user type
-  if (session && isGitHubUser) {
+  // Use the appropriate saveSession function based on auth provider
+  if (session && session.authProvider === 'github') {
     await saveGitHubSession(response, session)
   } else {
     await saveSession(response, session)
@@ -50,6 +47,6 @@ async function getData(session: Session | undefined): Promise<SessionUserInfo> {
   if (!session) {
     return { user: undefined }
   } else {
-    return { user: session.user }
+    return { user: session.user, authProvider: session.authProvider }
   }
 }

@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { db } from '@/lib/db/client'
-import { userConnections } from '@/lib/db/schema'
+import { keys } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { decrypt } from '@/lib/crypto'
@@ -22,7 +22,7 @@ export async function getUserApiKeys(): Promise<{
   const session = await getServerSession()
 
   // Default to system keys
-  const keys = {
+  const apiKeys = {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     CURSOR_API_KEY: process.env.CURSOR_API_KEY,
@@ -31,30 +31,30 @@ export async function getUserApiKeys(): Promise<{
   }
 
   if (!session?.user?.id) {
-    return keys
+    return apiKeys
   }
 
   try {
-    const connections = await db.select().from(userConnections).where(eq(userConnections.userId, session.user.id))
+    const userKeys = await db.select().from(keys).where(eq(keys.userId, session.user.id))
 
-    connections.forEach((connection) => {
-      const decryptedKey = decrypt(connection.accessToken)
+    userKeys.forEach((key) => {
+      const decryptedValue = decrypt(key.value)
 
-      switch (connection.provider) {
+      switch (key.provider) {
         case 'openai':
-          keys.OPENAI_API_KEY = decryptedKey
+          apiKeys.OPENAI_API_KEY = decryptedValue
           break
         case 'gemini':
-          keys.GEMINI_API_KEY = decryptedKey
+          apiKeys.GEMINI_API_KEY = decryptedValue
           break
         case 'cursor':
-          keys.CURSOR_API_KEY = decryptedKey
+          apiKeys.CURSOR_API_KEY = decryptedValue
           break
         case 'anthropic':
-          keys.ANTHROPIC_API_KEY = decryptedKey
+          apiKeys.ANTHROPIC_API_KEY = decryptedValue
           break
         case 'aigateway':
-          keys.AI_GATEWAY_API_KEY = decryptedKey
+          apiKeys.AI_GATEWAY_API_KEY = decryptedValue
           break
       }
     })
@@ -63,7 +63,7 @@ export async function getUserApiKeys(): Promise<{
     // Fall back to system keys on error
   }
 
-  return keys
+  return apiKeys
 }
 
 /**
@@ -87,14 +87,14 @@ export async function getUserApiKey(provider: Provider): Promise<string | undefi
   }
 
   try {
-    const connection = await db
-      .select({ accessToken: userConnections.accessToken })
-      .from(userConnections)
-      .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, provider)))
+    const userKey = await db
+      .select({ value: keys.value })
+      .from(keys)
+      .where(and(eq(keys.userId, session.user.id), eq(keys.provider, provider)))
       .limit(1)
 
-    if (connection[0]?.accessToken) {
-      return decrypt(connection[0].accessToken)
+    if (userKey[0]?.value) {
+      return decrypt(userKey[0].value)
     }
   } catch (error) {
     console.error(`Error fetching user API key for ${provider}:`, error)

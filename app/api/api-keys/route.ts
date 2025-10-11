@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionFromReq } from '@/lib/session/server'
 import { db } from '@/lib/db/client'
-import { userConnections } from '@/lib/db/schema'
+import { keys } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { encrypt, decrypt } from '@/lib/crypto'
@@ -16,37 +16,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const connections = await db
+    const userKeys = await db
       .select({
-        provider: userConnections.provider,
-        createdAt: userConnections.createdAt,
+        provider: keys.provider,
+        createdAt: keys.createdAt,
       })
-      .from(userConnections)
-      .where(
-        and(
-          eq(userConnections.userId, session.user.id),
-          // Only get API key providers (not OAuth like GitHub)
-          // Using SQL OR with multiple conditions
-          eq(userConnections.provider, 'openai'),
-        ),
-      )
-
-    // Get all API key providers
-    const allConnections = await db
-      .select({
-        provider: userConnections.provider,
-        createdAt: userConnections.createdAt,
-      })
-      .from(userConnections)
-      .where(eq(userConnections.userId, session.user.id))
-
-    const apiKeyProviders = allConnections.filter((c) =>
-      ['openai', 'gemini', 'cursor', 'anthropic', 'aigateway'].includes(c.provider),
-    )
+      .from(keys)
+      .where(eq(keys.userId, session.user.id))
 
     return NextResponse.json({
       success: true,
-      apiKeys: apiKeyProviders,
+      apiKeys: userKeys,
     })
   } catch (error) {
     console.error('Error fetching API keys:', error)
@@ -69,15 +49,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Provider and API key are required' }, { status: 400 })
     }
 
-    if (!['openai', 'gemini', 'cursor', 'anthropic'].includes(provider)) {
+    if (!['openai', 'gemini', 'cursor', 'anthropic', 'aigateway'].includes(provider)) {
       return NextResponse.json({ error: 'Invalid provider' }, { status: 400 })
     }
 
-    // Check if connection already exists
+    // Check if key already exists
     const existing = await db
       .select()
-      .from(userConnections)
-      .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, provider)))
+      .from(keys)
+      .where(and(eq(keys.userId, session.user.id), eq(keys.provider, provider)))
       .limit(1)
 
     const encryptedKey = encrypt(apiKey)
@@ -85,19 +65,19 @@ export async function POST(req: NextRequest) {
     if (existing.length > 0) {
       // Update existing
       await db
-        .update(userConnections)
+        .update(keys)
         .set({
-          accessToken: encryptedKey,
+          value: encryptedKey,
           updatedAt: new Date(),
         })
-        .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, provider)))
+        .where(and(eq(keys.userId, session.user.id), eq(keys.provider, provider)))
     } else {
       // Insert new
-      await db.insert(userConnections).values({
+      await db.insert(keys).values({
         id: nanoid(),
         userId: session.user.id,
         provider,
-        accessToken: encryptedKey,
+        value: encryptedKey,
       })
     }
 
@@ -123,9 +103,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
     }
 
-    await db
-      .delete(userConnections)
-      .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, provider)))
+    await db.delete(keys).where(and(eq(keys.userId, session.user.id), eq(keys.provider, provider)))
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, jsonb, boolean } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, integer, jsonb, boolean, uniqueIndex } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
 // Log entry types
@@ -10,9 +10,74 @@ export const logEntrySchema = z.object({
 
 export type LogEntry = z.infer<typeof logEntrySchema>
 
+// Users table - user profile and primary OAuth account
+export const users = pgTable(
+  'users',
+  {
+    id: text('id').primaryKey(), // Internal user ID (we generate this)
+    // Primary OAuth account info (how they signed in)
+    provider: text('provider', {
+      enum: ['github', 'vercel'],
+    }).notNull(), // Primary auth provider
+    externalId: text('external_id').notNull(), // External ID from OAuth provider
+    accessToken: text('access_token').notNull(), // Encrypted OAuth access token
+    refreshToken: text('refresh_token'), // Encrypted OAuth refresh token
+    scope: text('scope'), // OAuth scope
+    // Profile info
+    username: text('username').notNull(),
+    email: text('email'),
+    name: text('name'),
+    avatarUrl: text('avatar_url'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastLoginAt: timestamp('last_login_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    // Unique constraint: prevent duplicate signups from same provider + external ID
+    providerExternalIdUnique: uniqueIndex('users_provider_external_id_idx').on(table.provider, table.externalId),
+  }),
+)
+
+export const insertUserSchema = z.object({
+  id: z.string().optional(), // Auto-generated if not provided
+  provider: z.enum(['github', 'vercel']),
+  externalId: z.string().min(1, 'External ID is required'),
+  accessToken: z.string(),
+  refreshToken: z.string().optional(),
+  scope: z.string().optional(),
+  username: z.string().min(1, 'Username is required'),
+  email: z.string().email().optional(),
+  name: z.string().optional(),
+  avatarUrl: z.string().url().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+  lastLoginAt: z.date().optional(),
+})
+
+export const selectUserSchema = z.object({
+  id: z.string(),
+  provider: z.enum(['github', 'vercel']),
+  externalId: z.string(),
+  accessToken: z.string(),
+  refreshToken: z.string().nullable(),
+  scope: z.string().nullable(),
+  username: z.string(),
+  email: z.string().nullable(),
+  name: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  lastLoginAt: z.date(),
+})
+
+export type User = z.infer<typeof selectUserSchema>
+export type InsertUser = z.infer<typeof insertUserSchema>
+
 export const tasks = pgTable('tasks', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull(), // Vercel user ID
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }), // Foreign key to users table
   prompt: text('prompt').notNull(),
   repoUrl: text('repo_url'),
   selectedAgent: text('selected_agent').default('claude'),
@@ -86,7 +151,9 @@ export type InsertTask = z.infer<typeof insertTaskSchema>
 
 export const connectors = pgTable('connectors', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull(), // Vercel user ID
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }), // Foreign key to users table
   name: text('name').notNull(),
   description: text('description'),
   type: text('type', {
@@ -152,47 +219,112 @@ export const selectConnectorSchema = z.object({
 export type Connector = z.infer<typeof selectConnectorSchema>
 export type InsertConnector = z.infer<typeof insertConnectorSchema>
 
-// User connections table for storing OAuth tokens (GitHub, Vercel, etc.)
-export const userConnections = pgTable('user_connections', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull(), // User ID
-  provider: text('provider', {
-    enum: ['github', 'vercel', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway'],
-  }).notNull(),
-  accessToken: text('access_token').notNull(),
-  refreshToken: text('refresh_token'),
-  expiresAt: timestamp('expires_at'),
-  scope: text('scope'),
-  username: text('username'), // Provider username (e.g., GitHub username)
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+// Accounts table - Additional accounts linked to users
+// Currently only GitHub can be connected as an additional account
+// (e.g., Vercel users can connect their GitHub account)
+// Multiple users can connect to the same external account (each as a separate record)
+export const accounts = pgTable(
+  'accounts',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }), // Foreign key to users table
+    provider: text('provider', {
+      enum: ['github'],
+    })
+      .notNull()
+      .default('github'), // Only GitHub for now
+    externalUserId: text('external_user_id').notNull(), // GitHub user ID
+    accessToken: text('access_token').notNull(), // Encrypted OAuth access token
+    refreshToken: text('refresh_token'), // Encrypted OAuth refresh token
+    expiresAt: timestamp('expires_at'),
+    scope: text('scope'),
+    username: text('username').notNull(), // GitHub username
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    // Unique constraint: a user can only have one account per provider
+    userIdProviderUnique: uniqueIndex('accounts_user_id_provider_idx').on(table.userId, table.provider),
+  }),
+)
 
-export const insertUserConnectionSchema = z.object({
+export const insertAccountSchema = z.object({
   id: z.string().optional(),
   userId: z.string(),
-  provider: z.enum(['github', 'vercel', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
+  provider: z.enum(['github']).default('github'),
+  externalUserId: z.string().min(1, 'External user ID is required'),
   accessToken: z.string(),
   refreshToken: z.string().optional(),
   expiresAt: z.date().optional(),
   scope: z.string().optional(),
-  username: z.string().optional(),
+  username: z.string().min(1, 'Username is required'),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 })
 
-export const selectUserConnectionSchema = z.object({
+export const selectAccountSchema = z.object({
   id: z.string(),
   userId: z.string(),
-  provider: z.enum(['github', 'vercel', 'openai', 'gemini', 'cursor', 'anthropic', 'aigateway']),
+  provider: z.enum(['github']),
+  externalUserId: z.string(),
   accessToken: z.string(),
   refreshToken: z.string().nullable(),
   expiresAt: z.date().nullable(),
   scope: z.string().nullable(),
-  username: z.string().nullable(),
+  username: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
 
-export type UserConnection = z.infer<typeof selectUserConnectionSchema>
-export type InsertUserConnection = z.infer<typeof insertUserConnectionSchema>
+export type Account = z.infer<typeof selectAccountSchema>
+export type InsertAccount = z.infer<typeof insertAccountSchema>
+
+// Keys table - user's API keys for various services
+// Each row represents one API key for one provider for one user
+export const keys = pgTable(
+  'keys',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }), // Foreign key to users table
+    provider: text('provider', {
+      enum: ['anthropic', 'openai', 'cursor', 'gemini', 'aigateway'],
+    }).notNull(),
+    value: text('value').notNull(), // Encrypted API key value
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    // Unique constraint: a user can only have one key per provider
+    userIdProviderUnique: uniqueIndex('keys_user_id_provider_idx').on(table.userId, table.provider),
+  }),
+)
+
+export const insertKeySchema = z.object({
+  id: z.string().optional(),
+  userId: z.string(),
+  provider: z.enum(['anthropic', 'openai', 'cursor', 'gemini', 'aigateway']),
+  value: z.string().min(1, 'API key value is required'),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+})
+
+export const selectKeySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  provider: z.enum(['anthropic', 'openai', 'cursor', 'gemini', 'aigateway']),
+  value: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export type Key = z.infer<typeof selectKeySchema>
+export type InsertKey = z.infer<typeof insertKeySchema>
+
+// Keep legacy export for backwards compatibility during migration
+export const userConnections = accounts
+export type UserConnection = Account
+export type InsertUserConnection = InsertAccount

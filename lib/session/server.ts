@@ -9,6 +9,7 @@ export async function getSessionFromCookie(cookieValue?: string): Promise<Sessio
     if (decrypted) {
       return {
         created: decrypted.created,
+        authProvider: decrypted.authProvider,
         user: decrypted.user,
       }
     }
