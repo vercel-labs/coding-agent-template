@@ -29,6 +29,7 @@ interface TasksContextType {
     selectedModel: string
     installDependencies: boolean
     maxDuration: number
+    sandboxType: string
   }) => { id: string; optimisticTask: Task }
 }
 
@@ -196,6 +197,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
     selectedModel: string
     installDependencies: boolean
     maxDuration: number
+    sandboxType: string
   }) => {
     const id = nanoid()
     const optimisticTask: Task = {
@@ -213,6 +215,15 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen }:
       branchName: null,
       sandboxUrl: null,
       mcpServerIds: null,
+      sandboxType: taskData.sandboxType as 'local' | 'docker' | 'e2b' | 'daytona' | 'vercel',
+      sandboxProvider: null,
+      snapshotId: null,
+      interactiveMode: null,
+      sshUrl: null,
+      terminalUrl: null,
+      vscodeUrl: null,
+      inngestRunId: null,
+      inngestEventId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       completedAt: null,

@@ -91,6 +91,7 @@ export function TaskActions({ task }: TaskActionsProps) {
   const [isTryingAgain, setIsTryingAgain] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(task.selectedAgent || 'claude')
   const [selectedModel, setSelectedModel] = useState<string>(task.selectedModel || DEFAULT_MODELS.claude)
+  const [sandboxType, setSandboxType] = useState<string>(task.sandboxType || 'vercel')
   const router = useRouter()
   const { refreshTasks } = useTasks()
 
@@ -131,6 +132,7 @@ export function TaskActions({ task }: TaskActionsProps) {
           repoUrl: task.repoUrl,
           selectedAgent,
           selectedModel,
+          sandboxType,
         }),
       })
 
@@ -225,9 +227,10 @@ export function TaskActions({ task }: TaskActionsProps) {
             <AlertDialogTitle>Try Again</AlertDialogTitle>
             <AlertDialogDescription>Create a new task with the same prompt and repository.</AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label className="text-sm font-medium mb-1.5 block">Agent</label>
                 <Select value={selectedAgent} onValueChange={setSelectedAgent}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select an agent" />
@@ -245,6 +248,7 @@ export function TaskActions({ task }: TaskActionsProps) {
                 </Select>
               </div>
               <div>
+                <label className="text-sm font-medium mb-1.5 block">Model</label>
                 <Select value={selectedModel} onValueChange={setSelectedModel}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a model" />
@@ -258,6 +262,21 @@ export function TaskActions({ task }: TaskActionsProps) {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Sandbox Environment</label>
+              <Select value={sandboxType} onValueChange={setSandboxType}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select sandbox type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vercel">Vercel Sandbox (Cloud)</SelectItem>
+                  <SelectItem value="docker">Docker (Local)</SelectItem>
+                  <SelectItem value="e2b">E2B (Cloud)</SelectItem>
+                  <SelectItem value="daytona">Daytona (Cloud - Fast)</SelectItem>
+                  <SelectItem value="local">Local (Direct - Coming Soon)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <AlertDialogFooter>

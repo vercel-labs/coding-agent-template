@@ -1,0 +1,6 @@
+{
+  "name": "coding-task-executor",
+  "description": "Execute coding tasks using AI agents in isolated sandboxes",
+  "runtime": "nodejs",
+  "handler": "index.ts"
+}

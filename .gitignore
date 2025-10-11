@@ -57,3 +57,8 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+.env*.local
+.mcp.json
+.opencode.json
+AGENTS.md
+.cursor/mcp.json

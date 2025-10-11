@@ -39,6 +39,7 @@ interface TaskFormProps {
     selectedModel: string
     installDependencies: boolean
     maxDuration: number
+    sandboxType: string
   }) => void
   isSubmitting: boolean
   selectedOwner: string
@@ -114,6 +115,7 @@ export function TaskForm({
   const [prompt, setPrompt] = useState('')
   const [selectedAgent, setSelectedAgent] = useState('claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
+  const [sandboxType, setSandboxType] = useState('vercel')
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [, setLoadingRepos] = useState(false)
 
@@ -277,6 +279,7 @@ export function TaskForm({
           selectedModel,
           installDependencies,
           maxDuration,
+          sandboxType,
         })
       }
     }
@@ -472,6 +475,28 @@ export function TaskForm({
                       </DialogHeader>
                       <div className="space-y-6 py-4 overflow-y-auto flex-1">
                         <div className="space-y-4">
+                          <h3 className="text-sm font-semibold">Sandbox Environment</h3>
+                          <div className="space-y-2">
+                            <Label htmlFor="sandbox-type" className="text-sm font-medium">
+                              Execution Environment
+                            </Label>
+                            <Select value={sandboxType} onValueChange={setSandboxType}>
+                              <SelectTrigger id="sandbox-type" className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper" sideOffset={5}>
+                                <SelectItem value="vercel">Vercel Sandbox (Cloud)</SelectItem>
+                                <SelectItem value="docker">Docker (Local)</SelectItem>
+                                <SelectItem value="e2b">E2B (Cloud)</SelectItem>
+                                <SelectItem value="daytona">Daytona (Cloud - Fast)</SelectItem>
+                                <SelectItem value="local" disabled>
+                                  Local (Coming Soon)
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
                           <h3 className="text-sm font-semibold">Task Settings</h3>
                           <div className="flex items-center space-x-2">
                             <Checkbox
@@ -498,9 +523,6 @@ export function TaskForm({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="1">1 minute</SelectItem>
-                                <SelectItem value="2">2 minutes</SelectItem>
-                                <SelectItem value="3">3 minutes</SelectItem>
                                 <SelectItem value="5">5 minutes</SelectItem>
                                 <SelectItem value="10">10 minutes</SelectItem>
                                 <SelectItem value="15">15 minutes</SelectItem>

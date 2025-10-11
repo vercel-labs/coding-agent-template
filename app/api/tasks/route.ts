@@ -109,23 +109,51 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Process the task asynchronously with timeout
-    // CRITICAL: Wrap in after() to ensure Vercel doesn't kill the function after response
-    // Without this, serverless functions terminate immediately after sending the response
+    // Trigger orchestrator to process the task
     after(async () => {
       try {
-        await processTaskWithTimeout(
-          newTask.id,
-          validatedData.prompt,
-          validatedData.repoUrl || '',
-          validatedData.selectedAgent || 'claude',
-          validatedData.selectedModel,
-          validatedData.installDependencies || false,
-          validatedData.maxDuration || 5,
-        )
+        const orchestratorType = (process.env.ORCHESTRATOR || 'inline') as 'inngest' | 'agentuity' | 'inline'
+
+        // Get the AI-generated branch name if available
+        let aiBranchName: string | undefined
+
+        // Wait a moment to see if branch name was generated
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        const [taskWithBranch] = await db.select().from(tasks).where(eq(tasks.id, taskId))
+        if (taskWithBranch?.branchName) {
+          aiBranchName = taskWithBranch.branchName
+        }
+
+        // Use orchestrator if configured, otherwise use inline processing
+        if (orchestratorType === 'inline') {
+          await processTaskWithTimeout(
+            newTask.id,
+            validatedData.prompt,
+            validatedData.repoUrl || '',
+            validatedData.selectedAgent || 'claude',
+            validatedData.selectedModel,
+            validatedData.installDependencies || false,
+            validatedData.maxDuration || 5,
+          )
+        } else {
+          const { getOrchestrator } = await import('@/lib/orchestration')
+          const orchestrator = getOrchestrator(orchestratorType)
+
+          await orchestrator.submitTask({
+            taskId: newTask.id,
+            prompt: validatedData.prompt,
+            repoUrl: validatedData.repoUrl || '',
+            selectedAgent: validatedData.selectedAgent || 'claude',
+            selectedModel: validatedData.selectedModel,
+            installDependencies: validatedData.installDependencies || false,
+            maxDuration: validatedData.maxDuration || 5,
+            sandboxType: validatedData.sandboxType || 'vercel',
+            aiBranchName,
+          })
+        }
       } catch (error) {
         console.error('Task processing failed:', error)
-        // Error handling is already done inside processTaskWithTimeout
       }
     })
 
