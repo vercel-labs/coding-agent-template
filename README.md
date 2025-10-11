@@ -217,7 +217,7 @@ With the introduction of multi-user authentication, the system now properly isol
 
 You can deploy your own version of the coding agent template to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=VERCEL_TEAM_ID,VERCEL_PROJECT_ID,VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+coding+agent+template.+Database+will+be+automatically+provisioned+via+Neon.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel).+Optional+API+keys+can+be+added+later+in+project+settings.&project-name=coding-agent-template&repository-name=coding-agent-template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=VERCEL_TEAM_ID,VERCEL_PROJECT_ID,VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+coding+agent+template.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel)+after+deployment.+Optional+API+keys+can+be+added+later.&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&project-name=coding-agent-template&repository-name=coding-agent-template)
 
 **What happens during deployment:**
 - **Automatic Database Setup**: A Neon Postgres database is automatically created and connected to your project
