@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
-import { octokit } from '@/lib/github/client'
+import { getOctokit } from '@/lib/github/client'
 import { getServerSession } from '@/lib/session/get-server-session'
+import type { Octokit } from '@octokit/rest'
 
 function getLanguageFromFilename(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase()
@@ -39,7 +40,13 @@ function getLanguageFromFilename(filename: string): string {
   return langMap[ext || ''] || 'text'
 }
 
-async function getFileContent(owner: string, repo: string, path: string, ref: string): Promise<string> {
+async function getFileContent(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+): Promise<string> {
   try {
     const response = await octokit.rest.repos.getContent({
       owner,
@@ -92,6 +99,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Task does not have branch or repository information' }, { status: 400 })
     }
 
+    // Get user's authenticated GitHub client
+    const octokit = await getOctokit()
+    if (!octokit.auth) {
+      return NextResponse.json(
+        {
+          error: 'GitHub authentication required. Please connect your GitHub account to view file diffs.',
+        },
+        { status: 401 },
+      )
+    }
+
     // Parse GitHub repository URL to get owner and repo
     const githubMatch = task.repoUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/)
     if (!githubMatch) {
@@ -107,11 +125,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       // Try to get content from main branch first, fallback to master
       try {
-        oldContent = await getFileContent(owner, repo, filename, 'main')
+        oldContent = await getFileContent(octokit, owner, repo, filename, 'main')
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
           try {
-            oldContent = await getFileContent(owner, repo, filename, 'master')
+            oldContent = await getFileContent(octokit, owner, repo, filename, 'master')
           } catch (masterError: unknown) {
             if (
               !(masterError && typeof masterError === 'object' && 'status' in masterError && masterError.status === 404)
@@ -127,7 +145,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       // Get content from the task branch
-      newContent = await getFileContent(owner, repo, filename, task.branchName)
+      newContent = await getFileContent(octokit, owner, repo, filename, task.branchName)
 
       return NextResponse.json({
         success: true,
