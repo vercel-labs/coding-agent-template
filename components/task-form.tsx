@@ -21,6 +21,8 @@ import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { setInstallDependencies, setMaxDuration } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
+import { ApiKeysDialog } from '@/components/api-keys-dialog'
+import { toast } from 'sonner'
 
 interface GitHubRepo {
   name: string
@@ -122,6 +124,7 @@ export function TaskForm({
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
+  const [showApiKeysDialog, setShowApiKeysDialog] = useState(false)
 
   // Connectors state
   const { connectors } = useConnectors()
@@ -262,9 +265,40 @@ export function TaskForm({
     fetchRepos()
   }, [selectedOwner])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim() && selectedOwner && selectedRepo) {
+      // Check if API key is required and available for the selected agent and model
+      try {
+        const response = await fetch(`/api/api-keys/check?agent=${selectedAgent}&model=${selectedModel}`)
+        const data = await response.json()
+
+        if (!data.hasKey) {
+          // Show error message with provider name
+          const providerNames: Record<string, string> = {
+            anthropic: 'Anthropic',
+            openai: 'OpenAI',
+            cursor: 'Cursor',
+            gemini: 'Gemini',
+            aigateway: 'AI Gateway',
+          }
+          const providerName = providerNames[data.provider] || data.provider
+
+          toast.error(`${providerName} API key required`, {
+            description: `Please add your ${providerName} API key to use the ${data.agentName} agent with this model.`,
+            action: {
+              label: 'Add API Key',
+              onClick: () => setShowApiKeysDialog(true),
+            },
+          })
+          return
+        }
+      } catch (error) {
+        console.error('Error checking API key:', error)
+        toast.error('Failed to validate API key availability')
+        return
+      }
+
       const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
       if (selectedRepoData) {
         // Clear the saved prompt since we're submitting it
@@ -529,6 +563,7 @@ export function TaskForm({
       </form>
 
       <ConnectorDialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog} />
+      <ApiKeysDialog open={showApiKeysDialog} onOpenChange={setShowApiKeysDialog} />
     </div>
   )
 }
