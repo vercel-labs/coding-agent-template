@@ -132,7 +132,9 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
               )}
               <span className="text-xs md:text-sm font-medium truncate">{name}</span>
             </div>
-            {isExpanded && node.children && <div className="ml-3 md:ml-4">{renderFileTree(node.children, fullPath)}</div>}
+            {isExpanded && node.children && (
+              <div className="ml-3 md:ml-4">{renderFileTree(node.children, fullPath)}</div>
+            )}
           </div>
         )
       } else {

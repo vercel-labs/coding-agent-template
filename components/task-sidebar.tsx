@@ -159,7 +159,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
       >
         <div className="mb-3 md:mb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm md:text-base font-semibold">Tasks</h2>
+            <h2 className="text-sm md:text-base font-semibold pl-3">Tasks</h2>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -190,12 +190,15 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
     )
   }
 
-  return (
-    <div className="h-full border-r bg-muted px-2 md:px-3 pt-3 md:pt-5.5 pb-3 md:pb-4 overflow-y-auto" style={{ width: `${width}px` }}>
-      <div className="mb-3 md:mb-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm md:text-base font-semibold">Tasks</h2>
-          <div className="flex items-center gap-1">
+    return (
+      <div
+        className="h-full border-r bg-muted px-2 md:px-3 pt-3 md:pt-5.5 pb-3 md:pb-4 overflow-y-auto"
+        style={{ width: `${width}px` }}
+      >
+        <div className="mb-3 md:mb-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm md:text-base font-semibold pl-3">Tasks</h2>
+            <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
