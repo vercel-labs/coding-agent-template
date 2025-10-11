@@ -437,8 +437,11 @@ async function processTask(
           .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
 
         mcpServers = userConnectors.map((connector: Connector) => {
+          // Decrypt sensitive fields
+          const decryptedEnv = connector.env ? JSON.parse(decrypt(connector.env)) : null
           return {
             ...connector,
+            env: decryptedEnv,
             oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
           }
         })
@@ -561,6 +564,12 @@ async function processTask(
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const url = new URL(request.url)
     const action = url.searchParams.get('action')
 
@@ -581,24 +590,25 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Build the where conditions
-    const conditions = []
+    // Build the where conditions for task status
+    const statusConditions = []
     if (actions.includes('completed')) {
-      conditions.push(eq(tasks.status, 'completed'))
+      statusConditions.push(eq(tasks.status, 'completed'))
     }
     if (actions.includes('failed')) {
-      conditions.push(eq(tasks.status, 'error'))
+      statusConditions.push(eq(tasks.status, 'error'))
     }
     if (actions.includes('stopped')) {
-      conditions.push(eq(tasks.status, 'stopped'))
+      statusConditions.push(eq(tasks.status, 'stopped'))
     }
 
-    if (conditions.length === 0) {
+    if (statusConditions.length === 0) {
       return NextResponse.json({ error: 'No valid actions specified' }, { status: 400 })
     }
 
-    // Delete tasks based on conditions
-    const whereClause = conditions.length === 1 ? conditions[0] : or(...conditions)
+    // Delete tasks based on conditions AND user ownership
+    const statusClause = statusConditions.length === 1 ? statusConditions[0] : or(...statusConditions)
+    const whereClause = and(statusClause, eq(tasks.userId, session.user.id))
     const deletedTasks = await db.delete(tasks).where(whereClause).returning()
 
     // Build response message
