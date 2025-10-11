@@ -5,6 +5,7 @@ import { userConnections } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getSessionFromReq } from '@/lib/session/server'
+import { decrypt } from '@/lib/crypto'
 import type { NextRequest } from 'next/server'
 
 /**
@@ -28,7 +29,11 @@ export async function getUserGitHubToken(req?: NextRequest): Promise<string | nu
       .where(and(eq(userConnections.userId, session.user.id), eq(userConnections.provider, 'github')))
       .limit(1)
 
-    return connection[0]?.accessToken ?? null
+    // Decrypt the token before returning
+    if (connection[0]?.accessToken) {
+      return decrypt(connection[0].accessToken)
+    }
+    return null
   } catch (error) {
     console.error('Error fetching user GitHub token:', error)
     return null
