@@ -217,7 +217,12 @@ With the introduction of multi-user authentication, the system now properly isol
 
 You can deploy your own version of the coding agent template to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=POSTGRES_URL,VERCEL_TOKEN,VERCEL_TEAM_ID,VERCEL_PROJECT_ID,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+infrastructure+environment+variables.+You+will+also+need+to+configure+OAuth+(Vercel+or+GitHub)+for+user+authentication.+Optional+API+keys+can+be+added+later.&project-name=coding-agent-template&repository-name=coding-agent-template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=VERCEL_TEAM_ID,VERCEL_PROJECT_ID,VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+coding+agent+template.+Database+will+be+automatically+provisioned+via+Neon.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel).+Optional+API+keys+can+be+added+later+in+project+settings.&project-name=coding-agent-template&repository-name=coding-agent-template)
+
+**What happens during deployment:**
+- **Automatic Database Setup**: A Neon Postgres database is automatically created and connected to your project
+- **Environment Configuration**: You'll be prompted to provide required environment variables (Vercel credentials and encryption keys)
+- **OAuth Setup**: After deployment, you'll need to configure at least one OAuth provider (GitHub or Vercel) in your project settings for user authentication
 
 ## Features
 
@@ -254,12 +259,14 @@ Create a `.env.local` file with your values:
 
 These are set once by you (the app developer) and are used for core infrastructure:
 
-- `POSTGRES_URL`: Your PostgreSQL connection string (works with any PostgreSQL database)
+- `POSTGRES_URL`: Your PostgreSQL connection string (automatically provided when deploying to Vercel via the Neon integration, or set manually for local development)
 - `VERCEL_TOKEN`: Your Vercel API token (for creating sandboxes)
 - `VERCEL_TEAM_ID`: Your Vercel team ID (for sandbox creation)
 - `VERCEL_PROJECT_ID`: Your Vercel project ID (for sandbox creation)
 - `JWE_SECRET`: Base64-encoded secret for session encryption (generate with: `openssl rand -base64 32`)
 - `ENCRYPTION_KEY`: 32-byte hex string for encrypting user API keys and tokens (generate with: `openssl rand -hex 32`)
+
+> **Note**: When deploying to Vercel using the "Deploy with Vercel" button, the database is automatically provisioned via Neon and `POSTGRES_URL` is set for you. For local development, you'll need to provide your own database connection string.
 
 #### User Authentication (Required)
 
@@ -393,7 +400,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 See the [Set up environment variables](#3-set-up-environment-variables) section above for a complete guide.
 
 **Key Points:**
-- **Infrastructure**: Set `POSTGRES_URL`, `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, `JWE_SECRET`, and `ENCRYPTION_KEY` as the app developer
+- **Infrastructure**: Set `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, `JWE_SECRET`, and `ENCRYPTION_KEY` as the app developer (database is auto-provisioned on Vercel)
 - **Authentication**: Configure at least one OAuth method (Vercel or GitHub) for user sign-in
 - **API Keys**: Can be set globally or left for users to provide their own (per-user keys take precedence)
 - **GitHub Access**: Users authenticate with their own GitHub accounts - no shared `GITHUB_TOKEN` needed!
