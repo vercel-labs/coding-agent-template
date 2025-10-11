@@ -21,7 +21,7 @@ export function PageHeader({
   showPlatformName = false,
 }: PageHeaderProps) {
   return (
-    <div className="px-3 pt-3 pb-4">
+    <div className="px-0 md:px-3 pt-0.5 md:pt-3 pb-1.5 md:pb-4">
       <div className="flex items-center justify-between gap-2 h-8 min-w-0">
         {/* Left side - Menu Button and Left Actions */}
         <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-hidden">

@@ -133,3 +133,31 @@ button {
     background-position: -200% 0;
   }
 }
+
+/* Git Diff Viewer Mobile Optimizations */
+.git-diff-view-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Make diff viewer more mobile-friendly */
+@media (max-width: 768px) {
+  .git-diff-view-container {
+    font-size: 11px;
+  }
+  
+  /* Ensure horizontal scrolling works on mobile */
+  .git-diff-view-container > div {
+    min-width: max-content;
+  }
+  
+  /* Adjust line numbers and content for mobile */
+  .git-diff-view-container .diff-line-num {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+  
+  .git-diff-view-container .diff-line-content {
+    padding: 2px 4px;
+  }
+}

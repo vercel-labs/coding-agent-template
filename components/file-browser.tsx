@@ -122,17 +122,17 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
         return (
           <div key={fullPath}>
             <div
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-card/50 cursor-pointer rounded-sm"
+              className="flex items-center gap-2 px-2 md:px-3 py-1.5 hover:bg-card/50 cursor-pointer rounded-sm"
               onClick={() => toggleFolder(fullPath)}
             >
               {isExpanded ? (
-                <FolderOpen className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <FolderOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
               ) : (
-                <Folder className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
               )}
-              <span className="text-sm font-medium">{name}</span>
+              <span className="text-xs md:text-sm font-medium truncate">{name}</span>
             </div>
-            {isExpanded && node.children && <div className="ml-4">{renderFileTree(node.children, fullPath)}</div>}
+            {isExpanded && node.children && <div className="ml-3 md:ml-4">{renderFileTree(node.children, fullPath)}</div>}
           </div>
         )
       } else {
@@ -141,13 +141,13 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
         return (
           <div
             key={fullPath}
-            className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-sm ${
+            className={`flex items-center gap-2 px-2 md:px-3 py-1.5 cursor-pointer rounded-sm ${
               isSelected ? 'bg-card' : 'hover:bg-card/50'
             }`}
             onClick={() => onFileSelect?.(node.filename!)}
           >
-            <File className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-sm flex-1 truncate">{name}</span>
+            <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
             {(node.additions || node.deletions) && (
               <div className="flex items-center gap-1 text-xs flex-shrink-0">
                 {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
@@ -163,22 +163,22 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
   if (!branchName) {
     return (
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b">
-          <h3 className="text-lg font-semibold">Files</h3>
-          <p className="text-sm text-muted-foreground">Task in progress</p>
+        <div className="p-3 md:p-4 border-b">
+          <h3 className="text-base md:text-lg font-semibold">Files</h3>
+          <p className="text-xs md:text-sm text-muted-foreground">Task in progress</p>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center space-y-4">
+        <div className="flex-1 flex items-center justify-center p-4 md:p-6">
+          <div className="text-center space-y-3 md:space-y-4">
             <div className="flex justify-center">
               <div className="flex items-center gap-2 text-amber-500">
-                <Clock className="w-6 h-6" />
-                <GitBranch className="w-6 h-6" />
+                <Clock className="w-5 h-5 md:w-6 md:h-6" />
+                <GitBranch className="w-5 h-5 md:w-6 md:h-6" />
               </div>
             </div>
             <div className="space-y-2">
-              <h4 className="font-medium">Branch Not Created Yet</h4>
-              <p className="text-sm text-muted-foreground max-w-xs">
+              <h4 className="text-sm md:text-base font-medium">Branch Not Created Yet</h4>
+              <p className="text-xs md:text-sm text-muted-foreground max-w-xs px-2 md:px-0">
                 The coding agent is still working on this task. File changes will appear here once the agent creates a
                 branch.
               </p>
@@ -194,13 +194,13 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">Loading files...</div>
+          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">Loading files...</div>
         ) : error ? (
-          <div className="p-4 text-center text-sm text-destructive">{error}</div>
+          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-destructive">{error}</div>
         ) : files.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">No files changed</div>
+          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">No files changed</div>
         ) : (
-          <div>{renderFileTree(fileTree)}</div>
+          <div className="py-2">{renderFileTree(fileTree)}</div>
         )}
       </div>
     </div>

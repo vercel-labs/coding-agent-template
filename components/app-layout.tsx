@@ -46,10 +46,10 @@ export const useTasks = () => {
 
 function SidebarLoader({ width }: { width: number }) {
   return (
-    <div className="h-full border-r bg-muted px-3 pb-3 pt-5.5 overflow-y-auto" style={{ width: `${width}px` }}>
-      <div className="mb-4">
+    <div className="h-full border-r bg-muted px-2 md:px-3 pb-3 pt-3 md:pt-5.5 overflow-y-auto" style={{ width: `${width}px` }}>
+      <div className="mb-3 md:mb-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Tasks</h2>
+          <h2 className="text-sm md:text-base font-semibold">Tasks</h2>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={true} title="Delete Tasks">
               <Trash2 className="h-4 w-4" />
