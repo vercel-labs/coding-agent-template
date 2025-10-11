@@ -54,12 +54,9 @@ export function redactSensitiveInfo(message: string): string {
   })
 
   // Redact JSON field patterns (for teamId, projectId in JSON objects)
-  redacted = redacted.replace(
-    /"(teamId|projectId)"[\s:]*"([^"]+)"/gi,
-    (match, fieldName) => {
-      return `"${fieldName}": "[REDACTED]"`
-    },
-  )
+  redacted = redacted.replace(/"(teamId|projectId)"[\s:]*"([^"]+)"/gi, (match, fieldName) => {
+    return `"${fieldName}": "[REDACTED]"`
+  })
 
   // Redact environment variable assignments with sensitive values
   redacted = redacted.replace(
