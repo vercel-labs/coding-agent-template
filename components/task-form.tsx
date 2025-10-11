@@ -476,102 +476,102 @@ export function TaskForm({
 
                 {/* Buttons - right side */}
                 <div className="flex items-center gap-2">
-                <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full h-8 w-8 p-0 relative"
-                        onClick={() => setShowMcpServersDialog(true)}
-                      >
-                        <Cable className="h-4 w-4" />
-                        {connectors.filter((c) => c.status === 'connected').length > 0 && (
-                          <Badge
-                            variant="secondary"
-                            className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
-                          >
-                            {connectors.filter((c) => c.status === 'connected').length}
-                          </Badge>
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>MCP Servers</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+                  <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DialogTrigger asChild>
-                          <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full h-8 w-8 p-0 relative"
+                          onClick={() => setShowMcpServersDialog(true)}
+                        >
+                          <Cable className="h-4 w-4" />
+                          {connectors.filter((c) => c.status === 'connected').length > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
+                            >
+                              {connectors.filter((c) => c.status === 'connected').length}
+                            </Badge>
+                          )}
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Task Options</p>
+                        <p>MCP Servers</p>
                       </TooltipContent>
                     </Tooltip>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                      <DialogHeader>
-                        <DialogTitle>Task Options</DialogTitle>
-                        <DialogDescription>Configure settings for your task execution.</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-6 py-4 overflow-y-auto flex-1">
-                        <div className="space-y-4">
-                          <h3 className="text-sm font-semibold">Task Settings</h3>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="install-deps"
-                              checked={installDependencies}
-                              onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
-                            />
-                            <Label
-                              htmlFor="install-deps"
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              Install Dependencies?
-                            </Label>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="max-duration" className="text-sm font-medium">
-                              Maximum Duration
-                            </Label>
-                            <Select
-                              value={maxDuration.toString()}
-                              onValueChange={(value) => updateMaxDuration(parseInt(value))}
-                            >
-                              <SelectTrigger id="max-duration" className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1">1 minute</SelectItem>
-                                <SelectItem value="2">2 minutes</SelectItem>
-                                <SelectItem value="3">3 minutes</SelectItem>
-                                <SelectItem value="5">5 minutes</SelectItem>
-                                <SelectItem value="10">10 minutes</SelectItem>
-                                <SelectItem value="15">15 minutes</SelectItem>
-                                <SelectItem value="30">30 minutes</SelectItem>
-                              </SelectContent>
-                            </Select>
+
+                    <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DialogTrigger asChild>
+                            <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Task Options</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <DialogHeader>
+                          <DialogTitle>Task Options</DialogTitle>
+                          <DialogDescription>Configure settings for your task execution.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4 overflow-y-auto flex-1">
+                          <div className="space-y-4">
+                            <h3 className="text-sm font-semibold">Task Settings</h3>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="install-deps"
+                                checked={installDependencies}
+                                onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
+                              />
+                              <Label
+                                htmlFor="install-deps"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                Install Dependencies?
+                              </Label>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="max-duration" className="text-sm font-medium">
+                                Maximum Duration
+                              </Label>
+                              <Select
+                                value={maxDuration.toString()}
+                                onValueChange={(value) => updateMaxDuration(parseInt(value))}
+                              >
+                                <SelectTrigger id="max-duration" className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">1 minute</SelectItem>
+                                  <SelectItem value="2">2 minutes</SelectItem>
+                                  <SelectItem value="3">3 minutes</SelectItem>
+                                  <SelectItem value="5">5 minutes</SelectItem>
+                                  <SelectItem value="10">10 minutes</SelectItem>
+                                  <SelectItem value="15">15 minutes</SelectItem>
+                                  <SelectItem value="30">30 minutes</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </TooltipProvider>
+                      </DialogContent>
+                    </Dialog>
+                  </TooltipProvider>
 
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || !prompt.trim() || !selectedOwner || !selectedRepo}
-                  size="sm"
-                  className="rounded-full h-8 w-8 p-0"
-                >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-                </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || !prompt.trim() || !selectedOwner || !selectedRepo}
+                    size="sm"
+                    className="rounded-full h-8 w-8 p-0"
+                  >
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
             </div>
