@@ -44,6 +44,7 @@ import LinearIcon from '@/components/icons/linear-icon'
 import NotionIcon from '@/components/icons/notion-icon'
 import PlaywrightIcon from '@/components/icons/playwright-icon'
 import SupabaseIcon from '@/components/icons/supabase-icon'
+import VercelIcon from '@/components/icons/vercel-icon'
 
 interface TaskDetailsProps {
   task: Task
@@ -124,6 +125,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [isTryingAgain, setIsTryingAgain] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(task.selectedAgent || 'claude')
   const [selectedModel, setSelectedModel] = useState<string>(task.selectedModel || DEFAULT_MODELS.claude)
+  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(task.previewUrl || null)
+  const [loadingDeployment, setLoadingDeployment] = useState(false)
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
@@ -284,6 +287,41 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     // Use JSON.stringify to create stable dependency - only re-run when IDs actually change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(task.mcpServerIds)])
+
+  // Fetch deployment info when task is completed and has a branch (only if not already cached)
+  useEffect(() => {
+    async function fetchDeployment() {
+      // Skip if we already have a preview URL or task isn't ready
+      if (deploymentUrl || currentStatus !== 'completed' || !task.branchName) {
+        return
+      }
+
+      setLoadingDeployment(true)
+
+      try {
+        const response = await fetch(`/api/tasks/${task.id}/deployment`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data.hasDeployment && result.data.previewUrl) {
+            setDeploymentUrl(result.data.previewUrl)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch deployment info:', error)
+      } finally {
+        setLoadingDeployment(false)
+      }
+    }
+
+    fetchDeployment()
+  }, [task.id, task.branchName, currentStatus, deploymentUrl])
+
+  // Update deploymentUrl when task.previewUrl changes
+  useEffect(() => {
+    if (task.previewUrl && task.previewUrl !== deploymentUrl) {
+      setDeploymentUrl(task.previewUrl)
+    }
+  }, [task.previewUrl, deploymentUrl])
 
   // Fetch all diffs when files list changes
   const fetchAllDiffs = async (filesList: string[]) => {
@@ -630,6 +668,21 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          )}
+
+          {/* Preview Deployment */}
+          {!loadingDeployment && deploymentUrl && (
+            <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+              <VercelIcon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground" />
+              <a
+                href={deploymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground truncate"
+              >
+                Preview
+              </a>
+            </div>
           )}
         </div>
       </div>
