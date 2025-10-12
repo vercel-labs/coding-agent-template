@@ -8,7 +8,7 @@ A template for building AI-powered coding agents that supports Claude Code, Open
 
 You can deploy your own version of the coding agent template to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=VERCEL_TEAM_ID,VERCEL_PROJECT_ID,VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+coding+agent+template.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel)+after+deployment.+Optional+API+keys+can+be+added+later.&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&project-name=coding-agent-template&repository-name=coding-agent-template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=SANDBOX_VERCEL_TEAM_ID,SANDBOX_VERCEL_PROJECT_ID,SANDBOX_VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+coding+agent+template.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel)+after+deployment.+Optional+API+keys+can+be+added+later.&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&project-name=coding-agent-template&repository-name=coding-agent-template)
 
 **What happens during deployment:**
 - **Automatic Database Setup**: A Neon Postgres database is automatically created and connected to your project
@@ -129,9 +129,9 @@ Create a `.env.local` file with your values:
 These are set once by you (the app developer) and are used for core infrastructure:
 
 - `POSTGRES_URL`: Your PostgreSQL connection string (automatically provided when deploying to Vercel via the Neon integration, or set manually for local development)
-- `VERCEL_TOKEN`: Your Vercel API token (for creating sandboxes)
-- `VERCEL_TEAM_ID`: Your Vercel team ID (for sandbox creation)
-- `VERCEL_PROJECT_ID`: Your Vercel project ID (for sandbox creation)
+- `SANDBOX_VERCEL_TOKEN`: Your Vercel API token (for creating sandboxes)
+- `SANDBOX_VERCEL_TEAM_ID`: Your Vercel team ID (for sandbox creation)
+- `SANDBOX_VERCEL_PROJECT_ID`: Your Vercel project ID (for sandbox creation)
 - `JWE_SECRET`: Base64-encoded secret for session encryption (generate with: `openssl rand -base64 32`)
 - `ENCRYPTION_KEY`: 32-byte hex string for encrypting user API keys and tokens (generate with: `openssl rand -hex 32`)
 

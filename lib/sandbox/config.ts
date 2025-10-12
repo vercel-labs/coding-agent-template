@@ -48,16 +48,16 @@ export function validateEnvironmentVariables(
   }
 
   // Check for Vercel sandbox environment variables
-  if (!process.env.VERCEL_TEAM_ID) {
-    errors.push('VERCEL_TEAM_ID is required for sandbox creation')
+  if (!process.env.SANDBOX_VERCEL_TEAM_ID) {
+    errors.push('SANDBOX_VERCEL_TEAM_ID is required for sandbox creation')
   }
 
-  if (!process.env.VERCEL_PROJECT_ID) {
-    errors.push('VERCEL_PROJECT_ID is required for sandbox creation')
+  if (!process.env.SANDBOX_VERCEL_PROJECT_ID) {
+    errors.push('SANDBOX_VERCEL_PROJECT_ID is required for sandbox creation')
   }
 
-  if (!process.env.VERCEL_TOKEN) {
-    errors.push('VERCEL_TOKEN is required for sandbox creation')
+  if (!process.env.SANDBOX_VERCEL_TOKEN) {
+    errors.push('SANDBOX_VERCEL_TOKEN is required for sandbox creation')
   }
 
   return {
