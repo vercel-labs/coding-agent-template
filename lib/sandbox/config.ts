@@ -42,9 +42,9 @@ export function validateEnvironmentVariables(
   }
 
   // Check for GitHub token for private repositories
-  // Use user's token if provided, otherwise fall back to GITHUB_TOKEN
-  if (!githubToken && !process.env.GITHUB_TOKEN) {
-    errors.push('GITHUB_TOKEN is required for repository access. Please connect your GitHub account.')
+  // Use user's token if provided
+  if (!githubToken) {
+    errors.push('GitHub is required for repository access. Please connect your GitHub account.')
   }
 
   // Check for Vercel sandbox environment variables
@@ -67,10 +67,7 @@ export function validateEnvironmentVariables(
 }
 
 export function createAuthenticatedRepoUrl(repoUrl: string, githubToken?: string | null): string {
-  // Use user's token if provided, otherwise fall back to GITHUB_TOKEN
-  const token = githubToken || process.env.GITHUB_TOKEN
-
-  if (!token) {
+  if (!githubToken) {
     return repoUrl
   }
 
@@ -78,7 +75,7 @@ export function createAuthenticatedRepoUrl(repoUrl: string, githubToken?: string
     const url = new URL(repoUrl)
     if (url.hostname === 'github.com') {
       // Add GitHub token for authentication
-      url.username = token
+      url.username = githubToken
       url.password = 'x-oauth-basic'
     }
     return url.toString()

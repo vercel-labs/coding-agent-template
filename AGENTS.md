@@ -32,7 +32,6 @@ console.error('Error occurred:', error)
 - **No exceptions**: This applies to ALL log levels (info, error, success, command, console.log, console.error, console.warn, etc.)
 
 #### Sensitive Data That Must NEVER Appear in Logs:
-- API keys and tokens (ANTHROPIC_API_KEY, OPENAI_API_KEY, GITHUB_TOKEN, etc.)
 - Vercel credentials (VERCEL_TOKEN, VERCEL_TEAM_ID, VERCEL_PROJECT_ID)
 - User IDs and personal information
 - File paths and repository URLs
@@ -120,7 +119,6 @@ Never expose these in logs or to the client:
 - `VERCEL_PROJECT_ID` - Vercel project identifier
 - `ANTHROPIC_API_KEY` - Anthropic/Claude API key
 - `OPENAI_API_KEY` - OpenAI API key
-- `GITHUB_TOKEN` - GitHub API token
 - `JWE_SECRET` - Encryption secret
 - `ENCRYPTION_KEY` - Encryption key
 - Any user-provided API keys

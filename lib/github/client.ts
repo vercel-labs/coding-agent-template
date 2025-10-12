@@ -17,11 +17,3 @@ export async function getOctokit(): Promise<Octokit> {
     auth: userToken || undefined,
   })
 }
-
-/**
- * @deprecated Use getOctokit() instead for per-user authentication
- * Legacy client using GITHUB_TOKEN env var - kept for backwards compatibility
- */
-export const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-})
