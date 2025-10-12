@@ -5,10 +5,7 @@ import { tasks } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getOctokit } from '@/lib/github/client'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> },
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
     if (!session?.user?.id) {
@@ -129,9 +126,7 @@ export async function GET(
           // Look for Vercel check runs - try Preview Comments first as it's more likely to have the URL
           const vercelPreviewCheck = checkRuns.check_runs.find(
             (check) =>
-              check.app?.slug === 'vercel' &&
-              check.name === 'Vercel Preview Comments' &&
-              check.status === 'completed',
+              check.app?.slug === 'vercel' && check.name === 'Vercel Preview Comments' && check.status === 'completed',
           )
 
           const vercelDeploymentCheck = checkRuns.check_runs.find(
@@ -238,9 +233,7 @@ export async function GET(
 
           const vercelStatus = statuses.find(
             (status) =>
-              status.context?.toLowerCase().includes('vercel') &&
-              status.state === 'success' &&
-              status.target_url,
+              status.context?.toLowerCase().includes('vercel') && status.state === 'success' && status.target_url,
           )
 
           if (vercelStatus && vercelStatus.target_url) {
@@ -298,4 +291,3 @@ export async function GET(
     )
   }
 }
-

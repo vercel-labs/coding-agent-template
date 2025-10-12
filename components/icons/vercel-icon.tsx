@@ -5,4 +5,3 @@ export default function VercelIcon({ className = 'h-6 w-6' }: { className?: stri
     </svg>
   )
 }
-
