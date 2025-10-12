@@ -125,7 +125,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [isTryingAgain, setIsTryingAgain] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(task.selectedAgent || 'claude')
   const [selectedModel, setSelectedModel] = useState<string>(task.selectedModel || DEFAULT_MODELS.claude)
-  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null)
+  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(task.previewUrl || null)
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const { refreshTasks } = useTasks()
   const router = useRouter()
@@ -288,10 +288,11 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(task.mcpServerIds)])
 
-  // Fetch deployment info when task is completed and has a branch
+  // Fetch deployment info when task is completed and has a branch (only if not already cached)
   useEffect(() => {
     async function fetchDeployment() {
-      if (currentStatus !== 'completed' || !task.branchName) {
+      // Skip if we already have a preview URL or task isn't ready
+      if (deploymentUrl || currentStatus !== 'completed' || !task.branchName) {
         return
       }
 
@@ -313,7 +314,14 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
 
     fetchDeployment()
-  }, [task.id, task.branchName, currentStatus])
+  }, [task.id, task.branchName, currentStatus, deploymentUrl])
+
+  // Update deploymentUrl when task.previewUrl changes
+  useEffect(() => {
+    if (task.previewUrl && task.previewUrl !== deploymentUrl) {
+      setDeploymentUrl(task.previewUrl)
+    }
+  }, [task.previewUrl, deploymentUrl])
 
   // Fetch all diffs when files list changes
   const fetchAllDiffs = async (filesList: string[]) => {

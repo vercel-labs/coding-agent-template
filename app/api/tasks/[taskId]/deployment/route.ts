@@ -27,6 +27,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
 
+    // Return cached preview URL if available
+    if (task.previewUrl) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          hasDeployment: true,
+          previewUrl: task.previewUrl,
+          cached: true,
+        },
+      })
+    }
+
     // Return early if no branch or repo
     if (!task.branchName || !task.repoUrl) {
       return NextResponse.json({
@@ -75,8 +87,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           branch: task.branchName,
         })
         latestCommitSha = branch.commit.sha
-      } catch (branchError: any) {
-        if (branchError.status === 404) {
+      } catch (branchError) {
+        if (branchError && typeof branchError === 'object' && 'status' in branchError && branchError.status === 404) {
           return NextResponse.json({
             success: true,
             data: {
@@ -99,7 +111,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           })
 
           // Helper function to extract preview URL from check output
-          const extractPreviewUrl = (check: any): string | null => {
+          const extractPreviewUrl = (check: {
+            output?: { summary?: string | null; text?: string | null } | null
+          }): string | null => {
             // Check output summary for deployment URL
             if (check.output?.summary) {
               const summary = check.output.summary
@@ -153,6 +167,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           }
 
           if (previewUrl) {
+            // Store the preview URL in the database
+            await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
+
             return NextResponse.json({
               success: true,
               data: {
@@ -200,6 +217,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 if (status.state === 'success') {
                   const previewUrl = status.environment_url || status.target_url
                   if (previewUrl) {
+                    // Store the preview URL in the database
+                    await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
+
                     return NextResponse.json({
                       success: true,
                       data: {
@@ -236,6 +256,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           )
 
           if (vercelStatus && vercelStatus.target_url) {
+            // Store the preview URL in the database
+            await db.update(tasks).set({ previewUrl: vercelStatus.target_url }).where(eq(tasks.id, taskId))
+
             return NextResponse.json({
               success: true,
               data: {
@@ -258,11 +281,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           message: 'No successful Vercel deployment found',
         },
       })
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching deployment status:', error)
 
       // Return graceful response for common errors
-      if (error.status === 404) {
+      if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
         return NextResponse.json({
           success: true,
           data: {

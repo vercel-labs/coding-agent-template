@@ -227,6 +227,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       error: null,
       branchName: null,
       sandboxUrl: null,
+      previewUrl: null,
       mcpServerIds: null,
       createdAt: new Date(),
       updatedAt: new Date(),
