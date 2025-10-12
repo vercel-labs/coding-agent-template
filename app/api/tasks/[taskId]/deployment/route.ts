@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { getOctokit } from '@/lib/github/client'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
@@ -15,17 +15,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { taskId } = await params
 
     // Get task from database
-    const task = await db.query.tasks.findFirst({
-      where: eq(tasks.id, taskId),
-    })
+    const taskResult = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .limit(1)
+
+    const task = taskResult[0]
 
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
-    }
-
-    // Verify task belongs to user
-    if (task.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Return early if no branch or repo
