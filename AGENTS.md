@@ -32,7 +32,7 @@ console.error('Error occurred:', error)
 - **No exceptions**: This applies to ALL log levels (info, error, success, command, console.log, console.error, console.warn, etc.)
 
 #### Sensitive Data That Must NEVER Appear in Logs:
-- Vercel credentials (VERCEL_TOKEN, VERCEL_TEAM_ID, VERCEL_PROJECT_ID)
+- Vercel credentials (SANDBOX_VERCEL_TOKEN, SANDBOX_VERCEL_TEAM_ID, SANDBOX_VERCEL_PROJECT_ID)
 - User IDs and personal information
 - File paths and repository URLs
 - Branch names and commit messages
@@ -46,7 +46,7 @@ The `redactSensitiveInfo()` function in `lib/utils/logging.ts` automatically red
 #### Current Redaction Patterns:
 - API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)
 - GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_)
-- Vercel credentials (VERCEL_TOKEN, VERCEL_TEAM_ID, VERCEL_PROJECT_ID)
+- Vercel credentials (SANDBOX_VERCEL_TOKEN, SANDBOX_VERCEL_TEAM_ID, SANDBOX_VERCEL_PROJECT_ID)
 - Bearer tokens
 - JSON fields (teamId, projectId)
 - Environment variables containing KEY, TOKEN, SECRET, PASSWORD, TEAM_ID, PROJECT_ID
@@ -114,9 +114,9 @@ When making changes that involve logging:
 ### Environment Variables
 
 Never expose these in logs or to the client:
-- `VERCEL_TOKEN` - Vercel API token
-- `VERCEL_TEAM_ID` - Vercel team identifier
-- `VERCEL_PROJECT_ID` - Vercel project identifier
+- `SANDBOX_VERCEL_TOKEN` - Vercel API token
+- `SANDBOX_VERCEL_TEAM_ID` - Vercel team identifier
+- `SANDBOX_VERCEL_PROJECT_ID` - Vercel project identifier
 - `ANTHROPIC_API_KEY` - Anthropic/Claude API key
 - `OPENAI_API_KEY` - OpenAI API key
 - `JWE_SECRET` - Encryption secret

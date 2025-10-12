@@ -62,9 +62,9 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
     // Create sandbox with proper source configuration
     const sandboxConfig = {
-      teamId: process.env.VERCEL_TEAM_ID!,
-      projectId: process.env.VERCEL_PROJECT_ID!,
-      token: process.env.VERCEL_TOKEN!,
+      teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
+      projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
+      token: process.env.SANDBOX_VERCEL_TOKEN!,
       source: {
         type: 'git' as const,
         url: authenticatedRepoUrl,
