@@ -340,27 +340,6 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.info('Git repository detected')
     }
 
-    // Add debugging information about Git state
-    await logger.info('Debugging Git repository state')
-    const gitStatusDebug = await runCommandInSandbox(sandbox, 'git', ['status', '--porcelain'])
-    await logger.info('Git status checked')
-
-    const gitBranchDebug = await runCommandInSandbox(sandbox, 'git', ['branch', '-a'])
-    await logger.info('Git branches checked')
-
-    const gitRemoteDebug = await runCommandInSandbox(sandbox, 'git', ['remote', '-v'])
-    await logger.info('Git remotes checked')
-
-    // Configure Git to use GitHub token for authentication
-    if (process.env.GITHUB_TOKEN) {
-      await logger.info('Configuring Git authentication with GitHub token')
-      await runCommandInSandbox(sandbox, 'git', ['config', 'credential.helper', 'store'])
-
-      // Create credentials file with GitHub token
-      const credentialsContent = `https://${process.env.GITHUB_TOKEN}:x-oauth-basic@github.com`
-      await runCommandInSandbox(sandbox, 'sh', ['-c', `echo "${credentialsContent}" > ~/.git-credentials`])
-    }
-
     let branchName: string
 
     if (config.existingBranchName) {
