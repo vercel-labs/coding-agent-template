@@ -293,7 +293,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
     >
       <ConnectorsProvider>
         <div
-          className="h-screen flex relative"
+          className="h-dvh flex relative"
           style={
             {
               '--sidebar-width': `${sidebarWidth}px`,
