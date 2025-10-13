@@ -357,7 +357,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             method: 'POST',
           })
           const result = await response.json()
-          
+
           if (response.ok && result.success && result.data.status) {
             // Update local state if status changed
             if (result.data.status !== prStatus) {
@@ -587,18 +587,22 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               <Square className="h-3.5 w-3.5 md:h-4 md:w-4" fill="currentColor" />
             </Button>
           )}
-          {currentStatus === 'completed' && task.repoUrl && task.branchName && prStatus !== 'merged' && prStatus !== 'closed' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenPR}
-              className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
-              title={prUrl ? 'Merge PR' : 'Create PR'}
-            >
-              <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-              <span className="text-xs md:text-sm">{prUrl ? 'Merge PR' : 'Open PR'}</span>
-            </Button>
-          )}
+          {currentStatus === 'completed' &&
+            task.repoUrl &&
+            task.branchName &&
+            prStatus !== 'merged' &&
+            prStatus !== 'closed' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenPR}
+                className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
+                title={prUrl ? 'Merge PR' : 'Create PR'}
+              >
+                <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                <span className="text-xs md:text-sm">{prUrl ? 'Merge PR' : 'Open PR'}</span>
+              </Button>
+            )}
           <Button
             variant="ghost"
             size="sm"

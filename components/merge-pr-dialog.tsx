@@ -98,4 +98,3 @@ export function MergePRDialog({ taskId, prUrl, prNumber, open, onOpenChange, onP
     </Dialog>
   )
 }
-

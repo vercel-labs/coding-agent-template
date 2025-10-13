@@ -27,7 +27,7 @@ export function parseGitHubUrl(repoUrl: string): { owner: string; repo: string }
     // HTTPS: https://github.com/owner/repo.git
     // SSH: git@github.com:owner/repo.git
     let match = repoUrl.match(/github\.com[/:]([\w-]+)\/([\w-]+?)(\.git)?$/)
-    
+
     if (match) {
       return {
         owner: match[1],
@@ -64,7 +64,7 @@ export async function createPullRequest(params: CreatePullRequestParams): Promis
 
   try {
     const octokit = await getOctokit()
-    
+
     // Check if user has connected GitHub
     if (!octokit.auth) {
       return {
@@ -101,7 +101,7 @@ export async function createPullRequest(params: CreatePullRequestParams): Promis
     }
   } catch (error: unknown) {
     console.error('Error creating pull request:', error)
-    
+
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {
       const status = (error as { status: number }).status
@@ -166,7 +166,7 @@ export async function mergePullRequest(params: MergePullRequestParams): Promise<
 
   try {
     const octokit = await getOctokit()
-    
+
     // Check if user has connected GitHub
     if (!octokit.auth) {
       return {
@@ -203,7 +203,7 @@ export async function mergePullRequest(params: MergePullRequestParams): Promise<
     }
   } catch (error: unknown) {
     console.error('Error merging pull request:', error)
-    
+
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {
       const status = (error as { status: number }).status
@@ -248,7 +248,7 @@ export async function getPullRequestStatus(params: GetPullRequestStatusParams): 
 
   try {
     const octokit = await getOctokit()
-    
+
     // Check if user has connected GitHub
     if (!octokit.auth) {
       return {
@@ -291,7 +291,7 @@ export async function getPullRequestStatus(params: GetPullRequestStatusParams): 
     }
   } catch (error: unknown) {
     console.error('Error getting pull request status:', error)
-    
+
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {
       const status = (error as { status: number }).status

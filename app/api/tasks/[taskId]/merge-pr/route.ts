@@ -72,4 +72,3 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Failed to merge pull request' }, { status: 500 })
   }
 }
-
