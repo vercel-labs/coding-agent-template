@@ -2,11 +2,11 @@
 
 /**
  * Production Database Migration Script
- * 
+ *
  * This script runs database migrations using Drizzle Kit CLI.
  * It only executes in Vercel's production environment to ensure
  * that schema changes are applied when deploying to production.
- * 
+ *
  * Environment Detection:
  * - VERCEL_ENV=production -> Runs migrations
  * - Any other environment -> Skips migrations
@@ -31,9 +31,9 @@ try {
 
   // Run migrations using Drizzle Kit CLI
   // Using 'inherit' to show migration output in build logs
-  execSync('npx drizzle-kit migrate', { 
+  execSync('npx drizzle-kit migrate', {
     stdio: 'inherit',
-    env: process.env 
+    env: process.env,
   })
 
   console.log('✓ Database migrations completed successfully')
@@ -42,4 +42,3 @@ try {
   console.error('✗ Migration failed:', error)
   process.exit(1)
 }
-
