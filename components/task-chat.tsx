@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowUp, Loader2, Copy, Check } from 'lucide-react'
+import { ArrowUp, Loader2, Copy, Check, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Streamdown } from 'streamdown'
 
@@ -192,6 +192,38 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     }
   }
 
+  const handleRetryMessage = async (content: string) => {
+    if (isSending) return
+
+    setIsSending(true)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/continue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: content,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Refresh messages to show the new user message without loading state
+        await fetchMessages(false)
+      } else {
+        toast.error(data.error || 'Failed to resend message')
+      }
+    } catch (err) {
+      console.error('Error resending message:', err)
+      toast.error('Failed to resend message')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
   const parseAgentMessage = (content: string): string => {
     try {
       const parsed = JSON.parse(content)
@@ -268,18 +300,27 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                     <Streamdown>{message.content}</Streamdown>
                   </div>
                 </Card>
-                <div className="flex items-center gap-1 pl-1">
+                <div className="flex items-center gap-0.5 pr-1 justify-end">
+                  {!hasAgentResponse(message.createdAt) && isLatestUserMessage(message.createdAt) && (
+                    <div className="text-xs text-muted-foreground font-mono mr-auto pl-4 opacity-30">{formatDuration(message.createdAt)}</div>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 opacity-50 hover:opacity-100"
+                    className="h-5 w-5 opacity-30 hover:opacity-70"
                     onClick={() => handleCopyMessage(message.id, message.content)}
                   >
-                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    {copiedMessageId === message.id ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
                   </Button>
-                  {!hasAgentResponse(message.createdAt) && isLatestUserMessage(message.createdAt) && (
-                    <div className="text-xs text-muted-foreground font-mono">{formatDuration(message.createdAt)}</div>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 opacity-30 hover:opacity-70"
+                    onClick={() => handleRetryMessage(message.content)}
+                    disabled={isSending}
+                  >
+                    <RotateCcw className="h-2.5 w-2.5" />
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -287,14 +328,14 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                 <div className="text-sm text-muted-foreground">
                   <Streamdown>{parseAgentMessage(message.content)}</Streamdown>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 justify-end">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 opacity-50 hover:opacity-100"
+                    className="h-5 w-5 opacity-30 hover:opacity-70"
                     onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
                   >
-                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    {copiedMessageId === message.id ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
                   </Button>
                 </div>
               </div>
