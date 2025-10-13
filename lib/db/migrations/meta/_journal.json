@@ -92,6 +92,20 @@
       "when": 1760236167307,
       "tag": "0012_burly_captain_britain",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1760334756179,
+      "tag": "0013_regular_warbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1760335246689,
+      "tag": "0014_mixed_prism",
+      "breakpoints": true
     }
   ]
 }

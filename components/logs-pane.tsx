@@ -169,9 +169,9 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
       )}
 
       <div className="flex flex-col h-full border-t">
-        <div className="border-b flex items-center justify-between flex-shrink-0">
+        <div className="border-b flex items-center justify-between flex-shrink-0 hover:bg-accent/50">
           <div
-            className="flex items-center gap-1.5 py-1.5 px-3 flex-1 cursor-pointer hover:bg-accent/50"
+            className="flex items-center gap-1.5 py-1.5 px-3 flex-1 cursor-pointer"
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
             <div className="h-5 w-5 flex items-center justify-center">
