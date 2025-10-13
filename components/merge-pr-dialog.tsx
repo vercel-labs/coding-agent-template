@@ -87,7 +87,11 @@ export function MergePRDialog({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="mergeMethod">Merge Method</Label>
-            <Select value={mergeMethod} onValueChange={(value: any) => setMergeMethod(value)} disabled={isMerging}>
+            <Select
+              value={mergeMethod}
+              onValueChange={(value: 'squash' | 'merge' | 'rebase') => setMergeMethod(value)}
+              disabled={isMerging}
+            >
               <SelectTrigger id="mergeMethod">
                 <SelectValue />
               </SelectTrigger>

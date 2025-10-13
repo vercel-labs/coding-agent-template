@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       prNumber: task.prNumber,
     })
 
-    if (!result.success) {
+    if (!result.success || !result.status) {
       return NextResponse.json({ error: result.error || 'Failed to get PR status' }, { status: 500 })
     }
 

@@ -26,7 +26,7 @@ export function parseGitHubUrl(repoUrl: string): { owner: string; repo: string }
     // Handle both HTTPS and SSH URLs
     // HTTPS: https://github.com/owner/repo.git
     // SSH: git@github.com:owner/repo.git
-    let match = repoUrl.match(/github\.com[/:]([\w-]+)\/([\w-]+?)(\.git)?$/)
+    const match = repoUrl.match(/github\.com[/:]([\w-]+)\/([\w-]+?)(\.git)?$/)
 
     if (match) {
       return {
