@@ -11,7 +11,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     return Response.redirect(new URL('/', req.url))
   }
 
-  const clientId = process.env.GITHUB_CLIENT_ID
+  const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
   const redirectUri = `${req.nextUrl.origin}/api/auth/github/callback`
 
   if (!clientId) {
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const clientId = process.env.GITHUB_CLIENT_ID
+  const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
   const redirectUri = `${req.nextUrl.origin}/api/auth/github/callback`
 
   if (!clientId) {

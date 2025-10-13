@@ -5,7 +5,7 @@ import { CodeChallengeMethod, OAuth2Client, generateCodeVerifier, generateState 
 
 export async function POST(req: NextRequest): Promise<Response> {
   const client = new OAuth2Client(
-    process.env.VERCEL_CLIENT_ID ?? '',
+    process.env.NEXT_PUBLIC_VERCEL_CLIENT_ID ?? '',
     process.env.VERCEL_CLIENT_SECRET ?? '',
     `${req.nextUrl.origin}/api/auth/callback/vercel`,
   )

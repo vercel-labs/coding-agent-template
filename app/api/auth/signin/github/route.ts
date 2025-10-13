@@ -8,7 +8,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   // Check if user is already authenticated with Vercel
   const session = await getSessionFromReq(req)
 
-  const clientId = process.env.GITHUB_CLIENT_ID
+  const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
   const redirectUri = `${req.nextUrl.origin}/api/auth/github/callback`
 
   if (!clientId) {
