@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { File, Folder, FolderOpen, Clock, GitBranch } from 'lucide-react'
 
 interface FileChange {
@@ -27,20 +27,15 @@ interface FileBrowserProps {
   onFileSelect?: (filename: string) => void
   onFilesLoaded?: (filenames: string[]) => void
   selectedFile?: string
+  refreshKey?: number
 }
 
-export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, selectedFile }: FileBrowserProps) {
+export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, selectedFile, refreshKey }: FileBrowserProps) {
   const [files, setFiles] = useState<FileChange[]>([])
   const [fileTree, setFileTree] = useState<{ [key: string]: FileTreeNode }>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    if (branchName) {
-      fetchBranchFiles()
-    }
-  }, [taskId, branchName])
 
   // Helper function to recursively collect all folder paths
   const getAllFolderPaths = (tree: { [key: string]: FileTreeNode }, basePath = ''): string[] => {
@@ -60,7 +55,7 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
     return paths
   }
 
-  const fetchBranchFiles = async () => {
+  const fetchBranchFiles = useCallback(async () => {
     if (!branchName) return
 
     setLoading(true)
@@ -92,7 +87,13 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
     } finally {
       setLoading(false)
     }
-  }
+  }, [branchName, taskId, onFilesLoaded])
+
+  useEffect(() => {
+    if (branchName) {
+      fetchBranchFiles()
+    }
+  }, [branchName, fetchBranchFiles, refreshKey])
 
   const toggleFolder = (path: string) => {
     const newExpanded = new Set(expandedFolders)

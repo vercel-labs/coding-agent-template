@@ -1,23 +1,26 @@
 'use client'
 
-import { TaskMessage } from '@/lib/db/schema'
+import { TaskMessage, Task } from '@/lib/db/schema'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowUp, Loader2 } from 'lucide-react'
+import { ArrowUp, Loader2, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TaskChatProps {
   taskId: string
+  task: Task
 }
 
-export function TaskChat({ taskId }: TaskChatProps) {
+export function TaskChat({ taskId, task }: TaskChatProps) {
   const [messages, setMessages] = useState<TaskMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Date.now())
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -67,6 +70,45 @@ export function TaskChat({ taskId }: TaskChatProps) {
     scrollToBottom()
   }, [messages])
 
+  // Timer for duration display
+  useEffect(() => {
+    if (task.status === 'processing' || task.status === 'pending') {
+      const interval = setInterval(() => {
+        setCurrentTime(Date.now())
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [task.status])
+
+  const hasAgentResponse = (messageCreatedAt: Date) => {
+    const startTime = new Date(messageCreatedAt).getTime()
+    const messageIndex = messages.findIndex((m) => new Date(m.createdAt).getTime() === startTime)
+    const nextAgentMessage = messages.slice(messageIndex + 1).find((m) => m.role === 'agent')
+    return !!nextAgentMessage
+  }
+
+  const formatDuration = (messageCreatedAt: Date) => {
+    const startTime = new Date(messageCreatedAt).getTime()
+    
+    // Find the next agent message after this user message
+    const messageIndex = messages.findIndex((m) => new Date(m.createdAt).getTime() === startTime)
+    const nextAgentMessage = messages.slice(messageIndex + 1).find((m) => m.role === 'agent')
+    
+    const endTime = nextAgentMessage 
+      ? new Date(nextAgentMessage.createdAt).getTime() 
+      : task.completedAt 
+      ? new Date(task.completedAt).getTime() 
+      : currentTime
+    
+    const durationMs = endTime - startTime
+    const durationSeconds = Math.floor(durationMs / 1000)
+
+    const minutes = Math.floor(durationSeconds / 60)
+    const seconds = durationSeconds % 60
+
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isSending) return
 
@@ -88,7 +130,6 @@ export function TaskChat({ taskId }: TaskChatProps) {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Message sent! Task is processing...')
         // Refresh messages to show the new user message without loading state
         await fetchMessages(false)
       } else {
@@ -108,6 +149,31 @@ export function TaskChat({ taskId }: TaskChatProps) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
+    }
+  }
+
+  const handleCopyMessage = async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopiedMessageId(messageId)
+      setTimeout(() => setCopiedMessageId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy message:', err)
+      toast.error('Failed to copy message')
+    }
+  }
+
+  const parseAgentMessage = (content: string): string => {
+    try {
+      const parsed = JSON.parse(content)
+      // Check if it's a Cursor agent response with a result field
+      if (parsed && typeof parsed === 'object' && 'result' in parsed && typeof parsed.result === 'string') {
+        return parsed.result
+      }
+      return content
+    } catch {
+      // Not valid JSON, return as-is
+      return content
     }
   }
 
@@ -167,11 +233,50 @@ export function TaskChat({ taskId }: TaskChatProps) {
         {messages.map((message) => (
           <div key={message.id}>
             {message.role === 'user' ? (
-              <Card className="p-4 bg-muted border-0">
-                <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-              </Card>
+              <div className="space-y-1">
+                <Card className="p-4 bg-muted border-0">
+                  <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                </Card>
+                <div className="flex items-center gap-1 pl-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-50 hover:opacity-100"
+                    onClick={() => handleCopyMessage(message.id, message.content)}
+                  >
+                    {copiedMessageId === message.id ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>
+                  {!hasAgentResponse(message.createdAt) && (
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {formatDuration(message.createdAt)}
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
-              <div className="text-sm whitespace-pre-wrap break-words text-muted-foreground">{message.content}</div>
+              <div className="space-y-1">
+                <div className="text-sm whitespace-pre-wrap break-words text-muted-foreground">
+                  {parseAgentMessage(message.content)}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-50 hover:opacity-100"
+                    onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
+                  >
+                    {copiedMessageId === message.id ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         ))}

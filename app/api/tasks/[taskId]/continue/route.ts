@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { db } from '@/lib/db/client'
 import { tasks, taskMessages, connectors } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, asc } from 'drizzle-orm'
 import { generateId } from '@/lib/utils/id'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { Sandbox } from '@vercel/sandbox'
@@ -166,6 +166,28 @@ async function continueTask(
     await logger.updateProgress(50, 'Executing agent with follow-up message')
     console.log('Starting agent execution')
 
+    // Fetch the last 5 messages for context (excluding the current message we just saved)
+    const previousMessages = await db
+      .select()
+      .from(taskMessages)
+      .where(eq(taskMessages.taskId, taskId))
+      .orderBy(asc(taskMessages.createdAt))
+      .limit(10) // Get last 10 to ensure we have at least 5 before the current one
+    
+    // Get the last 5 messages before the current one (which is the last message)
+    const contextMessages = previousMessages.slice(-6, -1) // Last 6 excluding the very last one, giving us 5 messages
+    
+    // Build conversation history context - put the new request FIRST, then context
+    let promptWithContext = prompt
+    if (contextMessages.length > 0) {
+      let conversationHistory = '\n\n---\n\nFor context, here is the conversation history from this session:\n\n'
+      contextMessages.forEach((msg) => {
+        const role = msg.role === 'user' ? 'User' : 'Assistant'
+        conversationHistory += `${role}: ${msg.content}\n\n`
+      })
+      promptWithContext = `${prompt}${conversationHistory}`
+    }
+
     type Connector = typeof connectors.$inferSelect
 
     let mcpServers: Connector[] = []
@@ -203,7 +225,7 @@ async function continueTask(
 
     const agentResult = await executeAgentInSandbox(
       sandbox,
-      prompt,
+      promptWithContext,
       selectedAgent as AgentType,
       logger,
       selectedModel,

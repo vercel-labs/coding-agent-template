@@ -18,11 +18,10 @@ import {
   XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
-import { TaskDuration } from '@/components/task-duration'
 import { FileBrowser } from '@/components/file-browser'
 import { FileDiffViewer } from '@/components/file-diff-viewer'
 import { CreatePRDialog } from '@/components/create-pr-dialog'
@@ -125,6 +124,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const loadingDiffsRef = useRef(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const previousStatusRef = useRef<Task['status']>(task.status)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showTryAgainDialog, setShowTryAgainDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -425,38 +426,60 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   }, [task.prNumber])
 
   // Fetch all diffs when files list changes
-  const fetchAllDiffs = async (filesList: string[]) => {
-    if (!filesList.length || loadingDiffsRef.current) return
+  const fetchAllDiffs = useCallback(
+    async (filesList: string[]) => {
+      if (!filesList.length || loadingDiffsRef.current) return
 
-    loadingDiffsRef.current = true
-    const newDiffsCache: Record<string, DiffData> = {}
+      loadingDiffsRef.current = true
+      const newDiffsCache: Record<string, DiffData> = {}
 
-    try {
-      // Fetch all diffs in parallel
-      const diffPromises = filesList.map(async (filename) => {
-        try {
-          const params = new URLSearchParams()
-          params.set('filename', filename)
+      try {
+        // Fetch all diffs in parallel
+        const diffPromises = filesList.map(async (filename) => {
+          try {
+            const params = new URLSearchParams()
+            params.set('filename', filename)
 
-          const response = await fetch(`/api/tasks/${task.id}/diff?${params.toString()}`)
-          const result = await response.json()
+            const response = await fetch(`/api/tasks/${task.id}/diff?${params.toString()}`)
+            const result = await response.json()
 
-          if (response.ok && result.success) {
-            newDiffsCache[filename] = result.data
+            if (response.ok && result.success) {
+              newDiffsCache[filename] = result.data
+            }
+          } catch (err) {
+            console.error('Error fetching diff for file:', err)
           }
-        } catch (err) {
-          console.error('Error fetching diff for file:', err)
-        }
-      })
+        })
 
-      await Promise.all(diffPromises)
-      setDiffsCache(newDiffsCache)
-    } catch (error) {
-      console.error('Error fetching diffs:', error)
-    } finally {
-      loadingDiffsRef.current = false
+        await Promise.all(diffPromises)
+        setDiffsCache(newDiffsCache)
+      } catch (error) {
+        console.error('Error fetching diffs:', error)
+      } finally {
+        loadingDiffsRef.current = false
+      }
+    },
+    [task.id],
+  )
+
+  // Trigger refresh when task completes
+  useEffect(() => {
+    const currentStatus = optimisticStatus || task.status
+    const previousStatus = previousStatusRef.current
+
+    // If task transitions from processing/pending to completed/error/stopped, trigger refresh
+    if (
+      (previousStatus === 'processing' || previousStatus === 'pending') &&
+      (currentStatus === 'completed' || currentStatus === 'error' || currentStatus === 'stopped')
+    ) {
+      setRefreshKey((prev) => prev + 1)
+      // Clear diffs cache to force reload
+      setDiffsCache({})
+      setSelectedFile(undefined)
     }
-  }
+
+    previousStatusRef.current = currentStatus
+  }, [task.status, optimisticStatus])
 
   // Update model when agent changes
   useEffect(() => {
@@ -838,18 +861,19 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
         {/* Compact info row */}
         <div className="flex items-center gap-2 md:gap-4 flex-wrap text-xs md:text-sm">
-          {/* Status + Duration */}
+          {/* Status */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={cn('flex items-center gap-2 cursor-help', getStatusColor(currentStatus))}>
                   {getStatusIcon(currentStatus)}
-                  <span className="text-muted-foreground">
-                    <TaskDuration task={task} hideTitle={true} />
-                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="space-y-1">
+                <div>
+                  <span className="font-medium">Status:</span>{' '}
+                  <span className="text-muted-foreground capitalize">{currentStatus}</span>
+                </div>
                 <div>
                   <span className="font-medium">Created:</span>{' '}
                   <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
@@ -1019,6 +1043,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               onFileSelect={setSelectedFile}
               onFilesLoaded={fetchAllDiffs}
               selectedFile={selectedFile}
+              refreshKey={refreshKey}
             />
           </div>
 
@@ -1037,7 +1062,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
           {/* Chat */}
           <div className="w-full md:w-1/4 h-64 md:h-auto min-h-0 flex-shrink-0">
-            <TaskChat taskId={task.id} />
+            <TaskChat taskId={task.id} task={task} />
           </div>
         </div>
       ) : null}
