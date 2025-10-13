@@ -221,9 +221,7 @@ export function FileBrowser({
             size="sm"
             onClick={() => onViewModeChange?.('changes')}
             className={`h-6 px-2 text-xs rounded-sm ${
-              viewMode === 'changes'
-                ? 'bg-background shadow-sm'
-                : 'hover:bg-transparent hover:text-foreground'
+              viewMode === 'changes' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
             }`}
           >
             Changes
@@ -233,9 +231,7 @@ export function FileBrowser({
             size="sm"
             onClick={() => onViewModeChange?.('all')}
             className={`h-6 px-2 text-xs rounded-sm ${
-              viewMode === 'all'
-                ? 'bg-background shadow-sm'
-                : 'hover:bg-transparent hover:text-foreground'
+              viewMode === 'all' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
             }`}
           >
             All Files
