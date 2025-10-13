@@ -129,7 +129,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
         ? new Date(task.completedAt).getTime()
         : currentTime
 
-    const durationMs = endTime - startTime
+    const durationMs = Math.max(0, endTime - startTime) // Ensure non-negative
     const durationSeconds = Math.floor(durationMs / 1000)
 
     const minutes = Math.floor(durationSeconds / 60)

@@ -182,8 +182,15 @@ async function continueTask(
     if (contextMessages.length > 0) {
       let conversationHistory = '\n\n---\n\nFor context, here is the conversation history from this session:\n\n'
       contextMessages.forEach((msg) => {
-        const role = msg.role === 'user' ? 'User' : 'Assistant'
-        conversationHistory += `${role}: ${msg.content}\n\n`
+        const role = msg.role === 'user' ? 'User' : 'A'
+        // Escape special characters and limit length to avoid shell parsing issues
+        const truncatedContent = msg.content.length > 500 ? msg.content.substring(0, 500) + '...' : msg.content
+        // Remove problematic characters that could cause shell parsing issues
+        const sanitizedContent = truncatedContent
+          .replace(/`/g, "'") // Replace backticks with single quotes
+          .replace(/\$/g, '') // Remove dollar signs
+          .replace(/\\/g, '') // Remove backslashes
+        conversationHistory += `${role}: ${sanitizedContent}\n\n`
       })
       promptWithContext = `${prompt}${conversationHistory}`
     }
