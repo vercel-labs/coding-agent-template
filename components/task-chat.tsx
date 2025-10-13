@@ -91,11 +91,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     // Find the last user message in the list
     const userMessages = messages.filter((m) => m.role === 'user')
     if (userMessages.length === 0) return false
-    
+
     const lastUserMessage = userMessages[userMessages.length - 1]
     const lastUserTime = new Date(lastUserMessage.createdAt).getTime()
     const thisMessageTime = new Date(messageCreatedAt).getTime()
-    
+
     return lastUserTime === thisMessageTime
   }
 

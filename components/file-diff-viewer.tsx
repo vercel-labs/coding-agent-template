@@ -100,7 +100,7 @@ export function FileDiffViewer({
       try {
         const params = new URLSearchParams()
         params.set('filename', selectedFile)
-        
+
         // In "all" mode, fetch file content directly; in "changes" mode, fetch diff
         const endpoint = viewMode === 'all' ? `/api/tasks/${taskId}/file-content` : `/api/tasks/${taskId}/diff`
         const response = await fetch(`${endpoint}?${params.toString()}`)

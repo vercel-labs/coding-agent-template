@@ -120,7 +120,7 @@ async function getFileContent(
           isBase64: true,
         }
       }
-      
+
       // For text files, decode from base64
       return {
         content: Buffer.from(response.data.content, 'base64').toString('utf-8'),
@@ -246,4 +246,3 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     )
   }
 }
-
