@@ -164,7 +164,7 @@ NEXT_PUBLIC_AUTH_PROVIDERS=github,vercel
 ##### Provider Configuration
 
 **Option 1: Sign in with Vercel** (if `vercel` is in `NEXT_PUBLIC_AUTH_PROVIDERS`)
-- `VERCEL_CLIENT_ID`: Your Vercel OAuth app client ID
+- `NEXT_PUBLIC_VERCEL_CLIENT_ID`: Your Vercel OAuth app client ID (exposed to client)
 - `VERCEL_CLIENT_SECRET`: Your Vercel OAuth app client secret
 
 **Option 2: Sign in with GitHub** (if `github` is in `NEXT_PUBLIC_AUTH_PROVIDERS`)
@@ -224,7 +224,7 @@ Based on your `NEXT_PUBLIC_AUTH_PROVIDERS` configuration, you'll need to create 
 2. Navigate to Settings → Integrations → Create
 3. Configure the integration:
    - **Redirect URL**: `http://localhost:3000/api/auth/callback/vercel`
-4. Copy the **Client ID** → use for `VERCEL_CLIENT_ID`
+4. Copy the **Client ID** → use for `NEXT_PUBLIC_VERCEL_CLIENT_ID`
 5. Copy the **Client Secret** → use for `VERCEL_CLIENT_SECRET`
 
 > **Production Deployment**: Remember to add production callback URLs when deploying (e.g., `https://yourdomain.com/api/auth/github/callback`)
@@ -347,7 +347,7 @@ This release introduces **user authentication** and **major security improvement
    
    - **New OAuth Configuration (at least one required):**
      - GitHub: `NEXT_PUBLIC_GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
-     - Vercel: `VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`
+     - Vercel: `NEXT_PUBLIC_VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`
    
    - **Changed Authentication:**
      - `GITHUB_TOKEN` no longer used as fallback in API routes
@@ -387,7 +387,7 @@ NEXT_PUBLIC_GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 
 # Vercel OAuth (if using Vercel authentication)
-VERCEL_CLIENT_ID=your_vercel_client_id
+NEXT_PUBLIC_VERCEL_CLIENT_ID=your_vercel_client_id
 VERCEL_CLIENT_SECRET=your_vercel_client_secret
 ```
 

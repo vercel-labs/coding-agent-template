@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
             body: new URLSearchParams({ token: tokenData.accessToken }),
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
-              Authorization: `Basic ${Buffer.from(`${process.env.VERCEL_CLIENT_ID}:${process.env.VERCEL_CLIENT_SECRET}`).toString('base64')}`,
+              Authorization: `Basic ${Buffer.from(`${process.env.NEXT_PUBLIC_VERCEL_CLIENT_ID}:${process.env.VERCEL_CLIENT_SECRET}`).toString('base64')}`,
             },
           })
         }
