@@ -23,6 +23,8 @@ import { useTasks } from '@/components/app-layout'
 import { TaskDuration } from '@/components/task-duration'
 import { FileBrowser } from '@/components/file-browser'
 import { FileDiffViewer } from '@/components/file-diff-viewer'
+import { CreatePRDialog } from '@/components/create-pr-dialog'
+import { MergePRDialog } from '@/components/merge-pr-dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -127,6 +129,11 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [selectedModel, setSelectedModel] = useState<string>(task.selectedModel || DEFAULT_MODELS.claude)
   const [deploymentUrl, setDeploymentUrl] = useState<string | null>(task.previewUrl || null)
   const [loadingDeployment, setLoadingDeployment] = useState(false)
+  const [showPRDialog, setShowPRDialog] = useState(false)
+  const [showMergePRDialog, setShowMergePRDialog] = useState(false)
+  const [prUrl, setPrUrl] = useState<string | null>(task.prUrl || null)
+  const [prNumber, setPrNumber] = useState<number | null>(task.prNumber || null)
+  const [prStatus, setPrStatus] = useState<'open' | 'closed' | 'merged' | null>(task.prStatus || null)
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
@@ -323,6 +330,53 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
   }, [task.previewUrl, deploymentUrl])
 
+  // Update prUrl, prNumber, and prStatus when task values change
+  useEffect(() => {
+    if (task.prUrl && task.prUrl !== prUrl) {
+      setPrUrl(task.prUrl)
+    }
+    if (task.prNumber && task.prNumber !== prNumber) {
+      setPrNumber(task.prNumber)
+    }
+    if (task.prStatus && task.prStatus !== prStatus) {
+      setPrStatus(task.prStatus as 'open' | 'closed' | 'merged')
+    }
+  }, [task.prUrl, task.prNumber, task.prStatus, prUrl, prNumber, prStatus])
+
+  // Sync PR status from GitHub when task has a PR
+  useEffect(() => {
+    async function syncPRStatus() {
+      if (!task.prUrl || !task.prNumber || !task.repoUrl) {
+        return
+      }
+
+      // Only sync if status is 'open' (could have been merged/closed on GitHub)
+      if (task.prStatus === 'open') {
+        try {
+          const response = await fetch(`/api/tasks/${task.id}/sync-pr`, {
+            method: 'POST',
+          })
+          const result = await response.json()
+          
+          if (response.ok && result.success && result.data.status) {
+            // Update local state if status changed
+            if (result.data.status !== prStatus) {
+              setPrStatus(result.data.status)
+              refreshTasks()
+            }
+          }
+        } catch (error) {
+          // Silently fail - not critical if sync doesn't work
+          console.error('Failed to sync PR status:', error)
+        }
+      }
+    }
+
+    syncPRStatus()
+    // Only run on mount and when prNumber changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.prNumber])
+
   // Fetch all diffs when files list changes
   const fetchAllDiffs = async (filesList: string[]) => {
     if (!filesList.length || loadingDiffsRef.current) return
@@ -368,17 +422,26 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
   }, [selectedAgent])
 
-  const getPRUrl = () => {
-    if (!task.repoUrl || !task.branchName) return null
-    const baseUrl = task.repoUrl.replace('.git', '')
-    return `${baseUrl}/compare/main...${task.branchName}`
+  const handleOpenPR = () => {
+    if (prUrl) {
+      // If PR already exists, show merge dialog
+      setShowMergePRDialog(true)
+    } else {
+      // Otherwise, show the create PR dialog
+      setShowPRDialog(true)
+    }
   }
 
-  const handleOpenPR = () => {
-    const prUrl = getPRUrl()
-    if (prUrl) {
-      window.open(prUrl, '_blank', 'noopener,noreferrer')
-    }
+  const handlePRCreated = (newPrUrl: string, newPrNumber: number) => {
+    setPrUrl(newPrUrl)
+    setPrNumber(newPrNumber)
+    setPrStatus('open')
+    refreshTasks()
+  }
+
+  const handlePRMerged = () => {
+    setPrStatus('merged')
+    refreshTasks()
   }
 
   const handleTryAgain = async () => {
@@ -521,18 +584,19 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               className="h-7 w-7 md:h-8 md:w-8 p-0 flex-shrink-0"
               title="Stop task"
             >
-              <Square className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <Square className="h-3.5 w-3.5 md:h-4 md:w-4" fill="currentColor" />
             </Button>
           )}
-          {currentStatus === 'completed' && getPRUrl() && (
+          {currentStatus === 'completed' && task.repoUrl && task.branchName && prStatus !== 'merged' && prStatus !== 'closed' && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleOpenPR}
-              className="h-7 w-7 md:h-8 md:w-8 p-0 flex-shrink-0"
-              title="Open PR"
+              className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
+              title={prUrl ? 'Merge PR' : 'Create PR'}
             >
-              <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+              <span className="text-xs md:text-sm">{prUrl ? 'Merge PR' : 'Open PR'}</span>
             </Button>
           )}
           <Button
@@ -670,6 +734,21 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             </TooltipProvider>
           )}
 
+          {/* Pull Request */}
+          {prUrl && prNumber && (
+            <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+              <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground" />
+              <a
+                href={prUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground truncate"
+              >
+                #{prNumber}
+              </a>
+            </div>
+          )}
+
           {/* Preview Deployment */}
           {!loadingDeployment && deploymentUrl && (
             <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
@@ -789,6 +868,28 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create PR Dialog */}
+      <CreatePRDialog
+        taskId={task.id}
+        defaultTitle={task.prompt}
+        defaultBody=""
+        open={showPRDialog}
+        onOpenChange={setShowPRDialog}
+        onPRCreated={handlePRCreated}
+      />
+
+      {/* Merge PR Dialog */}
+      {prUrl && prNumber && (
+        <MergePRDialog
+          taskId={task.id}
+          prUrl={prUrl}
+          prNumber={prNumber}
+          open={showMergePRDialog}
+          onOpenChange={setShowMergePRDialog}
+          onPRMerged={handlePRMerged}
+        />
+      )}
     </div>
   )
 }
