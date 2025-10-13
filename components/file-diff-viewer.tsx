@@ -11,17 +11,28 @@ interface DiffData {
   oldContent: string
   newContent: string
   language: string
+  isBinary?: boolean
+  isImage?: boolean
+  isBase64?: boolean
 }
 
 interface FileDiffViewerProps {
   selectedFile?: string
   diffsCache?: Record<string, DiffData>
   isInitialLoading?: boolean
+  viewMode?: 'changes' | 'all'
+  taskId?: string
 }
 
-export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: FileDiffViewerProps) {
+export function FileDiffViewer({
+  selectedFile,
+  diffsCache,
+  isInitialLoading,
+  viewMode = 'changes',
+  taskId: taskIdProp,
+}: FileDiffViewerProps) {
   const params = useParams()
-  const taskId = params.taskId as string
+  const taskId = taskIdProp || (params.taskId as string)
 
   const [diffData, setDiffData] = useState<DiffData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -75,8 +86,8 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
         return
       }
 
-      // Check if we have cached data first
-      if (diffsCache && diffsCache[selectedFile]) {
+      // Check if we have cached data first (only in changes mode)
+      if (viewMode === 'changes' && diffsCache && diffsCache[selectedFile]) {
         setDiffData(diffsCache[selectedFile])
         setError(null)
         setLoading(false)
@@ -89,31 +100,34 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
       try {
         const params = new URLSearchParams()
         params.set('filename', selectedFile)
-
-        const response = await fetch(`/api/tasks/${taskId}/diff?${params.toString()}`)
+        
+        // In "all" mode, fetch file content directly; in "changes" mode, fetch diff
+        const endpoint = viewMode === 'all' ? `/api/tasks/${taskId}/file-content` : `/api/tasks/${taskId}/diff`
+        const response = await fetch(`${endpoint}?${params.toString()}`)
         const result = await response.json()
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to fetch diff data')
+          throw new Error(result.error || 'Failed to fetch file data')
         }
 
         setDiffData(result.data)
       } catch (err) {
-        console.error('Error fetching diff data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch diff data')
+        console.error('Error fetching file data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch file data')
       } finally {
         setLoading(false)
       }
     }
 
     fetchDiffData()
-  }, [taskId, selectedFile, diffsCache])
+  }, [taskId, selectedFile, diffsCache, viewMode])
 
   const diffFile = useMemo(() => {
     if (!diffData) return null
 
-    // Check if contents are identical - no diff to show
-    if (diffData.oldContent === diffData.newContent) {
+    // In "all" mode, show the file content without diff (oldContent will be empty)
+    // In "changes" mode, check if contents are identical - no diff to show
+    if (viewMode === 'changes' && diffData.oldContent === diffData.newContent) {
       console.log('File contents are identical - no changes to display')
       return null
     }
@@ -143,7 +157,7 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
       console.error('Error generating diff file:', error)
       return null
     }
-  }, [diffData, mounted, theme])
+  }, [diffData, mounted, theme, viewMode])
 
   if (!selectedFile) {
     // Don't show "No file selected" during initial loading
@@ -155,7 +169,9 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
       <div className="flex items-center justify-center h-full text-center text-muted-foreground p-4">
         <div>
           <div className="mb-2 text-sm md:text-base">No file selected</div>
-          <div className="text-xs md:text-sm">Click on a file in the file tree to view its diff</div>
+          <div className="text-xs md:text-sm">
+            Click on a file in the file tree to view its {viewMode === 'changes' ? 'diff' : 'content'}
+          </div>
         </div>
       </div>
     )
@@ -166,7 +182,9 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
       <div className="flex items-center justify-center h-full p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-xs md:text-sm text-muted-foreground">Loading diff...</p>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Loading {viewMode === 'changes' ? 'diff' : 'file'}...
+          </p>
         </div>
       </div>
     )
@@ -185,6 +203,67 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
 
   if (!diffData) {
     return null
+  }
+
+  // Handle binary files (non-image)
+  if (diffData.isBinary && !diffData.isImage) {
+    return (
+      <div className="flex items-center justify-center h-full p-4">
+        <div className="text-center">
+          <div className="mb-4 text-4xl">📦</div>
+          <p className="text-muted-foreground mb-2 text-sm md:text-base font-medium">Binary File</p>
+          <p className="text-xs md:text-sm text-muted-foreground">This is binary content and cannot be displayed</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Handle image files
+  if (diffData.isImage && diffData.newContent) {
+    const getImageMimeType = (filename: string) => {
+      const ext = filename.split('.').pop()?.toLowerCase()
+      const mimeTypes: { [key: string]: string } = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        bmp: 'image/bmp',
+        svg: 'image/svg+xml',
+        webp: 'image/webp',
+        ico: 'image/x-icon',
+        tiff: 'image/tiff',
+        tif: 'image/tiff',
+      }
+      return mimeTypes[ext || ''] || 'image/png'
+    }
+
+    const mimeType = getImageMimeType(diffData.filename)
+    const imageData = diffData.isBase64
+      ? `data:${mimeType};base64,${diffData.newContent}`
+      : `data:${mimeType};base64,${btoa(diffData.newContent)}`
+
+    return (
+      <div className="flex items-center justify-center h-full p-4 bg-muted/30">
+        <div className="text-center max-w-full">
+          <div className="mb-4">
+            <img
+              src={imageData}
+              alt={diffData.filename}
+              className="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg shadow-lg"
+              onError={(e) => {
+                console.error('Error loading image')
+                e.currentTarget.style.display = 'none'
+                const parent = e.currentTarget.parentElement
+                if (parent) {
+                  parent.innerHTML = '<p class="text-destructive text-sm">Failed to load image</p>'
+                }
+              }}
+            />
+          </div>
+          <p className="text-xs md:text-sm text-muted-foreground">{diffData.filename}</p>
+        </div>
+      </div>
+    )
   }
 
   if (!diffFile) {

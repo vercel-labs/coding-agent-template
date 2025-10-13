@@ -87,6 +87,18 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     return !!nextAgentMessage
   }
 
+  const isLatestUserMessage = (messageCreatedAt: Date) => {
+    // Find the last user message in the list
+    const userMessages = messages.filter((m) => m.role === 'user')
+    if (userMessages.length === 0) return false
+    
+    const lastUserMessage = userMessages[userMessages.length - 1]
+    const lastUserTime = new Date(lastUserMessage.createdAt).getTime()
+    const thisMessageTime = new Date(messageCreatedAt).getTime()
+    
+    return lastUserTime === thisMessageTime
+  }
+
   const formatDuration = (messageCreatedAt: Date) => {
     const startTime = new Date(messageCreatedAt).getTime()
 
@@ -246,7 +258,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                   >
                     {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
-                  {!hasAgentResponse(message.createdAt) && (
+                  {!hasAgentResponse(message.createdAt) && isLatestUserMessage(message.createdAt) && (
                     <div className="text-xs text-muted-foreground font-mono">{formatDuration(message.createdAt)}</div>
                   )}
                 </div>

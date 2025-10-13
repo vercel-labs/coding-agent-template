@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { File, Folder, FolderOpen, Clock, GitBranch } from 'lucide-react'
+import { File, Folder, FolderOpen, Clock, GitBranch, GitCompare, FileText } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface FileChange {
   filename: string
@@ -28,6 +30,8 @@ interface FileBrowserProps {
   onFilesLoaded?: (filenames: string[]) => void
   selectedFile?: string
   refreshKey?: number
+  viewMode?: 'changes' | 'all'
+  onViewModeChange?: (mode: 'changes' | 'all') => void
 }
 
 export function FileBrowser({
@@ -37,6 +41,8 @@ export function FileBrowser({
   onFilesLoaded,
   selectedFile,
   refreshKey,
+  viewMode = 'changes',
+  onViewModeChange,
 }: FileBrowserProps) {
   const [files, setFiles] = useState<FileChange[]>([])
   const [fileTree, setFileTree] = useState<{ [key: string]: FileTreeNode }>({})
@@ -69,7 +75,8 @@ export function FileBrowser({
     setError(null)
 
     try {
-      const response = await fetch(`/api/tasks/${taskId}/files`)
+      const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+      const response = await fetch(url)
       const result = await response.json()
 
       if (result.success) {
@@ -78,9 +85,14 @@ export function FileBrowser({
         const fileTree = result.fileTree || {}
         setFileTree(fileTree)
 
-        // Expand all folders by default
-        const allFolderPaths = getAllFolderPaths(fileTree)
-        setExpandedFolders(new Set(allFolderPaths))
+        // In "changes" mode, expand all folders by default
+        // In "all" mode, collapse all folders by default
+        if (viewMode === 'changes') {
+          const allFolderPaths = getAllFolderPaths(fileTree)
+          setExpandedFolders(new Set(allFolderPaths))
+        } else {
+          setExpandedFolders(new Set())
+        }
 
         // Notify parent component with list of filenames
         if (onFilesLoaded && fetchedFiles.length > 0) {
@@ -94,7 +106,7 @@ export function FileBrowser({
     } finally {
       setLoading(false)
     }
-  }, [branchName, taskId, onFilesLoaded])
+  }, [branchName, taskId, onFilesLoaded, viewMode])
 
   useEffect(() => {
     if (branchName) {
@@ -202,13 +214,45 @@ export function FileBrowser({
 
   return (
     <div className="flex flex-col h-full">
+      <div className="px-2 py-2 border-b flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">Files</h3>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={viewMode === 'changes' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onViewModeChange?.(viewMode === 'changes' ? 'all' : 'changes')}
+                className="h-7 px-2"
+              >
+                {viewMode === 'changes' ? (
+                  <>
+                    <GitCompare className="h-3.5 w-3.5 mr-1" />
+                    <span className="text-xs">Changes</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-3.5 w-3.5 mr-1" />
+                    <span className="text-xs">All</span>
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{viewMode === 'changes' ? 'Switch to view all files' : 'Switch to view only changed files'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">Loading files...</div>
         ) : error ? (
           <div className="p-3 md:p-4 text-center text-xs md:text-sm text-destructive">{error}</div>
         ) : files.length === 0 ? (
-          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">No files changed</div>
+          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">
+            {viewMode === 'changes' ? 'No files changed' : 'No files found'}
+          </div>
         ) : (
           <div className="py-2">{renderFileTree(fileTree)}</div>
         )}

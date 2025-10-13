@@ -31,6 +31,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { taskId } = await params
+    const searchParams = request.nextUrl.searchParams
+    const mode = searchParams.get('mode') || 'changes' // 'changes' or 'all'
 
     // Get task from database and verify ownership (exclude soft-deleted)
     const [task] = await db
@@ -93,107 +95,152 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     let files: FileChange[] = []
 
-    try {
-      // First check if the branch exists
+    // If mode is 'all', fetch all files from the repository tree
+    if (mode === 'all') {
       try {
-        await octokit.rest.repos.getBranch({
+        const treeResponse = await octokit.rest.git.getTree({
           owner,
           repo,
-          branch: task.branchName,
+          tree_sha: task.branchName,
+          recursive: 'true',
         })
-      } catch (branchError: unknown) {
-        if (branchError && typeof branchError === 'object' && 'status' in branchError && branchError.status === 404) {
-          // Branch doesn't exist yet (task is still processing)
-          console.log('Branch does not exist yet, returning empty file list')
+
+        files = treeResponse.data.tree
+          .filter((item) => item.type === 'blob' && item.path) // Only include files
+          .map((item) => ({
+            filename: item.path!,
+            status: 'modified' as const, // Default status for all files view
+            additions: 0,
+            deletions: 0,
+            changes: 0,
+          }))
+
+        console.log('Found all files in branch')
+      } catch (error: unknown) {
+        console.error('Error fetching repository tree:', error)
+        if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+          console.log('Branch or repository not found, returning empty file list')
           return NextResponse.json({
             success: true,
             files: [],
             fileTree: {},
             branchName: task.branchName,
-            message: 'Branch is being created...',
+            message: 'Branch not found or still being created',
           })
-        } else {
-          throw branchError
         }
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to fetch repository tree from GitHub',
+          },
+          { status: 500 },
+        )
       }
+    } else {
+      // Original logic for 'changes' mode
 
-      // Try to get the comparison between the branch and main
-      let comparison
       try {
-        comparison = await octokit.rest.repos.compareCommits({
-          owner,
-          repo,
-          base: 'main',
-          head: task.branchName,
-        })
-      } catch (mainError: unknown) {
-        if (mainError && typeof mainError === 'object' && 'status' in mainError && mainError.status === 404) {
-          // If main branch doesn't exist, try master
-          try {
-            comparison = await octokit.rest.repos.compareCommits({
-              owner,
-              repo,
-              base: 'master',
-              head: task.branchName,
+        // First check if the branch exists
+        try {
+          await octokit.rest.repos.getBranch({
+            owner,
+            repo,
+            branch: task.branchName,
+          })
+        } catch (branchError: unknown) {
+          if (branchError && typeof branchError === 'object' && 'status' in branchError && branchError.status === 404) {
+            // Branch doesn't exist yet (task is still processing)
+            console.log('Branch does not exist yet, returning empty file list')
+            return NextResponse.json({
+              success: true,
+              files: [],
+              fileTree: {},
+              branchName: task.branchName,
+              message: 'Branch is being created...',
             })
-          } catch (masterError: unknown) {
-            if (
-              masterError &&
-              typeof masterError === 'object' &&
-              'status' in masterError &&
-              masterError.status === 404
-            ) {
-              // Neither main nor master exists, or head branch doesn't exist
-              console.log('Could not compare branches')
-              return NextResponse.json({
-                success: true,
-                files: [],
-                fileTree: {},
-                branchName: task.branchName,
-                message: 'No base branch found for comparison',
-              })
-            } else {
-              throw masterError
-            }
+          } else {
+            throw branchError
           }
-        } else {
-          throw mainError
         }
+
+        // Try to get the comparison between the branch and main
+        let comparison
+        try {
+          comparison = await octokit.rest.repos.compareCommits({
+            owner,
+            repo,
+            base: 'main',
+            head: task.branchName,
+          })
+        } catch (mainError: unknown) {
+          if (mainError && typeof mainError === 'object' && 'status' in mainError && mainError.status === 404) {
+            // If main branch doesn't exist, try master
+            try {
+              comparison = await octokit.rest.repos.compareCommits({
+                owner,
+                repo,
+                base: 'master',
+                head: task.branchName,
+              })
+            } catch (masterError: unknown) {
+              if (
+                masterError &&
+                typeof masterError === 'object' &&
+                'status' in masterError &&
+                masterError.status === 404
+              ) {
+                // Neither main nor master exists, or head branch doesn't exist
+                console.log('Could not compare branches')
+                return NextResponse.json({
+                  success: true,
+                  files: [],
+                  fileTree: {},
+                  branchName: task.branchName,
+                  message: 'No base branch found for comparison',
+                })
+              } else {
+                throw masterError
+              }
+            }
+          } else {
+            throw mainError
+          }
+        }
+
+        // Convert GitHub API response to our FileChange format
+        files =
+          comparison.data.files?.map((file) => ({
+            filename: file.filename,
+            status: file.status as 'added' | 'modified' | 'deleted' | 'renamed',
+            additions: file.additions || 0,
+            deletions: file.deletions || 0,
+            changes: file.changes || 0,
+          })) || []
+
+        console.log('Found changed files in branch')
+      } catch (error: unknown) {
+        console.error('Error fetching file changes from GitHub:', error)
+
+        // If it's a 404 error, return empty results instead of failing
+        if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+          console.log(`Branch or repository not found, returning empty file list`)
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Branch not found or still being created',
+          })
+        }
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to fetch file changes from GitHub',
+          },
+          { status: 500 },
+        )
       }
-
-      // Convert GitHub API response to our FileChange format
-      files =
-        comparison.data.files?.map((file) => ({
-          filename: file.filename,
-          status: file.status as 'added' | 'modified' | 'deleted' | 'renamed',
-          additions: file.additions || 0,
-          deletions: file.deletions || 0,
-          changes: file.changes || 0,
-        })) || []
-
-      console.log('Found changed files in branch')
-    } catch (error: unknown) {
-      console.error('Error fetching file changes from GitHub:', error)
-
-      // If it's a 404 error, return empty results instead of failing
-      if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-        console.log(`Branch or repository not found, returning empty file list`)
-        return NextResponse.json({
-          success: true,
-          files: [],
-          fileTree: {},
-          branchName: task.branchName,
-          message: 'Branch not found or still being created',
-        })
-      }
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Failed to fetch file changes from GitHub',
-        },
-        { status: 500 },
-      )
     }
 
     // Build file tree from files

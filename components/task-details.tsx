@@ -142,6 +142,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [isClosingPR, setIsClosingPR] = useState(false)
   const [isReopeningPR, setIsReopeningPR] = useState(false)
   const [isMergingPR, setIsMergingPR] = useState(false)
+  const [viewMode, setViewMode] = useState<'changes' | 'all'>('changes')
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
@@ -1044,6 +1045,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               onFilesLoaded={fetchAllDiffs}
               selectedFile={selectedFile}
               refreshKey={refreshKey}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
             />
           </div>
 
@@ -1055,6 +1058,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                   selectedFile={selectedFile}
                   diffsCache={diffsCache}
                   isInitialLoading={Object.keys(diffsCache).length === 0}
+                  viewMode={viewMode}
+                  taskId={task.id}
                 />
               </div>
             </div>

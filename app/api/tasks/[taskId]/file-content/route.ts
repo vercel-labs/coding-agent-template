@@ -120,7 +120,7 @@ async function getFileContent(
           isBase64: true,
         }
       }
-
+      
       // For text files, decode from base64
       return {
         content: Buffer.from(response.data.content, 'base64').toString('utf-8'),
@@ -130,7 +130,7 @@ async function getFileContent(
 
     return { content: '', isBase64: false }
   } catch (error: unknown) {
-    // File might not exist in this ref (e.g., new file)
+    // File might not exist in this ref
     if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
       return { content: '', isBase64: false }
     }
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!octokit.auth) {
       return NextResponse.json(
         {
-          error: 'GitHub authentication required. Please connect your GitHub account to view file diffs.',
+          error: 'GitHub authentication required. Please connect your GitHub account to view files.',
         },
         { status: 401 },
       )
@@ -192,7 +192,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const isImage = isImageFile(filename)
       const isBinary = isBinaryFile(filename)
 
-      // For non-image binary files, return a special response
+      // For non-image binary files, return a special message
       if (isBinary && !isImage) {
         return NextResponse.json({
           success: true,
@@ -207,121 +207,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         })
       }
 
-      // Get file content from both base and head commits
-      let oldContent = ''
-      let newContent = ''
-      let oldIsBase64 = false
-      let newIsBase64 = false
-      let baseRef = 'main'
-      let headRef = task.branchName
+      // Get file content from the branch
+      const { content, isBase64 } = await getFileContent(octokit, owner, repo, filename, task.branchName, isImage)
 
-      // For PRs (merged or open), use the exact base and head SHAs from the PR
-      if (task.prNumber) {
-        try {
-          const prResponse = await octokit.rest.pulls.get({
-            owner,
-            repo,
-            pull_number: task.prNumber,
-          })
-
-          // Use the base commit SHA (what main was at PR creation time)
-          baseRef = prResponse.data.base.sha
-          // Use the head commit SHA (the PR branch before merge)
-          headRef = prResponse.data.head.sha
-
-          console.log('Using PR refs - base:', baseRef, 'head:', headRef)
-
-          // Update merge commit SHA if merged and we don't have it
-          if (prResponse.data.merged_at && prResponse.data.merge_commit_sha && !task.prMergeCommitSha) {
-            await db
-              .update(tasks)
-              .set({
-                prMergeCommitSha: prResponse.data.merge_commit_sha,
-                updatedAt: new Date(),
-              })
-              .where(eq(tasks.id, task.id))
-          }
-        } catch (error) {
-          console.error('Failed to fetch PR data, falling back to branch comparison:', error)
-          // Fall through to default branch comparison
-        }
-      }
-
-      // Get old content from base ref
-      try {
-        const result = await getFileContent(octokit, owner, repo, filename, baseRef, isImage)
-        oldContent = result.content
-        oldIsBase64 = result.isBase64
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-          // Try master if main doesn't work (only if we're using default branch names)
-          if (baseRef === 'main') {
-            try {
-              const result = await getFileContent(octokit, owner, repo, filename, 'master', isImage)
-              oldContent = result.content
-              oldIsBase64 = result.isBase64
-              baseRef = 'master'
-            } catch (masterError: unknown) {
-              if (
-                !(
-                  masterError &&
-                  typeof masterError === 'object' &&
-                  'status' in masterError &&
-                  masterError.status === 404
-                )
-              ) {
-                throw masterError
-              }
-              // File doesn't exist in base (could be a new file)
-              oldContent = ''
-              oldIsBase64 = false
-            }
-          } else {
-            // File doesn't exist at this commit (new file)
-            oldContent = ''
-            oldIsBase64 = false
-          }
-        } else {
-          throw error
-        }
-      }
-
-      // Get new content from head ref
-      try {
-        const result = await getFileContent(octokit, owner, repo, filename, headRef, isImage)
-        newContent = result.content
-        newIsBase64 = result.isBase64
-      } catch (error) {
-        console.error('Error fetching new content from ref:', headRef, error)
-        // File might have been deleted
-        if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-          newContent = ''
-          newIsBase64 = false
-        } else {
-          throw error
-        }
-      }
-
-      // Validate that we have content (at least one should be non-empty for a valid diff)
-      if (!oldContent && !newContent) {
+      if (!content && !isImage) {
         return NextResponse.json(
           {
-            error: 'File not found in either branch',
+            error: 'File not found in branch',
           },
           { status: 404 },
         )
       }
 
+      // Return file content with empty oldContent (so it shows as a full file, not a diff)
       return NextResponse.json({
         success: true,
         data: {
           filename,
-          oldContent: oldContent || '',
-          newContent: newContent || '',
+          oldContent: '', // Empty old content means it will show as a new file (all additions)
+          newContent: content,
           language: getLanguageFromFilename(filename),
           isBinary: false,
           isImage,
-          isBase64: newIsBase64,
+          isBase64,
         },
       })
     } catch (error: unknown) {
@@ -329,7 +237,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Failed to fetch file content from GitHub' }, { status: 500 })
     }
   } catch (error) {
-    console.error('Error in diff API:', error)
+    console.error('Error in file-content API:', error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error',
@@ -338,3 +246,4 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     )
   }
 }
+
