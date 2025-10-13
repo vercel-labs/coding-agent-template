@@ -144,6 +144,7 @@ interface MergePullRequestResult {
   success: boolean
   merged?: boolean
   message?: string
+  sha?: string
   error?: string
 }
 
@@ -201,6 +202,7 @@ export async function mergePullRequest(params: MergePullRequestParams): Promise<
       success: true,
       merged: response.data.merged,
       message: response.data.message,
+      sha: response.data.sha,
     }
   } catch (error: unknown) {
     console.error('Error merging pull request:', error)

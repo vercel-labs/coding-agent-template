@@ -51,11 +51,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: result.error || 'Failed to merge pull request' }, { status: 500 })
     }
 
-    // Update task to mark PR as merged
+    // Update task to mark PR as merged and store merge commit SHA
     await db
       .update(tasks)
       .set({
         prStatus: 'merged',
+        prMergeCommitSha: result.sha || null,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       data: {
         merged: result.merged,
         message: result.message,
+        sha: result.sha,
       },
     })
   } catch (error) {
