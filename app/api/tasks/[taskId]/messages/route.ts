@@ -4,7 +4,7 @@ import { db } from '@/lib/db/client'
 import { taskMessages, tasks } from '@/lib/db/schema'
 import { eq, and, asc } from 'drizzle-orm'
 
-export async function GET(req: NextRequest, context: { params: { taskId: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
 

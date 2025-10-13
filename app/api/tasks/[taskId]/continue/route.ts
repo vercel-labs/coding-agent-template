@@ -14,7 +14,7 @@ import { decrypt } from '@/lib/crypto'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 
-export async function POST(req: NextRequest, context: { params: { taskId: string } }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
     if (!session?.user?.id) {
@@ -74,9 +74,9 @@ export async function POST(req: NextRequest, context: { params: { taskId: string
         taskId,
         message.trim(),
         task.repoUrl || '',
-        task.branchName,
+        task.branchName || '',
         task.selectedAgent || 'claude',
-        task.selectedModel,
+        task.selectedModel || undefined,
         task.installDependencies || false,
         task.maxDuration || 5,
         userApiKeys,
