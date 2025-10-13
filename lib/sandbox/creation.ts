@@ -400,24 +400,24 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         if (branchExistsRemote.success && branchExistsRemote.output?.trim()) {
           // Branch exists on remote, fetch and check it out
           await logger.info('Branch exists on remote, fetching and checking it out')
-          
+
           // Fetch the remote branch with refspec to create local tracking branch
           const fetchBranch = await runCommandInSandbox(sandbox, 'git', [
             'fetch',
             'origin',
             `${config.preDeterminedBranchName}:${config.preDeterminedBranchName}`,
           ])
-          
+
           if (!fetchBranch.success) {
             await logger.info('Failed to fetch remote branch, trying alternative method')
-            
+
             // Alternative: fetch all and then checkout
             const fetchAll = await runCommandInSandbox(sandbox, 'git', ['fetch', 'origin'])
             if (!fetchAll.success) {
               await logger.info('Failed to fetch from origin')
               throw new Error('Failed to fetch from remote Git repository')
             }
-            
+
             // Create local branch tracking remote
             const checkoutTracking = await runAndLogCommand(
               sandbox,
@@ -425,7 +425,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
               ['checkout', '-b', config.preDeterminedBranchName, '--track', `origin/${config.preDeterminedBranchName}`],
               logger,
             )
-            
+
             if (!checkoutTracking.success) {
               await logger.info('Failed to checkout and track remote branch')
               throw new Error('Failed to checkout remote Git branch')

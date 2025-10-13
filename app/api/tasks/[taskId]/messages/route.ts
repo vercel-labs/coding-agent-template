@@ -41,4 +41,3 @@ export async function GET(req: NextRequest, context: { params: { taskId: string 
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
   }
 }
-

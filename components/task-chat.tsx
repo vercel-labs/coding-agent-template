@@ -24,39 +24,42 @@ export function TaskChat({ taskId }: TaskChatProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const fetchMessages = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setIsLoading(true)
-    }
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/messages`)
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        setMessages(data.messages)
-      } else {
-        setError(data.error || 'Failed to fetch messages')
-      }
-    } catch (err) {
-      console.error('Error fetching messages:', err)
-      setError('Failed to fetch messages')
-    } finally {
+  const fetchMessages = useCallback(
+    async (showLoading = true) => {
       if (showLoading) {
-        setIsLoading(false)
+        setIsLoading(true)
       }
-    }
-  }, [taskId])
+      setError(null)
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/messages`)
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          setMessages(data.messages)
+        } else {
+          setError(data.error || 'Failed to fetch messages')
+        }
+      } catch (err) {
+        console.error('Error fetching messages:', err)
+        setError('Failed to fetch messages')
+      } finally {
+        if (showLoading) {
+          setIsLoading(false)
+        }
+      }
+    },
+    [taskId],
+  )
 
   useEffect(() => {
     fetchMessages(true) // Show loading on initial fetch
-    
+
     // Poll for new messages every 3 seconds without showing loading state
     const interval = setInterval(() => {
       fetchMessages(false) // Don't show loading on polls
     }, 3000)
-    
+
     return () => clearInterval(interval)
   }, [fetchMessages])
 
@@ -135,7 +138,7 @@ export function TaskChat({ taskId }: TaskChatProps) {
         <div className="flex-1 flex items-center justify-center text-center text-muted-foreground">
           <div className="text-sm md:text-base">No messages yet</div>
         </div>
-        
+
         <div className="flex-shrink-0 relative">
           <Textarea
             value={newMessage}
@@ -151,11 +154,7 @@ export function TaskChat({ taskId }: TaskChatProps) {
             size="icon"
             className="absolute bottom-2 right-2 rounded-full h-8 w-8 p-0"
           >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ArrowUp className="h-4 w-4" />
-            )}
+            {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
           </Button>
         </div>
       </div>
@@ -172,15 +171,13 @@ export function TaskChat({ taskId }: TaskChatProps) {
                 <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
               </Card>
             ) : (
-              <div className="text-sm whitespace-pre-wrap break-words text-muted-foreground">
-                {message.content}
-              </div>
+              <div className="text-sm whitespace-pre-wrap break-words text-muted-foreground">{message.content}</div>
             )}
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
-      
+
       <div className="flex-shrink-0 relative">
         <Textarea
           value={newMessage}
@@ -196,14 +193,9 @@ export function TaskChat({ taskId }: TaskChatProps) {
           size="icon"
           className="absolute bottom-2 right-2 rounded-full h-8 w-8 p-0"
         >
-          {isSending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <ArrowUp className="h-4 w-4" />
-          )}
+          {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
         </Button>
       </div>
     </div>
   )
 }
-

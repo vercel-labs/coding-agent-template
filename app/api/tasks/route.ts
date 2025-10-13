@@ -531,7 +531,7 @@ async function processTask(
 
       if (agentResult.agentResponse) {
         await logger.info('Agent response received')
-        
+
         // Save the agent's response message
         try {
           await db.insert(taskMessages).values({
