@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { File, Folder, FolderOpen, Clock, GitBranch, GitCompare, FileText } from 'lucide-react'
+import { File, Folder, FolderOpen, Clock, GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface FileChange {
   filename: string
@@ -170,7 +169,7 @@ export function FileBrowser({
           >
             <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
             <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
-            {(node.additions || node.deletions) && (
+            {viewMode === 'changes' && (node.additions || node.deletions) && (
               <div className="flex items-center gap-1 text-xs flex-shrink-0">
                 {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
                 {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
@@ -214,35 +213,34 @@ export function FileBrowser({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-2 py-2 border-b flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Files</h3>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={viewMode === 'changes' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onViewModeChange?.(viewMode === 'changes' ? 'all' : 'changes')}
-                className="h-7 px-2"
-              >
-                {viewMode === 'changes' ? (
-                  <>
-                    <GitCompare className="h-3.5 w-3.5 mr-1" />
-                    <span className="text-xs">Changes</span>
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-3.5 w-3.5 mr-1" />
-                    <span className="text-xs">All</span>
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{viewMode === 'changes' ? 'Switch to view all files' : 'Switch to view only changed files'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      <div className="px-2 py-2 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold pl-1">Files</h3>
+        <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+          <Button
+            variant={viewMode === 'changes' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => onViewModeChange?.('changes')}
+            className={`h-6 px-2 text-xs rounded-sm ${
+              viewMode === 'changes'
+                ? 'bg-background shadow-sm'
+                : 'hover:bg-transparent hover:text-foreground'
+            }`}
+          >
+            Changes
+          </Button>
+          <Button
+            variant={viewMode === 'all' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => onViewModeChange?.('all')}
+            className={`h-6 px-2 text-xs rounded-sm ${
+              viewMode === 'all'
+                ? 'bg-background shadow-sm'
+                : 'hover:bg-transparent hover:text-foreground'
+            }`}
+          >
+            All Files
+          </Button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (

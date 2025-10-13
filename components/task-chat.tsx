@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowUp, Loader2, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { Streamdown } from 'streamdown'
 
 interface TaskChatProps {
   taskId: string
@@ -22,6 +23,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const previousMessageCountRef = useRef(0)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -66,8 +68,23 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     return () => clearInterval(interval)
   }, [fetchMessages])
 
+  // Only scroll to bottom when new messages are added
   useEffect(() => {
-    scrollToBottom()
+    const currentMessageCount = messages.length
+    const previousMessageCount = previousMessageCountRef.current
+
+    // Scroll only if message count increased (new messages added)
+    if (currentMessageCount > previousMessageCount && previousMessageCount > 0) {
+      scrollToBottom()
+    }
+
+    // Update the ref for next comparison
+    previousMessageCountRef.current = currentMessageCount
+
+    // Also scroll on initial load (when previousMessageCount is 0 and we have messages)
+    if (previousMessageCount === 0 && currentMessageCount > 0) {
+      scrollToBottom()
+    }
   }, [messages])
 
   // Timer for duration display
@@ -247,7 +264,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             {message.role === 'user' ? (
               <div className="space-y-1">
                 <Card className="p-4 bg-muted border-0">
-                  <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                  <div className="text-sm">
+                    <Streamdown>{message.content}</Streamdown>
+                  </div>
                 </Card>
                 <div className="flex items-center gap-1 pl-1">
                   <Button
@@ -265,8 +284,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               </div>
             ) : (
               <div className="space-y-1">
-                <div className="text-sm whitespace-pre-wrap break-words text-muted-foreground">
-                  {parseAgentMessage(message.content)}
+                <div className="text-sm text-muted-foreground">
+                  <Streamdown>{parseAgentMessage(message.content)}</Streamdown>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button
