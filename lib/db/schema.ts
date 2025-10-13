@@ -100,6 +100,7 @@ export const tasks = pgTable('tasks', {
   prStatus: text('pr_status', {
     enum: ['open', 'closed', 'merged'],
   }),
+  prMergeCommitSha: text('pr_merge_commit_sha'),
   mcpServerIds: jsonb('mcp_server_ids').$type<string[]>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -127,6 +128,7 @@ export const insertTaskSchema = z.object({
   prUrl: z.string().optional(),
   prNumber: z.number().optional(),
   prStatus: z.enum(['open', 'closed', 'merged']).optional(),
+  prMergeCommitSha: z.string().optional(),
   mcpServerIds: z.array(z.string()).optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
@@ -153,6 +155,7 @@ export const selectTaskSchema = z.object({
   prUrl: z.string().nullable(),
   prNumber: z.number().nullable(),
   prStatus: z.enum(['open', 'closed', 'merged']).nullable(),
+  prMergeCommitSha: z.string().nullable(),
   mcpServerIds: z.array(z.string()).nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),

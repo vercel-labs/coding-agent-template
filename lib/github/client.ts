@@ -155,6 +155,7 @@ interface GetPullRequestStatusParams {
 interface GetPullRequestStatusResult {
   success: boolean
   status?: 'open' | 'closed' | 'merged'
+  mergeCommitSha?: string
   error?: string
 }
 
@@ -288,6 +289,7 @@ export async function getPullRequestStatus(params: GetPullRequestStatusParams): 
     return {
       success: true,
       status,
+      mergeCommitSha: response.data.merge_commit_sha || undefined,
     }
   } catch (error: unknown) {
     console.error('Error getting pull request status:', error)

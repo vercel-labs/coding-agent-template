@@ -112,15 +112,26 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
   const diffFile = useMemo(() => {
     if (!diffData) return null
 
+    // Check if contents are identical - no diff to show
+    if (diffData.oldContent === diffData.newContent) {
+      console.log('File contents are identical - no changes to display')
+      return null
+    }
+
     try {
       const file = generateDiffFile(
         diffData.filename,
-        diffData.oldContent,
+        diffData.oldContent || '',
         diffData.filename,
-        diffData.newContent,
+        diffData.newContent || '',
         diffData.language,
         diffData.language,
       )
+
+      if (!file) {
+        console.error('generateDiffFile returned null or undefined')
+        return null
+      }
 
       file.initTheme(mounted ? theme : 'light')
       file.init()
@@ -177,10 +188,23 @@ export function FileDiffViewer({ selectedFile, diffsCache, isInitialLoading }: F
   }
 
   if (!diffFile) {
+    // Check if it's because contents are identical
+    if (diffData.oldContent === diffData.newContent) {
+      return (
+        <div className="flex items-center justify-center h-full p-4">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-2 text-xs md:text-sm">No changes detected</p>
+            <p className="text-xs text-muted-foreground">The file content is identical in both versions</p>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="flex items-center justify-center h-full p-4">
         <div className="text-center">
           <p className="text-destructive mb-2 text-xs md:text-sm">Error generating diff</p>
+          <p className="text-xs text-muted-foreground">Unable to generate diff for {selectedFile}</p>
         </div>
       </div>
     )

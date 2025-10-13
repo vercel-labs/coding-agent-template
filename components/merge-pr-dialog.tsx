@@ -22,14 +22,20 @@ interface MergePRDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onPRMerged?: () => void
+  onMergeInitiated?: () => void
 }
 
-export function MergePRDialog({ taskId, prUrl, prNumber, open, onOpenChange, onPRMerged }: MergePRDialogProps) {
+export function MergePRDialog({ taskId, prUrl, prNumber, open, onOpenChange, onPRMerged, onMergeInitiated }: MergePRDialogProps) {
   const [mergeMethod, setMergeMethod] = useState<'squash' | 'merge' | 'rebase'>('squash')
   const [isMerging, setIsMerging] = useState(false)
 
   const handleMergePR = async () => {
     setIsMerging(true)
+    
+    // Notify parent that merge is initiated (for loading state)
+    if (onMergeInitiated) {
+      onMergeInitiated()
+    }
 
     try {
       const response = await fetch(`/api/tasks/${taskId}/merge-pr`, {
@@ -45,7 +51,7 @@ export function MergePRDialog({ taskId, prUrl, prNumber, open, onOpenChange, onP
       const result = await response.json()
 
       if (response.ok && result.success) {
-        toast.success('Pull request merged successfully!')
+        // Don't show toast here - parent will show it when status updates
         if (onPRMerged) {
           onPRMerged()
         }

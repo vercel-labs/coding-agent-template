@@ -119,24 +119,65 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const [, owner, repo] = githubMatch
 
     try {
-      // Get file content from both main/master and the task branch
+      // Get file content from both base and head commits
       let oldContent = ''
       let newContent = ''
+      let baseRef = 'main'
+      let headRef = task.branchName
 
-      // Try to get content from main branch first, fallback to master
+      // For PRs (merged or open), use the exact base and head SHAs from the PR
+      if (task.prNumber) {
+        try {
+          const prResponse = await octokit.rest.pulls.get({
+            owner,
+            repo,
+            pull_number: task.prNumber,
+          })
+
+          // Use the base commit SHA (what main was at PR creation time)
+          baseRef = prResponse.data.base.sha
+          // Use the head commit SHA (the PR branch before merge)
+          headRef = prResponse.data.head.sha
+
+          console.log('Using PR refs - base:', baseRef, 'head:', headRef)
+
+          // Update merge commit SHA if merged and we don't have it
+          if (prResponse.data.merged_at && prResponse.data.merge_commit_sha && !task.prMergeCommitSha) {
+            await db
+              .update(tasks)
+              .set({
+                prMergeCommitSha: prResponse.data.merge_commit_sha,
+                updatedAt: new Date(),
+              })
+              .where(eq(tasks.id, task.id))
+          }
+        } catch (error) {
+          console.error('Failed to fetch PR data, falling back to branch comparison:', error)
+          // Fall through to default branch comparison
+        }
+      }
+
+      // Get old content from base ref
       try {
-        oldContent = await getFileContent(octokit, owner, repo, filename, 'main')
+        oldContent = await getFileContent(octokit, owner, repo, filename, baseRef)
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-          try {
-            oldContent = await getFileContent(octokit, owner, repo, filename, 'master')
-          } catch (masterError: unknown) {
-            if (
-              !(masterError && typeof masterError === 'object' && 'status' in masterError && masterError.status === 404)
-            ) {
-              throw masterError
+          // Try master if main doesn't work (only if we're using default branch names)
+          if (baseRef === 'main') {
+            try {
+              oldContent = await getFileContent(octokit, owner, repo, filename, 'master')
+              baseRef = 'master'
+            } catch (masterError: unknown) {
+              if (
+                !(masterError && typeof masterError === 'object' && 'status' in masterError && masterError.status === 404)
+              ) {
+                throw masterError
+              }
+              // File doesn't exist in base (could be a new file)
+              oldContent = ''
             }
-            // File doesn't exist in main/master (could be a new file)
+          } else {
+            // File doesn't exist at this commit (new file)
             oldContent = ''
           }
         } else {
@@ -144,15 +185,35 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
       }
 
-      // Get content from the task branch
-      newContent = await getFileContent(octokit, owner, repo, filename, task.branchName)
+      // Get new content from head ref
+      try {
+        newContent = await getFileContent(octokit, owner, repo, filename, headRef)
+      } catch (error) {
+        console.error('Error fetching new content from ref:', headRef, error)
+        // File might have been deleted
+        if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+          newContent = ''
+        } else {
+          throw error
+        }
+      }
+
+      // Validate that we have content (at least one should be non-empty for a valid diff)
+      if (!oldContent && !newContent) {
+        return NextResponse.json(
+          { 
+            error: 'File not found in either branch',
+          }, 
+          { status: 404 }
+        )
+      }
 
       return NextResponse.json({
         success: true,
         data: {
           filename,
-          oldContent,
-          newContent,
+          oldContent: oldContent || '',
+          newContent: newContent || '',
           language: getLanguageFromFilename(filename),
         },
       })

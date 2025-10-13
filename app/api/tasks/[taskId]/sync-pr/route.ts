@@ -47,18 +47,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update task with current PR status from GitHub
-    await db
-      .update(tasks)
-      .set({
-        prStatus: result.status,
-        updatedAt: new Date(),
-      })
-      .where(eq(tasks.id, taskId))
+    const updateData: {
+      prStatus: 'open' | 'closed' | 'merged'
+      prMergeCommitSha: string | null
+      updatedAt: Date
+    } = {
+      prStatus: result.status,
+      prMergeCommitSha: result.mergeCommitSha || null,
+      updatedAt: new Date(),
+    }
+
+    await db.update(tasks).set(updateData).where(eq(tasks.id, taskId))
 
     return NextResponse.json({
       success: true,
       data: {
         status: result.status,
+        mergeCommitSha: result.mergeCommitSha,
       },
     })
   } catch (error) {

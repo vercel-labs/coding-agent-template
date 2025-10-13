@@ -14,6 +14,8 @@ import {
   GitPullRequest,
   RotateCcw,
   Trash2,
+  ChevronDown,
+  XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
@@ -35,6 +37,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
@@ -134,6 +142,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [prUrl, setPrUrl] = useState<string | null>(task.prUrl || null)
   const [prNumber, setPrNumber] = useState<number | null>(task.prNumber || null)
   const [prStatus, setPrStatus] = useState<'open' | 'closed' | 'merged' | null>(task.prStatus || null)
+  const [isClosingPR, setIsClosingPR] = useState(false)
+  const [isReopeningPR, setIsReopeningPR] = useState(false)
+  const [isMergingPR, setIsMergingPR] = useState(false)
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
@@ -333,15 +344,46 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   // Update prUrl, prNumber, and prStatus when task values change
   useEffect(() => {
     if (task.prUrl && task.prUrl !== prUrl) {
+      console.log('[Update] prUrl changed:', task.prUrl)
       setPrUrl(task.prUrl)
     }
     if (task.prNumber && task.prNumber !== prNumber) {
+      console.log('[Update] prNumber changed:', task.prNumber)
       setPrNumber(task.prNumber)
     }
     if (task.prStatus && task.prStatus !== prStatus) {
+      console.log('[Update] prStatus changing from', prStatus, 'to', task.prStatus)
       setPrStatus(task.prStatus as 'open' | 'closed' | 'merged')
     }
   }, [task.prUrl, task.prNumber, task.prStatus, prUrl, prNumber, prStatus])
+
+  // Clear loading states when PR status changes to expected value
+  useEffect(() => {
+    console.log('[Clear] Check - prStatus:', prStatus, 'isClosingPR:', isClosingPR, 'isReopeningPR:', isReopeningPR, 'isMergingPR:', isMergingPR)
+    
+    if (prStatus === 'closed' && isClosingPR) {
+      console.log('[Clear] Clearing isClosingPR and showing toast')
+      setIsClosingPR(false)
+      toast.success('Pull request closed successfully!')
+    }
+    if (prStatus === 'open' && isReopeningPR) {
+      console.log('[Clear] Clearing isReopeningPR and showing toast')
+      setIsReopeningPR(false)
+      toast.success('Pull request reopened successfully!')
+    }
+    if (prStatus === 'merged' && isMergingPR) {
+      console.log('[Clear] Clearing isMergingPR and showing toast')
+      setIsMergingPR(false)
+      toast.success('Pull request merged successfully!')
+    }
+  }, [prStatus, isClosingPR, isReopeningPR, isMergingPR])
+
+  // Clear merge loading state if dialog closes without merging
+  useEffect(() => {
+    if (!showMergePRDialog && isMergingPR && prStatus !== 'merged') {
+      setIsMergingPR(false)
+    }
+  }, [showMergePRDialog, isMergingPR, prStatus])
 
   // Sync PR status from GitHub when task has a PR
   useEffect(() => {
@@ -350,14 +392,14 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         return
       }
 
-      // Only sync if status is 'open' (could have been merged/closed on GitHub)
-      if (task.prStatus === 'open') {
+      // Sync if status is 'open' (could have been merged/closed) OR if status is not set
+      if (task.prStatus === 'open' || !task.prStatus) {
         try {
           const response = await fetch(`/api/tasks/${task.id}/sync-pr`, {
             method: 'POST',
           })
           const result = await response.json()
-
+          
           if (response.ok && result.success && result.data.status) {
             // Update local state if status changed
             if (result.data.status !== prStatus) {
@@ -425,7 +467,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const handleOpenPR = () => {
     if (prUrl) {
       // If PR already exists, show merge dialog
-      setShowMergePRDialog(true)
+      handleOpenMergeDialog()
     } else {
       // Otherwise, show the create PR dialog
       setShowPRDialog(true)
@@ -440,8 +482,81 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   }
 
   const handlePRMerged = () => {
-    setPrStatus('merged')
+    console.log('[Merge] PR merged successfully')
+    // Don't update prStatus here - let it come from task refresh
     refreshTasks()
+    // Keep loading state - will be cleared by useEffect when status changes
+  }
+
+  const handleOpenMergeDialog = () => {
+    // Don't set loading state yet - wait for user confirmation
+    setShowMergePRDialog(true)
+  }
+
+  const handleMergeDialogClose = (open: boolean) => {
+    setShowMergePRDialog(open)
+    if (!open && !isMergingPR) {
+      // Dialog closed without merging
+      console.log('[Merge] Dialog closed without merge')
+    }
+  }
+
+  const handleMergeInitiated = () => {
+    // User confirmed merge - now show loading state
+    console.log('[Merge] User confirmed merge - setting loading state')
+    setIsMergingPR(true)
+  }
+
+  const handleReopenPR = async () => {
+    if (!prNumber || !task.repoUrl || isReopeningPR) return
+
+    setIsReopeningPR(true)
+    console.log('[Reopen] Starting reopen - isReopeningPR:', true, 'prStatus:', prStatus)
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/reopen-pr`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        console.log('[Reopen] API success - keeping loading state active')
+        // Don't show toast yet - wait for UI to update
+        await refreshTasks()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to reopen pull request')
+        setIsReopeningPR(false)
+      }
+    } catch (error) {
+      console.error('Error reopening pull request:', error)
+      toast.error('Failed to reopen pull request')
+      setIsReopeningPR(false)
+    }
+  }
+
+  const handleClosePR = async () => {
+    if (!prNumber || !task.repoUrl || isClosingPR) return
+
+    setIsClosingPR(true)
+    console.log('[Close] Starting close - isClosingPR:', true, 'prStatus:', prStatus)
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/close-pr`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        console.log('[Close] API success - keeping loading state active')
+        // Don't show toast yet - wait for UI to update
+        await refreshTasks()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to close pull request')
+        setIsClosingPR(false)
+      }
+    } catch (error) {
+      console.error('Error closing pull request:', error)
+      toast.error('Failed to close pull request')
+      setIsClosingPR(false)
+    }
   }
 
   const handleTryAgain = async () => {
@@ -587,22 +702,96 @@ export function TaskDetails({ task }: TaskDetailsProps) {
               <Square className="h-3.5 w-3.5 md:h-4 md:w-4" fill="currentColor" />
             </Button>
           )}
-          {currentStatus === 'completed' &&
-            task.repoUrl &&
-            task.branchName &&
-            prStatus !== 'merged' &&
-            prStatus !== 'closed' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenPR}
-                className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
-                title={prUrl ? 'Merge PR' : 'Create PR'}
-              >
-                <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-                <span className="text-xs md:text-sm">{prUrl ? 'Merge PR' : 'Open PR'}</span>
-              </Button>
-            )}
+          {currentStatus === 'completed' && task.repoUrl && task.branchName && (
+            <>
+              {!prUrl && prStatus !== 'merged' && prStatus !== 'closed' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenPR}
+                  className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
+                  title="Create PR"
+                >
+                  <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                  <span className="text-xs md:text-sm">Open PR</span>
+                </Button>
+              )}
+              {prUrl && (prStatus === 'open' || isClosingPR || isMergingPR) && prStatus !== 'closed' && !isReopeningPR && (() => {
+                console.log('[Render] Merge button - prStatus:', prStatus, 'isClosingPR:', isClosingPR, 'isMergingPR:', isMergingPR, 'showMergePRDialog:', showMergePRDialog, 'isReopeningPR:', isReopeningPR)
+                return true
+              })() && (
+                <div className="flex items-center gap-0 flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenPR}
+                    disabled={isClosingPR || isMergingPR}
+                    className="h-7 md:h-8 px-2 md:px-3 rounded-r-none border-r-0"
+                  >
+                    {isClosingPR ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
+                        <span className="text-xs md:text-sm">Closing...</span>
+                      </>
+                    ) : isMergingPR ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
+                        <span className="text-xs md:text-sm">Merging...</span>
+                      </>
+                    ) : (
+                      <>
+                        <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                        <span className="text-xs md:text-sm">Merge PR</span>
+                      </>
+                    )}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isClosingPR || isMergingPR}
+                        className="h-7 md:h-8 px-1.5 rounded-l-none"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleClosePR} disabled={isClosingPR || isMergingPR}>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Close PR
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+              {(prStatus === 'closed' || isReopeningPR) && prUrl && prNumber && prStatus !== 'open' && (() => {
+                console.log('[Render] Reopen button - prStatus:', prStatus, 'isReopeningPR:', isReopeningPR)
+                return true
+              })() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleReopenPR()}
+                  disabled={isReopeningPR}
+                  className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
+                  title="Reopen PR"
+                >
+                  {isReopeningPR ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
+                      <span className="text-xs md:text-sm">Reopening...</span>
+                    </>
+                  ) : (
+                    <>
+                      <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                      <span className="text-xs md:text-sm">Reopen PR</span>
+                    </>
+                  )}
+                </Button>
+              )}
+            </>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -741,7 +930,25 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           {/* Pull Request */}
           {prUrl && prNumber && (
             <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-              <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground" />
+              {prStatus === 'merged' ? (
+                <svg
+                  className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-purple-500"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5 4.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+                </svg>
+              ) : prStatus === 'closed' ? (
+                <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-red-500" />
+              ) : (
+                <svg
+                  className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-green-500"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M1.5 3.25a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zm5.677-.177L9.573.677A.25.25 0 0110 .854V2.5h1A2.5 2.5 0 0113.5 5v5.628a2.251 2.251 0 11-1.5 0V5a1 1 0 00-1-1h-1v1.646a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm0 9.5a.75.75 0 100 1.5.75.75 0 000-1.5zm8.25.75a.75.75 0 101.5 0 .75.75 0 00-1.5 0z" />
+                </svg>
+              )}
               <a
                 href={prUrl}
                 target="_blank"
@@ -890,8 +1097,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           prUrl={prUrl}
           prNumber={prNumber}
           open={showMergePRDialog}
-          onOpenChange={setShowMergePRDialog}
+          onOpenChange={handleMergeDialogClose}
           onPRMerged={handlePRMerged}
+          onMergeInitiated={handleMergeInitiated}
         />
       )}
     </div>
