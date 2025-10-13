@@ -169,7 +169,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               baseRef = 'master'
             } catch (masterError: unknown) {
               if (
-                !(masterError && typeof masterError === 'object' && 'status' in masterError && masterError.status === 404)
+                !(
+                  masterError &&
+                  typeof masterError === 'object' &&
+                  'status' in masterError &&
+                  masterError.status === 404
+                )
               ) {
                 throw masterError
               }
@@ -201,10 +206,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Validate that we have content (at least one should be non-empty for a valid diff)
       if (!oldContent && !newContent) {
         return NextResponse.json(
-          { 
+          {
             error: 'File not found in either branch',
-          }, 
-          { status: 404 }
+          },
+          { status: 404 },
         )
       }
 

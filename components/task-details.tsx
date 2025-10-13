@@ -37,12 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
@@ -359,8 +354,17 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
   // Clear loading states when PR status changes to expected value
   useEffect(() => {
-    console.log('[Clear] Check - prStatus:', prStatus, 'isClosingPR:', isClosingPR, 'isReopeningPR:', isReopeningPR, 'isMergingPR:', isMergingPR)
-    
+    console.log(
+      '[Clear] Check - prStatus:',
+      prStatus,
+      'isClosingPR:',
+      isClosingPR,
+      'isReopeningPR:',
+      isReopeningPR,
+      'isMergingPR:',
+      isMergingPR,
+    )
+
     if (prStatus === 'closed' && isClosingPR) {
       console.log('[Clear] Clearing isClosingPR and showing toast')
       setIsClosingPR(false)
@@ -399,7 +403,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
             method: 'POST',
           })
           const result = await response.json()
-          
+
           if (response.ok && result.success && result.data.status) {
             // Update local state if status changed
             if (result.data.status !== prStatus) {
@@ -716,80 +720,99 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                   <span className="text-xs md:text-sm">Open PR</span>
                 </Button>
               )}
-              {prUrl && (prStatus === 'open' || isClosingPR || isMergingPR) && prStatus !== 'closed' && !isReopeningPR && (() => {
-                console.log('[Render] Merge button - prStatus:', prStatus, 'isClosingPR:', isClosingPR, 'isMergingPR:', isMergingPR, 'showMergePRDialog:', showMergePRDialog, 'isReopeningPR:', isReopeningPR)
-                return true
-              })() && (
-                <div className="flex items-center gap-0 flex-shrink-0">
+              {prUrl &&
+                (prStatus === 'open' || isClosingPR || isMergingPR) &&
+                prStatus !== 'closed' &&
+                !isReopeningPR &&
+                (() => {
+                  console.log(
+                    '[Render] Merge button - prStatus:',
+                    prStatus,
+                    'isClosingPR:',
+                    isClosingPR,
+                    'isMergingPR:',
+                    isMergingPR,
+                    'showMergePRDialog:',
+                    showMergePRDialog,
+                    'isReopeningPR:',
+                    isReopeningPR,
+                  )
+                  return true
+                })() && (
+                  <div className="flex items-center gap-0 flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenPR}
+                      disabled={isClosingPR || isMergingPR}
+                      className="h-7 md:h-8 px-2 md:px-3 rounded-r-none border-r-0"
+                    >
+                      {isClosingPR ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
+                          <span className="text-xs md:text-sm">Closing...</span>
+                        </>
+                      ) : isMergingPR ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
+                          <span className="text-xs md:text-sm">Merging...</span>
+                        </>
+                      ) : (
+                        <>
+                          <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                          <span className="text-xs md:text-sm">Merge PR</span>
+                        </>
+                      )}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isClosingPR || isMergingPR}
+                          className="h-7 md:h-8 px-1.5 rounded-l-none"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleClosePR} disabled={isClosingPR || isMergingPR}>
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Close PR
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+              {(prStatus === 'closed' || isReopeningPR) &&
+                prUrl &&
+                prNumber &&
+                prStatus !== 'open' &&
+                (() => {
+                  console.log('[Render] Reopen button - prStatus:', prStatus, 'isReopeningPR:', isReopeningPR)
+                  return true
+                })() && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleOpenPR}
-                    disabled={isClosingPR || isMergingPR}
-                    className="h-7 md:h-8 px-2 md:px-3 rounded-r-none border-r-0"
+                    onClick={() => handleReopenPR()}
+                    disabled={isReopeningPR}
+                    className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
+                    title="Reopen PR"
                   >
-                    {isClosingPR ? (
+                    {isReopeningPR ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
-                        <span className="text-xs md:text-sm">Closing...</span>
-                      </>
-                    ) : isMergingPR ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
-                        <span className="text-xs md:text-sm">Merging...</span>
+                        <span className="text-xs md:text-sm">Reopening...</span>
                       </>
                     ) : (
                       <>
                         <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-                        <span className="text-xs md:text-sm">Merge PR</span>
+                        <span className="text-xs md:text-sm">Reopen PR</span>
                       </>
                     )}
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={isClosingPR || isMergingPR}
-                        className="h-7 md:h-8 px-1.5 rounded-l-none"
-                      >
-                        <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleClosePR} disabled={isClosingPR || isMergingPR}>
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Close PR
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-              {(prStatus === 'closed' || isReopeningPR) && prUrl && prNumber && prStatus !== 'open' && (() => {
-                console.log('[Render] Reopen button - prStatus:', prStatus, 'isReopeningPR:', isReopeningPR)
-                return true
-              })() && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleReopenPR()}
-                  disabled={isReopeningPR}
-                  className="h-7 md:h-8 px-2 md:px-3 flex-shrink-0"
-                  title="Reopen PR"
-                >
-                  {isReopeningPR ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5 animate-spin" />
-                      <span className="text-xs md:text-sm">Reopening...</span>
-                    </>
-                  ) : (
-                    <>
-                      <GitPullRequest className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
-                      <span className="text-xs md:text-sm">Reopen PR</span>
-                    </>
-                  )}
-                </Button>
-              )}
+                )}
             </>
           )}
           <Button

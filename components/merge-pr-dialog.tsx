@@ -25,13 +25,21 @@ interface MergePRDialogProps {
   onMergeInitiated?: () => void
 }
 
-export function MergePRDialog({ taskId, prUrl, prNumber, open, onOpenChange, onPRMerged, onMergeInitiated }: MergePRDialogProps) {
+export function MergePRDialog({
+  taskId,
+  prUrl,
+  prNumber,
+  open,
+  onOpenChange,
+  onPRMerged,
+  onMergeInitiated,
+}: MergePRDialogProps) {
   const [mergeMethod, setMergeMethod] = useState<'squash' | 'merge' | 'rebase'>('squash')
   const [isMerging, setIsMerging] = useState(false)
 
   const handleMergePR = async () => {
     setIsMerging(true)
-    
+
     // Notify parent that merge is initiated (for loading state)
     if (onMergeInitiated) {
       onMergeInitiated()
