@@ -173,10 +173,10 @@ async function continueTask(
       .where(eq(taskMessages.taskId, taskId))
       .orderBy(asc(taskMessages.createdAt))
       .limit(10) // Get last 10 to ensure we have at least 5 before the current one
-    
+
     // Get the last 5 messages before the current one (which is the last message)
     const contextMessages = previousMessages.slice(-6, -1) // Last 6 excluding the very last one, giving us 5 messages
-    
+
     // Build conversation history context - put the new request FIRST, then context
     let promptWithContext = prompt
     if (contextMessages.length > 0) {

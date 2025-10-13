@@ -89,17 +89,17 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
   const formatDuration = (messageCreatedAt: Date) => {
     const startTime = new Date(messageCreatedAt).getTime()
-    
+
     // Find the next agent message after this user message
     const messageIndex = messages.findIndex((m) => new Date(m.createdAt).getTime() === startTime)
     const nextAgentMessage = messages.slice(messageIndex + 1).find((m) => m.role === 'agent')
-    
-    const endTime = nextAgentMessage 
-      ? new Date(nextAgentMessage.createdAt).getTime() 
-      : task.completedAt 
-      ? new Date(task.completedAt).getTime() 
-      : currentTime
-    
+
+    const endTime = nextAgentMessage
+      ? new Date(nextAgentMessage.createdAt).getTime()
+      : task.completedAt
+        ? new Date(task.completedAt).getTime()
+        : currentTime
+
     const durationMs = endTime - startTime
     const durationSeconds = Math.floor(durationMs / 1000)
 
@@ -244,16 +244,10 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                     className="h-6 w-6 opacity-50 hover:opacity-100"
                     onClick={() => handleCopyMessage(message.id, message.content)}
                   >
-                    {copiedMessageId === message.id ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
+                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
                   {!hasAgentResponse(message.createdAt) && (
-                    <div className="text-xs text-muted-foreground font-mono">
-                      {formatDuration(message.createdAt)}
-                    </div>
+                    <div className="text-xs text-muted-foreground font-mono">{formatDuration(message.createdAt)}</div>
                   )}
                 </div>
               </div>
@@ -269,11 +263,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                     className="h-6 w-6 opacity-50 hover:opacity-100"
                     onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
                   >
-                    {copiedMessageId === message.id ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
+                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
                 </div>
               </div>

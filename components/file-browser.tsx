@@ -30,7 +30,14 @@ interface FileBrowserProps {
   refreshKey?: number
 }
 
-export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, selectedFile, refreshKey }: FileBrowserProps) {
+export function FileBrowser({
+  taskId,
+  branchName,
+  onFileSelect,
+  onFilesLoaded,
+  selectedFile,
+  refreshKey,
+}: FileBrowserProps) {
   const [files, setFiles] = useState<FileChange[]>([])
   const [fileTree, setFileTree] = useState<{ [key: string]: FileTreeNode }>({})
   const [loading, setLoading] = useState(false)
