@@ -27,6 +27,7 @@ import { FileBrowser } from '@/components/file-browser'
 import { FileDiffViewer } from '@/components/file-diff-viewer'
 import { CreatePRDialog } from '@/components/create-pr-dialog'
 import { MergePRDialog } from '@/components/merge-pr-dialog'
+import { TaskChat } from '@/components/task-chat'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1001,7 +1002,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       </div>
 
       {/* Changes Section */}
-      {currentStatus === 'pending' || currentStatus === 'processing' ? (
+      {(currentStatus === 'pending' || currentStatus === 'processing') && !task.branchName ? (
         <div className="flex-1 flex items-center justify-center pl-6 pr-3">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
@@ -1009,9 +1010,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           </div>
         </div>
       ) : task.branchName ? (
-        <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-6 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
           {/* File Browser */}
-          <div className="w-full md:w-1/3 h-64 md:h-auto overflow-y-auto min-h-0">
+          <div className="w-full md:w-1/4 h-64 md:h-auto overflow-y-auto min-h-0 flex-shrink-0">
             <FileBrowser
               taskId={task.id}
               branchName={task.branchName}
@@ -1022,14 +1023,21 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           </div>
 
           {/* Diff Viewer */}
-          <div className="flex-1 min-h-0 bg-card rounded-md border overflow-hidden">
-            <div className="overflow-y-auto h-full">
-              <FileDiffViewer
-                selectedFile={selectedFile}
-                diffsCache={diffsCache}
-                isInitialLoading={Object.keys(diffsCache).length === 0}
-              />
+          <div className="flex-1 min-h-0 min-w-0">
+            <div className="bg-card rounded-md border overflow-hidden h-full">
+              <div className="overflow-y-auto h-full">
+                <FileDiffViewer
+                  selectedFile={selectedFile}
+                  diffsCache={diffsCache}
+                  isInitialLoading={Object.keys(diffsCache).length === 0}
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Chat */}
+          <div className="w-full md:w-1/4 h-64 md:h-auto min-h-0 flex-shrink-0">
+            <TaskChat taskId={task.id} />
           </div>
         </div>
       ) : null}

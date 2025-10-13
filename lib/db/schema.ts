@@ -341,6 +341,38 @@ export const selectKeySchema = z.object({
 export type Key = z.infer<typeof selectKeySchema>
 export type InsertKey = z.infer<typeof insertKeySchema>
 
+// Task messages table - stores user and agent messages for each task
+export const taskMessages = pgTable('task_messages', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id')
+    .notNull()
+    .references(() => tasks.id, { onDelete: 'cascade' }), // Foreign key to tasks table
+  role: text('role', {
+    enum: ['user', 'agent'],
+  }).notNull(), // Who sent the message
+  content: text('content').notNull(), // The message content
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const insertTaskMessageSchema = z.object({
+  id: z.string().optional(),
+  taskId: z.string().min(1, 'Task ID is required'),
+  role: z.enum(['user', 'agent']),
+  content: z.string().min(1, 'Content is required'),
+  createdAt: z.date().optional(),
+})
+
+export const selectTaskMessageSchema = z.object({
+  id: z.string(),
+  taskId: z.string(),
+  role: z.enum(['user', 'agent']),
+  content: z.string(),
+  createdAt: z.date(),
+})
+
+export type TaskMessage = z.infer<typeof selectTaskMessageSchema>
+export type InsertTaskMessage = z.infer<typeof insertTaskMessageSchema>
+
 // Keep legacy export for backwards compatibility during migration
 export const userConnections = accounts
 export type UserConnection = Account

@@ -398,18 +398,51 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         ])
 
         if (branchExistsRemote.success && branchExistsRemote.output?.trim()) {
-          // Branch exists on remote, check it out and track it
-          await logger.info('Branch exists on remote, checking it out')
-          const checkoutRemoteBranch = await runAndLogCommand(
-            sandbox,
-            'git',
-            ['checkout', '-b', config.preDeterminedBranchName, `origin/${config.preDeterminedBranchName}`],
-            logger,
-          )
+          // Branch exists on remote, fetch and check it out
+          await logger.info('Branch exists on remote, fetching and checking it out')
+          
+          // Fetch the remote branch with refspec to create local tracking branch
+          const fetchBranch = await runCommandInSandbox(sandbox, 'git', [
+            'fetch',
+            'origin',
+            `${config.preDeterminedBranchName}:${config.preDeterminedBranchName}`,
+          ])
+          
+          if (!fetchBranch.success) {
+            await logger.info('Failed to fetch remote branch, trying alternative method')
+            
+            // Alternative: fetch all and then checkout
+            const fetchAll = await runCommandInSandbox(sandbox, 'git', ['fetch', 'origin'])
+            if (!fetchAll.success) {
+              await logger.info('Failed to fetch from origin')
+              throw new Error('Failed to fetch from remote Git repository')
+            }
+            
+            // Create local branch tracking remote
+            const checkoutTracking = await runAndLogCommand(
+              sandbox,
+              'git',
+              ['checkout', '-b', config.preDeterminedBranchName, '--track', `origin/${config.preDeterminedBranchName}`],
+              logger,
+            )
+            
+            if (!checkoutTracking.success) {
+              await logger.info('Failed to checkout and track remote branch')
+              throw new Error('Failed to checkout remote Git branch')
+            }
+          } else {
+            // Successfully fetched, now checkout
+            const checkoutRemoteBranch = await runAndLogCommand(
+              sandbox,
+              'git',
+              ['checkout', config.preDeterminedBranchName],
+              logger,
+            )
 
-          if (!checkoutRemoteBranch.success) {
-            await logger.info('Failed to checkout remote branch')
-            throw new Error('Failed to checkout remote Git branch')
+            if (!checkoutRemoteBranch.success) {
+              await logger.info('Failed to checkout remote branch')
+              throw new Error('Failed to checkout remote Git branch')
+            }
           }
 
           branchName = config.preDeterminedBranchName
