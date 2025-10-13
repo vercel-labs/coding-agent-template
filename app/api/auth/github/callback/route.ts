@@ -45,7 +45,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     }
   }
 
-  const clientId = process.env.GITHUB_CLIENT_ID
+  const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
   const clientSecret = process.env.GITHUB_CLIENT_SECRET
 
   if (!clientId || !clientSecret) {

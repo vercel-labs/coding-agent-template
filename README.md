@@ -168,9 +168,8 @@ NEXT_PUBLIC_AUTH_PROVIDERS=github,vercel
 - `VERCEL_CLIENT_SECRET`: Your Vercel OAuth app client secret
 
 **Option 2: Sign in with GitHub** (if `github` is in `NEXT_PUBLIC_AUTH_PROVIDERS`)
-- `GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID
+- `NEXT_PUBLIC_GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID (exposed to client)
 - `GITHUB_CLIENT_SECRET`: Your GitHub OAuth app client secret
-- `NEXT_PUBLIC_GITHUB_CLIENT_ID`: Your GitHub OAuth app client ID (same as above, exposed to client)
 
 > **Note**: Only the providers listed in `NEXT_PUBLIC_AUTH_PROVIDERS` will appear in the sign-in dialog. You must provide the OAuth credentials for each enabled provider.
 
@@ -214,7 +213,7 @@ Based on your `NEXT_PUBLIC_AUTH_PROVIDERS` configuration, you'll need to create 
    - **Homepage URL**: `http://localhost:3000` (or your production URL)
    - **Authorization callback URL**: `http://localhost:3000/api/auth/github/callback`
 4. Click "Register application"
-5. Copy the **Client ID** → use for both `GITHUB_CLIENT_ID` and `NEXT_PUBLIC_GITHUB_CLIENT_ID`
+5. Copy the **Client ID** → use for `NEXT_PUBLIC_GITHUB_CLIENT_ID`
 6. Click "Generate a new client secret" → copy and use for `GITHUB_CLIENT_SECRET`
 
 **Required Scopes**: The app will request `repo` scope to access repositories.
@@ -347,7 +346,7 @@ This release introduces **user authentication** and **major security improvement
      - `NEXT_PUBLIC_AUTH_PROVIDERS`: Configure which auth providers to enable (`github`, `vercel`, or both)
    
    - **New OAuth Configuration (at least one required):**
-     - GitHub: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `NEXT_PUBLIC_GITHUB_CLIENT_ID`
+     - GitHub: `NEXT_PUBLIC_GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
      - Vercel: `VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`
    
    - **Changed Authentication:**
@@ -384,9 +383,8 @@ ENCRYPTION_KEY=$(openssl rand -hex 32)
 NEXT_PUBLIC_AUTH_PROVIDERS=github  # or "vercel" or "github,vercel"
 
 # GitHub OAuth (if using GitHub authentication)
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
 NEXT_PUBLIC_GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
 
 # Vercel OAuth (if using Vercel authentication)
 VERCEL_CLIENT_ID=your_vercel_client_id

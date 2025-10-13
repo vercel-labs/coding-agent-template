@@ -13,10 +13,10 @@ export async function GET(req: NextRequest) {
       try {
         const tokenData = await getOAuthToken(session.user.id, 'github')
         if (tokenData) {
-          await fetch(`https://api.github.com/applications/${process.env.GITHUB_CLIENT_ID}/token`, {
+          await fetch(`https://api.github.com/applications/${process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID}/token`, {
             method: 'DELETE',
             headers: {
-              Authorization: `Basic ${Buffer.from(`${process.env.GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64')}`,
+              Authorization: `Basic ${Buffer.from(`${process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64')}`,
               Accept: 'application/vnd.github.v3+json',
             },
             body: JSON.stringify({ access_token: tokenData.accessToken }),
