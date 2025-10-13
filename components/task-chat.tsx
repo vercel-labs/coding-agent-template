@@ -302,7 +302,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                 </Card>
                 <div className="flex items-center gap-0.5 pr-1 justify-end">
                   {!hasAgentResponse(message.createdAt) && isLatestUserMessage(message.createdAt) && (
-                    <div className="text-xs text-muted-foreground font-mono mr-auto pl-4 opacity-30">{formatDuration(message.createdAt)}</div>
+                    <div className="text-xs text-muted-foreground font-mono mr-auto pl-4 opacity-30">
+                      {formatDuration(message.createdAt)}
+                    </div>
                   )}
                   <Button
                     variant="ghost"
@@ -310,7 +312,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                     className="h-5 w-5 opacity-30 hover:opacity-70"
                     onClick={() => handleCopyMessage(message.id, message.content)}
                   >
-                    {copiedMessageId === message.id ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+                    {copiedMessageId === message.id ? (
+                      <Check className="h-2.5 w-2.5" />
+                    ) : (
+                      <Copy className="h-2.5 w-2.5" />
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -335,7 +341,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                     className="h-5 w-5 opacity-30 hover:opacity-70"
                     onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
                   >
-                    {copiedMessageId === message.id ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+                    {copiedMessageId === message.id ? (
+                      <Check className="h-2.5 w-2.5" />
+                    ) : (
+                      <Copy className="h-2.5 w-2.5" />
+                    )}
                   </Button>
                 </div>
               </div>
