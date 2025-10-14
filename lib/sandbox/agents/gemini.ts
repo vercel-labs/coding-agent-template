@@ -214,12 +214,11 @@ EOF`
     // Add output format for structured responses
     args.push('-o', 'json')
 
-    // Add the instruction as positional argument (not using deprecated -p flag)
-    args.push(instruction)
+    // Don't add instruction to args array - we'll add it quoted separately to the command string
 
     // Log what we're trying to do
     await logger.info('Executing Gemini CLI with authentication')
-    const redactedCommand = `gemini ${args.slice(0, -1).join(' ')} "${instruction.substring(0, 100)}..."`
+    const redactedCommand = `gemini ${args.join(' ')} "${instruction.substring(0, 100)}..."`
     await logger.command(redactedCommand)
 
     // Build environment variables string for shell command (like other agents)
@@ -231,7 +230,10 @@ EOF`
     await logger.info('Attempting Gemini CLI execution with basic flags...')
 
     // Execute Gemini CLI with proper environment using shell command
-    const fullCommand = envPrefix ? `${envPrefix} gemini ${args.join(' ')}` : `gemini ${args.join(' ')}`
+    // IMPORTANT: Wrap instruction in quotes to prevent CLI option parsing issues
+    const fullCommand = envPrefix
+      ? `${envPrefix} gemini ${args.join(' ')} "${instruction}"`
+      : `gemini ${args.join(' ')} "${instruction}"`
     let result = await runCommandInSandbox(sandbox, 'sh', ['-c', fullCommand])
 
     // If that fails with tool registry error, try with different approval modes
@@ -243,20 +245,20 @@ EOF`
       }
       fallbackArgs.push('--approval-mode', 'auto_edit') // Auto-approve edit tools only
       fallbackArgs.push('-o', 'text') // Use text output instead of JSON
-      fallbackArgs.push(instruction)
+      // Don't add instruction to array - add it quoted separately
 
       const fallbackCommand = envPrefix
-        ? `${envPrefix} gemini ${fallbackArgs.join(' ')}`
-        : `gemini ${fallbackArgs.join(' ')}`
+        ? `${envPrefix} gemini ${fallbackArgs.join(' ')} "${instruction}"`
+        : `gemini ${fallbackArgs.join(' ')} "${instruction}"`
       result = await runCommandInSandbox(sandbox, 'sh', ['-c', fallbackCommand])
 
       // If still failing, try the most basic approach
       if (!result.success && result.error?.includes('Tool') && result.error?.includes('not found in registry')) {
         await logger.info('Retrying with minimal flags...')
-        const minimalArgs = selectedModel ? ['-m', selectedModel, instruction] : [instruction]
+        const minimalArgs = selectedModel ? ['-m', selectedModel] : []
         const minimalCommand = envPrefix
-          ? `${envPrefix} gemini ${minimalArgs.join(' ')}`
-          : `gemini ${minimalArgs.join(' ')}`
+          ? `${envPrefix} gemini ${minimalArgs.join(' ')} "${instruction}"`
+          : `gemini ${minimalArgs.join(' ')} "${instruction}"`
         result = await runCommandInSandbox(sandbox, 'sh', ['-c', minimalCommand])
       }
     }
