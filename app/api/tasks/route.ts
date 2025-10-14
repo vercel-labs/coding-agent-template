@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { Sandbox } from '@vercel/sandbox'
 import { db } from '@/lib/db/client'
-import { tasks, insertTaskSchema, connectors } from '@/lib/db/schema'
+import { tasks, insertTaskSchema, connectors, taskMessages } from '@/lib/db/schema'
 import { generateId } from '@/lib/utils/id'
 import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
@@ -316,6 +316,18 @@ async function processTask(
     await logger.updateStatus('processing', 'Task created, preparing to start...')
     await logger.updateProgress(10, 'Initializing task execution...')
 
+    // Save the user's message
+    try {
+      await db.insert(taskMessages).values({
+        id: generateId(12),
+        taskId,
+        role: 'user',
+        content: prompt,
+      })
+    } catch (error) {
+      console.error('Failed to save user message:', error)
+    }
+
     // GitHub token and API keys are passed as parameters (retrieved before entering after() block)
     if (githubToken) {
       await logger.info('Using authenticated GitHub access')
@@ -519,6 +531,18 @@ async function processTask(
 
       if (agentResult.agentResponse) {
         await logger.info('Agent response received')
+
+        // Save the agent's response message
+        try {
+          await db.insert(taskMessages).values({
+            id: generateId(12),
+            taskId,
+            role: 'agent',
+            content: agentResult.agentResponse,
+          })
+        } catch (error) {
+          console.error('Failed to save agent message:', error)
+        }
       }
 
       // Agent execution logs are already logged in real-time by the agent

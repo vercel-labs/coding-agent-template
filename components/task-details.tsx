@@ -16,17 +16,20 @@ import {
   Trash2,
   ChevronDown,
   XCircle,
+  Code,
+  MessageSquare,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
-import { TaskDuration } from '@/components/task-duration'
 import { FileBrowser } from '@/components/file-browser'
 import { FileDiffViewer } from '@/components/file-diff-viewer'
 import { CreatePRDialog } from '@/components/create-pr-dialog'
 import { MergePRDialog } from '@/components/merge-pr-dialog'
+import { TaskChat } from '@/components/task-chat'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +42,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useRouter } from 'next/navigation'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
@@ -117,13 +121,14 @@ const DEFAULT_MODELS = {
 } as const
 
 export function TaskDetails({ task }: TaskDetailsProps) {
-  const [isStopping, setIsStopping] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const loadingDiffsRef = useRef(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const previousStatusRef = useRef<Task['status']>(task.status)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showTryAgainDialog, setShowTryAgainDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -140,6 +145,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [isClosingPR, setIsClosingPR] = useState(false)
   const [isReopeningPR, setIsReopeningPR] = useState(false)
   const [isMergingPR, setIsMergingPR] = useState(false)
+  const [viewMode, setViewMode] = useState<'changes' | 'all'>('changes')
+  const [activeTab, setActiveTab] = useState<'code' | 'chat'>('code')
+  const [showFilesList, setShowFilesList] = useState(false)
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
@@ -424,38 +432,60 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   }, [task.prNumber])
 
   // Fetch all diffs when files list changes
-  const fetchAllDiffs = async (filesList: string[]) => {
-    if (!filesList.length || loadingDiffsRef.current) return
+  const fetchAllDiffs = useCallback(
+    async (filesList: string[]) => {
+      if (!filesList.length || loadingDiffsRef.current) return
 
-    loadingDiffsRef.current = true
-    const newDiffsCache: Record<string, DiffData> = {}
+      loadingDiffsRef.current = true
+      const newDiffsCache: Record<string, DiffData> = {}
 
-    try {
-      // Fetch all diffs in parallel
-      const diffPromises = filesList.map(async (filename) => {
-        try {
-          const params = new URLSearchParams()
-          params.set('filename', filename)
+      try {
+        // Fetch all diffs in parallel
+        const diffPromises = filesList.map(async (filename) => {
+          try {
+            const params = new URLSearchParams()
+            params.set('filename', filename)
 
-          const response = await fetch(`/api/tasks/${task.id}/diff?${params.toString()}`)
-          const result = await response.json()
+            const response = await fetch(`/api/tasks/${task.id}/diff?${params.toString()}`)
+            const result = await response.json()
 
-          if (response.ok && result.success) {
-            newDiffsCache[filename] = result.data
+            if (response.ok && result.success) {
+              newDiffsCache[filename] = result.data
+            }
+          } catch (err) {
+            console.error('Error fetching diff for file:', err)
           }
-        } catch (err) {
-          console.error('Error fetching diff for file:', err)
-        }
-      })
+        })
 
-      await Promise.all(diffPromises)
-      setDiffsCache(newDiffsCache)
-    } catch (error) {
-      console.error('Error fetching diffs:', error)
-    } finally {
-      loadingDiffsRef.current = false
+        await Promise.all(diffPromises)
+        setDiffsCache(newDiffsCache)
+      } catch (error) {
+        console.error('Error fetching diffs:', error)
+      } finally {
+        loadingDiffsRef.current = false
+      }
+    },
+    [task.id],
+  )
+
+  // Trigger refresh when task completes
+  useEffect(() => {
+    const currentStatus = optimisticStatus || task.status
+    const previousStatus = previousStatusRef.current
+
+    // If task transitions from processing/pending to completed/error/stopped, trigger refresh
+    if (
+      (previousStatus === 'processing' || previousStatus === 'pending') &&
+      (currentStatus === 'completed' || currentStatus === 'error' || currentStatus === 'stopped')
+    ) {
+      setRefreshKey((prev) => prev + 1)
+      // Clear diffs cache to force reload
+      setDiffsCache({})
+      setSelectedFile(undefined)
     }
-  }
+
+    previousStatusRef.current = currentStatus
+  }, [task.status, optimisticStatus])
 
   // Update model when agent changes
   useEffect(() => {
@@ -620,73 +650,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
   }
 
-  const handleStopTask = async () => {
-    setIsStopping(true)
-    // Optimistically update the status to 'stopped'
-    setOptimisticStatus('stopped')
-
-    try {
-      const response = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'stop' }),
-      })
-
-      if (response.ok) {
-        toast.success('Task stopped successfully!')
-        refreshTasks() // Refresh the sidebar
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to stop task')
-        // Revert optimistic update on error
-        setOptimisticStatus(null)
-      }
-    } catch (error) {
-      console.error('Error stopping task:', error)
-      toast.error('Failed to stop task')
-      // Revert optimistic update on error
-      setOptimisticStatus(null)
-    } finally {
-      setIsStopping(false)
-    }
-  }
-
-  const getStatusIcon = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return <AlertCircle className="h-4 w-4" />
-      case 'processing':
-        return <Loader2 className="h-4 w-4 animate-spin" />
-      case 'completed':
-        return <CheckCircle className="h-4 w-4" />
-      case 'error':
-        return <AlertCircle className="h-4 w-4" />
-      case 'stopped':
-        return <AlertCircle className="h-4 w-4" />
-      default:
-        return <AlertCircle className="h-4 w-4" />
-    }
-  }
-
-  const getStatusColor = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'text-gray-500'
-      case 'processing':
-        return 'text-blue-500'
-      case 'completed':
-        return 'text-green-500'
-      case 'error':
-        return 'text-red-500'
-      case 'stopped':
-        return 'text-orange-500'
-      default:
-        return 'text-gray-500'
-    }
-  }
-
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overview Section */}
@@ -694,18 +657,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
         {/* Prompt */}
         <div className="flex items-center gap-2">
           <p className="text-lg md:text-2xl flex-1 truncate">{task.prompt}</p>
-          {currentStatus === 'processing' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleStopTask}
-              disabled={isStopping}
-              className="h-7 w-7 md:h-8 md:w-8 p-0 flex-shrink-0"
-              title="Stop task"
-            >
-              <Square className="h-3.5 w-3.5 md:h-4 md:w-4" fill="currentColor" />
-            </Button>
-          )}
           {currentStatus === 'completed' && task.repoUrl && task.branchName && (
             <>
               {!prUrl && prStatus !== 'merged' && prStatus !== 'closed' && (
@@ -837,32 +788,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
         {/* Compact info row */}
         <div className="flex items-center gap-2 md:gap-4 flex-wrap text-xs md:text-sm">
-          {/* Status + Duration */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className={cn('flex items-center gap-2 cursor-help', getStatusColor(currentStatus))}>
-                  {getStatusIcon(currentStatus)}
-                  <span className="text-muted-foreground">
-                    <TaskDuration task={task} hideTitle={true} />
-                  </span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="space-y-1">
-                <div>
-                  <span className="font-medium">Created:</span>{' '}
-                  <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Completed:</span>{' '}
-                  <span className="text-muted-foreground">
-                    {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
-                  </span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
           {/* Repo */}
           {task.repoUrl && (
             <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
@@ -1001,37 +926,164 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       </div>
 
       {/* Changes Section */}
-      {currentStatus === 'pending' || currentStatus === 'processing' ? (
-        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Working...</p>
-          </div>
-        </div>
-      ) : task.branchName ? (
-        <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-6 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
-          {/* File Browser */}
-          <div className="w-full md:w-1/3 h-64 md:h-auto overflow-y-auto min-h-0">
-            <FileBrowser
-              taskId={task.id}
-              branchName={task.branchName}
-              onFileSelect={setSelectedFile}
-              onFilesLoaded={fetchAllDiffs}
-              selectedFile={selectedFile}
-            />
-          </div>
-
-          {/* Diff Viewer */}
-          <div className="flex-1 min-h-0 bg-card rounded-md border overflow-hidden">
-            <div className="overflow-y-auto h-full">
-              <FileDiffViewer
+      {task.branchName ? (
+        <>
+          {/* Desktop Layout */}
+          <div className="hidden md:flex flex-1 gap-3 md:gap-4 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
+            {/* File Browser */}
+            <div className="w-1/4 h-auto overflow-y-auto min-h-0 flex-shrink-0">
+              <FileBrowser
+                taskId={task.id}
+                branchName={task.branchName}
+                onFileSelect={setSelectedFile}
+                onFilesLoaded={fetchAllDiffs}
                 selectedFile={selectedFile}
-                diffsCache={diffsCache}
-                isInitialLoading={Object.keys(diffsCache).length === 0}
+                refreshKey={refreshKey}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
               />
             </div>
+
+            {/* Diff Viewer */}
+            <div className="flex-1 min-h-0 min-w-0">
+              <div className="bg-card rounded-md border overflow-hidden h-full">
+                <div className="overflow-y-auto h-full">
+                  <FileDiffViewer
+                    selectedFile={selectedFile}
+                    diffsCache={diffsCache}
+                    isInitialLoading={Object.keys(diffsCache).length === 0}
+                    viewMode={viewMode}
+                    taskId={task.id}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Chat */}
+            <div className="w-1/4 h-auto min-h-0 flex-shrink-0">
+              <TaskChat taskId={task.id} task={task} />
+            </div>
           </div>
-        </div>
+
+          {/* Mobile Layout */}
+          <div className="md:hidden flex flex-col flex-1 min-h-0 relative pb-14">
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden px-3 pt-3">
+              {activeTab === 'code' ? (
+                <div className="relative h-full">
+                  {/* Current File Path Bar */}
+                  <div className="mb-2 flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowFilesList(true)}
+                      className="h-6 w-6 p-0 flex-shrink-0"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground truncate flex-1">
+                      {selectedFile || 'Select a file'}
+                    </span>
+                  </div>
+
+                  {/* Diff Viewer */}
+                  <div className="bg-card rounded-md border overflow-hidden h-[calc(100%-3rem)]">
+                    <div className="overflow-y-auto h-full">
+                      <FileDiffViewer
+                        selectedFile={selectedFile}
+                        diffsCache={diffsCache}
+                        isInitialLoading={Object.keys(diffsCache).length === 0}
+                        viewMode={viewMode}
+                        taskId={task.id}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full pb-3">
+                  <TaskChat taskId={task.id} task={task} />
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Tab Bar */}
+            <div className="absolute bottom-0 left-0 right-0 border-t bg-background">
+              <div className="flex h-14">
+                <button
+                  onClick={() => setActiveTab('code')}
+                  className={cn(
+                    'flex-1 flex flex-col items-center justify-center gap-1 transition-colors',
+                    activeTab === 'code' ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                >
+                  <Code className="h-5 w-5" />
+                  <span className="text-xs font-medium">Code</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={cn(
+                    'flex-1 flex flex-col items-center justify-center gap-1 transition-colors',
+                    activeTab === 'chat' ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                >
+                  <MessageSquare className="h-5 w-5" />
+                  <span className="text-xs font-medium">Chat</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Files List Drawer */}
+            <Drawer open={showFilesList} onOpenChange={setShowFilesList}>
+              <DrawerContent>
+                <DrawerHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <DrawerTitle>Files</DrawerTitle>
+                    <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+                      <Button
+                        variant={viewMode === 'changes' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setViewMode('changes')}
+                        className={`h-6 px-2 text-xs rounded-sm ${
+                          viewMode === 'changes'
+                            ? 'bg-background shadow-sm'
+                            : 'hover:bg-transparent hover:text-foreground'
+                        }`}
+                      >
+                        Changes
+                      </Button>
+                      <Button
+                        variant={viewMode === 'all' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setViewMode('all')}
+                        className={`h-6 px-2 text-xs rounded-sm ${
+                          viewMode === 'all' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                        }`}
+                      >
+                        All Files
+                      </Button>
+                    </div>
+                  </div>
+                </DrawerHeader>
+                <div className="overflow-y-auto max-h-[60vh] px-4 pb-4">
+                  <FileBrowser
+                    taskId={task.id}
+                    branchName={task.branchName}
+                    onFileSelect={(file) => {
+                      setSelectedFile(file)
+                      setShowFilesList(false)
+                    }}
+                    onFilesLoaded={fetchAllDiffs}
+                    selectedFile={selectedFile}
+                    refreshKey={refreshKey}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                    hideHeader={true}
+                  />
+                </div>
+              </DrawerContent>
+            </Drawer>
+          </div>
+        </>
       ) : null}
 
       {/* Try Again Dialog */}

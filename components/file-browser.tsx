@@ -1,7 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { File, Folder, FolderOpen, Clock, GitBranch } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { File, Folder, FolderOpen, Clock, GitBranch, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useAtom } from 'jotai'
+import { getTaskFileBrowserState } from '@/lib/atoms/file-browser'
+import { useMemo } from 'react'
 
 interface FileChange {
   filename: string
@@ -27,23 +31,37 @@ interface FileBrowserProps {
   onFileSelect?: (filename: string) => void
   onFilesLoaded?: (filenames: string[]) => void
   selectedFile?: string
+  refreshKey?: number
+  viewMode?: 'changes' | 'all'
+  onViewModeChange?: (mode: 'changes' | 'all') => void
+  hideHeader?: boolean
 }
 
-export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, selectedFile }: FileBrowserProps) {
-  const [files, setFiles] = useState<FileChange[]>([])
-  const [fileTree, setFileTree] = useState<{ [key: string]: FileTreeNode }>({})
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+export function FileBrowser({
+  taskId,
+  branchName,
+  onFileSelect,
+  onFilesLoaded,
+  selectedFile,
+  refreshKey,
+  viewMode = 'changes',
+  onViewModeChange,
+  hideHeader = false,
+}: FileBrowserProps) {
+  // Use Jotai atom for state management
+  const taskStateAtom = useMemo(() => getTaskFileBrowserState(taskId), [taskId])
+  const [state, setState] = useAtom(taskStateAtom)
 
-  useEffect(() => {
-    if (branchName) {
-      fetchBranchFiles()
-    }
-  }, [taskId, branchName])
+  // Get current viewMode data
+  const currentViewData = state[viewMode]
+  const { files, fileTree, expandedFolders, fetchAttempted } = currentViewData
+  const { loading, error } = state
 
   // Helper function to recursively collect all folder paths
-  const getAllFolderPaths = (tree: { [key: string]: FileTreeNode }, basePath = ''): string[] => {
+  const getAllFolderPaths = useCallback(function collectPaths(
+    tree: { [key: string]: FileTreeNode },
+    basePath = '',
+  ): string[] {
     const paths: string[] = []
 
     Object.entries(tree).forEach(([name, node]) => {
@@ -52,47 +70,96 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
       if (node.type === 'directory') {
         paths.push(fullPath)
         if (node.children) {
-          paths.push(...getAllFolderPaths(node.children, fullPath))
+          paths.push(...collectPaths(node.children, fullPath))
         }
       }
     })
 
     return paths
-  }
+  }, [])
 
-  const fetchBranchFiles = async () => {
+  const fetchBranchFiles = useCallback(async () => {
     if (!branchName) return
 
-    setLoading(true)
-    setError(null)
+    setState({ loading: true, error: null })
 
     try {
-      const response = await fetch(`/api/tasks/${taskId}/files`)
+      const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+      const response = await fetch(url)
       const result = await response.json()
 
       if (result.success) {
         const fetchedFiles = result.files || []
-        setFiles(fetchedFiles)
-        const fileTree = result.fileTree || {}
-        setFileTree(fileTree)
+        const fetchedFileTree = result.fileTree || {}
 
-        // Expand all folders by default
-        const allFolderPaths = getAllFolderPaths(fileTree)
-        setExpandedFolders(new Set(allFolderPaths))
+        // In "changes" mode, expand all folders by default
+        // In "all" mode, collapse all folders by default
+        const newExpandedFolders =
+          viewMode === 'changes' ? new Set(getAllFolderPaths(fetchedFileTree)) : new Set<string>()
+
+        // Update the specific viewMode data
+        setState({
+          [viewMode]: {
+            files: fetchedFiles,
+            fileTree: fetchedFileTree,
+            expandedFolders: newExpandedFolders,
+            fetchAttempted: true,
+          },
+          loading: false,
+          error: null,
+        })
 
         // Notify parent component with list of filenames
         if (onFilesLoaded && fetchedFiles.length > 0) {
           onFilesLoaded(fetchedFiles.map((f: FileChange) => f.filename))
         }
       } else {
-        setError(result.error || 'Failed to fetch files')
+        setState({
+          [viewMode]: {
+            files: [],
+            fileTree: {},
+            expandedFolders: new Set<string>(),
+            fetchAttempted: true,
+          },
+          loading: false,
+          error: result.error || 'Failed to fetch files',
+        })
       }
     } catch (err) {
-      setError('Failed to fetch branch files')
-    } finally {
-      setLoading(false)
+      setState({
+        [viewMode]: {
+          files: [],
+          fileTree: {},
+          expandedFolders: new Set<string>(),
+          fetchAttempted: true,
+        },
+        loading: false,
+        error: 'Failed to fetch branch files',
+      })
     }
-  }
+  }, [branchName, taskId, onFilesLoaded, viewMode, setState, getAllFolderPaths])
+
+  useEffect(() => {
+    // Only fetch if we don't have files for this viewMode yet AND haven't attempted to fetch
+    if (branchName && files.length === 0 && !loading && !fetchAttempted) {
+      fetchBranchFiles()
+    }
+  }, [branchName, files.length, loading, fetchAttempted, fetchBranchFiles])
+
+  // Separate effect for refreshKey to force refetch
+  useEffect(() => {
+    if (branchName && refreshKey !== undefined && refreshKey > 0) {
+      // Reset fetchAttempted flag to allow refetch
+      setState({
+        [viewMode]: {
+          ...currentViewData,
+          fetchAttempted: false,
+        },
+      })
+      fetchBranchFiles()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey, branchName])
 
   const toggleFolder = (path: string) => {
     const newExpanded = new Set(expandedFolders)
@@ -101,7 +168,13 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
     } else {
       newExpanded.add(path)
     }
-    setExpandedFolders(newExpanded)
+    // Update only the current viewMode's expanded folders
+    setState({
+      [viewMode]: {
+        ...currentViewData,
+        expandedFolders: newExpanded,
+      },
+    })
   }
 
   const renderFileTree = (tree: { [key: string]: FileTreeNode }, path = '') => {
@@ -150,7 +223,7 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
           >
             <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
             <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
-            {(node.additions || node.deletions) && (
+            {viewMode === 'changes' && (node.additions || node.deletions) && (
               <div className="flex items-center gap-1 text-xs flex-shrink-0">
                 {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
                 {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
@@ -194,13 +267,44 @@ export function FileBrowser({ taskId, branchName, onFileSelect, onFilesLoaded, s
 
   return (
     <div className="flex flex-col h-full">
+      {!hideHeader && (
+        <div className="px-2 py-2 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold pl-1">Files</h3>
+          <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+            <Button
+              variant={viewMode === 'changes' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => onViewModeChange?.('changes')}
+              className={`h-6 px-2 text-xs rounded-sm ${
+                viewMode === 'changes' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+              }`}
+            >
+              Changes
+            </Button>
+            <Button
+              variant={viewMode === 'all' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => onViewModeChange?.('all')}
+              className={`h-6 px-2 text-xs rounded-sm ${
+                viewMode === 'all' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+              }`}
+            >
+              All Files
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">Loading files...</div>
+          <div className="p-3 md:p-4 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
         ) : error ? (
           <div className="p-3 md:p-4 text-center text-xs md:text-sm text-destructive">{error}</div>
         ) : files.length === 0 ? (
-          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">No files changed</div>
+          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">
+            {viewMode === 'changes' ? 'No files changed' : 'No files found'}
+          </div>
         ) : (
           <div className="py-2">{renderFileTree(fileTree)}</div>
         )}
