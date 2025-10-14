@@ -58,25 +58,25 @@ export function FileBrowser({
   const { loading, error } = state
 
   // Helper function to recursively collect all folder paths
-  const getAllFolderPaths = useCallback(
-    function collectPaths(tree: { [key: string]: FileTreeNode }, basePath = ''): string[] {
-      const paths: string[] = []
+  const getAllFolderPaths = useCallback(function collectPaths(
+    tree: { [key: string]: FileTreeNode },
+    basePath = '',
+  ): string[] {
+    const paths: string[] = []
 
-      Object.entries(tree).forEach(([name, node]) => {
-        const fullPath = basePath ? `${basePath}/${name}` : name
+    Object.entries(tree).forEach(([name, node]) => {
+      const fullPath = basePath ? `${basePath}/${name}` : name
 
-        if (node.type === 'directory') {
-          paths.push(fullPath)
-          if (node.children) {
-            paths.push(...collectPaths(node.children, fullPath))
-          }
+      if (node.type === 'directory') {
+        paths.push(fullPath)
+        if (node.children) {
+          paths.push(...collectPaths(node.children, fullPath))
         }
-      })
+      }
+    })
 
-      return paths
-    },
-    [],
-  )
+    return paths
+  }, [])
 
   const fetchBranchFiles = useCallback(async () => {
     if (!branchName) return
