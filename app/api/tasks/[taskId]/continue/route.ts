@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { db } from '@/lib/db/client'
 import { tasks, taskMessages, connectors } from '@/lib/db/schema'
-import { eq, and, asc } from 'drizzle-orm'
+import { eq, and, asc, isNull } from 'drizzle-orm'
 import { generateId } from '@/lib/utils/id'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { Sandbox } from '@vercel/sandbox'
@@ -30,14 +30,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
     }
 
     // Get the task and verify ownership
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .limit(1)
 
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
-    }
-
-    if (task.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     // Check if task has a branch name (required to continue)
