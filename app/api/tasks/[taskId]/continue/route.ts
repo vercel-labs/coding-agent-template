@@ -178,7 +178,14 @@ async function continueTask(
     const contextMessages = previousMessages.slice(-6, -1) // Last 6 excluding the very last one, giving us 5 messages
 
     // Build conversation history context - put the new request FIRST, then context
-    let promptWithContext = prompt
+    // Sanitize the current prompt to prevent CLI option parsing issues
+    const sanitizedPrompt = prompt
+      .replace(/`/g, "'") // Replace backticks with single quotes
+      .replace(/\$/g, '') // Remove dollar signs
+      .replace(/\\/g, '') // Remove backslashes
+      .replace(/^-/gm, ' -') // Prefix lines starting with dash to avoid CLI option parsing
+
+    let promptWithContext = sanitizedPrompt
     if (contextMessages.length > 0) {
       let conversationHistory = '\n\n---\n\nFor context, here is the conversation history from this session:\n\n'
       contextMessages.forEach((msg) => {
@@ -190,9 +197,10 @@ async function continueTask(
           .replace(/`/g, "'") // Replace backticks with single quotes
           .replace(/\$/g, '') // Remove dollar signs
           .replace(/\\/g, '') // Remove backslashes
+          .replace(/^-/gm, ' -') // Prefix lines starting with dash to avoid CLI option parsing
         conversationHistory += `${role}: ${sanitizedContent}\n\n`
       })
-      promptWithContext = `${prompt}${conversationHistory}`
+      promptWithContext = `${sanitizedPrompt}${conversationHistory}`
     }
 
     type Connector = typeof connectors.$inferSelect

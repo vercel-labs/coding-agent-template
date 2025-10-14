@@ -508,10 +508,17 @@ async function processTask(
       await logger.info('Warning: Could not fetch MCP servers, continuing without them')
     }
 
+    // Sanitize prompt to prevent CLI option parsing issues
+    const sanitizedPrompt = prompt
+      .replace(/`/g, "'") // Replace backticks with single quotes
+      .replace(/\$/g, '') // Remove dollar signs
+      .replace(/\\/g, '') // Remove backslashes
+      .replace(/^-/gm, ' -') // Prefix lines starting with dash to avoid CLI option parsing
+
     const agentResult = await Promise.race([
       executeAgentInSandbox(
         sandbox,
-        prompt,
+        sanitizedPrompt,
         selectedAgent as AgentType,
         logger,
         selectedModel,
