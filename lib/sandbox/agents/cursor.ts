@@ -363,7 +363,7 @@ EOF`
 
     if (result.error && result.error.trim()) {
       const redactedError = redactSensitiveInfo(result.error)
-      await logger.info('Cursor stderr available')
+      await logger.error(redactedError)
     }
 
     // Cursor CLI execution completed
