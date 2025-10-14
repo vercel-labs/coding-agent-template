@@ -231,7 +231,9 @@ EOF`
 
     // Execute Gemini CLI with proper environment using shell command
     // IMPORTANT: Wrap instruction in quotes to prevent CLI option parsing issues
-    const fullCommand = envPrefix ? `${envPrefix} gemini ${args.join(' ')} "${instruction}"` : `gemini ${args.join(' ')} "${instruction}"`
+    const fullCommand = envPrefix
+      ? `${envPrefix} gemini ${args.join(' ')} "${instruction}"`
+      : `gemini ${args.join(' ')} "${instruction}"`
     let result = await runCommandInSandbox(sandbox, 'sh', ['-c', fullCommand])
 
     // If that fails with tool registry error, try with different approval modes
