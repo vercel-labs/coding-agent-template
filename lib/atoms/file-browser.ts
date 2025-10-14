@@ -40,8 +40,8 @@ const emptyViewModeData: ViewModeData = {
 }
 
 const defaultState: FileBrowserState = {
-  changes: { ...emptyViewModeData },
-  all: { ...emptyViewModeData },
+  changes: structuredClone(emptyViewModeData),
+  all: structuredClone(emptyViewModeData),
   loading: false,
   error: null,
 }
@@ -54,11 +54,11 @@ export const getTaskFileBrowserState = (taskId: string) =>
   atom(
     (get) => {
       const allStates = get(fileBrowserStateFamily)
-      return allStates[taskId] || { ...defaultState }
+      return allStates[taskId] || structuredClone(defaultState)
     },
     (get, set, update: Partial<FileBrowserState>) => {
       const allStates = get(fileBrowserStateFamily)
-      const currentState = allStates[taskId] || { ...defaultState }
+      const currentState = allStates[taskId] || structuredClone(defaultState)
       set(fileBrowserStateFamily, {
         ...allStates,
         [taskId]: { ...currentState, ...update },
