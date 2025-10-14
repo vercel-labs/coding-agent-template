@@ -295,9 +295,24 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           <div key={message.id}>
             {message.role === 'user' ? (
               <div className="space-y-1">
-                <Card className="p-4 bg-muted border-0">
-                  <div className="text-sm">
-                    <Streamdown>{message.content}</Streamdown>
+                <Card className="p-2 bg-card rounded-md">
+                  <div className="text-xs">
+                    <Streamdown
+                      components={{
+                        code: ({ className, children, ...props }: any) => (
+                          <code className={`${className} !text-xs`} {...props}>
+                            {children}
+                          </code>
+                        ),
+                        pre: ({ children, ...props }: any) => (
+                          <pre className="!text-xs" {...props}>
+                            {children}
+                          </pre>
+                        ),
+                      }}
+                    >
+                      {message.content}
+                    </Streamdown>
                   </div>
                 </Card>
                 <div className="flex items-center gap-0.5 pr-1 justify-end">
@@ -306,47 +321,48 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                       {formatDuration(message.createdAt)}
                     </div>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 opacity-30 hover:opacity-70"
-                    onClick={() => handleCopyMessage(message.id, message.content)}
-                  >
-                    {copiedMessageId === message.id ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      <Copy className="h-2.5 w-2.5" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 opacity-30 hover:opacity-70"
+                  <button
                     onClick={() => handleRetryMessage(message.content)}
                     disabled={isSending}
+                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
                   >
-                    <RotateCcw className="h-2.5 w-2.5" />
-                  </Button>
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => handleCopyMessage(message.id, message.content)}
+                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
+                  >
+                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  </button>
                 </div>
               </div>
             ) : (
               <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">
-                  <Streamdown>{parseAgentMessage(message.content)}</Streamdown>
+                <div className="text-xs text-muted-foreground">
+                  <Streamdown
+                    components={{
+                      code: ({ className, children, ...props }: any) => (
+                        <code className={`${className} !text-xs`} {...props}>
+                          {children}
+                        </code>
+                      ),
+                      pre: ({ children, ...props }: any) => (
+                        <pre className="!text-xs" {...props}>
+                          {children}
+                        </pre>
+                      ),
+                    }}
+                  >
+                    {parseAgentMessage(message.content)}
+                  </Streamdown>
                 </div>
                 <div className="flex items-center gap-0.5 justify-end">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 opacity-30 hover:opacity-70"
+                  <button
                     onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
+                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
                   >
-                    {copiedMessageId === message.id ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      <Copy className="h-2.5 w-2.5" />
-                    )}
-                  </Button>
+                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  </button>
                 </div>
               </div>
             )}
@@ -361,17 +377,16 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Send a follow-up message..."
-          className="w-full min-h-[60px] max-h-[120px] resize-none pr-12"
+          className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-xs"
           disabled={isSending}
         />
-        <Button
+        <button
           onClick={handleSendMessage}
           disabled={!newMessage.trim() || isSending}
-          size="icon"
-          className="absolute bottom-2 right-2 rounded-full h-8 w-8 p-0"
+          className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-        </Button>
+          {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
+        </button>
       </div>
     </div>
   )

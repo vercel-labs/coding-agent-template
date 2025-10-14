@@ -16,6 +16,9 @@ import {
   Trash2,
   ChevronDown,
   XCircle,
+  Code,
+  MessageSquare,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -39,6 +42,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useRouter } from 'next/navigation'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
@@ -143,6 +147,8 @@ export function TaskDetails({ task }: TaskDetailsProps) {
   const [isReopeningPR, setIsReopeningPR] = useState(false)
   const [isMergingPR, setIsMergingPR] = useState(false)
   const [viewMode, setViewMode] = useState<'changes' | 'all'>('changes')
+  const [activeTab, setActiveTab] = useState<'code' | 'chat'>('code')
+  const [showFilesList, setShowFilesList] = useState(false)
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
@@ -1035,41 +1041,161 @@ export function TaskDetails({ task }: TaskDetailsProps) {
           </div>
         </div>
       ) : task.branchName ? (
-        <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
-          {/* File Browser */}
-          <div className="w-full md:w-1/4 h-64 md:h-auto overflow-y-auto min-h-0 flex-shrink-0">
-            <FileBrowser
-              taskId={task.id}
-              branchName={task.branchName}
-              onFileSelect={setSelectedFile}
-              onFilesLoaded={fetchAllDiffs}
-              selectedFile={selectedFile}
-              refreshKey={refreshKey}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-            />
-          </div>
+        <>
+          {/* Desktop Layout */}
+          <div className="hidden md:flex flex-1 gap-3 md:gap-4 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
+            {/* File Browser */}
+            <div className="w-1/4 h-auto overflow-y-auto min-h-0 flex-shrink-0">
+              <FileBrowser
+                taskId={task.id}
+                branchName={task.branchName}
+                onFileSelect={setSelectedFile}
+                onFilesLoaded={fetchAllDiffs}
+                selectedFile={selectedFile}
+                refreshKey={refreshKey}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+              />
+            </div>
 
-          {/* Diff Viewer */}
-          <div className="flex-1 min-h-0 min-w-0">
-            <div className="bg-card rounded-md border overflow-hidden h-full">
-              <div className="overflow-y-auto h-full">
-                <FileDiffViewer
-                  selectedFile={selectedFile}
-                  diffsCache={diffsCache}
-                  isInitialLoading={Object.keys(diffsCache).length === 0}
-                  viewMode={viewMode}
-                  taskId={task.id}
-                />
+            {/* Diff Viewer */}
+            <div className="flex-1 min-h-0 min-w-0">
+              <div className="bg-card rounded-md border overflow-hidden h-full">
+                <div className="overflow-y-auto h-full">
+                  <FileDiffViewer
+                    selectedFile={selectedFile}
+                    diffsCache={diffsCache}
+                    isInitialLoading={Object.keys(diffsCache).length === 0}
+                    viewMode={viewMode}
+                    taskId={task.id}
+                  />
+                </div>
               </div>
+            </div>
+
+            {/* Chat */}
+            <div className="w-1/4 h-auto min-h-0 flex-shrink-0">
+              <TaskChat taskId={task.id} task={task} />
             </div>
           </div>
 
-          {/* Chat */}
-          <div className="w-full md:w-1/4 h-64 md:h-auto min-h-0 flex-shrink-0">
-            <TaskChat taskId={task.id} task={task} />
+          {/* Mobile Layout */}
+          <div className="md:hidden flex flex-col flex-1 min-h-0 relative pb-14">
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden px-3 pt-3">
+              {activeTab === 'code' ? (
+                <div className="relative h-full">
+                  {/* Current File Path Bar */}
+                  <div className="mb-2 flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowFilesList(true)}
+                      className="h-6 w-6 p-0 flex-shrink-0"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground truncate flex-1">
+                      {selectedFile || 'Select a file'}
+                    </span>
+                  </div>
+
+                  {/* Diff Viewer */}
+                  <div className="bg-card rounded-md border overflow-hidden h-[calc(100%-3rem)]">
+                    <div className="overflow-y-auto h-full">
+                      <FileDiffViewer
+                        selectedFile={selectedFile}
+                        diffsCache={diffsCache}
+                        isInitialLoading={Object.keys(diffsCache).length === 0}
+                        viewMode={viewMode}
+                        taskId={task.id}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full pb-3">
+                  <TaskChat taskId={task.id} task={task} />
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Tab Bar */}
+            <div className="absolute bottom-0 left-0 right-0 border-t bg-background">
+              <div className="flex h-14">
+                <button
+                  onClick={() => setActiveTab('code')}
+                  className={cn(
+                    'flex-1 flex flex-col items-center justify-center gap-1 transition-colors',
+                    activeTab === 'code' ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                >
+                  <Code className="h-5 w-5" />
+                  <span className="text-xs font-medium">Code</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={cn(
+                    'flex-1 flex flex-col items-center justify-center gap-1 transition-colors',
+                    activeTab === 'chat' ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                >
+                  <MessageSquare className="h-5 w-5" />
+                  <span className="text-xs font-medium">Chat</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Files List Drawer */}
+            <Drawer open={showFilesList} onOpenChange={setShowFilesList}>
+              <DrawerContent>
+                <DrawerHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <DrawerTitle>Files</DrawerTitle>
+                    <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+                      <Button
+                        variant={viewMode === 'changes' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setViewMode('changes')}
+                        className={`h-6 px-2 text-xs rounded-sm ${
+                          viewMode === 'changes' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                        }`}
+                      >
+                        Changes
+                      </Button>
+                      <Button
+                        variant={viewMode === 'all' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setViewMode('all')}
+                        className={`h-6 px-2 text-xs rounded-sm ${
+                          viewMode === 'all' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                        }`}
+                      >
+                        All Files
+                      </Button>
+                    </div>
+                  </div>
+                </DrawerHeader>
+                <div className="overflow-y-auto max-h-[60vh] px-4 pb-4">
+                  <FileBrowser
+                    taskId={task.id}
+                    branchName={task.branchName}
+                    onFileSelect={(file) => {
+                      setSelectedFile(file)
+                      setShowFilesList(false)
+                    }}
+                    onFilesLoaded={fetchAllDiffs}
+                    selectedFile={selectedFile}
+                    refreshKey={refreshKey}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                    hideHeader={true}
+                  />
+                </div>
+              </DrawerContent>
+            </Drawer>
           </div>
-        </div>
+        </>
       ) : null}
 
       {/* Try Again Dialog */}
