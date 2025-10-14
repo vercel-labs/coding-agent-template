@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "postbuild": "tsx scripts/migrate-production.ts",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
