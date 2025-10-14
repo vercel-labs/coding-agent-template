@@ -121,7 +121,6 @@ const DEFAULT_MODELS = {
 } as const
 
 export function TaskDetails({ task }: TaskDetailsProps) {
-  const [isStopping, setIsStopping] = useState(false)
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
@@ -651,92 +650,21 @@ export function TaskDetails({ task }: TaskDetailsProps) {
     }
   }
 
-  const handleStopTask = async () => {
-    setIsStopping(true)
-    // Optimistically update the status to 'stopped'
-    setOptimisticStatus('stopped')
-
-    try {
-      const response = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'stop' }),
-      })
-
-      if (response.ok) {
-        toast.success('Task stopped successfully!')
-        refreshTasks() // Refresh the sidebar
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to stop task')
-        // Revert optimistic update on error
-        setOptimisticStatus(null)
-      }
-    } catch (error) {
-      console.error('Error stopping task:', error)
-      toast.error('Failed to stop task')
-      // Revert optimistic update on error
-      setOptimisticStatus(null)
-    } finally {
-      setIsStopping(false)
-    }
-  }
-
-  const getStatusIcon = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return <AlertCircle className="h-4 w-4" />
-      case 'processing':
-        return <Loader2 className="h-4 w-4 animate-spin" />
-      case 'completed':
-        return <CheckCircle className="h-4 w-4" />
-      case 'error':
-        return <AlertCircle className="h-4 w-4" />
-      case 'stopped':
-        return <AlertCircle className="h-4 w-4" />
-      default:
-        return <AlertCircle className="h-4 w-4" />
-    }
-  }
-
-  const getStatusColor = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'text-gray-500'
-      case 'processing':
-        return 'text-blue-500'
-      case 'completed':
-        return 'text-green-500'
-      case 'error':
-        return 'text-red-500'
-      case 'stopped':
-        return 'text-orange-500'
-      default:
-        return 'text-gray-500'
-    }
-  }
-
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overview Section */}
       <div className="space-y-2 md:space-y-3 pb-3 md:pb-6 border-b pl-3 md:pl-6 pr-3 flex-shrink-0">
         {/* Prompt */}
         <div className="flex items-center gap-2">
-          <p className="text-lg md:text-2xl flex-1 truncate">{task.prompt}</p>
-          {currentStatus === 'processing' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleStopTask}
-              disabled={isStopping}
-              className="h-7 w-7 md:h-8 md:w-8 p-0 flex-shrink-0"
-              title="Stop task"
-            >
-              <Square className="h-3.5 w-3.5 md:h-4 md:w-4" fill="currentColor" />
-            </Button>
-          )}
+          <p
+            className={cn(
+              'text-lg md:text-2xl flex-1 truncate',
+              currentStatus === 'processing' &&
+                'bg-gradient-to-r from-muted-foreground from-20% via-white via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]',
+            )}
+          >
+            {task.prompt}
+          </p>
           {currentStatus === 'completed' && task.repoUrl && task.branchName && (
             <>
               {!prUrl && prStatus !== 'merged' && prStatus !== 'closed' && (
@@ -868,33 +796,6 @@ export function TaskDetails({ task }: TaskDetailsProps) {
 
         {/* Compact info row */}
         <div className="flex items-center gap-2 md:gap-4 flex-wrap text-xs md:text-sm">
-          {/* Status */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className={cn('flex items-center gap-2 cursor-help', getStatusColor(currentStatus))}>
-                  {getStatusIcon(currentStatus)}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="space-y-1">
-                <div>
-                  <span className="font-medium">Status:</span>{' '}
-                  <span className="text-muted-foreground capitalize">{currentStatus}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Created:</span>{' '}
-                  <span className="text-muted-foreground">{formatDateTime(new Date(task.createdAt))}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Completed:</span>{' '}
-                  <span className="text-muted-foreground">
-                    {task.completedAt ? formatDateTime(new Date(task.completedAt)) : 'Not completed'}
-                  </span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
           {/* Repo */}
           {task.repoUrl && (
             <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
@@ -1033,14 +934,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       </div>
 
       {/* Changes Section */}
-      {(currentStatus === 'pending' || currentStatus === 'processing') && !task.branchName ? (
-        <div className="flex-1 flex items-center justify-center pl-6 pr-3">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Working...</p>
-          </div>
-        </div>
-      ) : task.branchName ? (
+      {task.branchName ? (
         <>
           {/* Desktop Layout */}
           <div className="hidden md:flex flex-1 gap-3 md:gap-4 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
@@ -1158,7 +1052,9 @@ export function TaskDetails({ task }: TaskDetailsProps) {
                         size="sm"
                         onClick={() => setViewMode('changes')}
                         className={`h-6 px-2 text-xs rounded-sm ${
-                          viewMode === 'changes' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                          viewMode === 'changes'
+                            ? 'bg-background shadow-sm'
+                            : 'hover:bg-transparent hover:text-foreground'
                         }`}
                       >
                         Changes

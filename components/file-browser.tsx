@@ -51,7 +51,7 @@ export function FileBrowser({
   // Use Jotai atom for state management
   const taskStateAtom = useMemo(() => getTaskFileBrowserState(taskId), [taskId])
   const [state, setState] = useAtom(taskStateAtom)
-  
+
   // Get current viewMode data
   const currentViewData = state[viewMode]
   const { files, fileTree, expandedFolders } = currentViewData
@@ -91,7 +91,8 @@ export function FileBrowser({
 
         // In "changes" mode, expand all folders by default
         // In "all" mode, collapse all folders by default
-        const newExpandedFolders = viewMode === 'changes' ? new Set(getAllFolderPaths(fetchedFileTree)) : new Set<string>()
+        const newExpandedFolders =
+          viewMode === 'changes' ? new Set(getAllFolderPaths(fetchedFileTree)) : new Set<string>()
 
         // Update the specific viewMode data
         setState({

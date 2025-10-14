@@ -61,6 +61,5 @@ export const getTaskFileBrowserState = (taskId: string) =>
         ...allStates,
         [taskId]: { ...currentState, ...update },
       })
-    }
+    },
   )
-

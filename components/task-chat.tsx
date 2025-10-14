@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowUp, Loader2, Copy, Check, RotateCcw } from 'lucide-react'
+import { ArrowUp, Loader2, Copy, Check, RotateCcw, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { Streamdown } from 'streamdown'
 
@@ -22,6 +22,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [isSending, setIsSending] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const [isStopping, setIsStopping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const previousMessageCountRef = useRef(0)
 
@@ -224,6 +225,33 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     }
   }
 
+  const handleStopTask = async () => {
+    setIsStopping(true)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'stop' }),
+      })
+
+      if (response.ok) {
+        toast.success('Task stopped successfully!')
+        // Task will update through polling
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to stop task')
+      }
+    } catch (error) {
+      console.error('Error stopping task:', error)
+      toast.error('Failed to stop task')
+    } finally {
+      setIsStopping(false)
+    }
+  }
+
   const parseAgentMessage = (content: string): string => {
     try {
       const parsed = JSON.parse(content)
@@ -380,13 +408,23 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-xs"
           disabled={isSending}
         />
-        <button
-          onClick={handleSendMessage}
-          disabled={!newMessage.trim() || isSending}
-          className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
-        </button>
+        {task.status === 'processing' || task.status === 'pending' ? (
+          <button
+            onClick={handleStopTask}
+            disabled={isStopping}
+            className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Square className="h-3 w-3" fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim() || isSending}
+            className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
+          </button>
+        )}
       </div>
     </div>
   )
