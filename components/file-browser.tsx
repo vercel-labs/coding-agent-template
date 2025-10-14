@@ -127,7 +127,7 @@ export function FileBrowser({
 
   // Separate effect for refreshKey to force refetch
   useEffect(() => {
-    if (branchName && refreshKey > 0) {
+    if (branchName && refreshKey !== undefined && refreshKey > 0) {
       fetchBranchFiles()
     }
   }, [refreshKey, branchName, fetchBranchFiles])

@@ -656,15 +656,7 @@ export function TaskDetails({ task }: TaskDetailsProps) {
       <div className="space-y-2 md:space-y-3 pb-3 md:pb-6 border-b pl-3 md:pl-6 pr-3 flex-shrink-0">
         {/* Prompt */}
         <div className="flex items-center gap-2">
-          <p
-            className={cn(
-              'text-lg md:text-2xl flex-1 truncate',
-              currentStatus === 'processing' &&
-                'bg-gradient-to-r from-muted-foreground from-20% via-white via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]',
-            )}
-          >
-            {task.prompt}
-          </p>
+          <p className="text-lg md:text-2xl flex-1 truncate">{task.prompt}</p>
           {currentStatus === 'completed' && task.repoUrl && task.branchName && (
             <>
               {!prUrl && prStatus !== 'merged' && prStatus !== 'closed' && (

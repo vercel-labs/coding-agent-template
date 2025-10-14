@@ -327,12 +327,12 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                   <div className="text-xs">
                     <Streamdown
                       components={{
-                        code: ({ className, children, ...props }: any) => (
+                        code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
                           <code className={`${className} !text-xs`} {...props}>
                             {children}
                           </code>
                         ),
-                        pre: ({ children, ...props }: any) => (
+                        pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
                           <pre className="!text-xs" {...props}>
                             {children}
                           </pre>
@@ -343,9 +343,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                     </Streamdown>
                   </div>
                 </Card>
-                <div className="flex items-center gap-0.5 pr-1 justify-end">
+                <div className="flex items-center gap-0.5 justify-end">
                   {!hasAgentResponse(message.createdAt) && isLatestUserMessage(message.createdAt) && (
-                    <div className="text-xs text-muted-foreground font-mono mr-auto pl-4 opacity-30">
+                    <div className="text-xs text-muted-foreground font-mono mr-auto pl-2 opacity-30">
                       {formatDuration(message.createdAt)}
                     </div>
                   )}
@@ -369,12 +369,12 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                 <div className="text-xs text-muted-foreground">
                   <Streamdown
                     components={{
-                      code: ({ className, children, ...props }: any) => (
+                      code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
                         <code className={`${className} !text-xs`} {...props}>
                           {children}
                         </code>
                       ),
-                      pre: ({ children, ...props }: any) => (
+                      pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
                         <pre className="!text-xs" {...props}>
                           {children}
                         </pre>
