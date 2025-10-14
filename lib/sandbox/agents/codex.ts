@@ -31,24 +31,37 @@ export async function executeCodexInSandbox(
   logger: TaskLogger,
   selectedModel?: string,
   mcpServers?: Connector[],
+  isResumed?: boolean,
+  sessionId?: string,
 ): Promise<AgentExecutionResult> {
   try {
     // Executing Codex CLI with instruction
 
-    // Install Codex CLI using npm
-    // Installing Codex CLI
-    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', '@openai/codex'], logger)
+    // Check if Codex CLI is already installed (for resumed sandboxes)
+    const existingCLICheck = await runCommandInSandbox(sandbox, 'which', ['codex'])
 
-    if (!installResult.success) {
-      return {
-        success: false,
-        error: `Failed to install Codex CLI: ${installResult.error}`,
-        cliName: 'codex',
-        changesDetected: false,
+    let installResult: { success: boolean; output?: string; error?: string } = { success: true }
+
+    if (existingCLICheck.success && existingCLICheck.output?.includes('codex')) {
+      // CLI already installed, skip installation
+      await logger.info('Codex CLI already installed, skipping installation')
+    } else {
+      // Install Codex CLI using npm
+      // Installing Codex CLI
+      await logger.info('Installing Codex CLI...')
+      installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', '@openai/codex'], logger)
+
+      if (!installResult.success) {
+        return {
+          success: false,
+          error: `Failed to install Codex CLI: ${installResult.error}`,
+          cliName: 'codex',
+          changesDetected: false,
+        }
       }
-    }
 
-    // Codex CLI installed successfully
+      await logger.info('Codex CLI installed successfully')
+    }
 
     // Check if Codex CLI is available
     const cliCheck = await runAndLogCommand(sandbox, 'which', ['codex'], logger)
@@ -262,7 +275,20 @@ url = "${server.baseUrl}"
     // Use exec command with Vercel AI Gateway configuration
     // The model is now configured in config.toml, so we can use it directly
     // Use --dangerously-bypass-approvals-and-sandbox (no --cd flag like other agents)
-    const logCommand = `codex exec --dangerously-bypass-approvals-and-sandbox "${instruction}"`
+    // If resuming, use 'codex resume' instead of 'codex exec'
+    let codexCommand = 'codex exec --dangerously-bypass-approvals-and-sandbox'
+
+    if (isResumed) {
+      // Use resume command instead of exec
+      // Note: codex resume doesn't take session ID as an argument, it uses a picker or --last
+      // For now, we'll use --last to continue the most recent session
+      codexCommand = 'codex resume --last'
+      if (logger) {
+        await logger.info('Resuming previous Codex conversation')
+      }
+    }
+
+    const logCommand = `${codexCommand} "${instruction}"`
 
     await logger.command(logCommand)
     if (logger) {
@@ -276,7 +302,7 @@ url = "${server.baseUrl}"
     // Use the same pattern as other working agents (Claude, etc.)
     // Execute with environment variables using sh -c like Claude does
     const envPrefix = `AI_GATEWAY_API_KEY="${process.env.AI_GATEWAY_API_KEY}" HOME="/home/vercel-sandbox" CI="true"`
-    const fullCommand = `${envPrefix} codex exec --dangerously-bypass-approvals-and-sandbox "${instruction}"`
+    const fullCommand = `${envPrefix} ${codexCommand} "${instruction}"`
 
     // Use the standard runCommandInSandbox helper like other agents
     const result = await runCommandInSandbox(sandbox, 'sh', ['-c', fullCommand])
@@ -300,6 +326,19 @@ url = "${server.baseUrl}"
 
     // Codex CLI execution completed
 
+    // Extract session ID from output if present (for resumption)
+    // Note: Codex uses --last to resume, so we may not need explicit session IDs
+    // But we'll extract it if available
+    let extractedSessionId: string | undefined
+    try {
+      const sessionMatch = result.output?.match(/(?:session[_\s-]?id|Session)[:\s]+([a-f0-9-]+)/i)
+      if (sessionMatch) {
+        extractedSessionId = sessionMatch[1]
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+
     // Check if any files were modified
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
@@ -312,6 +351,7 @@ url = "${server.baseUrl}"
         cliName: 'codex',
         changesDetected: !!hasChanges,
         error: undefined,
+        sessionId: extractedSessionId, // Include session ID if available
       }
     } else {
       return {
@@ -320,6 +360,7 @@ url = "${server.baseUrl}"
         agentResponse: result.output,
         cliName: 'codex',
         changesDetected: !!hasChanges,
+        sessionId: extractedSessionId, // Include session ID even on failure
       }
     }
   } catch (error: unknown) {

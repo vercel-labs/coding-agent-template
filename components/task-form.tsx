@@ -18,7 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Loader2, ArrowUp, Settings, X, Cable, Key } from 'lucide-react'
 import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
-import { setInstallDependencies, setMaxDuration } from '@/lib/utils/cookies'
+import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 import { ApiKeysDialog } from '@/components/api-keys-dialog'
@@ -41,12 +41,15 @@ interface TaskFormProps {
     selectedModel: string
     installDependencies: boolean
     maxDuration: number
+    keepAlive: boolean
   }) => void
   isSubmitting: boolean
   selectedOwner: string
   selectedRepo: string
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
+  initialKeepAlive?: boolean
+  maxSandboxDuration?: number
 }
 
 const CODING_AGENTS = [
@@ -137,6 +140,8 @@ export function TaskForm({
   selectedRepo,
   initialInstallDependencies = false,
   initialMaxDuration = 5,
+  initialKeepAlive = false,
+  maxSandboxDuration = 5,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useState('')
   const [selectedAgent, setSelectedAgent] = useState('claude')
@@ -147,6 +152,7 @@ export function TaskForm({
   // Options state - initialize with server values
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
+  const [keepAlive, setKeepAliveState] = useState(initialKeepAlive)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
   const [showApiKeysDialog, setShowApiKeysDialog] = useState(false)
@@ -171,12 +177,17 @@ export function TaskForm({
     setMaxDuration(value)
   }
 
+  const updateKeepAlive = (value: boolean) => {
+    setKeepAliveState(value)
+    setKeepAlive(value)
+  }
+
   // Handle keyboard events in textarea
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter') {
       // On desktop: Enter submits, Shift+Enter creates new line
       // On mobile: Enter creates new line, must use submit button
-      const isMobile = window.innerWidth < 768
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
       if (!isMobile && !e.shiftKey) {
         e.preventDefault()
         if (prompt.trim() && selectedOwner && selectedRepo) {
@@ -359,6 +370,7 @@ export function TaskForm({
           selectedModel,
           installDependencies,
           maxDuration,
+          keepAlive,
         })
       }
     }
@@ -460,7 +472,7 @@ export function TaskForm({
                 </Select>
 
                 {/* Option Chips - Only visible on desktop */}
-                {(!installDependencies || maxDuration !== 5) && (
+                {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
                   <div className="hidden sm:flex items-center gap-2 flex-wrap">
                     {!installDependencies && (
                       <Badge
@@ -482,7 +494,7 @@ export function TaskForm({
                         </Button>
                       </Badge>
                     )}
-                    {maxDuration !== 5 && (
+                    {maxDuration !== maxSandboxDuration && (
                       <Badge
                         variant="secondary"
                         className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
@@ -495,7 +507,27 @@ export function TaskForm({
                           className="h-3 w-3 p-0 hover:bg-transparent"
                           onClick={(e) => {
                             e.stopPropagation()
-                            updateMaxDuration(5)
+                            updateMaxDuration(maxSandboxDuration)
+                          }}
+                        >
+                          <X className="h-2 w-2" />
+                        </Button>
+                      </Badge>
+                    )}
+                    {keepAlive && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                        onClick={() => setShowOptionsDialog(true)}
+                      >
+                        Keep Alive
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-3 w-3 p-0 hover:bg-transparent"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            updateKeepAlive(false)
                           }}
                         >
                           <X className="h-2 w-2" />
@@ -510,7 +542,7 @@ export function TaskForm({
               <div className="flex items-center justify-between gap-2">
                 {/* Option Chips - Mobile version (left side) */}
                 <div className="flex sm:hidden items-center gap-2 flex-wrap">
-                  {(!installDependencies || maxDuration !== 5) && (
+                  {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
                     <>
                       {!installDependencies && (
                         <Badge
@@ -532,7 +564,7 @@ export function TaskForm({
                           </Button>
                         </Badge>
                       )}
-                      {maxDuration !== 5 && (
+                      {maxDuration !== maxSandboxDuration && (
                         <Badge
                           variant="secondary"
                           className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
@@ -545,7 +577,27 @@ export function TaskForm({
                             className="h-3 w-3 p-0 hover:bg-transparent"
                             onClick={(e) => {
                               e.stopPropagation()
-                              updateMaxDuration(5)
+                              updateMaxDuration(maxSandboxDuration)
+                            }}
+                          >
+                            <X className="h-2 w-2" />
+                          </Button>
+                        </Badge>
+                      )}
+                      {keepAlive && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                          onClick={() => setShowOptionsDialog(true)}
+                        >
+                          Keep Alive
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-3 w-3 p-0 hover:bg-transparent"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              updateKeepAlive(false)
                             }}
                           >
                             <X className="h-2 w-2" />
@@ -655,16 +707,35 @@ export function TaskForm({
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="1">1 minute</SelectItem>
-                                  <SelectItem value="2">2 minutes</SelectItem>
-                                  <SelectItem value="3">3 minutes</SelectItem>
                                   <SelectItem value="5">5 minutes</SelectItem>
                                   <SelectItem value="10">10 minutes</SelectItem>
                                   <SelectItem value="15">15 minutes</SelectItem>
                                   <SelectItem value="30">30 minutes</SelectItem>
+                                  <SelectItem value="45">45 minutes</SelectItem>
+                                  <SelectItem value="60">1 hour</SelectItem>
+                                  <SelectItem value="120">2 hours</SelectItem>
+                                  <SelectItem value="180">3 hours</SelectItem>
+                                  <SelectItem value="240">4 hours</SelectItem>
+                                  <SelectItem value="300">5 hours</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="keep-alive"
+                                checked={keepAlive}
+                                onCheckedChange={(checked) => updateKeepAlive(checked === true)}
+                              />
+                              <Label
+                                htmlFor="keep-alive"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                Keep Alive ({maxSandboxDuration} {maxSandboxDuration === 1 ? 'hour' : 'hours'} max)
+                              </Label>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Keep the sandbox running after task completion to reuse it for follow-up messages.
+                            </p>
                           </div>
                         </div>
                       </DialogContent>

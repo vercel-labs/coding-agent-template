@@ -18,9 +18,16 @@ interface TaskPageClientProps {
   user: Session['user'] | null
   authProvider: Session['authProvider'] | null
   initialStars?: number
+  maxSandboxDuration?: number
 }
 
-export function TaskPageClient({ taskId, user, authProvider, initialStars = 994 }: TaskPageClientProps) {
+export function TaskPageClient({
+  taskId,
+  user,
+  authProvider,
+  initialStars = 1022,
+  maxSandboxDuration = 5,
+}: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
   const { toggleSidebar } = useTasks()
   const [logsPaneHeight, setLogsPaneHeight] = useState(40) // Default to collapsed height
@@ -120,7 +127,7 @@ export function TaskPageClient({ taskId, user, authProvider, initialStars = 994 
 
       {/* Task details */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ paddingBottom: `${logsPaneHeight}px` }}>
-        <TaskDetails task={task} />
+        <TaskDetails task={task} maxSandboxDuration={maxSandboxDuration} />
       </div>
 
       {/* Logs pane at bottom */}

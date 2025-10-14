@@ -60,6 +60,14 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     // AI-generated branch names will be created later inside the sandbox
     const branchNameForEnv = config.existingBranchName
 
+    // If keepAlive is enabled, use 5 hours (300 minutes) timeout
+    // Otherwise, use the specified timeout or default 5 minutes
+    const timeoutMs = config.keepAlive
+      ? 300 * 60 * 1000 // 5 hours for keep-alive
+      : config.timeout
+        ? parseInt(config.timeout.replace(/\D/g, '')) * 60 * 1000
+        : 5 * 60 * 1000 // Default 5 minutes
+
     // Create sandbox with proper source configuration
     const sandboxConfig = {
       teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
@@ -71,7 +79,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         revision: branchNameForEnv || 'main',
         depth: 1, // Shallow clone for faster setup
       },
-      timeout: config.timeout ? parseInt(config.timeout.replace(/\D/g, '')) * 60 * 1000 : 5 * 60 * 1000, // Convert to milliseconds
+      timeout: timeoutMs,
       ports: config.ports || [3000],
       runtime: config.runtime || 'node22',
       resources: { vcpus: config.resources?.vcpus || 4 },
@@ -88,7 +96,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.info('Sandbox created successfully')
 
       // Register the sandbox immediately for potential killing
-      registerSandbox(config.taskId, sandbox)
+      registerSandbox(config.taskId, sandbox, config.keepAlive || false)
 
       // Check for cancellation after sandbox creation
       if (config.onCancellationCheck && (await config.onCancellationCheck())) {
@@ -324,8 +332,10 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     }
 
     // Configure Git user
-    await runCommandInSandbox(sandbox, 'git', ['config', 'user.name', 'Coding Agent'])
-    await runCommandInSandbox(sandbox, 'git', ['config', 'user.email', 'agent@example.com'])
+    const gitName = config.gitAuthorName || 'Coding Agent'
+    const gitEmail = config.gitAuthorEmail || 'agent@example.com'
+    await runCommandInSandbox(sandbox, 'git', ['config', 'user.name', gitName])
+    await runCommandInSandbox(sandbox, 'git', ['config', 'user.email', gitEmail])
 
     // Verify we're in a Git repository
     const gitRepoCheck = await runCommandInSandbox(sandbox, 'git', ['rev-parse', '--git-dir'])

@@ -5,6 +5,8 @@ export interface SandboxConfig {
   taskId: string
   repoUrl: string
   githubToken?: string | null
+  gitAuthorName?: string
+  gitAuthorEmail?: string
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -22,6 +24,7 @@ export interface SandboxConfig {
   selectedAgent?: string
   selectedModel?: string
   installDependencies?: boolean
+  keepAlive?: boolean
   preDeterminedBranchName?: string
   existingBranchName?: string
   onProgress?: (progress: number, message: string) => Promise<void>
@@ -46,4 +49,5 @@ export interface AgentExecutionResult {
   error?: string
   streamingLogs?: unknown[]
   logs?: LogEntry[]
+  sessionId?: string // For Cursor agent session resumption
 }

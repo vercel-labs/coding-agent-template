@@ -14,8 +14,8 @@ export async function GET() {
     return NextResponse.json({
       allowed: rateLimit.allowed,
       remaining: rateLimit.remaining,
-      used: 5 - rateLimit.remaining,
-      total: 5,
+      used: rateLimit.total - rateLimit.remaining,
+      total: rateLimit.total,
       resetAt: rateLimit.resetAt.toISOString(),
     })
   } catch (error) {

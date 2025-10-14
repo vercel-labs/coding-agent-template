@@ -18,6 +18,8 @@ interface HomePageContentProps {
   initialSelectedRepo?: string
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
+  initialKeepAlive?: boolean
+  maxSandboxDuration?: number
   user?: Session['user'] | null
   initialStars?: number
 }
@@ -27,8 +29,10 @@ export function HomePageContent({
   initialSelectedRepo = '',
   initialInstallDependencies = false,
   initialMaxDuration = 5,
+  initialKeepAlive = false,
+  maxSandboxDuration = 5,
   user = null,
-  initialStars = 994,
+  initialStars = 1022,
 }: HomePageContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)
@@ -74,6 +78,7 @@ export function HomePageContent({
     selectedModel: string
     installDependencies: boolean
     maxDuration: number
+    keepAlive: boolean
   }) => {
     // Check if user is authenticated
     if (!user) {
@@ -150,6 +155,8 @@ export function HomePageContent({
           selectedRepo={selectedRepo}
           initialInstallDependencies={initialInstallDependencies}
           initialMaxDuration={initialMaxDuration}
+          initialKeepAlive={initialKeepAlive}
+          maxSandboxDuration={maxSandboxDuration}
         />
       </div>
 

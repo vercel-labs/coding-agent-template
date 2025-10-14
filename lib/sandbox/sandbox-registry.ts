@@ -1,9 +1,16 @@
 import { Sandbox } from '@vercel/sandbox'
 
-// Global registry to track active sandboxes by task ID
+/**
+ * Simplified sandbox registry since we now use Sandbox.get() to reconnect
+ * This registry is only used for immediate operations within the same serverless execution
+ */
+
+// Temporary in-memory tracking for current execution only
 const activeSandboxes = new Map<string, Sandbox>()
 
-export function registerSandbox(taskId: string, sandbox: Sandbox): void {
+export function registerSandbox(taskId: string, sandbox: Sandbox, _keepAlive: boolean = false): void {
+  // Note: keepAlive parameter kept for backward compatibility but not used
+  // Real persistence happens via sandboxId in database
   activeSandboxes.set(taskId, sandbox)
 }
 
@@ -37,8 +44,14 @@ export async function killSandbox(taskId: string): Promise<{ success: boolean; e
     // Remove from registry immediately
     activeSandboxes.delete(taskId)
 
-    // The sandbox will be automatically destroyed by Vercel's infrastructure
-    // No need to manually kill processes - destroying the sandbox kills everything
+    // Stop the sandbox using the SDK
+    try {
+      await sandbox.stop()
+    } catch (stopError) {
+      // Sandbox may already be stopped, that's okay
+      console.log('Sandbox stop completed or was already stopped')
+    }
+
     return { success: true }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to kill sandbox'

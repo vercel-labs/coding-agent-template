@@ -29,6 +29,10 @@ export async function executeAgentInSandbox(
     ANTHROPIC_API_KEY?: string
     AI_GATEWAY_API_KEY?: string
   },
+  isResumed?: boolean,
+  sessionId?: string,
+  taskId?: string,
+  agentMessageId?: string,
 ): Promise<AgentExecutionResult> {
   // Check for cancellation before starting agent execution
   if (onCancellationCheck && (await onCancellationCheck())) {
@@ -59,19 +63,54 @@ export async function executeAgentInSandbox(
   try {
     switch (agentType) {
       case 'claude':
-        return await executeClaudeInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
+        return await executeClaudeInSandbox(
+          sandbox,
+          instruction,
+          logger,
+          selectedModel,
+          mcpServers,
+          isResumed,
+          sessionId,
+          taskId,
+          agentMessageId,
+        )
 
       case 'codex':
-        return await executeCodexInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
+        return await executeCodexInSandbox(
+          sandbox,
+          instruction,
+          logger,
+          selectedModel,
+          mcpServers,
+          isResumed,
+          sessionId,
+        )
 
       case 'cursor':
-        return await executeCursorInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
+        return await executeCursorInSandbox(
+          sandbox,
+          instruction,
+          logger,
+          selectedModel,
+          mcpServers,
+          isResumed,
+          sessionId,
+          taskId,
+        )
 
       case 'gemini':
         return await executeGeminiInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
 
       case 'opencode':
-        return await executeOpenCodeInSandbox(sandbox, instruction, logger, selectedModel, mcpServers)
+        return await executeOpenCodeInSandbox(
+          sandbox,
+          instruction,
+          logger,
+          selectedModel,
+          mcpServers,
+          isResumed,
+          sessionId,
+        )
 
       default:
         return {

@@ -5,6 +5,15 @@ import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getOctokit } from '@/lib/github/client'
 
+// Helper function to convert Vercel feedback URL to actual deployment URL
+function convertFeedbackUrlToDeploymentUrl(url: string): string {
+  const feedbackMatch = url.match(/vercel\.live\/open-feedback\/(.+)/)
+  if (feedbackMatch) {
+    return `https://${feedbackMatch[1]}`
+  }
+  return url
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
@@ -29,11 +38,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Return cached preview URL if available
     if (task.previewUrl) {
+      const previewUrl = convertFeedbackUrlToDeploymentUrl(task.previewUrl)
+
+      // If the URL was converted, update it in the database
+      if (previewUrl !== task.previewUrl) {
+        await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
+      }
+
       return NextResponse.json({
         success: true,
         data: {
           hasDeployment: true,
-          previewUrl: task.previewUrl,
+          previewUrl,
           cached: true,
         },
       })
@@ -163,7 +179,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
           // Fallback to details_url if no preview URL found
           if (!previewUrl && vercelDeploymentCheck?.details_url) {
-            previewUrl = vercelDeploymentCheck.details_url
+            // Convert feedback URL to actual deployment URL if needed
+            previewUrl = convertFeedbackUrlToDeploymentUrl(vercelDeploymentCheck.details_url)
           }
 
           if (previewUrl) {
@@ -215,8 +232,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               if (statuses && statuses.length > 0) {
                 const status = statuses[0]
                 if (status.state === 'success') {
-                  const previewUrl = status.environment_url || status.target_url
+                  let previewUrl = status.environment_url || status.target_url
                   if (previewUrl) {
+                    // Convert feedback URL to actual deployment URL if needed
+                    previewUrl = convertFeedbackUrlToDeploymentUrl(previewUrl)
                     // Store the preview URL in the database
                     await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
 
@@ -256,14 +275,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           )
 
           if (vercelStatus && vercelStatus.target_url) {
+            // Convert feedback URL to actual deployment URL if needed
+            const previewUrl = convertFeedbackUrlToDeploymentUrl(vercelStatus.target_url)
             // Store the preview URL in the database
-            await db.update(tasks).set({ previewUrl: vercelStatus.target_url }).where(eq(tasks.id, taskId))
+            await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
 
             return NextResponse.json({
               success: true,
               data: {
                 hasDeployment: true,
-                previewUrl: vercelStatus.target_url,
+                previewUrl,
                 createdAt: vercelStatus.created_at,
               },
             })

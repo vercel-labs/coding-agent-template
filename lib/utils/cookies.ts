@@ -6,14 +6,24 @@ const LOGS_PANE_HEIGHT_COOKIE = 'logs-pane-height'
 const LOGS_PANE_COLLAPSED_COOKIE = 'logs-pane-collapsed'
 const INSTALL_DEPENDENCIES_COOKIE = 'install-dependencies'
 const MAX_DURATION_COOKIE = 'max-duration'
+const KEEP_ALIVE_COOKIE = 'keep-alive'
 const SELECTED_OWNER_COOKIE = 'selected-owner'
 const SELECTED_REPO_COOKIE = 'selected-repo'
+const SHOW_FILES_PANE_COOKIE = 'show-files-pane'
+const SHOW_CODE_PANE_COOKIE = 'show-code-pane'
+const SHOW_PREVIEW_PANE_COOKIE = 'show-preview-pane'
+const SHOW_CHAT_PANE_COOKIE = 'show-chat-pane'
 const DEFAULT_SIDEBAR_WIDTH = 288
 const DEFAULT_SIDEBAR_OPEN = false // Default to false to avoid hydration issues
 const DEFAULT_LOGS_PANE_HEIGHT = 200
 const DEFAULT_LOGS_PANE_COLLAPSED = true // Default to collapsed
 const DEFAULT_INSTALL_DEPENDENCIES = false
 const DEFAULT_MAX_DURATION = 5
+const DEFAULT_KEEP_ALIVE = false
+const DEFAULT_SHOW_FILES_PANE = true
+const DEFAULT_SHOW_CODE_PANE = true
+const DEFAULT_SHOW_PREVIEW_PANE = false
+const DEFAULT_SHOW_CHAT_PANE = true
 
 export function getSidebarWidth(): number {
   if (typeof window === 'undefined') {
@@ -214,6 +224,28 @@ export function setMaxDuration(duration: number): void {
   }
 }
 
+export function getKeepAlive(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_KEEP_ALIVE
+  }
+
+  const cookieValue = Cookies.get(KEEP_ALIVE_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_KEEP_ALIVE
+}
+
+export function setKeepAlive(keepAlive: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(KEEP_ALIVE_COOKIE, keepAlive.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
+}
+
 // Selected owner/repo functions
 export function getSelectedOwner(): string {
   if (typeof window === 'undefined') {
@@ -255,4 +287,93 @@ export function setSelectedRepo(repo: string): void {
   } else {
     Cookies.remove(SELECTED_REPO_COOKIE)
   }
+}
+
+// Pane visibility functions
+export function getShowFilesPane(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SHOW_FILES_PANE
+  }
+
+  const cookieValue = Cookies.get(SHOW_FILES_PANE_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_SHOW_FILES_PANE
+}
+
+export function setShowFilesPane(show: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(SHOW_FILES_PANE_COOKIE, show.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
+}
+
+export function getShowCodePane(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SHOW_CODE_PANE
+  }
+
+  const cookieValue = Cookies.get(SHOW_CODE_PANE_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_SHOW_CODE_PANE
+}
+
+export function setShowCodePane(show: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(SHOW_CODE_PANE_COOKIE, show.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
+}
+
+export function getShowPreviewPane(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SHOW_PREVIEW_PANE
+  }
+
+  const cookieValue = Cookies.get(SHOW_PREVIEW_PANE_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_SHOW_PREVIEW_PANE
+}
+
+export function setShowPreviewPane(show: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(SHOW_PREVIEW_PANE_COOKIE, show.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
+}
+
+export function getShowChatPane(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SHOW_CHAT_PANE
+  }
+
+  const cookieValue = Cookies.get(SHOW_CHAT_PANE_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_SHOW_CHAT_PANE
+}
+
+export function setShowChatPane(show: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(SHOW_CHAT_PANE_COOKIE, show.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
 }
