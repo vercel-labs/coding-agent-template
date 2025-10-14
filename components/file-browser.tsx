@@ -54,26 +54,29 @@ export function FileBrowser({
 
   // Get current viewMode data
   const currentViewData = state[viewMode]
-  const { files, fileTree, expandedFolders } = currentViewData
+  const { files, fileTree, expandedFolders, fetchAttempted } = currentViewData
   const { loading, error } = state
 
   // Helper function to recursively collect all folder paths
-  const getAllFolderPaths = (tree: { [key: string]: FileTreeNode }, basePath = ''): string[] => {
-    const paths: string[] = []
+  const getAllFolderPaths = useCallback(
+    function collectPaths(tree: { [key: string]: FileTreeNode }, basePath = ''): string[] {
+      const paths: string[] = []
 
-    Object.entries(tree).forEach(([name, node]) => {
-      const fullPath = basePath ? `${basePath}/${name}` : name
+      Object.entries(tree).forEach(([name, node]) => {
+        const fullPath = basePath ? `${basePath}/${name}` : name
 
-      if (node.type === 'directory') {
-        paths.push(fullPath)
-        if (node.children) {
-          paths.push(...getAllFolderPaths(node.children, fullPath))
+        if (node.type === 'directory') {
+          paths.push(fullPath)
+          if (node.children) {
+            paths.push(...collectPaths(node.children, fullPath))
+          }
         }
-      }
-    })
+      })
 
-    return paths
-  }
+      return paths
+    },
+    [],
+  )
 
   const fetchBranchFiles = useCallback(async () => {
     if (!branchName) return
@@ -96,11 +99,11 @@ export function FileBrowser({
 
         // Update the specific viewMode data
         setState({
-          ...state,
           [viewMode]: {
             files: fetchedFiles,
             fileTree: fetchedFileTree,
             expandedFolders: newExpandedFolders,
+            fetchAttempted: true,
           },
           loading: false,
           error: null,
@@ -111,26 +114,52 @@ export function FileBrowser({
           onFilesLoaded(fetchedFiles.map((f: FileChange) => f.filename))
         }
       } else {
-        setState({ ...state, loading: false, error: result.error || 'Failed to fetch files' })
+        setState({
+          [viewMode]: {
+            files: [],
+            fileTree: {},
+            expandedFolders: new Set<string>(),
+            fetchAttempted: true,
+          },
+          loading: false,
+          error: result.error || 'Failed to fetch files',
+        })
       }
     } catch (err) {
-      setState({ ...state, loading: false, error: 'Failed to fetch branch files' })
+      setState({
+        [viewMode]: {
+          files: [],
+          fileTree: {},
+          expandedFolders: new Set<string>(),
+          fetchAttempted: true,
+        },
+        loading: false,
+        error: 'Failed to fetch branch files',
+      })
     }
-  }, [branchName, taskId, onFilesLoaded, viewMode, setState, getAllFolderPaths, state])
+  }, [branchName, taskId, onFilesLoaded, viewMode, setState, getAllFolderPaths])
 
   useEffect(() => {
-    // Only fetch if we don't have files for this viewMode yet
-    if (branchName && files.length === 0 && !loading) {
+    // Only fetch if we don't have files for this viewMode yet AND haven't attempted to fetch
+    if (branchName && files.length === 0 && !loading && !fetchAttempted) {
       fetchBranchFiles()
     }
-  }, [branchName, files.length, loading, fetchBranchFiles])
+  }, [branchName, files.length, loading, fetchAttempted, fetchBranchFiles])
 
   // Separate effect for refreshKey to force refetch
   useEffect(() => {
     if (branchName && refreshKey !== undefined && refreshKey > 0) {
+      // Reset fetchAttempted flag to allow refetch
+      setState({
+        [viewMode]: {
+          ...currentViewData,
+          fetchAttempted: false,
+        },
+      })
       fetchBranchFiles()
     }
-  }, [refreshKey, branchName, fetchBranchFiles])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey, branchName])
 
   const toggleFolder = (path: string) => {
     const newExpanded = new Set(expandedFolders)
@@ -141,7 +170,6 @@ export function FileBrowser({
     }
     // Update only the current viewMode's expanded folders
     setState({
-      ...state,
       [viewMode]: {
         ...currentViewData,
         expandedFolders: newExpanded,
