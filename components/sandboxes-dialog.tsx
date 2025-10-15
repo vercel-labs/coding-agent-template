@@ -7,7 +7,6 @@ import { toast } from 'sonner'
 import { ExternalLink, StopCircle, Loader2, Server } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { MAX_SANDBOX_DURATION } from '@/lib/constants'
 
 interface SandboxesDialogProps {
   open: boolean
@@ -25,6 +24,7 @@ interface Sandbox {
   createdAt: Date
   status: string
   keepAlive: boolean
+  maxDuration: number | null
 }
 
 export function SandboxesDialog({ open, onOpenChange }: SandboxesDialogProps) {
@@ -84,11 +84,12 @@ export function SandboxesDialog({ open, onOpenChange }: SandboxesDialogProps) {
     router.push(`/tasks/${taskId}`)
   }
 
-  const calculateTimeRemaining = (createdAt: Date) => {
-    // Sandbox timeout is always MAX_SANDBOX_DURATION hours for keep-alive sandboxes
+  const calculateTimeRemaining = (createdAt: Date, maxDuration: number | null) => {
+    // Use the sandbox's actual maxDuration (defaults to 5 if not set)
+    const maxDurationHours = maxDuration || 5
     const createdTime = new Date(createdAt).getTime()
     const now = Date.now()
-    const maxDurationMs = MAX_SANDBOX_DURATION * 60 * 60 * 1000 // Use MAX_SANDBOX_DURATION from config
+    const maxDurationMs = maxDurationHours * 60 * 60 * 1000
     const elapsed = now - createdTime
     const remaining = maxDurationMs - elapsed
 
@@ -138,7 +139,7 @@ export function SandboxesDialog({ open, onOpenChange }: SandboxesDialogProps) {
                       </div>
                       {sandbox.keepAlive && (
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {calculateTimeRemaining(sandbox.createdAt)} remaining
+                          {calculateTimeRemaining(sandbox.createdAt, sandbox.maxDuration)} remaining
                         </span>
                       )}
                     </div>

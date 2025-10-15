@@ -1,11 +1,14 @@
 import { db } from '@/lib/db/client'
 import { tasks, taskMessages } from '@/lib/db/schema'
 import { eq, gte, and, isNull } from 'drizzle-orm'
-import { MAX_MESSAGES_PER_DAY } from '@/lib/constants'
+import { getMaxMessagesPerDay } from '@/lib/db/settings'
 
 export async function checkRateLimit(
   userId: string,
 ): Promise<{ allowed: boolean; remaining: number; total: number; resetAt: Date }> {
+  // Get max messages per day for this user (user-specific > global > env var)
+  const maxMessagesPerDay = await getMaxMessagesPerDay(userId)
+
   // Get start of today (UTC)
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
@@ -36,13 +39,13 @@ export async function checkRateLimit(
 
   // Total count includes both new tasks and follow-up messages
   const count = tasksToday.length + userMessagesToday.length
-  const remaining = Math.max(0, MAX_MESSAGES_PER_DAY - count)
-  const allowed = count < MAX_MESSAGES_PER_DAY
+  const remaining = Math.max(0, maxMessagesPerDay - count)
+  const allowed = count < maxMessagesPerDay
 
   return {
     allowed,
     remaining,
-    total: MAX_MESSAGES_PER_DAY,
+    total: maxMessagesPerDay,
     resetAt: tomorrow,
   }
 }

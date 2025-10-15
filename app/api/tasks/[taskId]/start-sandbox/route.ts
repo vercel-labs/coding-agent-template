@@ -9,7 +9,7 @@ import { registerSandbox } from '@/lib/sandbox/sandbox-registry'
 import { runCommandInSandbox } from '@/lib/sandbox/commands'
 import { detectPackageManager, installDependencies } from '@/lib/sandbox/package-manager'
 import { createTaskLogger } from '@/lib/utils/task-logger'
-import { MAX_SANDBOX_DURATION } from '@/lib/constants'
+import { getMaxSandboxDuration } from '@/lib/db/settings'
 
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -47,6 +47,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
     // Get GitHub user info for git author configuration
     const githubUser = await getGitHubUser()
+    
+    // Get max sandbox duration for this user (user-specific > global > env var)
+    const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
 
     // Create a new sandbox by cloning the repo
     const sandbox = await Sandbox.create({
@@ -62,7 +65,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
               depth: 1,
             }
           : undefined,
-      timeout: MAX_SANDBOX_DURATION * 60 * 60 * 1000, // Max duration for keep-alive
+      timeout: maxSandboxDuration * 60 * 60 * 1000, // Max duration for keep-alive
       ports: [3000],
       runtime: 'node22',
       resources: { vcpus: 4 },

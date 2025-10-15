@@ -18,7 +18,7 @@ import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getGitHubUser } from '@/lib/github/client'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
-import { MAX_SANDBOX_DURATION } from '@/lib/constants'
+import { getMaxSandboxDuration } from '@/lib/db/settings'
 
 export async function GET() {
   try {
@@ -155,6 +155,8 @@ export async function POST(request: NextRequest) {
     const userApiKeys = await getUserApiKeys()
     const userGithubToken = await getUserGitHubToken()
     const githubUser = await getGitHubUser()
+    // Get max sandbox duration for this user (user-specific > global > env var)
+    const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
 
     // Process the task asynchronously with timeout
     // CRITICAL: Wrap in after() to ensure Vercel doesn't kill the function after response
@@ -168,7 +170,7 @@ export async function POST(request: NextRequest) {
           validatedData.selectedAgent || 'claude',
           validatedData.selectedModel,
           validatedData.installDependencies || false,
-          validatedData.maxDuration || MAX_SANDBOX_DURATION,
+          validatedData.maxDuration || maxSandboxDuration,
           validatedData.keepAlive || false,
           userApiKeys,
           userGithubToken,
@@ -194,7 +196,7 @@ async function processTaskWithTimeout(
   selectedAgent: string = 'claude',
   selectedModel?: string,
   installDependencies: boolean = false,
-  maxDuration: number = MAX_SANDBOX_DURATION,
+  maxDuration: number,
   keepAlive: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string
@@ -311,7 +313,7 @@ async function processTask(
   selectedAgent: string = 'claude',
   selectedModel?: string,
   installDependencies: boolean = false,
-  maxDuration: number = MAX_SANDBOX_DURATION,
+  maxDuration: number,
   keepAlive: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string

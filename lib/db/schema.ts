@@ -382,6 +382,46 @@ export const selectTaskMessageSchema = z.object({
 export type TaskMessage = z.infer<typeof selectTaskMessageSchema>
 export type InsertTaskMessage = z.infer<typeof insertTaskMessageSchema>
 
+// Settings table - key-value pairs for overriding environment variables per user
+export const settings = pgTable(
+  'settings',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }), // Required user reference
+    key: text('key').notNull(), // Setting key (e.g., 'maxMessagesPerDay')
+    value: text('value').notNull(), // Setting value (stored as text)
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    // Unique constraint: prevent duplicate keys per user
+    userIdKeyUnique: uniqueIndex('settings_user_id_key_idx').on(table.userId, table.key),
+  }),
+)
+
+export const insertSettingSchema = z.object({
+  id: z.string().optional(),
+  userId: z.string().min(1, 'User ID is required'),
+  key: z.string().min(1, 'Key is required'),
+  value: z.string().min(1, 'Value is required'),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+})
+
+export const selectSettingSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  key: z.string(),
+  value: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export type Setting = z.infer<typeof selectSettingSchema>
+export type InsertSetting = z.infer<typeof insertSettingSchema>
+
 // Keep legacy export for backwards compatibility during migration
 export const userConnections = accounts
 export type UserConnection = Account
