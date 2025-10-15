@@ -7,18 +7,18 @@ export async function POST(request: Request) {
   try {
     // Get the authenticated user's session
     const session = await getServerSession()
-    
+
     if (!session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get user's GitHub token
     const token = await getUserGitHubToken()
-    
+
     if (!token) {
       return NextResponse.json(
         { error: 'GitHub token not found. Please reconnect your GitHub account.' },
-        { status: 401 }
+        { status: 401 },
       )
     }
 
@@ -26,10 +26,7 @@ export async function POST(request: Request) {
     const { name, description, private: isPrivate, owner } = await request.json()
 
     if (!name || typeof name !== 'string') {
-      return NextResponse.json(
-        { error: 'Repository name is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Repository name is required' }, { status: 400 })
     }
 
     // Validate repository name format
@@ -37,7 +34,7 @@ export async function POST(request: Request) {
     if (!repoNamePattern.test(name)) {
       return NextResponse.json(
         { error: 'Repository name can only contain alphanumeric characters, periods, hyphens, and underscores' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -47,11 +44,11 @@ export async function POST(request: Request) {
     try {
       // Check if owner is an org or the user's personal account
       let repo
-      
+
       if (owner) {
         // First, check if the owner is the user's personal account
         const { data: user } = await octokit.users.getAuthenticated()
-        
+
         if (user.login === owner) {
           // Create in user's personal account
           repo = await octokit.repos.createForAuthenticatedUser({
@@ -74,7 +71,7 @@ export async function POST(request: Request) {
             if (error.status === 404) {
               return NextResponse.json(
                 { error: 'Organization not found or you do not have permission to create repositories' },
-                { status: 403 }
+                { status: 403 },
               )
             }
             throw error
@@ -100,19 +97,16 @@ export async function POST(request: Request) {
       })
     } catch (error: any) {
       console.error('GitHub API error:', error)
-      
+
       // Handle specific GitHub API errors
       if (error.status === 422) {
-        return NextResponse.json(
-          { error: 'Repository already exists or name is invalid' },
-          { status: 422 }
-        )
+        return NextResponse.json({ error: 'Repository already exists or name is invalid' }, { status: 422 })
       }
-      
+
       if (error.status === 403) {
         return NextResponse.json(
           { error: 'You do not have permission to create repositories in this organization' },
-          { status: 403 }
+          { status: 403 },
         )
       }
 
@@ -120,10 +114,6 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('Error creating repository:', error)
-    return NextResponse.json(
-      { error: 'Failed to create repository' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to create repository' }, { status: 500 })
   }
 }
-

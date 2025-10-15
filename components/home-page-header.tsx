@@ -4,7 +4,13 @@ import { PageHeader } from '@/components/page-header'
 import { RepoSelector } from '@/components/repo-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -143,21 +149,21 @@ export function HomePageHeader({
 
       if (response.ok) {
         toast.success('Repository created successfully')
-        
+
         // Clear repos cache for current owner
         if (selectedOwner) {
           sessionStorage.removeItem(`github-repos-${selectedOwner}`)
         }
-        
+
         // Set the newly created repo as selected
         onRepoChange(data.name)
-        
+
         // Reset form
         setNewRepoName('')
         setNewRepoDescription('')
         setNewRepoPrivate(true)
         setShowNewRepoDialog(false)
-        
+
         // Reload the page to refresh repos list
         window.location.reload()
       } else {
@@ -279,7 +285,7 @@ export function HomePageHeader({
         actions={actions}
         leftActions={leftActions}
       />
-      
+
       {/* New Repository Dialog */}
       <Dialog open={showNewRepoDialog} onOpenChange={setShowNewRepoDialog}>
         <DialogContent className="sm:max-w-[500px]">
@@ -305,11 +311,9 @@ export function HomePageHeader({
                   }
                 }}
               />
-              <p className="text-xs text-muted-foreground">
-                Use lowercase letters, numbers, hyphens, and underscores.
-              </p>
+              <p className="text-xs text-muted-foreground">Use lowercase letters, numbers, hyphens, and underscores.</p>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="repo-description">Description (optional)</Label>
               <Textarea
@@ -321,7 +325,7 @@ export function HomePageHeader({
                 rows={3}
               />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <Label
                 htmlFor="repo-private"
@@ -337,7 +341,7 @@ export function HomePageHeader({
               />
             </div>
           </div>
-          
+
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
