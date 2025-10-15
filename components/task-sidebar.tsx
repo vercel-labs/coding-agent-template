@@ -29,8 +29,9 @@ import { sessionAtom } from '@/lib/atoms/session'
 const AGENT_MODELS = {
   claude: [
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
   ],
   codex: [
     { value: 'openai/gpt-5', label: 'GPT-5' },
