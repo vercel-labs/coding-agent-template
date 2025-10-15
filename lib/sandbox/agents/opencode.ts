@@ -49,6 +49,8 @@ export async function executeOpenCodeInSandbox(
   logger: TaskLogger,
   selectedModel?: string,
   mcpServers?: Connector[],
+  isResumed?: boolean,
+  sessionId?: string,
 ): Promise<AgentExecutionResult> {
   try {
     // Executing OpenCode with instruction
@@ -66,27 +68,39 @@ export async function executeOpenCodeInSandbox(
       }
     }
 
-    // Install OpenCode using the official npm package
-    // Installing OpenCode CLI
-    if (logger) {
-      await logger.info('Installing OpenCode CLI...')
-    }
+    // Check if OpenCode CLI is already installed (for resumed sandboxes)
+    const existingCLICheck = await runCommandInSandbox(sandbox, 'which', ['opencode'])
 
-    const installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', 'opencode-ai'], logger)
+    let installResult: { success: boolean; output?: string; error?: string } = { success: true }
 
-    if (!installResult.success) {
-      console.error('OpenCode CLI installation failed:', { error: installResult.error })
-      return {
-        success: false,
-        error: `Failed to install OpenCode CLI: ${installResult.error || 'Unknown error'}`,
-        cliName: 'opencode',
-        changesDetected: false,
+    if (existingCLICheck.success && existingCLICheck.output?.includes('opencode')) {
+      // CLI already installed, skip installation
+      if (logger) {
+        await logger.info('OpenCode CLI already installed, skipping installation')
       }
-    }
+    } else {
+      // Install OpenCode using the official npm package
+      // Installing OpenCode CLI
+      if (logger) {
+        await logger.info('Installing OpenCode CLI...')
+      }
 
-    console.log('OpenCode CLI installed successfully')
-    if (logger) {
-      await logger.success('OpenCode CLI installed successfully')
+      installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', 'opencode-ai'], logger)
+
+      if (!installResult.success) {
+        console.error('OpenCode CLI installation failed:', { error: installResult.error })
+        return {
+          success: false,
+          error: `Failed to install OpenCode CLI: ${installResult.error || 'Unknown error'}`,
+          cliName: 'opencode',
+          changesDetected: false,
+        }
+      }
+
+      console.log('OpenCode CLI installed successfully')
+      if (logger) {
+        await logger.success('OpenCode CLI installed successfully')
+      }
     }
 
     // Verify OpenCode CLI is available
@@ -312,7 +326,24 @@ EOF`
     // This command allows us to pass a prompt directly and get results without the TUI
     // Add model parameter if provided
     const modelFlag = selectedModel ? ` --model "${selectedModel}"` : ''
-    const fullCommand = `${envPrefix} ${opencodeCmdToUse} run${modelFlag} "${instruction}"`
+
+    // Add session resumption flags if resuming
+    let sessionFlags = ''
+    if (isResumed) {
+      if (sessionId) {
+        sessionFlags = ` --session "${sessionId}"`
+        if (logger) {
+          await logger.info('Resuming specific OpenCode session')
+        }
+      } else {
+        sessionFlags = ' --continue'
+        if (logger) {
+          await logger.info('Continuing last OpenCode session')
+        }
+      }
+    }
+
+    const fullCommand = `${envPrefix} ${opencodeCmdToUse} run${modelFlag}${sessionFlags} "${instruction}"`
 
     // Log the command we're about to execute (with redacted API keys)
     const redactedCommand = fullCommand.replace(/API_KEY="[^"]*"/g, 'API_KEY="[REDACTED]"')
@@ -343,6 +374,18 @@ EOF`
 
     // OpenCode execution completed
 
+    // Extract session ID from output if present (for resumption)
+    let extractedSessionId: string | undefined
+    try {
+      // Look for session ID in output (format may vary)
+      const sessionMatch = stdout?.match(/(?:session[_\s-]?id|Session)[:\s]+([a-f0-9-]+)/i)
+      if (sessionMatch) {
+        extractedSessionId = sessionMatch[1]
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+
     // Check if any files were modified by OpenCode
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
@@ -368,6 +411,7 @@ EOF`
         cliName: 'opencode',
         changesDetected: !!hasChanges,
         error: undefined,
+        sessionId: extractedSessionId, // Include session ID for resumption
       }
     } else {
       const errorMsg = `OpenCode failed (exit code ${executeResult.exitCode}): ${stderr || stdout || 'No error message'}`
@@ -381,6 +425,7 @@ EOF`
         agentResponse: stdout,
         cliName: 'opencode',
         changesDetected: !!hasChanges,
+        sessionId: extractedSessionId, // Include session ID even on failure
       }
     }
   } catch (error: unknown) {

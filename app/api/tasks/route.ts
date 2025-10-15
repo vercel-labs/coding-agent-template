@@ -7,14 +7,18 @@ import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
+import { detectPackageManager } from '@/lib/sandbox/package-manager'
+import { runCommandInSandbox } from '@/lib/sandbox/commands'
 import { eq, desc, or, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 import { decrypt } from '@/lib/crypto'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getUserGitHubToken } from '@/lib/github/user-token'
+import { getGitHubUser } from '@/lib/github/client'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
+import { MAX_SANDBOX_DURATION } from '@/lib/constants'
 
 export async function GET() {
   try {
@@ -52,8 +56,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Rate limit exceeded',
-          message: `You have reached the daily limit of 5 tasks. Your limit will reset at ${rateLimit.resetAt.toISOString()}`,
+          message: `You have reached the daily limit of ${rateLimit.total} messages (tasks + follow-ups). Your limit will reset at ${rateLimit.resetAt.toISOString()}`,
           remaining: rateLimit.remaining,
+          total: rateLimit.total,
           resetAt: rateLimit.resetAt.toISOString(),
         },
         { status: 429 },
@@ -146,9 +151,10 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Get user's API keys and GitHub token BEFORE entering after() block (where session is not accessible)
+    // Get user's API keys, GitHub token, and GitHub user info BEFORE entering after() block (where session is not accessible)
     const userApiKeys = await getUserApiKeys()
     const userGithubToken = await getUserGitHubToken()
+    const githubUser = await getGitHubUser()
 
     // Process the task asynchronously with timeout
     // CRITICAL: Wrap in after() to ensure Vercel doesn't kill the function after response
@@ -162,9 +168,11 @@ export async function POST(request: NextRequest) {
           validatedData.selectedAgent || 'claude',
           validatedData.selectedModel,
           validatedData.installDependencies || false,
-          validatedData.maxDuration || 5,
+          validatedData.maxDuration || MAX_SANDBOX_DURATION,
+          validatedData.keepAlive || false,
           userApiKeys,
           userGithubToken,
+          githubUser,
         )
       } catch (error) {
         console.error('Task processing failed:', error)
@@ -186,7 +194,8 @@ async function processTaskWithTimeout(
   selectedAgent: string = 'claude',
   selectedModel?: string,
   installDependencies: boolean = false,
-  maxDuration: number = 5,
+  maxDuration: number = MAX_SANDBOX_DURATION,
+  keepAlive: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -195,6 +204,11 @@ async function processTaskWithTimeout(
     AI_GATEWAY_API_KEY?: string
   },
   githubToken?: string | null,
+  githubUser?: {
+    username: string
+    name: string | null
+    email: string | null
+  } | null,
 ) {
   const TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes in milliseconds
 
@@ -227,8 +241,10 @@ async function processTaskWithTimeout(
         selectedModel,
         installDependencies,
         maxDuration,
+        keepAlive,
         apiKeys,
         githubToken,
+        githubUser,
       ),
       timeoutPromise,
     ])
@@ -295,7 +311,8 @@ async function processTask(
   selectedAgent: string = 'claude',
   selectedModel?: string,
   installDependencies: boolean = false,
-  maxDuration: number = 5,
+  maxDuration: number = MAX_SANDBOX_DURATION,
+  keepAlive: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -304,6 +321,11 @@ async function processTask(
     AI_GATEWAY_API_KEY?: string
   },
   githubToken?: string | null,
+  githubUser?: {
+    username: string
+    name: string | null
+    email: string | null
+  } | null,
 ) {
   let sandbox: Sandbox | null = null
   const logger = createTaskLogger(taskId)
@@ -364,6 +386,8 @@ async function processTask(
         taskId,
         repoUrl,
         githubToken,
+        gitAuthorName: githubUser?.name || githubUser?.username || 'Coding Agent',
+        gitAuthorEmail: githubUser?.username ? `${githubUser.username}@users.noreply.github.com` : 'agent@example.com',
         apiKeys,
         timeout: `${maxDuration}m`,
         ports: [3000],
@@ -373,6 +397,7 @@ async function processTask(
         selectedAgent,
         selectedModel,
         installDependencies,
+        keepAlive,
         preDeterminedBranchName: aiBranchName || undefined,
         onProgress: async (progress: number, message: string) => {
           // Use real-time logger for progress updates
@@ -413,8 +438,9 @@ async function processTask(
     sandbox = createdSandbox || null
     console.log('Sandbox created successfully')
 
-    // Update sandbox URL and branch name (only update branch name if not already set by AI)
-    const updateData: { sandboxUrl?: string; updatedAt: Date; branchName?: string } = {
+    // Update sandbox URL, sandbox ID, and branch name (only update branch name if not already set by AI)
+    const updateData: { sandboxUrl?: string; sandboxId?: string; updatedAt: Date; branchName?: string } = {
+      sandboxId: sandbox?.sandboxId || undefined,
       sandboxUrl: domain || undefined,
       updatedAt: new Date(),
     }
@@ -515,6 +541,9 @@ async function processTask(
       .replace(/\\/g, '') // Remove backslashes
       .replace(/^-/gm, ' -') // Prefix lines starting with dash to avoid CLI option parsing
 
+    // Generate agent message ID for streaming updates
+    const agentMessageId = generateId()
+
     const agentResult = await Promise.race([
       executeAgentInSandbox(
         sandbox,
@@ -525,11 +554,20 @@ async function processTask(
         mcpServers,
         undefined,
         apiKeys,
+        undefined, // isResumed
+        undefined, // sessionId
+        taskId, // taskId for streaming updates
+        agentMessageId, // agentMessageId for streaming updates
       ),
       agentTimeoutPromise,
     ])
 
     console.log('Agent execution completed')
+
+    // Update agent session ID if provided (for Cursor agent resumption)
+    if (agentResult.sessionId) {
+      await db.update(tasks).set({ agentSessionId: agentResult.sessionId }).where(eq(tasks.id, taskId))
+    }
 
     if (agentResult.success) {
       // Log agent completion
@@ -559,13 +597,53 @@ async function processTask(
       const commitMessage = `${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`
       const pushResult = await pushChangesToBranch(sandbox!, branchName!, commitMessage, logger)
 
-      // Unregister and shutdown sandbox
-      unregisterSandbox(taskId)
-      const shutdownResult = await shutdownSandbox(sandbox!)
-      if (shutdownResult.success) {
-        await logger.success('Sandbox shutdown completed')
+      // Conditionally shutdown sandbox based on keepAlive setting
+      if (keepAlive) {
+        // Keep sandbox alive for follow-up messages
+        await logger.info('Sandbox kept alive for follow-up messages')
+
+        // Start dev server in background if keepAlive is enabled
+        try {
+          // Check if package.json exists and has a dev script
+          const packageJsonCheck = await runCommandInSandbox(sandbox!, 'test', ['-f', 'package.json'])
+          if (packageJsonCheck.success) {
+            const packageJsonRead = await runCommandInSandbox(sandbox!, 'cat', ['package.json'])
+            if (packageJsonRead.success && packageJsonRead.output) {
+              const packageJson = JSON.parse(packageJsonRead.output)
+              const hasDevScript = packageJson?.scripts?.dev
+
+              if (hasDevScript) {
+                await logger.info('Starting development server')
+
+                // Detect package manager and start dev server
+                const packageManager = await detectPackageManager(sandbox!, logger)
+                const devCommand = packageManager === 'npm' ? 'npm' : packageManager
+                const devArgs = packageManager === 'npm' ? ['run', 'dev'] : ['dev']
+
+                // Start dev server in detached mode (runs in background)
+                await sandbox!.runCommand({
+                  cmd: devCommand,
+                  args: devArgs,
+                  detached: true, // Key: runs in background without blocking
+                })
+
+                await logger.info('Development server started')
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to start dev server:', error)
+          // Don't log anything to user - just silently skip if no dev script
+        }
       } else {
-        await logger.error('Sandbox shutdown failed')
+        // Unregister and shutdown sandbox
+        unregisterSandbox(taskId)
+        const shutdownResult = await shutdownSandbox(sandbox!)
+        if (shutdownResult.success) {
+          await logger.success('Sandbox shutdown completed')
+        } else {
+          await logger.error('Sandbox shutdown failed')
+        }
       }
 
       // Check if push failed and handle accordingly
@@ -592,15 +670,20 @@ async function processTask(
   } catch (error) {
     console.error('Error processing task:', error)
 
-    // Try to shutdown sandbox even on error
+    // Try to shutdown sandbox even on error (unless keepAlive is enabled)
     if (sandbox) {
       try {
-        unregisterSandbox(taskId)
-        const shutdownResult = await shutdownSandbox(sandbox)
-        if (shutdownResult.success) {
-          await logger.info('Sandbox shutdown completed after error')
+        if (keepAlive) {
+          // Keep sandbox alive even on error for potential retry
+          await logger.info('Sandbox kept alive despite error')
         } else {
-          await logger.error('Sandbox shutdown failed')
+          unregisterSandbox(taskId)
+          const shutdownResult = await shutdownSandbox(sandbox)
+          if (shutdownResult.success) {
+            await logger.info('Sandbox shutdown completed after error')
+          } else {
+            await logger.error('Sandbox shutdown failed')
+          }
         }
       } catch (shutdownError) {
         console.error('Failed to shutdown sandbox after error:', shutdownError)

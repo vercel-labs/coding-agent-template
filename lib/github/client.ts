@@ -19,6 +19,35 @@ export async function getOctokit(): Promise<Octokit> {
 }
 
 /**
+ * Get the authenticated GitHub user's information
+ * Returns null if no GitHub account is connected
+ */
+export async function getGitHubUser(): Promise<{
+  username: string
+  name: string | null
+  email: string | null
+} | null> {
+  try {
+    const octokit = await getOctokit()
+
+    if (!octokit.auth) {
+      return null
+    }
+
+    const { data } = await octokit.rest.users.getAuthenticated()
+
+    return {
+      username: data.login,
+      name: data.name,
+      email: data.email,
+    }
+  } catch (error) {
+    console.error('Error getting GitHub user:', error)
+    return null
+  }
+}
+
+/**
  * Parse a GitHub repository URL to extract owner and repo
  */
 export function parseGitHubUrl(repoUrl: string): { owner: string; repo: string } | null {

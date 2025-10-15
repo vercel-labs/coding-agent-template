@@ -17,7 +17,8 @@ import { sessionAtom } from '@/lib/atoms/session'
 import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { ApiKeysDialog } from '@/components/api-keys-dialog'
-import { Key } from 'lucide-react'
+import { SandboxesDialog } from '@/components/sandboxes-dialog'
+import { Key, Server } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { getEnabledAuthProviders } from '@/lib/auth/providers'
 
@@ -33,6 +34,7 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
   const githubConnection = useAtomValue(githubConnectionAtom)
   const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [showApiKeysDialog, setShowApiKeysDialog] = useState(false)
+  const [showSandboxesDialog, setShowSandboxesDialog] = useState(false)
   const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null)
 
   // Check which auth providers are enabled
@@ -105,7 +107,7 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
           {user.email && <div className="text-sm text-muted-foreground">{user.email}</div>}
           {rateLimit && (
             <div className="text-xs text-muted-foreground mt-1">
-              {rateLimit.remaining}/{rateLimit.total} tasks remaining today
+              {rateLimit.remaining}/{rateLimit.total} messages remaining today
             </div>
           )}
         </div>
@@ -115,6 +117,11 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
         <DropdownMenuItem onClick={() => setShowApiKeysDialog(true)} className="cursor-pointer">
           <Key className="h-4 w-4 mr-2" />
           API Keys
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={() => setShowSandboxesDialog(true)} className="cursor-pointer">
+          <Server className="h-4 w-4 mr-2" />
+          Sandboxes
         </DropdownMenuItem>
 
         {/* Only show GitHub Connect/Disconnect for Vercel users when GitHub is enabled */}
@@ -157,6 +164,7 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
       </DropdownMenuContent>
 
       <ApiKeysDialog open={showApiKeysDialog} onOpenChange={setShowApiKeysDialog} />
+      <SandboxesDialog open={showSandboxesDialog} onOpenChange={setShowSandboxesDialog} />
     </DropdownMenu>
   )
 }

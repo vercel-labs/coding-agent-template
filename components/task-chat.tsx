@@ -24,10 +24,26 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
   const [isStopping, setIsStopping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const previousMessageCountRef = useRef(0)
+  const previousMessagesHashRef = useRef('')
+  const wasAtBottomRef = useRef(true)
+
+  const isNearBottom = () => {
+    const container = scrollContainerRef.current
+    if (!container) return true // Default to true if no container
+
+    const threshold = 100 // pixels from bottom
+    const position = container.scrollTop + container.clientHeight
+    const bottom = container.scrollHeight
+
+    return position >= bottom - threshold
+  }
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = scrollContainerRef.current
+    if (!container) return
+    container.scrollTop = container.scrollHeight
   }
 
   const fetchMessages = useCallback(
@@ -69,23 +85,52 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     return () => clearInterval(interval)
   }, [fetchMessages])
 
-  // Only scroll to bottom when new messages are added
+  // Track scroll position to maintain scroll at bottom when content updates
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      wasAtBottomRef.current = isNearBottom()
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Auto-scroll when messages change if user was at bottom
   useEffect(() => {
     const currentMessageCount = messages.length
     const previousMessageCount = previousMessageCountRef.current
 
-    // Scroll only if message count increased (new messages added)
-    if (currentMessageCount > previousMessageCount && previousMessageCount > 0) {
-      scrollToBottom()
-    }
+    // Create a hash of current messages to detect actual content changes
+    const currentHash = messages.map((m) => `${m.id}:${m.content.length}`).join('|')
+    const previousHash = previousMessagesHashRef.current
 
-    // Update the ref for next comparison
-    previousMessageCountRef.current = currentMessageCount
+    // Only proceed if content actually changed
+    const contentChanged = currentHash !== previousHash
 
-    // Also scroll on initial load (when previousMessageCount is 0 and we have messages)
+    // Always scroll on initial load
     if (previousMessageCount === 0 && currentMessageCount > 0) {
-      scrollToBottom()
+      setTimeout(() => scrollToBottom(), 0)
+      wasAtBottomRef.current = true
+      previousMessageCountRef.current = currentMessageCount
+      previousMessagesHashRef.current = currentHash
+      return
     }
+
+    // Only scroll if content changed AND user was at bottom
+    if (contentChanged && wasAtBottomRef.current) {
+      // Use setTimeout to ensure DOM has updated with new content
+      setTimeout(() => {
+        if (wasAtBottomRef.current) {
+          scrollToBottom()
+        }
+      }, 50)
+    }
+
+    previousMessageCountRef.current = currentMessageCount
+    previousMessagesHashRef.current = currentHash
   }, [messages])
 
   // Timer for duration display
@@ -97,25 +142,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       return () => clearInterval(interval)
     }
   }, [task.status])
-
-  const hasAgentResponse = (messageCreatedAt: Date) => {
-    const startTime = new Date(messageCreatedAt).getTime()
-    const messageIndex = messages.findIndex((m) => new Date(m.createdAt).getTime() === startTime)
-    const nextAgentMessage = messages.slice(messageIndex + 1).find((m) => m.role === 'agent')
-    return !!nextAgentMessage
-  }
-
-  const isLatestUserMessage = (messageCreatedAt: Date) => {
-    // Find the last user message in the list
-    const userMessages = messages.filter((m) => m.role === 'user')
-    if (userMessages.length === 0) return false
-
-    const lastUserMessage = userMessages[userMessages.length - 1]
-    const lastUserTime = new Date(lastUserMessage.createdAt).getTime()
-    const thisMessageTime = new Date(messageCreatedAt).getTime()
-
-    return lastUserTime === thisMessageTime
-  }
 
   const formatDuration = (messageCreatedAt: Date) => {
     const startTime = new Date(messageCreatedAt).getTime()
@@ -316,57 +342,26 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     )
   }
 
+  // Show only the last 10 messages
+  const displayMessages = messages.slice(-10)
+  const hiddenMessagesCount = messages.length - displayMessages.length
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto space-y-4">
-        {messages.map((message) => (
-          <div key={message.id}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
+        {hiddenMessagesCount > 0 && (
+          <div className="text-xs text-center text-muted-foreground opacity-50 mb-4 italic">
+            {hiddenMessagesCount} older message{hiddenMessagesCount !== 1 ? 's' : ''} hidden
+          </div>
+        )}
+        {displayMessages.map((message, index) => (
+          <div
+            key={message.id}
+            className={`${index > 0 ? 'mt-4' : ''} ${message.role === 'user' ? 'sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:-top-4 before:bg-background before:-z-10' : ''}`}
+          >
             {message.role === 'user' ? (
-              <div className="space-y-1">
-                <Card className="p-2 bg-card rounded-md">
-                  <div className="text-xs">
-                    <Streamdown
-                      components={{
-                        code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                          <code className={`${className} !text-xs`} {...props}>
-                            {children}
-                          </code>
-                        ),
-                        pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                          <pre className="!text-xs" {...props}>
-                            {children}
-                          </pre>
-                        ),
-                      }}
-                    >
-                      {message.content}
-                    </Streamdown>
-                  </div>
-                </Card>
-                <div className="flex items-center gap-0.5 justify-end">
-                  {!hasAgentResponse(message.createdAt) && isLatestUserMessage(message.createdAt) && (
-                    <div className="text-xs text-muted-foreground font-mono mr-auto pl-2 opacity-30">
-                      {formatDuration(message.createdAt)}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => handleRetryMessage(message.content)}
-                    disabled={isSending}
-                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => handleCopyMessage(message.id, message.content)}
-                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
-                  >
-                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground">
+              <Card className="p-2 bg-card rounded-md relative z-10">
+                <div className="text-xs">
                   <Streamdown
                     components={{
                       code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
@@ -381,21 +376,173 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                       ),
                     }}
                   >
-                    {parseAgentMessage(message.content)}
+                    {message.content}
                   </Streamdown>
                 </div>
                 <div className="flex items-center gap-0.5 justify-end">
                   <button
-                    onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
+                    onClick={() => handleRetryMessage(message.content)}
+                    disabled={isSending}
+                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => handleCopyMessage(message.id, message.content)}
                     className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
                   >
                     {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </button>
                 </div>
+              </Card>
+            ) : (
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground px-2">
+                  {!message.content.trim() && (task.status === 'processing' || task.status === 'pending')
+                    ? (() => {
+                        // Find the previous user message to get its createdAt for duration
+                        const messageIndex = displayMessages.findIndex((m) => m.id === message.id)
+                        const previousMessages = displayMessages.slice(0, messageIndex).reverse()
+                        const previousUserMessage = previousMessages.find((m) => m.role === 'user')
+
+                        return (
+                          <div className="opacity-50">
+                            <div className="italic">Generating response...</div>
+                            {previousUserMessage && (
+                              <div className="text-right font-mono opacity-70 mt-1">
+                                {formatDuration(previousUserMessage.createdAt)}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()
+                    : (() => {
+                        // Determine if this is the last agent message
+                        const agentMessages = displayMessages.filter((m) => m.role === 'agent')
+                        const isLastAgentMessage =
+                          agentMessages.length > 0 && agentMessages[agentMessages.length - 1].id === message.id
+
+                        const isAgentWorking = task.status === 'processing' || task.status === 'pending'
+                        const content = parseAgentMessage(message.content)
+
+                        // Pre-process content to mark the last tool call with a special marker
+                        let processedContent = content
+                        if (isAgentWorking && isLastAgentMessage) {
+                          // Find all tool calls
+                          const toolCallRegex = /\n\n((?:Editing|Reading|Running|Listing|Executing)[^\n]*)/g
+                          const matches = Array.from(content.matchAll(toolCallRegex))
+
+                          if (matches.length > 0) {
+                            // Get the last match
+                            const lastMatch = matches[matches.length - 1]
+                            const lastToolCall = lastMatch[1]
+                            const lastIndex = lastMatch.index! + 2 // +2 for \n\n
+                            const endOfToolCall = lastIndex + lastToolCall.length
+
+                            // Check if there's any non-whitespace content after the last tool call
+                            const contentAfter = content.substring(endOfToolCall).trim()
+
+                            // Only add the shimmer marker if there's no content after it
+                            if (!contentAfter) {
+                              processedContent =
+                                content.substring(0, lastIndex) +
+                                '🔄SHIMMER🔄' +
+                                lastToolCall +
+                                content.substring(endOfToolCall)
+                            }
+                          }
+                        }
+
+                        return (
+                          <Streamdown
+                            components={{
+                              code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                                <code className={`${className} !text-xs`} {...props}>
+                                  {children}
+                                </code>
+                              ),
+                              pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                                <pre className="!text-xs" {...props}>
+                                  {children}
+                                </pre>
+                              ),
+                              p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => {
+                                // Check if this paragraph is a tool call
+                                const text = String(children)
+                                const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
+                                const isToolCall = /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(
+                                  text,
+                                )
+
+                                // Remove the marker from display
+                                const displayText = text.replace('🔄SHIMMER🔄', '')
+
+                                return (
+                                  <p
+                                    className={
+                                      isToolCall
+                                        ? hasShimmerMarker
+                                          ? 'bg-gradient-to-r from-muted-foreground from-20% via-foreground/40 via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]'
+                                          : 'text-muted-foreground/60'
+                                        : ''
+                                    }
+                                    {...props}
+                                  >
+                                    {displayText}
+                                  </p>
+                                )
+                              },
+                            }}
+                          >
+                            {processedContent}
+                          </Streamdown>
+                        )
+                      })()}
+                </div>
+                <div className="flex items-center gap-0.5 justify-end">
+                  {/* Show copy button only when task is complete */}
+                  {task.status !== 'processing' && task.status !== 'pending' && (
+                    <button
+                      onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
+                      className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
+                    >
+                      {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
         ))}
+
+        {/* Show "Awaiting response..." or "Awaiting response..." if task is processing and latest message is from user without response */}
+        {(task.status === 'processing' || task.status === 'pending') &&
+          displayMessages.length > 0 &&
+          (() => {
+            const lastMessage = displayMessages[displayMessages.length - 1]
+            // Show placeholder if last message is a user message (no agent response yet)
+            if (lastMessage.role === 'user') {
+              // Check if this is the first user message (sandbox initialization)
+              const userMessages = displayMessages.filter((m) => m.role === 'user')
+              const isFirstMessage = userMessages.length === 1
+              const placeholderText = isFirstMessage ? 'Awaiting response...' : 'Awaiting response...'
+
+              return (
+                <div className="mt-4">
+                  <div className="text-xs text-muted-foreground px-2">
+                    <div className="opacity-50">
+                      <div className="italic">{placeholderText}</div>
+                      <div className="text-right font-mono opacity-70 mt-1">
+                        {formatDuration(lastMessage.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+            return null
+          })()}
+
         <div ref={messagesEndRef} />
       </div>
 

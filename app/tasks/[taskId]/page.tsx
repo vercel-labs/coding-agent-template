@@ -1,6 +1,7 @@
 import { TaskPageClient } from '@/components/task-page-client'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getGitHubStars } from '@/lib/github-stars'
+import { MAX_SANDBOX_DURATION } from '@/lib/constants'
 
 interface TaskPageProps {
   params: {
@@ -18,6 +19,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
       user={session?.user ?? null}
       authProvider={session?.authProvider ?? null}
       initialStars={stars}
+      maxSandboxDuration={MAX_SANDBOX_DURATION}
     />
   )
 }
