@@ -15,7 +15,7 @@ import { MAX_MESSAGES_PER_DAY, MAX_SANDBOX_DURATION } from '@/lib/constants'
 export async function getSetting(
   key: string,
   userId: string | undefined,
-  defaultValue?: string
+  defaultValue?: string,
 ): Promise<string | undefined> {
   if (!userId) {
     return defaultValue
@@ -41,7 +41,7 @@ export async function getSetting(
 export async function getNumericSetting(
   key: string,
   userId: string | undefined,
-  defaultValue?: number
+  defaultValue?: number,
 ): Promise<number | undefined> {
   const value = await getSetting(key, userId, defaultValue?.toString())
   return value ? parseInt(value, 10) : defaultValue
@@ -68,4 +68,3 @@ export async function getMaxMessagesPerDay(userId?: string): Promise<number> {
 export async function getMaxSandboxDuration(userId?: string): Promise<number> {
   return (await getNumericSetting('maxSandboxDuration', userId, MAX_SANDBOX_DURATION)) || MAX_SANDBOX_DURATION
 }
-

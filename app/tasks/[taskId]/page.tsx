@@ -12,10 +12,10 @@ interface TaskPageProps {
 export default async function TaskPage({ params }: TaskPageProps) {
   const { taskId } = await params
   const session = await getServerSession()
-  
+
   // Get max sandbox duration for this user (user-specific > global > env var)
   const maxSandboxDuration = await getMaxSandboxDuration(session?.user?.id)
-  
+
   const stars = await getGitHubStars()
 
   return (

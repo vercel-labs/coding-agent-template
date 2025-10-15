@@ -12,7 +12,7 @@ export default async function Home() {
   const keepAlive = cookieStore.get('keep-alive')?.value === 'true'
 
   const session = await getServerSession()
-  
+
   // Get max sandbox duration for this user (user-specific > global > env var)
   const maxSandboxDuration = await getMaxSandboxDuration(session?.user?.id)
   const maxDuration = parseInt(cookieStore.get('max-duration')?.value || maxSandboxDuration.toString(), 10)

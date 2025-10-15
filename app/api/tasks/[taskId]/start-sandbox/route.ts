@@ -47,7 +47,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
     // Get GitHub user info for git author configuration
     const githubUser = await getGitHubUser()
-    
+
     // Get max sandbox duration for this user (user-specific > global > env var)
     const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
 
