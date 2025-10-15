@@ -127,6 +127,20 @@
       "when": 1760475004489,
       "tag": "0017_pink_sphinx",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1760506044321,
+      "tag": "0018_light_richard_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1760506644665,
+      "tag": "0019_giant_anita_blake",
+      "breakpoints": true
     }
   ]
 }

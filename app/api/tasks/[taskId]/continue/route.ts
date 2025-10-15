@@ -15,7 +15,7 @@ import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getGitHubUser } from '@/lib/github/client'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
-import { MAX_SANDBOX_DURATION } from '@/lib/constants'
+import { getMaxSandboxDuration } from '@/lib/db/settings'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
@@ -86,6 +86,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
     const userApiKeys = await getUserApiKeys()
     const userGithubToken = await getUserGitHubToken()
     const githubUser = await getGitHubUser()
+    // Get max sandbox duration for this user (user-specific > global > env var)
+    const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
 
     // Process the continuation asynchronously
     after(async () => {
@@ -94,10 +96,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
         message.trim(),
         task.repoUrl || '',
         task.branchName || '',
+        task.maxDuration || maxSandboxDuration,
         task.selectedAgent || 'claude',
         task.selectedModel || undefined,
         task.installDependencies || false,
-        task.maxDuration || MAX_SANDBOX_DURATION,
         userApiKeys,
         userGithubToken,
         githubUser,
@@ -116,10 +118,10 @@ async function continueTask(
   prompt: string,
   repoUrl: string,
   branchName: string,
+  maxDuration: number,
   selectedAgent: string = 'claude',
   selectedModel?: string,
   installDependencies: boolean = false,
-  maxDuration: number = MAX_SANDBOX_DURATION,
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string

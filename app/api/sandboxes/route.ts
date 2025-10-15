@@ -24,6 +24,7 @@ export async function GET() {
         createdAt: tasks.createdAt,
         status: tasks.status,
         keepAlive: tasks.keepAlive,
+        maxDuration: tasks.maxDuration,
       })
       .from(tasks)
       .where(and(eq(tasks.userId, session.user.id), isNotNull(tasks.sandboxId)))
