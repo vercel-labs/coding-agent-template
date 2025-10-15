@@ -172,7 +172,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     setIsSending(true)
     const messageToSend = newMessage.trim()
-    
+
     // Clear the message immediately (optimistic)
     setNewMessage('')
 
