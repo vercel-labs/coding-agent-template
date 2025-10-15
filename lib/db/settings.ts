@@ -55,7 +55,8 @@ export async function getNumericSetting(
  * @returns The max messages per day limit
  */
 export async function getMaxMessagesPerDay(userId?: string): Promise<number> {
-  return (await getNumericSetting('maxMessagesPerDay', userId, MAX_MESSAGES_PER_DAY)) || MAX_MESSAGES_PER_DAY
+  const result = await getNumericSetting('maxMessagesPerDay', userId, MAX_MESSAGES_PER_DAY)
+  return result ?? MAX_MESSAGES_PER_DAY
 }
 
 /**
@@ -66,5 +67,6 @@ export async function getMaxMessagesPerDay(userId?: string): Promise<number> {
  * @returns The max sandbox duration in hours
  */
 export async function getMaxSandboxDuration(userId?: string): Promise<number> {
-  return (await getNumericSetting('maxSandboxDuration', userId, MAX_SANDBOX_DURATION)) || MAX_SANDBOX_DURATION
+  const result = await getNumericSetting('maxSandboxDuration', userId, MAX_SANDBOX_DURATION)
+  return result ?? MAX_SANDBOX_DURATION
 }
