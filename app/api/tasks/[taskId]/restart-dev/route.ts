@@ -30,8 +30,8 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     }
 
     // Check if sandbox is still alive
-    if (!task.sandboxId || !task.keepAlive) {
-      return NextResponse.json({ error: 'Sandbox is not active or keep-alive is not enabled' }, { status: 400 })
+    if (!task.sandboxId) {
+      return NextResponse.json({ error: 'Sandbox is not active' }, { status: 400 })
     }
 
     // Reconnect to the sandbox
