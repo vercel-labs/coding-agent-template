@@ -67,8 +67,8 @@ export async function POST(request: Request) {
               private: isPrivate || false,
               auto_init: true, // Initialize with README
             })
-          } catch (error: any) {
-            if (error.status === 404) {
+          } catch (error: unknown) {
+            if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
               return NextResponse.json(
                 { error: 'Organization not found or you do not have permission to create repositories' },
                 { status: 403 },
@@ -95,19 +95,21 @@ export async function POST(request: Request) {
         html_url: repo.data.html_url,
         private: repo.data.private,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('GitHub API error:', error)
 
       // Handle specific GitHub API errors
-      if (error.status === 422) {
-        return NextResponse.json({ error: 'Repository already exists or name is invalid' }, { status: 422 })
-      }
+      if (error && typeof error === 'object' && 'status' in error) {
+        if (error.status === 422) {
+          return NextResponse.json({ error: 'Repository already exists or name is invalid' }, { status: 422 })
+        }
 
-      if (error.status === 403) {
-        return NextResponse.json(
-          { error: 'You do not have permission to create repositories in this organization' },
-          { status: 403 },
-        )
+        if (error.status === 403) {
+          return NextResponse.json(
+            { error: 'You do not have permission to create repositories in this organization' },
+            { status: 403 },
+          )
+        }
       }
 
       throw error
