@@ -336,7 +336,7 @@ export function TaskForm({
     // Check if API key is required and available for the selected agent and model
     // Skip this check if we don't have repo data (likely not signed in)
     const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
-    
+
     if (selectedRepoData) {
       try {
         const response = await fetch(`/api/api-keys/check?agent=${selectedAgent}&model=${selectedModel}`)
