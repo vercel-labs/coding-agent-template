@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { ArrowUp, Loader2, Copy, Check, RotateCcw, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { Streamdown } from 'streamdown'
+import { useAtom } from 'jotai'
+import { taskChatInputAtomFamily } from '@/lib/atoms/task'
 
 interface TaskChatProps {
   taskId: string
@@ -18,7 +20,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [messages, setMessages] = useState<TaskMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [newMessage, setNewMessage] = useState('')
+  const [newMessage, setNewMessage] = useAtom(taskChatInputAtomFamily(taskId))
   const [isSending, setIsSending] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
@@ -170,6 +172,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     setIsSending(true)
     const messageToSend = newMessage.trim()
+    
+    // Clear the message immediately (optimistic)
     setNewMessage('')
 
     try {
@@ -188,14 +192,15 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       if (response.ok) {
         // Refresh messages to show the new user message without loading state
         await fetchMessages(false)
+        // Message was sent successfully, keep it cleared
       } else {
         toast.error(data.error || 'Failed to send message')
-        setNewMessage(messageToSend) // Restore the message
+        setNewMessage(messageToSend) // Restore the message on error
       }
     } catch (err) {
       console.error('Error sending message:', err)
       toast.error('Failed to send message')
-      setNewMessage(messageToSend) // Restore the message
+      setNewMessage(messageToSend) // Restore the message on error
     } finally {
       setIsSending(false)
     }
