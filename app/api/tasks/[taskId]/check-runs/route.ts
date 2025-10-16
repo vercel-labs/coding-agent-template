@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getOctokit } from '@/lib/github/client'
 
@@ -10,14 +10,18 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
     const { taskId } = await params
 
-    // Get the task
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+    // Get the task and verify it belongs to the user
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .limit(1)
 
     if (!task) {
       return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 })
