@@ -1507,6 +1507,10 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                       onSavingStateChange={
                         selectedFile ? (isSaving) => handleSavingStateChange(selectedFile, isSaving) : undefined
                       }
+                      onOpenFile={(filename, lineNumber) => {
+                        openFileInTab(filename)
+                        // TODO: Optionally scroll to lineNumber after opening
+                      }}
                     />
                   </div>
                 </div>

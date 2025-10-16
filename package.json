@@ -19,6 +19,7 @@
   "dependencies": {
     "@git-diff-view/file": "^0.0.32",
     "@git-diff-view/react": "^0.0.32",
+    "@monaco-editor/react": "^4.7.0",
     "@neondatabase/serverless": "^0.10.1",
     "@octokit/rest": "^22.0.0",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -36,6 +37,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@types/js-cookie": "^3.0.6",
+    "@types/ws": "^8.18.1",
     "@vercel/sandbox": "^0.0.21",
     "ai": "5.0.51",
     "arctic": "^3.7.0",
@@ -57,7 +59,11 @@
     "sonner": "^2.0.7",
     "streamdown": "^1.4.0",
     "tailwind-merge": "^3.3.1",
+    "typescript-language-server": "^5.0.1",
     "vaul": "^1.1.2",
+    "vscode-jsonrpc": "^8.2.1",
+    "vscode-languageserver-protocol": "^3.17.5",
+    "ws": "^8.18.3",
     "zod": "^4.1.11"
   },
   "devDependencies": {
