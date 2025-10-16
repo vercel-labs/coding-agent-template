@@ -26,6 +26,7 @@ import {
   Play,
   StopCircle,
   MoreVertical,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -193,6 +194,14 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
+  // Tabs state for Code pane
+  const [openTabs, setOpenTabs] = useState<string[]>([])
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(0)
+  const [tabsWithUnsavedChanges, setTabsWithUnsavedChanges] = useState<Set<string>>(new Set())
+  const [tabsSaving, setTabsSaving] = useState<Set<string>>(new Set())
+  const [showCloseTabDialog, setShowCloseTabDialog] = useState(false)
+  const [tabToClose, setTabToClose] = useState<number | null>(null)
+
   // Helper function to format dates - show only time if same day as today
   const formatDateTime = (date: Date) => {
     const today = new Date()
@@ -203,6 +212,117 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     } else {
       return `${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`
     }
+  }
+
+  // Tab management functions
+  const openFileInTab = (file: string) => {
+    const existingIndex = openTabs.indexOf(file)
+    if (existingIndex !== -1) {
+      // File already open, just switch to it
+      setActiveTabIndex(existingIndex)
+      setSelectedFile(file)
+    } else {
+      // Open new tab
+      setOpenTabs([...openTabs, file])
+      setActiveTabIndex(openTabs.length)
+      setSelectedFile(file)
+    }
+  }
+
+  const handleUnsavedChanges = useCallback((filename: string, hasChanges: boolean) => {
+    setTabsWithUnsavedChanges((prev) => {
+      const newSet = new Set(prev)
+      if (hasChanges) {
+        newSet.add(filename)
+      } else {
+        newSet.delete(filename)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleSavingStateChange = useCallback((filename: string, isSaving: boolean) => {
+    setTabsSaving((prev) => {
+      const newSet = new Set(prev)
+      if (isSaving) {
+        newSet.add(filename)
+      } else {
+        newSet.delete(filename)
+      }
+      return newSet
+    })
+  }, [])
+
+  const attemptCloseTab = (index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    const fileToClose = openTabs[index]
+    
+    // Check if the tab has unsaved changes
+    if (tabsWithUnsavedChanges.has(fileToClose)) {
+      setTabToClose(index)
+      setShowCloseTabDialog(true)
+    } else {
+      closeTab(index)
+    }
+  }
+
+  const closeTab = (index: number) => {
+    const fileToClose = openTabs[index]
+    const newTabs = openTabs.filter((_, i) => i !== index)
+    setOpenTabs(newTabs)
+    
+    // Remove from unsaved changes
+    setTabsWithUnsavedChanges((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(fileToClose)
+      return newSet
+    })
+    
+    // Adjust active tab index
+    if (newTabs.length === 0) {
+      setActiveTabIndex(0)
+      setSelectedFile(undefined)
+    } else if (activeTabIndex >= newTabs.length) {
+      setActiveTabIndex(newTabs.length - 1)
+      setSelectedFile(newTabs[newTabs.length - 1])
+    } else if (activeTabIndex === index) {
+      // If closing the active tab, switch to the previous tab (or next if it's the first)
+      const newIndex = Math.max(0, index - 1)
+      setActiveTabIndex(newIndex)
+      setSelectedFile(newTabs[newIndex])
+    } else if (activeTabIndex > index) {
+      // Adjust index if a tab before the active one was closed
+      setActiveTabIndex(activeTabIndex - 1)
+    }
+  }
+
+  const handleCloseTabConfirm = (save: boolean) => {
+    if (tabToClose === null) return
+    
+    if (save) {
+      // Trigger save by dispatching Cmd+S event
+      const event = new KeyboardEvent('keydown', {
+        key: 's',
+        metaKey: true,
+        bubbles: true,
+      })
+      document.dispatchEvent(event)
+      // Wait a moment for save to complete, then close
+      setTimeout(() => {
+        closeTab(tabToClose)
+        setShowCloseTabDialog(false)
+        setTabToClose(null)
+      }, 500)
+    } else {
+      closeTab(tabToClose)
+      setShowCloseTabDialog(false)
+      setTabToClose(null)
+    }
+  }
+
+  const switchToTab = (index: number) => {
+    setActiveTabIndex(index)
+    setSelectedFile(openTabs[index])
   }
 
   // Use optimistic status if available, otherwise use actual task status
@@ -511,13 +631,16 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.prNumber])
 
-  // Fetch all diffs when files list changes
+  // Fetch diffs for changed files only (in "changes" mode)
   const fetchAllDiffs = useCallback(
     async (filesList: string[]) => {
       if (!filesList.length || loadingDiffsRef.current) return
 
       // Store all files for search
       setAllFiles(filesList)
+
+      // Only pre-fetch diffs in "changes" mode
+      if (viewMode !== 'changes') return
 
       loadingDiffsRef.current = true
       const newDiffsCache: Record<string, DiffData> = {}
@@ -548,7 +671,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
         loadingDiffsRef.current = false
       }
     },
-    [task.id],
+    [task.id, viewMode],
   )
 
   // Handle click outside file dropdown
@@ -565,60 +688,76 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }, [showFileDropdown])
 
-  // Keyboard shortcuts for pane toggles
+  // Keyboard shortcuts for pane toggles and tab management
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only trigger if Alt is pressed and no other modifiers
-      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
-        return
-      }
-
       // Don't trigger if user is typing in an input/textarea
       const target = event.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return
       }
 
-      // Use event.code instead of event.key to handle macOS Option key special characters
-      switch (event.code) {
-        case 'Digit1':
+      // Tab management shortcuts (Cmd/Ctrl + W to close, Cmd/Ctrl + 1-9 to switch)
+      if (event.metaKey || event.ctrlKey) {
+        // Close current tab with Cmd/Ctrl + W
+        if (event.key === 'w' && openTabs.length > 0) {
           event.preventDefault()
-          setShowFilesPane((prev) => {
-            const newValue = !prev
-            saveShowFilesPane(newValue)
-            return newValue
-          })
-          break
-        case 'Digit2':
+          attemptCloseTab(activeTabIndex)
+          return
+        }
+        
+        // Switch to tab 1-9 with Cmd/Ctrl + 1-9
+        const digit = parseInt(event.key)
+        if (digit >= 1 && digit <= 9 && openTabs.length >= digit) {
           event.preventDefault()
-          setShowCodePane((prev) => {
-            const newValue = !prev
-            saveShowCodePane(newValue)
-            return newValue
-          })
-          break
-        case 'Digit3':
-          event.preventDefault()
-          setShowPreviewPane((prev) => {
-            const newValue = !prev
-            saveShowPreviewPane(newValue)
-            return newValue
-          })
-          break
-        case 'Digit4':
-          event.preventDefault()
-          setShowChatPane((prev) => {
-            const newValue = !prev
-            saveShowChatPane(newValue)
-            return newValue
-          })
-          break
+          switchToTab(digit - 1)
+          return
+        }
+      }
+
+      // Pane toggle shortcuts (Alt + 1-4)
+      if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        // Use event.code instead of event.key to handle macOS Option key special characters
+        switch (event.code) {
+          case 'Digit1':
+            event.preventDefault()
+            setShowFilesPane((prev) => {
+              const newValue = !prev
+              saveShowFilesPane(newValue)
+              return newValue
+            })
+            break
+          case 'Digit2':
+            event.preventDefault()
+            setShowCodePane((prev) => {
+              const newValue = !prev
+              saveShowCodePane(newValue)
+              return newValue
+            })
+            break
+          case 'Digit3':
+            event.preventDefault()
+            setShowPreviewPane((prev) => {
+              const newValue = !prev
+              saveShowPreviewPane(newValue)
+              return newValue
+            })
+            break
+          case 'Digit4':
+            event.preventDefault()
+            setShowChatPane((prev) => {
+              const newValue = !prev
+              saveShowChatPane(newValue)
+              return newValue
+            })
+            break
+        }
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [openTabs, activeTabIndex])
 
   // Trigger refresh when task completes
   useEffect(() => {
@@ -1233,7 +1372,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               <FileBrowser
                 taskId={task.id}
                 branchName={task.branchName}
-                onFileSelect={setSelectedFile}
+                onFileSelect={openFileInTab}
                 onFilesLoaded={fetchAllDiffs}
                 selectedFile={selectedFile}
                 refreshKey={refreshKey}
@@ -1246,59 +1385,110 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             {showCodePane && (
               <div className="flex-1 min-h-0 min-w-0">
                 <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
-                  {/* Code Toolbar */}
-                  <div
-                    ref={fileSearchRef}
-                    className="relative flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]"
-                  >
-                    <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <input
-                      type="text"
-                      value={fileSearchQuery || selectedFile || ''}
-                      onChange={(e) => {
-                        const newValue = e.target.value
-                        setFileSearchQuery(newValue)
-                        // If user clears the input, also clear the selected file
-                        if (newValue === '') {
-                          setSelectedFile(undefined)
-                        }
-                        setShowFileDropdown(true)
-                      }}
-                      onFocus={() => setShowFileDropdown(true)}
-                      placeholder="Type to search files..."
-                      className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-                    />
-
-                    {/* Dropdown */}
-                    {showFileDropdown &&
-                      (() => {
-                        const query = fileSearchQuery.toLowerCase()
-                        const filteredFiles = allFiles.filter((file) => file.toLowerCase().includes(query)).slice(0, 50)
-
-                        if (filteredFiles.length === 0) return null
-
-                        return (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-[300px] overflow-y-auto z-50">
-                            {filteredFiles.map((file) => (
-                              <button
-                                key={file}
-                                onClick={() => {
-                                  setSelectedFile(file)
-                                  setFileSearchQuery('')
-                                  setShowFileDropdown(false)
-                                }}
+                  {/* Tabs and Search Bar */}
+                  <div className="flex flex-col border-b bg-muted/50 flex-shrink-0">
+                    {/* Tabs Row */}
+                    {openTabs.length > 0 && (
+                      <div className="flex items-center gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b">
+                        {openTabs.map((tab, index) => {
+                          const hasUnsavedChanges = tabsWithUnsavedChanges.has(tab)
+                          const isSaving = tabsSaving.has(tab)
+                          return (
+                            <button
+                              key={tab}
+                              onClick={() => switchToTab(index)}
+                              className={cn(
+                                'group flex items-center gap-2 px-3 py-2 text-sm border-r hover:bg-muted transition-colors flex-shrink-0 max-w-[200px]',
+                                activeTabIndex === index
+                                  ? 'bg-background text-foreground'
+                                  : 'text-muted-foreground hover:text-foreground',
+                              )}
+                            >
+                              <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                              <span className="truncate flex-1">{tab.split('/').pop()}</span>
+                              <span
+                                onClick={(e) => attemptCloseTab(index, e)}
                                 className={cn(
-                                  'w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors',
-                                  selectedFile === file && 'bg-accent',
+                                  'flex items-center justify-center w-4 h-4 rounded transition-all cursor-pointer hover:bg-accent flex-shrink-0',
+                                  hasUnsavedChanges || isSaving ? '' : 'opacity-0 group-hover:opacity-100',
                                 )}
+                                title={isSaving ? 'Saving...' : hasUnsavedChanges ? 'Unsaved changes • Click to close' : 'Close tab'}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault()
+                                    attemptCloseTab(index, e as any)
+                                  }
+                                }}
                               >
-                                {file}
-                              </button>
-                            ))}
-                          </div>
-                        )
-                      })()}
+                                {isSaving ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : hasUnsavedChanges ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-foreground group-hover:hidden" />
+                                    <X className="h-3 w-3 hidden group-hover:block" />
+                                  </>
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* Search Bar */}
+                    <div
+                      ref={fileSearchRef}
+                      className="relative flex items-center gap-2 px-3 py-2"
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <input
+                        type="text"
+                        value={fileSearchQuery}
+                        onChange={(e) => {
+                          setFileSearchQuery(e.target.value)
+                          setShowFileDropdown(true)
+                        }}
+                        onFocus={() => setShowFileDropdown(true)}
+                        placeholder="Type to search files..."
+                        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                      />
+
+                      {/* Dropdown */}
+                      {showFileDropdown &&
+                        (() => {
+                          const query = fileSearchQuery.toLowerCase()
+                          const filteredFiles = allFiles.filter((file) => file.toLowerCase().includes(query)).slice(0, 50)
+
+                          if (filteredFiles.length === 0) return null
+
+                          return (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-[300px] overflow-y-auto z-50">
+                              {filteredFiles.map((file) => (
+                                <button
+                                  key={file}
+                                  onClick={() => {
+                                    openFileInTab(file)
+                                    setFileSearchQuery('')
+                                    setShowFileDropdown(false)
+                                  }}
+                                  className={cn(
+                                    'w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors',
+                                    selectedFile === file && 'bg-accent',
+                                  )}
+                                >
+                                  {file}
+                                </button>
+                              ))}
+                            </div>
+                          )
+                        })()}
+                    </div>
                   </div>
+                  
                   <div className="overflow-y-auto flex-1">
                     <FileDiffViewer
                       selectedFile={selectedFile}
@@ -1306,6 +1496,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                       isInitialLoading={Object.keys(diffsCache).length === 0}
                       viewMode={viewMode}
                       taskId={task.id}
+                      onUnsavedChanges={
+                        selectedFile ? (hasChanges) => handleUnsavedChanges(selectedFile, hasChanges) : undefined
+                      }
+                      onSavingStateChange={
+                        selectedFile ? (isSaving) => handleSavingStateChange(selectedFile, isSaving) : undefined
+                      }
                     />
                   </div>
                 </div>
@@ -1586,7 +1782,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     taskId={task.id}
                     branchName={task.branchName}
                     onFileSelect={(file) => {
-                      setSelectedFile(file)
+                      openFileInTab(file)
                       setShowFilesList(false)
                     }}
                     onFilesLoaded={fetchAllDiffs}
@@ -1756,6 +1952,37 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           onMergeInitiated={handleMergeInitiated}
         />
       )}
+
+      {/* Close Tab Confirmation Dialog */}
+      <AlertDialog open={showCloseTabDialog} onOpenChange={setShowCloseTabDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Do you want to save the changes you made to {tabToClose !== null ? openTabs[tabToClose]?.split('/').pop() : 'this file'}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowCloseTabDialog(false)
+                setTabToClose(null)
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => handleCloseTabConfirm(false)}
+            >
+              Don&apos;t Save
+            </Button>
+            <AlertDialogAction onClick={() => handleCloseTabConfirm(true)}>
+              Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

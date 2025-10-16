@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import { generateDiffFile } from '@git-diff-view/file'
 import '@git-diff-view/react/styles/diff-view-pure.css'
+import { FileEditor } from '@/components/file-editor'
 
 interface DiffData {
   filename: string
@@ -22,6 +23,8 @@ interface FileDiffViewerProps {
   isInitialLoading?: boolean
   viewMode?: 'changes' | 'all'
   taskId?: string
+  onUnsavedChanges?: (hasChanges: boolean) => void
+  onSavingStateChange?: (isSaving: boolean) => void
 }
 
 export function FileDiffViewer({
@@ -30,6 +33,8 @@ export function FileDiffViewer({
   isInitialLoading,
   viewMode = 'changes',
   taskId: taskIdProp,
+  onUnsavedChanges,
+  onSavingStateChange,
 }: FileDiffViewerProps) {
   const params = useParams()
   const taskId = taskIdProp || (params.taskId as string)
@@ -263,6 +268,20 @@ export function FileDiffViewer({
           <p className="text-xs md:text-sm text-muted-foreground">{diffData.filename}</p>
         </div>
       </div>
+    )
+  }
+
+  // Render FileEditor for "all" mode with text files
+  if (viewMode === 'all' && diffData && !diffData.isBinary && !diffData.isImage) {
+    return (
+      <FileEditor
+        filename={diffData.filename}
+        initialContent={diffData.newContent}
+        language={diffData.language}
+        taskId={taskId}
+        onUnsavedChanges={onUnsavedChanges}
+        onSavingStateChange={onSavingStateChange}
+      />
     )
   }
 
