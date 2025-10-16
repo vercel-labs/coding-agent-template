@@ -142,9 +142,9 @@ export function TaskForm({
   selectedOwner,
   selectedRepo,
   initialInstallDependencies = false,
-  initialMaxDuration = 5,
+  initialMaxDuration = 300,
   initialKeepAlive = false,
-  maxSandboxDuration = 5,
+  maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
   const [selectedAgent, setSelectedAgent] = useState('claude')
@@ -734,7 +734,7 @@ export function TaskForm({
                                 htmlFor="keep-alive"
                                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                               >
-                                Keep Alive ({maxSandboxDuration} {maxSandboxDuration === 1 ? 'hour' : 'hours'} max)
+                                Keep Alive ({maxSandboxDuration} minutes max)
                               </Label>
                             </div>
                             <p className="text-xs text-muted-foreground">

@@ -85,11 +85,11 @@ export function SandboxesDialog({ open, onOpenChange }: SandboxesDialogProps) {
   }
 
   const calculateTimeRemaining = (createdAt: Date, maxDuration: number | null) => {
-    // Use the sandbox's actual maxDuration (defaults to 5 if not set)
-    const maxDurationHours = maxDuration || 5
+    // Use the sandbox's actual maxDuration in minutes (defaults to 300 minutes = 5 hours if not set)
+    const maxDurationMinutes = maxDuration || 300
     const createdTime = new Date(createdAt).getTime()
     const now = Date.now()
-    const maxDurationMs = maxDurationHours * 60 * 60 * 1000
+    const maxDurationMs = maxDurationMinutes * 60 * 1000 // Convert minutes to milliseconds
     const elapsed = now - createdTime
     const remaining = maxDurationMs - elapsed
 

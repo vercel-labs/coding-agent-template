@@ -50,7 +50,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
     // Get max sandbox duration - use task's maxDuration if available, otherwise fall back to global setting
     const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
-    const maxDurationMinutes = task.maxDuration || maxSandboxDuration * 60 // Convert hours to minutes for fallback
+    const maxDurationMinutes = task.maxDuration || maxSandboxDuration
 
     // Create a new sandbox by cloning the repo
     const sandbox = await Sandbox.create({
