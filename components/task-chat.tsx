@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowUp, Loader2, Copy, Check, RotateCcw, Square } from 'lucide-react'
+import { ArrowUp, Loader2, Copy, Check, RotateCcw, Square, CheckCircle, AlertCircle, XCircle, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Streamdown } from 'streamdown'
 import { useAtom } from 'jotai'
@@ -14,6 +14,34 @@ import { taskChatInputAtomFamily } from '@/lib/atoms/task'
 interface TaskChatProps {
   taskId: string
   task: Task
+}
+
+interface PRComment {
+  id: number
+  user: {
+    login: string
+    avatar_url: string
+  }
+  body: string
+  created_at: string
+  html_url: string
+}
+
+interface CheckRun {
+  id: number
+  name: string
+  status: string
+  conclusion: string | null
+  html_url: string
+  started_at: string
+  completed_at: string | null
+}
+
+interface DeploymentInfo {
+  hasDeployment: boolean
+  previewUrl?: string
+  message?: string
+  createdAt?: string
 }
 
 export function TaskChat({ taskId, task }: TaskChatProps) {
@@ -30,6 +58,16 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const previousMessageCountRef = useRef(0)
   const previousMessagesHashRef = useRef('')
   const wasAtBottomRef = useRef(true)
+  const [activeTab, setActiveTab] = useState<'chat' | 'comments' | 'actions' | 'deployments'>('chat')
+  const [prComments, setPrComments] = useState<PRComment[]>([])
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [commentsError, setCommentsError] = useState<string | null>(null)
+  const [checkRuns, setCheckRuns] = useState<CheckRun[]>([])
+  const [loadingActions, setLoadingActions] = useState(false)
+  const [actionsError, setActionsError] = useState<string | null>(null)
+  const [deployment, setDeployment] = useState<DeploymentInfo | null>(null)
+  const [loadingDeployment, setLoadingDeployment] = useState(false)
+  const [deploymentError, setDeploymentError] = useState<string | null>(null)
 
   const isNearBottom = () => {
     const container = scrollContainerRef.current
@@ -76,6 +114,94 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     [taskId],
   )
 
+  const fetchPRComments = useCallback(async () => {
+    if (!task.prNumber || !task.repoUrl) return
+
+    setLoadingComments(true)
+    setCommentsError(null)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/pr-comments`)
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setPrComments(data.comments || [])
+      } else {
+        setCommentsError(data.error || 'Failed to fetch comments')
+      }
+    } catch (err) {
+      console.error('Error fetching PR comments:', err)
+      setCommentsError('Failed to fetch comments')
+    } finally {
+      setLoadingComments(false)
+    }
+  }, [taskId, task.prNumber, task.repoUrl])
+
+  const fetchCheckRuns = useCallback(async () => {
+    if (!task.branchName || !task.repoUrl) return
+
+    setLoadingActions(true)
+    setActionsError(null)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/check-runs`)
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setCheckRuns(data.checkRuns || [])
+      } else {
+        setActionsError(data.error || 'Failed to fetch check runs')
+      }
+    } catch (err) {
+      console.error('Error fetching check runs:', err)
+      setActionsError('Failed to fetch check runs')
+    } finally {
+      setLoadingActions(false)
+    }
+  }, [taskId, task.branchName, task.repoUrl])
+
+  const fetchDeployment = useCallback(async () => {
+    setLoadingDeployment(true)
+    setDeploymentError(null)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/deployment`)
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setDeployment(data.data)
+      } else {
+        setDeploymentError(data.error || 'Failed to fetch deployment')
+      }
+    } catch (err) {
+      console.error('Error fetching deployment:', err)
+      setDeploymentError('Failed to fetch deployment')
+    } finally {
+      setLoadingDeployment(false)
+    }
+  }, [taskId])
+
+  const handleRefresh = useCallback(() => {
+    switch (activeTab) {
+      case 'chat':
+        fetchMessages(false)
+        break
+      case 'comments':
+        if (task.prNumber) {
+          fetchPRComments()
+        }
+        break
+      case 'actions':
+        if (task.branchName) {
+          fetchCheckRuns()
+        }
+        break
+      case 'deployments':
+        fetchDeployment()
+        break
+    }
+  }, [activeTab, task.prNumber, task.branchName, fetchMessages, fetchPRComments, fetchCheckRuns, fetchDeployment])
+
   useEffect(() => {
     fetchMessages(true) // Show loading on initial fetch
 
@@ -86,6 +212,27 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     return () => clearInterval(interval)
   }, [fetchMessages])
+
+  // Fetch PR comments when tab switches to comments or when PR is created
+  useEffect(() => {
+    if (activeTab === 'comments' && task.prNumber) {
+      fetchPRComments()
+    }
+  }, [activeTab, task.prNumber, fetchPRComments])
+
+  // Fetch check runs when tab switches to actions or when branch is created
+  useEffect(() => {
+    if (activeTab === 'actions' && task.branchName) {
+      fetchCheckRuns()
+    }
+  }, [activeTab, task.branchName, fetchCheckRuns])
+
+  // Fetch deployment when tab switches to deployments
+  useEffect(() => {
+    if (activeTab === 'deployments') {
+      fetchDeployment()
+    }
+  }, [activeTab, fetchDeployment])
 
   // Track scroll position to maintain scroll at bottom when content updates
   useEffect(() => {
@@ -297,6 +444,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     }
   }
 
+  // Use a non-narrowed variable for tab button comparisons
+  const currentTab = activeTab as string
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -318,41 +468,224 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     )
   }
 
-  if (messages.length === 0) {
-    return (
-      <div className="flex flex-col h-full">
+  // Render tab content
+  const renderTabContent = () => {
+    if (activeTab === 'deployments') {
+      return (
+        <div className="flex-1 overflow-y-auto pb-4">
+          {loadingDeployment ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-xs md:text-sm text-muted-foreground">Loading deployment...</p>
+              </div>
+            </div>
+          ) : deploymentError ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-destructive mb-2 text-xs md:text-sm">{deploymentError}</p>
+              </div>
+            </div>
+          ) : !deployment?.hasDeployment ? (
+            <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
+              <div className="text-sm md:text-base">{deployment?.message || 'No deployment found'}</div>
+            </div>
+          ) : (
+            <div className="space-y-2 px-2">
+              <a
+                href={deployment.previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
+                  <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate">Vercel Preview</div>
+                  <div className="text-xs text-muted-foreground">
+                    {deployment.createdAt
+                      ? `Deployed ${new Date(deployment.createdAt).toLocaleString()}`
+                      : 'Preview deployment'}
+                  </div>
+                </div>
+              </a>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (activeTab === 'actions') {
+      const getStatusIcon = (status: string, conclusion: string | null) => {
+        if (status === 'completed') {
+          if (conclusion === 'success') {
+            return <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+          } else if (conclusion === 'failure') {
+            return <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+          } else if (conclusion === 'cancelled') {
+            return <XCircle className="h-4 w-4 text-gray-500 flex-shrink-0" />
+          }
+        } else if (status === 'in_progress') {
+          return <Loader2 className="h-4 w-4 text-blue-500 animate-spin flex-shrink-0" />
+        }
+        return <Square className="h-4 w-4 text-gray-400 flex-shrink-0" />
+      }
+
+      return (
+        <div className="flex-1 overflow-y-auto pb-4">
+          {!task.branchName ? (
+            <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
+              <div className="text-sm md:text-base">
+                No branch yet. GitHub Checks will appear here once a branch is created.
+              </div>
+            </div>
+          ) : loadingActions ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-xs md:text-sm text-muted-foreground">Loading checks...</p>
+              </div>
+            </div>
+          ) : actionsError ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-destructive mb-2 text-xs md:text-sm">{actionsError}</p>
+              </div>
+            </div>
+          ) : checkRuns.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+              <div className="text-sm md:text-base">No checks running</div>
+            </div>
+          ) : (
+            <div className="space-y-2 px-2">
+              {checkRuns.map((check) => (
+                <a
+                  key={check.id}
+                  href={check.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                >
+                  {getStatusIcon(check.status, check.conclusion)}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">{check.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {check.status === 'completed' && check.completed_at
+                        ? `Completed ${new Date(check.completed_at).toLocaleString()}`
+                        : check.status === 'in_progress'
+                          ? 'In progress...'
+                          : 'Queued'}
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (activeTab === 'comments') {
+      return (
+        <div className="flex-1 overflow-y-auto pb-4">
+          {!task.prNumber ? (
+            <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
+              <div className="text-sm md:text-base">
+                No pull request yet. Create a PR to see comments here.
+              </div>
+            </div>
+          ) : loadingComments ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-xs md:text-sm text-muted-foreground">Loading comments...</p>
+              </div>
+            </div>
+          ) : commentsError ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-destructive mb-2 text-xs md:text-sm">{commentsError}</p>
+              </div>
+            </div>
+          ) : prComments.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+              <div className="text-sm md:text-base">No comments yet</div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {prComments.map((comment) => (
+                <div key={comment.id} className="px-2">
+                  <div className="flex items-start gap-2 mb-2">
+                    <img
+                      src={comment.user.avatar_url}
+                      alt={comment.user.login}
+                      className="w-6 h-6 rounded-full flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold">{comment.user.login}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(comment.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="text-xs text-foreground">
+                        <Streamdown
+                          components={{
+                            code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                              <code className={`${className} !text-xs`} {...props}>
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                              <pre className="!text-xs" {...props}>
+                                {children}
+                              </pre>
+                            ),
+                            p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                              <p className="text-xs" {...props}>
+                                {children}
+                              </p>
+                            ),
+                            a: ({ children, href, ...props }: React.ComponentPropsWithoutRef<'a'>) => (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                                {...props}
+                              >
+                                {children}
+                              </a>
+                            ),
+                          }}
+                        >
+                          {comment.body}
+                        </Streamdown>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Chat tab (default)
+    if (messages.length === 0) {
+      return (
         <div className="flex-1 flex items-center justify-center text-center text-muted-foreground">
           <div className="text-sm md:text-base">No messages yet</div>
         </div>
+      )
+    }
 
-        <div className="flex-shrink-0 relative">
-          <Textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Send a follow-up message..."
-            className="w-full min-h-[60px] max-h-[120px] resize-none pr-12"
-            disabled={isSending}
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() || isSending}
-            size="icon"
-            className="absolute bottom-2 right-2 rounded-full h-8 w-8 p-0"
-          >
-            {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-          </Button>
-        </div>
-      </div>
-    )
-  }
+    const displayMessages = messages.slice(-10)
+    const hiddenMessagesCount = messages.length - displayMessages.length
 
-  // Show only the last 10 messages
-  const displayMessages = messages.slice(-10)
-  const hiddenMessagesCount = messages.length - displayMessages.length
-
-  return (
-    <div className="flex flex-col h-full">
+    return (
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
         {hiddenMessagesCount > 0 && (
           <div className="text-xs text-center text-muted-foreground opacity-50 mb-4 italic">
@@ -362,7 +695,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
         {displayMessages.map((message, index) => (
           <div
             key={message.id}
-            className={`${index > 0 ? 'mt-4' : ''} ${message.role === 'user' ? 'sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:-top-4 before:bg-background before:-z-10' : ''}`}
+            className={`${index > 0 ? 'mt-4' : ''} ${message.role === 'user' ? 'sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10' : ''}`}
           >
             {message.role === 'user' ? (
               <Card className="p-2 bg-card rounded-md relative z-10">
@@ -550,34 +883,80 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
         <div ref={messagesEndRef} />
       </div>
+    )
+  }
 
-      <div className="flex-shrink-0 relative">
-        <Textarea
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Send a follow-up message..."
-          className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-xs"
-          disabled={isSending}
-        />
-        {task.status === 'processing' || task.status === 'pending' ? (
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header Tabs */}
+      <div className="py-2 flex items-center gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
-            onClick={handleStopTask}
-            disabled={isStopping}
-            className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setActiveTab('chat')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'chat' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            <Square className="h-3 w-3" fill="currentColor" />
+            Chat
           </button>
-        ) : (
           <button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() || isSending}
-            className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setActiveTab('comments')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'comments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
+            Comments
           </button>
-        )}
+          <button
+            onClick={() => setActiveTab('actions')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'actions' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Checks
+          </button>
+          <button
+            onClick={() => setActiveTab('deployments')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'deployments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Deployments
+          </button>
       </div>
+
+      {/* Tab Content */}
+      {renderTabContent()}
+
+      {/* Input Area (only for chat tab) */}
+      {activeTab === 'chat' && (
+        <div className="flex-shrink-0 relative">
+          <Textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Send a follow-up message..."
+            className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-xs"
+            disabled={isSending}
+          />
+          {task.status === 'processing' || task.status === 'pending' ? (
+            <button
+              onClick={handleStopTask}
+              disabled={isStopping}
+              className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Square className="h-3 w-3" fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim() || isSending}
+              className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
