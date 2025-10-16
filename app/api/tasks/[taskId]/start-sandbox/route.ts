@@ -48,8 +48,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     // Get GitHub user info for git author configuration
     const githubUser = await getGitHubUser()
 
-    // Get max sandbox duration for this user (user-specific > global > env var)
+    // Get max sandbox duration - use task's maxDuration if available, otherwise fall back to global setting
     const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
+    const maxDurationMinutes = task.maxDuration || maxSandboxDuration
 
     // Create a new sandbox by cloning the repo
     const sandbox = await Sandbox.create({
@@ -65,7 +66,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
               depth: 1,
             }
           : undefined,
-      timeout: maxSandboxDuration * 60 * 60 * 1000, // Max duration for keep-alive
+      timeout: maxDurationMinutes * 60 * 1000, // Convert minutes to milliseconds
       ports: [3000],
       runtime: 'node22',
       resources: { vcpus: 4 },

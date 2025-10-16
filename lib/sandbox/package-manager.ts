@@ -2,9 +2,6 @@ import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from './commands'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
-// Type for timeout results
-export type TimeoutResult = { success: false; error: string; timedOut: true }
-
 // Helper function to detect package manager based on lock files
 export async function detectPackageManager(sandbox: Sandbox, logger: TaskLogger): Promise<'pnpm' | 'yarn' | 'npm'> {
   // Check for lock files in order of preference
@@ -37,9 +34,6 @@ export async function installDependencies(
   packageManager: 'pnpm' | 'yarn' | 'npm',
   logger: TaskLogger,
 ): Promise<{ success: boolean; error?: string }> {
-  const timeoutMinutes = 3
-  const timeoutMs = timeoutMinutes * 60 * 1000
-
   let installCommand: string[]
   let logMessage: string
 
@@ -54,51 +48,36 @@ export async function installDependencies(
       }
 
       installCommand = ['pnpm', 'install', '--frozen-lockfile']
-      logMessage = 'Attempting pnpm install with timeout'
+      logMessage = 'Attempting pnpm install'
       break
     case 'yarn':
       installCommand = ['yarn', 'install', '--frozen-lockfile']
-      logMessage = 'Attempting yarn install with timeout'
+      logMessage = 'Attempting yarn install'
       break
     case 'npm':
       installCommand = ['npm', 'install', '--no-audit', '--no-fund']
-      logMessage = 'Attempting npm install with timeout'
+      logMessage = 'Attempting npm install'
       break
   }
 
   await logger.info(logMessage)
 
-  const installWithTimeout = await Promise.race([
-    runCommandInSandbox(sandbox, installCommand[0], installCommand.slice(1)),
-    new Promise<TimeoutResult>((resolve) => {
-      global.setTimeout(() => {
-        resolve({
-          success: false,
-          error: `${packageManager} install timed out after ${timeoutMinutes} minutes`,
-          timedOut: true,
-        })
-      }, timeoutMs)
-    }),
-  ])
+  const installResult = await runCommandInSandbox(sandbox, installCommand[0], installCommand.slice(1))
 
-  if (installWithTimeout.success) {
+  if (installResult.success) {
     await logger.info('Node.js dependencies installed')
     return { success: true }
-  } else if ('timedOut' in installWithTimeout && installWithTimeout.timedOut) {
-    await logger.error('Package manager install timed out')
-    return { success: false, error: installWithTimeout.error }
   } else {
     await logger.error('Package manager install failed')
 
-    // Type guard to ensure we have a CommandResult
-    if ('exitCode' in installWithTimeout) {
+    if (installResult.exitCode !== undefined) {
       await logger.error('Install failed with exit code')
-      if (installWithTimeout.output) await logger.error('Install stdout available')
-      if (installWithTimeout.error) await logger.error('Install stderr available')
+      if (installResult.output) await logger.error('Install stdout available')
+      if (installResult.error) await logger.error('Install stderr available')
     } else {
       await logger.error('Install error occurred')
     }
 
-    return { success: false, error: installWithTimeout.error }
+    return { success: false, error: installResult.error }
   }
 }

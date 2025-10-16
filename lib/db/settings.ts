@@ -60,11 +60,11 @@ export async function getMaxMessagesPerDay(userId?: string): Promise<number> {
 }
 
 /**
- * Get the max sandbox duration (in hours) for a user.
+ * Get the max sandbox duration (in minutes) for a user.
  * Checks user-specific setting, then falls back to environment variable.
  *
  * @param userId - Optional user ID for user-specific duration
- * @returns The max sandbox duration in hours
+ * @returns The max sandbox duration in minutes
  */
 export async function getMaxSandboxDuration(userId?: string): Promise<number> {
   const result = await getNumericSetting('maxSandboxDuration', userId, MAX_SANDBOX_DURATION)

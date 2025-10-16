@@ -31,9 +31,9 @@ export function HomePageContent({
   initialSelectedOwner = '',
   initialSelectedRepo = '',
   initialInstallDependencies = false,
-  initialMaxDuration = 5,
+  initialMaxDuration = 300,
   initialKeepAlive = false,
-  maxSandboxDuration = 5,
+  maxSandboxDuration = 300,
   user = null,
   initialStars = 1022,
 }: HomePageContentProps) {

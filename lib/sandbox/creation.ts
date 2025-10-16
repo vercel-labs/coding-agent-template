@@ -60,13 +60,9 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     // AI-generated branch names will be created later inside the sandbox
     const branchNameForEnv = config.existingBranchName
 
-    // If keepAlive is enabled, use 5 hours (300 minutes) timeout
-    // Otherwise, use the specified timeout or default 5 minutes
-    const timeoutMs = config.keepAlive
-      ? 300 * 60 * 1000 // 5 hours for keep-alive
-      : config.timeout
-        ? parseInt(config.timeout.replace(/\D/g, '')) * 60 * 1000
-        : 5 * 60 * 1000 // Default 5 minutes
+    // Use the specified timeout (maxDuration) for sandbox lifetime
+    // keepAlive only controls whether we shutdown after task completion
+    const timeoutMs = config.timeout ? parseInt(config.timeout.replace(/\D/g, '')) * 60 * 1000 : 60 * 60 * 1000 // Default 1 hour
 
     // Create sandbox with proper source configuration
     const sandboxConfig = {

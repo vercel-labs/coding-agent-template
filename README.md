@@ -56,6 +56,69 @@ pnpm dev
 4. **Review Results**: See the changes made and the branch created
 5. **Manage Tasks**: View all your tasks in the sidebar with status updates
 
+## Task Configuration
+
+### Maximum Duration
+
+The maximum duration setting controls how long the Vercel sandbox will stay alive from the moment it's created. You can select timeouts ranging from 5 minutes to 5 hours.
+
+- The sandbox is created at the start of the task
+- The timeout begins when the sandbox is created
+- All work (agent execution, dependency installation, etc.) happens within this timeframe
+- When the timeout is reached, the sandbox automatically expires
+
+### Keep Alive Setting
+
+The Keep Alive setting determines what happens to the sandbox after your task completes.
+
+#### Keep Alive OFF (Default)
+
+When Keep Alive is disabled, the sandbox shuts down immediately after the task completes:
+
+**Timeline:**
+1. Task starts and sandbox is created (e.g., with 1 hour timeout)
+2. Agent executes your task
+3. Task completes successfully (e.g., after 10 minutes)
+4. Changes are committed and pushed to the branch
+5. Sandbox immediately shuts down (destroys all processes and the environment)
+6. Task is marked as completed
+
+**Use Keep Alive OFF when:**
+- You're making one-time code changes that don't require iteration
+- You have simple tasks that work on the first try
+- You want to minimize resource usage and costs
+- You don't need to test or manually interact with the code after completion
+
+#### Keep Alive ON
+
+When Keep Alive is enabled, the sandbox stays alive after task completion for the remaining duration:
+
+**Timeline:**
+1. Task starts and sandbox is created (e.g., with 1 hour timeout)
+2. Agent executes your task
+3. Task completes successfully (e.g., after 10 minutes)
+4. Changes are committed and pushed to the branch
+5. Sandbox stays alive with all processes running
+6. You can send follow-up messages for 50 more minutes (until the 1 hour timeout expires)
+7. If the project has a dev server (e.g., `npm run dev`), it automatically starts in the background
+8. After the full timeout duration, the sandbox expires
+
+**Use Keep Alive ON when:**
+- You need to iterate on the code with follow-up messages
+- You want to test changes in the live sandbox environment
+- You anticipate needing to refine or fix issues
+- You want to manually run commands or inspect the environment after completion
+- You're developing a web application and want to see it running
+
+#### Comparison
+
+| Setting | Task completes in 10 min | Remaining sandbox time | Can send follow-ups? | Dev server starts? |
+|---------|-------------------------|------------------------|---------------------|-------------------|
+| Keep Alive ON | Sandbox stays alive | 50 minutes (until timeout) | Yes | Yes (if available) |
+| Keep Alive OFF | Sandbox shuts down | 0 minutes | No | No |
+
+**Note:** The maximum duration timeout always takes precedence. If you set a 1-hour timeout, the sandbox will expire after 1 hour regardless of the Keep Alive setting. Keep Alive only determines whether the sandbox shuts down early (after task completion) or stays alive until the timeout.
+
 ## How It Works
 
 1. **Task Creation**: When you submit a task, it's stored in the database
@@ -199,6 +262,8 @@ These API keys can be set globally (fallback for all users) or left unset to req
 #### Optional Environment Variables
 
 - `NPM_TOKEN`: For private npm packages
+- `MAX_SANDBOX_DURATION`: Default maximum sandbox duration in minutes (default: `300` = 5 hours)
+- `MAX_MESSAGES_PER_DAY`: Maximum number of tasks + follow-ups per user per day (default: `5`)
 
 ### 4. Set up OAuth Applications
 

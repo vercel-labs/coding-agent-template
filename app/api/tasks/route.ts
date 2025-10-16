@@ -212,24 +212,22 @@ async function processTaskWithTimeout(
     email: string | null
   } | null,
 ) {
-  const TASK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes in milliseconds
+  const TASK_TIMEOUT_MS = maxDuration * 60 * 1000 // Convert minutes to milliseconds
 
-  // Add a warning at 4 minutes
-  const warningTimeout = setTimeout(
-    async () => {
-      try {
-        const warningLogger = createTaskLogger(taskId)
-        await warningLogger.info('Task is taking longer than expected (4+ minutes). Will timeout in 1 minute.')
-      } catch (error) {
-        console.error('Failed to add timeout warning:', error)
-      }
-    },
-    4 * 60 * 1000,
-  ) // 4 minutes
+  // Add a warning 1 minute before timeout
+  const warningTimeMs = Math.max(TASK_TIMEOUT_MS - 60 * 1000, 0)
+  const warningTimeout = setTimeout(async () => {
+    try {
+      const warningLogger = createTaskLogger(taskId)
+      await warningLogger.info('Task is approaching timeout, will complete soon')
+    } catch (error) {
+      console.error('Failed to add timeout warning:', error)
+    }
+  }, warningTimeMs)
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
-      reject(new Error('Task execution timed out after 5 minutes'))
+      reject(new Error(`Task execution timed out after ${maxDuration} minutes`))
     }, TASK_TIMEOUT_MS)
   })
 
@@ -257,16 +255,13 @@ async function processTaskWithTimeout(
     // Clear the warning timeout on any error
     clearTimeout(warningTimeout)
     // Handle timeout specifically
-    if (error instanceof Error && error.message?.includes('timed out after 5 minutes')) {
+    if (error instanceof Error && error.message?.includes('timed out after')) {
       console.error('Task timed out:', taskId)
 
       // Use logger for timeout error
       const timeoutLogger = createTaskLogger(taskId)
-      await timeoutLogger.error('Task execution timed out after 5 minutes')
-      await timeoutLogger.updateStatus(
-        'error',
-        'Task execution timed out after 5 minutes. The operation took too long to complete.',
-      )
+      await timeoutLogger.error('Task execution timed out')
+      await timeoutLogger.updateStatus('error', 'Task execution timed out. The operation took too long to complete.')
     } else {
       // Re-throw other errors to be handled by the original error handler
       throw error
@@ -464,28 +459,6 @@ async function processTask(
     await logger.updateProgress(50, 'Installing and executing agent')
     console.log('Starting agent execution')
 
-    // Execute selected agent with timeout (different timeouts per agent)
-    const getAgentTimeout = (agent: string) => {
-      switch (agent) {
-        case 'cursor':
-          return 5 * 60 * 1000 // 5 minutes for cursor (needs more time)
-        case 'claude':
-        case 'codex':
-        case 'opencode':
-        default:
-          return 3 * 60 * 1000 // 3 minutes for other agents
-      }
-    }
-
-    const AGENT_TIMEOUT_MS = getAgentTimeout(selectedAgent)
-    const timeoutMinutes = Math.floor(AGENT_TIMEOUT_MS / (60 * 1000))
-
-    const agentTimeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`${selectedAgent} agent execution timed out after ${timeoutMinutes} minutes`))
-      }, AGENT_TIMEOUT_MS)
-    })
-
     if (!sandbox) {
       throw new Error('Sandbox is not available for agent execution')
     }
@@ -546,23 +519,20 @@ async function processTask(
     // Generate agent message ID for streaming updates
     const agentMessageId = generateId()
 
-    const agentResult = await Promise.race([
-      executeAgentInSandbox(
-        sandbox,
-        sanitizedPrompt,
-        selectedAgent as AgentType,
-        logger,
-        selectedModel,
-        mcpServers,
-        undefined,
-        apiKeys,
-        undefined, // isResumed
-        undefined, // sessionId
-        taskId, // taskId for streaming updates
-        agentMessageId, // agentMessageId for streaming updates
-      ),
-      agentTimeoutPromise,
-    ])
+    const agentResult = await executeAgentInSandbox(
+      sandbox,
+      sanitizedPrompt,
+      selectedAgent as AgentType,
+      logger,
+      selectedModel,
+      mcpServers,
+      undefined,
+      apiKeys,
+      undefined, // isResumed
+      undefined, // sessionId
+      taskId, // taskId for streaming updates
+      agentMessageId, // agentMessageId for streaming updates
+    )
 
     console.log('Agent execution completed')
 

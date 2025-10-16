@@ -26,7 +26,7 @@ export function TaskPageClient({
   user,
   authProvider,
   initialStars = 1022,
-  maxSandboxDuration = 5,
+  maxSandboxDuration = 300,
 }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
   const { toggleSidebar } = useTasks()
