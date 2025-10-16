@@ -20,10 +20,7 @@ export interface TerminalRef {
   getTerminalText: () => string
 }
 
-export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal(
-  { taskId, className, isActive },
-  ref,
-) {
+export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal({ taskId, className, isActive }, ref) {
   const [history, setHistory] = useState<TerminalLine[]>([])
   const [currentCommand, setCurrentCommand] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
@@ -207,16 +204,17 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
           const completion = completions[0]
           const parts = currentCommand.split(/\s+/)
           const lastPart = parts[parts.length - 1] || ''
-          
+
           let newCommand = currentCommand
           if (lastPart.includes('/')) {
             const lastSlash = lastPart.lastIndexOf('/')
             const pathPart = lastPart.substring(0, lastSlash + 1)
-            newCommand = currentCommand.substring(0, currentCommand.length - lastPart.length) + pathPart + completion.name
+            newCommand =
+              currentCommand.substring(0, currentCommand.length - lastPart.length) + pathPart + completion.name
           } else {
             newCommand = currentCommand.substring(0, currentCommand.length - prefix.length) + completion.name
           }
-          
+
           setCurrentCommand(newCommand)
         } else {
           // Multiple matches - show them
@@ -245,16 +243,17 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
               // Complete to common prefix
               const parts = currentCommand.split(/\s+/)
               const lastPart = parts[parts.length - 1] || ''
-              
+
               let newCommand = currentCommand
               if (lastPart.includes('/')) {
                 const lastSlash = lastPart.lastIndexOf('/')
                 const pathPart = lastPart.substring(0, lastSlash + 1)
-                newCommand = currentCommand.substring(0, currentCommand.length - lastPart.length) + pathPart + commonPrefix
+                newCommand =
+                  currentCommand.substring(0, currentCommand.length - lastPart.length) + pathPart + commonPrefix
               } else {
                 newCommand = currentCommand.substring(0, currentCommand.length - prefix.length) + commonPrefix
               }
-              
+
               setCurrentCommand(newCommand)
             }
           }
@@ -361,4 +360,3 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
     </div>
   )
 })
-
