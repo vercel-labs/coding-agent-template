@@ -459,28 +459,6 @@ async function processTask(
     await logger.updateProgress(50, 'Installing and executing agent')
     console.log('Starting agent execution')
 
-    // Execute selected agent with timeout (different timeouts per agent)
-    const getAgentTimeout = (agent: string) => {
-      switch (agent) {
-        case 'cursor':
-          return 5 * 60 * 1000 // 5 minutes for cursor (needs more time)
-        case 'claude':
-        case 'codex':
-        case 'opencode':
-        default:
-          return 3 * 60 * 1000 // 3 minutes for other agents
-      }
-    }
-
-    const AGENT_TIMEOUT_MS = getAgentTimeout(selectedAgent)
-    const timeoutMinutes = Math.floor(AGENT_TIMEOUT_MS / (60 * 1000))
-
-    const agentTimeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`${selectedAgent} agent execution timed out after ${timeoutMinutes} minutes`))
-      }, AGENT_TIMEOUT_MS)
-    })
-
     if (!sandbox) {
       throw new Error('Sandbox is not available for agent execution')
     }
@@ -541,23 +519,20 @@ async function processTask(
     // Generate agent message ID for streaming updates
     const agentMessageId = generateId()
 
-    const agentResult = await Promise.race([
-      executeAgentInSandbox(
-        sandbox,
-        sanitizedPrompt,
-        selectedAgent as AgentType,
-        logger,
-        selectedModel,
-        mcpServers,
-        undefined,
-        apiKeys,
-        undefined, // isResumed
-        undefined, // sessionId
-        taskId, // taskId for streaming updates
-        agentMessageId, // agentMessageId for streaming updates
-      ),
-      agentTimeoutPromise,
-    ])
+    const agentResult = await executeAgentInSandbox(
+      sandbox,
+      sanitizedPrompt,
+      selectedAgent as AgentType,
+      logger,
+      selectedModel,
+      mcpServers,
+      undefined,
+      apiKeys,
+      undefined, // isResumed
+      undefined, // sessionId
+      taskId, // taskId for streaming updates
+      agentMessageId, // agentMessageId for streaming updates
+    )
 
     console.log('Agent execution completed')
 

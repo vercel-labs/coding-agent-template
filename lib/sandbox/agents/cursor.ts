@@ -62,9 +62,9 @@ export async function executeCursorInSandbox(
         await logger.info('Starting Cursor CLI installation...')
       }
 
-      // Install Cursor CLI using the official installation script with timeout
+      // Install Cursor CLI using the official installation script
       // Add debugging to see what the installation script does
-      const installCommand = 'timeout 300 bash -c "curl https://cursor.com/install -fsS | bash -s -- --verbose"'
+      const installCommand = 'curl https://cursor.com/install -fsS | bash -s -- --verbose'
       cursorInstall = await runAndLogCommand(sandbox, 'sh', ['-c', installCommand], logger)
 
       // After installation, check what was installed and where
