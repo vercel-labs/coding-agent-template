@@ -212,7 +212,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       // Check if this is a node_modules file - always read from sandbox
       const isNodeModulesFile = filename.includes('/node_modules/')
-      
+
       let content = ''
       let isBase64 = false
 
@@ -221,9 +221,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         try {
           const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
           const { Sandbox } = await import('@vercel/sandbox')
-          
+
           let sandbox = getSandbox(taskId)
-          
+
           // Try to reconnect if not in registry
           if (!sandbox) {
             const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
@@ -244,7 +244,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             // Read file from sandbox
             const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
             const catResult = await sandbox.runCommand('cat', [normalizedPath])
-            
+
             if (catResult.exitCode === 0) {
               content = await catResult.stdout()
               console.log('node_modules file read from sandbox:', filename)
@@ -267,9 +267,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         try {
           const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
           const { Sandbox } = await import('@vercel/sandbox')
-          
+
           let sandbox = getSandbox(taskId)
-          
+
           // Try to reconnect if not in registry
           if (!sandbox) {
             const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
@@ -290,7 +290,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             // Read file from sandbox
             const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
             const catResult = await sandbox.runCommand('cat', [normalizedPath])
-            
+
             if (catResult.exitCode === 0) {
               content = await catResult.stdout()
               console.log('File read from sandbox:', filename)

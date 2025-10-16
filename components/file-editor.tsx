@@ -254,12 +254,15 @@ export function FileEditor({
 
     // Helper function to get definitions using remote LSP server in sandbox
     const getDefinitions = async (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
-      console.log('[Go to Definition] Starting definition lookup', JSON.stringify({
-        filename,
-        position: { line: position.lineNumber, column: position.column },
-        languageId: model.getLanguageId(),
-        uri: model.uri.toString(),
-      }))
+      console.log(
+        '[Go to Definition] Starting definition lookup',
+        JSON.stringify({
+          filename,
+          position: { line: position.lineNumber, column: position.column },
+          languageId: model.getLanguageId(),
+          uri: model.uri.toString(),
+        }),
+      )
 
       // Show loading cursor and toast
       if (editorRef.current) {
@@ -268,7 +271,7 @@ export function FileEditor({
           editorDom.style.cursor = 'wait'
         }
       }
-      
+
       const loadingToast = toast.loading('Finding definition...')
 
       try {
@@ -326,18 +329,18 @@ export function FileEditor({
         })
 
         console.log('[Go to Definition] All definitions converted:', JSON.stringify(convertedDefinitions))
-        
+
         // Dismiss loading toast
         toast.dismiss(loadingToast)
-        
+
         return convertedDefinitions
       } catch (error) {
         console.error('[Go to Definition] Error getting definitions:', error)
-        
+
         // Dismiss loading toast and show error
         toast.dismiss(loadingToast)
         toast.error('Failed to find definition')
-        
+
         return null
       } finally {
         // Reset cursor
@@ -415,7 +418,10 @@ export function FileEditor({
     console.log('[Editor Mount] Go to Definition action registered. Action ID:', actionDisposable?.id)
 
     // List all registered actions
-    console.log('[Editor Mount] All editor actions:', editor.getActions().map((a) => a.id))
+    console.log(
+      '[Editor Mount] All editor actions:',
+      editor.getActions().map((a) => a.id),
+    )
 
     // Also handle Cmd/Ctrl + Click (go to definition)
     console.log('[Editor Mount] Setting up mouse handler...')

@@ -64,7 +64,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // With the new LSP integration running in the sandbox, we no longer need to
     // pre-load all project files into Monaco. The LSP has direct access to all
     // files and node_modules, and will handle type resolution on demand.
-    // 
+    //
     // This avoids the "too many open files" error that occurs when trying to
     // load hundreds of files simultaneously.
     return NextResponse.json({
@@ -79,4 +79,3 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     )
   }
 }
-

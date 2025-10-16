@@ -12,10 +12,7 @@ export const maxDuration = 60
  * POST /api/tasks/[taskId]/lsp
  * Handles LSP requests by executing TypeScript language service queries in the sandbox
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
     if (!session?.user?.id) {
@@ -84,7 +81,7 @@ export async function POST(
       case 'textDocument/definition': {
         // Execute TypeScript language service query in sandbox
         const scriptPath = '.lsp-helper.mjs'
-        
+
         // Create LSP helper script in sandbox (pure JavaScript, no TypeScript syntax)
         const helperScript = `
 import ts from 'typescript';
@@ -179,7 +176,7 @@ if (definitions && definitions.length > 0) {
 } else {
   console.log(JSON.stringify({ definitions: [] }));
 }
-`;
+`
 
         // Write helper script to sandbox
         const writeCommand = `cat > '${scriptPath}' << 'EOF'\n${helperScript}\nEOF`
@@ -187,7 +184,7 @@ if (definitions && definitions.length > 0) {
 
         // Execute the script
         const result = await sandbox.runCommand('node', [scriptPath])
-        
+
         console.log('[LSP] Command exit code:', result.exitCode)
 
         // Read stdout and stderr
@@ -241,10 +238,6 @@ if (definitions && definitions.length > 0) {
     }
   } catch (error) {
     console.error('LSP request error:', error)
-    return NextResponse.json(
-      { error: 'Failed to process LSP request' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to process LSP request' }, { status: 500 })
   }
 }
-
