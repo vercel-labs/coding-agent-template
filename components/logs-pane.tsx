@@ -2,29 +2,36 @@
 
 import { Task, LogEntry } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
-import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Copy, Check, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
 import { getLogsPaneHeight, setLogsPaneHeight, getLogsPaneCollapsed, setLogsPaneCollapsed } from '@/lib/utils/cookies'
+import { Terminal, TerminalRef } from '@/components/terminal'
 
 interface LogsPaneProps {
   task: Task
   onHeightChange?: (height: number) => void
 }
 
+type TabType = 'logs' | 'terminal'
+
 export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
+  const [copiedTerminal, setCopiedTerminal] = useState(false)
   const [isCollapsed, setIsCollapsedState] = useState(true)
   const [paneHeight, setPaneHeight] = useState(200)
   const [isResizing, setIsResizing] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabType>('logs')
+  const [isClearingLogs, setIsClearingLogs] = useState(false)
   const logsContainerRef = useRef<HTMLDivElement>(null)
+  const terminalRef = useRef<TerminalRef>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
-  const { isSidebarOpen, isSidebarResizing } = useTasks()
+  const { isSidebarOpen, isSidebarResizing, refreshTasks } = useTasks()
 
   // Check if we're on desktop
   useEffect(() => {
@@ -140,8 +147,46 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
     }
   }
 
-  if (!task.logs || task.logs.length === 0) {
-    return null
+  const clearLogs = async () => {
+    if (isClearingLogs) return
+
+    setIsClearingLogs(true)
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/clear-logs`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        refreshTasks()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to clear logs')
+      }
+    } catch (error) {
+      console.error('Error clearing logs:', error)
+      toast.error('Failed to clear logs')
+    } finally {
+      setIsClearingLogs(false)
+    }
+  }
+
+  const clearTerminal = () => {
+    if (terminalRef.current) {
+      terminalRef.current.clear()
+    }
+  }
+
+  const copyTerminalToClipboard = async () => {
+    if (terminalRef.current) {
+      try {
+        const terminalText = terminalRef.current.getTerminalText()
+        await navigator.clipboard.writeText(terminalText)
+        setCopiedTerminal(true)
+        setTimeout(() => setCopiedTerminal(false), 2000)
+      } catch {
+        toast.error('Failed to copy terminal to clipboard')
+      }
+    }
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -169,67 +214,142 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
       )}
 
       <div className="flex flex-col h-full border-t">
-        <div className="border-b flex items-center justify-between flex-shrink-0 hover:bg-accent/50">
-          <div
-            className="flex items-center gap-1.5 py-1.5 px-3 flex-1 cursor-pointer"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-          >
+        <div
+          className="border-b flex items-center justify-between flex-shrink-0 hover:bg-accent/50 cursor-pointer"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <div className="flex items-center gap-1.5 py-1.5 px-3 flex-1">
             <div className="h-5 w-5 flex items-center justify-center">
               {isCollapsed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </div>
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Logs</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isCollapsed) {
+                    setIsCollapsed(false)
+                  }
+                  setActiveTab('logs')
+                }}
+                className={cn(
+                  'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
+                  activeTab === 'logs'
+                    ? 'text-foreground bg-accent'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                )}
+              >
+                Logs
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isCollapsed) {
+                    setIsCollapsed(false)
+                  }
+                  setActiveTab('terminal')
+                }}
+                className={cn(
+                  'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
+                  activeTab === 'terminal'
+                    ? 'text-foreground bg-accent'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                )}
+              >
+                Terminal
+              </button>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={copyLogsToClipboard}
-            className="h-5 w-5 p-0 hover:bg-accent mr-3"
-            title="Copy logs to clipboard"
-          >
-            {copiedLogs ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-          </Button>
+          {activeTab === 'logs' && (
+            <div className="flex items-center gap-1 mr-3" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearLogs}
+                disabled={isClearingLogs}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Clear logs"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyLogsToClipboard}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Copy logs to clipboard"
+              >
+                {copiedLogs ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          )}
+          {activeTab === 'terminal' && (
+            <div className="flex items-center gap-1 mr-3" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearTerminal}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Clear terminal"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyTerminalToClipboard}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Copy terminal to clipboard"
+              >
+                {copiedTerminal ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          )}
         </div>
-        {!isCollapsed && (
-          <div
-            ref={logsContainerRef}
-            className="bg-black text-green-400 p-2 font-mono text-xs flex-1 overflow-y-auto leading-relaxed"
-          >
-            {(task.logs || []).map((log, index) => {
-              const getLogColor = (logType: LogEntry['type']) => {
-                switch (logType) {
-                  case 'command':
-                    return 'text-gray-400'
-                  case 'error':
-                    return 'text-red-400'
-                  case 'success':
-                    return 'text-green-400'
-                  case 'info':
-                  default:
-                    return 'text-white'
-                }
+        <div
+          ref={logsContainerRef}
+          className={cn(
+            'bg-black text-green-400 p-2 font-mono text-xs flex-1 overflow-y-auto leading-relaxed',
+            (isCollapsed || activeTab !== 'logs') && 'hidden',
+          )}
+        >
+          {(task.logs || []).map((log, index) => {
+            const getLogColor = (logType: LogEntry['type']) => {
+              switch (logType) {
+                case 'command':
+                  return 'text-gray-400'
+                case 'error':
+                  return 'text-red-400'
+                case 'success':
+                  return 'text-green-400'
+                case 'info':
+                default:
+                  return 'text-white'
               }
+            }
 
-              const formatTime = (timestamp: Date) => {
-                return new Date(timestamp).toLocaleTimeString('en-US', {
-                  hour12: false,
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  fractionalSecondDigits: 3,
-                })
-              }
+            const formatTime = (timestamp: Date) => {
+              return new Date(timestamp).toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+              })
+            }
 
-              return (
-                <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
-                  <span className="text-gray-500 text-[10px] shrink-0 opacity-60">
-                    [{formatTime(log.timestamp || new Date())}]
-                  </span>
-                  <span className="flex-1">{log.message}</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
+            return (
+              <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
+                <span className="text-gray-500 text-[10px] shrink-0 opacity-60">
+                  [{formatTime(log.timestamp || new Date())}]
+                </span>
+                <span className="flex-1">{log.message}</span>
+              </div>
+            )
+          })}
+        </div>
+        <div className={cn('flex-1 overflow-hidden', (isCollapsed || activeTab !== 'terminal') && 'hidden')}>
+          <Terminal ref={terminalRef} taskId={task.id} isActive={activeTab === 'terminal' && !isCollapsed} />
+        </div>
       </div>
     </div>
   )
