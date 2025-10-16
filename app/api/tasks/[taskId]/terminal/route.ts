@@ -39,10 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
 
         if (!sandboxToken || !teamId || !projectId) {
-          return NextResponse.json(
-            { success: false, error: 'Sandbox credentials not configured' },
-            { status: 500 },
-          )
+          return NextResponse.json({ success: false, error: 'Sandbox credentials not configured' }, { status: 500 })
         }
 
         sandbox = await Sandbox.get({
@@ -106,4 +103,3 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
   }
 }
-

@@ -39,10 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
 
         if (!sandboxToken || !teamId || !projectId) {
-          return NextResponse.json(
-            { success: false, error: 'Sandbox credentials not configured' },
-            { status: 500 },
-          )
+          return NextResponse.json({ success: false, error: 'Sandbox credentials not configured' }, { status: 500 })
         }
 
         sandbox = await Sandbox.get({
@@ -65,7 +62,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Get the actual current working directory from the sandbox
       const pwdResult = await sandbox.runCommand('sh', ['-c', 'pwd'])
       let actualCwd = cwd || '/home/vercel-sandbox'
-      
+
       try {
         const pwdOutput = await pwdResult.stdout()
         if (pwdOutput && pwdOutput.trim()) {
@@ -78,16 +75,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Parse the partial to get the path part
       const parts = partial.split(/\s+/)
       const lastPart = parts[parts.length - 1] || ''
-      
+
       // Determine the directory and prefix to complete
       let dir = actualCwd
       let prefix = ''
-      
+
       if (lastPart.includes('/')) {
         const lastSlash = lastPart.lastIndexOf('/')
         const pathPart = lastPart.substring(0, lastSlash + 1)
         prefix = lastPart.substring(lastSlash + 1)
-        
+
         // Handle absolute vs relative paths
         if (pathPart.startsWith('/')) {
           dir = pathPart
@@ -155,4 +152,3 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
   }
 }
-
