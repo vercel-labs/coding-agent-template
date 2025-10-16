@@ -148,6 +148,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { taskId } = await params
     const searchParams = request.nextUrl.searchParams
     const filename = searchParams.get('filename')
+    const mode = searchParams.get('mode') // 'local' or undefined (default: remote/PR diff)
 
     if (!filename) {
       return NextResponse.json({ error: 'Missing filename parameter' }, { status: 400 })
@@ -166,6 +167,98 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!task.branchName || !task.repoUrl) {
       return NextResponse.json({ error: 'Task does not have branch or repository information' }, { status: 400 })
+    }
+
+    // Handle local diff mode (git diff in sandbox)
+    if (mode === 'local') {
+      if (!task.sandboxId) {
+        return NextResponse.json({ error: 'Sandbox not available' }, { status: 400 })
+      }
+
+      try {
+        const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+        const { Sandbox } = await import('@vercel/sandbox')
+
+        let sandbox = getSandbox(taskId)
+
+        // Try to reconnect if not in registry
+        if (!sandbox) {
+          const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+          const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+          const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+          if (sandboxToken && teamId && projectId) {
+            sandbox = await Sandbox.get({
+              sandboxId: task.sandboxId,
+              teamId,
+              projectId,
+              token: sandboxToken,
+            })
+          }
+        }
+
+        if (!sandbox) {
+          return NextResponse.json({ error: 'Sandbox not found or inactive' }, { status: 400 })
+        }
+
+        // Get the diff for this specific file
+        const diffResult = await sandbox.runCommand('git', ['diff', 'HEAD', filename])
+
+        if (diffResult.exitCode !== 0) {
+          console.error('Failed to get local diff')
+          return NextResponse.json({ error: 'Failed to get local diff' }, { status: 500 })
+        }
+
+        const diffOutput = await diffResult.stdout()
+
+        // If no diff output, file hasn't changed
+        if (!diffOutput.trim()) {
+          // Get the current file content
+          const catResult = await sandbox.runCommand('cat', [filename])
+          const content = catResult.exitCode === 0 ? await catResult.stdout() : ''
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              filename,
+              oldContent: content,
+              newContent: content,
+              language: getLanguageFromFilename(filename),
+              isBinary: false,
+              isImage: false,
+            },
+          })
+        }
+
+        // Get old content (HEAD version)
+        const oldContentResult = await sandbox.runCommand('git', ['show', `HEAD:${filename}`])
+        const oldContent = oldContentResult.exitCode === 0 ? await oldContentResult.stdout() : ''
+
+        // Get new content (working directory version)
+        const newContentResult = await sandbox.runCommand('cat', [filename])
+        const newContent = newContentResult.exitCode === 0 ? await newContentResult.stdout() : ''
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            filename,
+            oldContent,
+            newContent,
+            language: getLanguageFromFilename(filename),
+            isBinary: false,
+            isImage: false,
+          },
+        })
+      } catch (error) {
+        console.error('Error getting local diff:', error)
+        
+        // Check if it's a 410 error (sandbox not running)
+        if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
+          return NextResponse.json({ error: 'Sandbox is not running' }, { status: 410 })
+        }
+        
+        return NextResponse.json({ error: 'Failed to get local diff' }, { status: 500 })
+      }
     }
 
     // Get user's authenticated GitHub client

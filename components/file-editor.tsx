@@ -23,6 +23,8 @@ function getLanguageFromPath(path: string): string {
     tsx: 'typescript',
     js: 'javascript',
     jsx: 'javascript',
+    mjs: 'javascript',
+    cjs: 'javascript',
     json: 'json',
     css: 'css',
     scss: 'scss',
@@ -64,6 +66,7 @@ export function FileEditor({
   const onUnsavedChangesRef = useRef(onUnsavedChanges)
   const onSavingStateChangeRef = useRef(onSavingStateChange)
   const onOpenFileRef = useRef(onOpenFile)
+  const handleSaveRef = useRef<(() => Promise<void>) | null>(null)
 
   // Keep refs updated
   useEffect(() => {
@@ -88,22 +91,54 @@ export function FileEditor({
     const isNodeModules = filename.includes('/node_modules/')
     if (!isNodeModules) {
       const hasChanges = content !== savedContent
-      onUnsavedChangesRef.current?.(hasChanges)
+      console.log('[Unsaved Changes] Tracked:', { 
+        hasChanges, 
+        contentLength: content.length, 
+        savedContentLength: savedContent.length,
+        filename,
+        hasCallback: !!onUnsavedChangesRef.current
+      })
+      if (onUnsavedChangesRef.current) {
+        console.log('[Unsaved Changes] Calling callback with hasChanges:', hasChanges)
+        onUnsavedChangesRef.current(hasChanges)
+      } else {
+        console.log('[Unsaved Changes] No callback available!')
+      }
     }
   }, [content, savedContent, filename])
 
   const handleContentChange = (newContent: string | undefined) => {
     if (newContent !== undefined) {
+      console.log('[Content Change] Content changed, length:', newContent.length)
       setContent(newContent)
     }
   }
 
   const handleSave = useCallback(async () => {
+    console.log('[Save] handleSave called')
     const currentContent = editorRef.current?.getValue()
-    if (!currentContent || isSaving || currentContent === savedContent) return
+    console.log('[Save] Current state:', { 
+      hasContent: !!currentContent, 
+      isSaving, 
+      hasChanges: currentContent !== savedContent,
+      filename 
+    })
+    
+    if (!currentContent || isSaving || currentContent === savedContent) {
+      console.log('[Save] Skipping save:', { 
+        noContent: !currentContent, 
+        isSaving, 
+        noChanges: currentContent === savedContent 
+      })
+      return
+    }
 
     setIsSaving(true)
-    onSavingStateChangeRef.current?.(true)
+    console.log('[Save] Setting isSaving to true, calling callback:', !!onSavingStateChangeRef.current)
+    if (onSavingStateChangeRef.current) {
+      onSavingStateChangeRef.current(true)
+    }
+    console.log('[Save] Starting save...')
     try {
       const response = await fetch(`/api/tasks/${taskId}/save-file`, {
         method: 'POST',
@@ -117,10 +152,22 @@ export function FileEditor({
       })
 
       const data = await response.json()
+      console.log('[Save] Response:', { ok: response.ok, data })
 
       if (response.ok && data.success) {
+        console.log('[Save] Save successful, updating savedContent')
         setSavedContent(currentContent)
-        setContent(currentContent)
+        // Force a re-check of unsaved changes
+        setTimeout(() => {
+          const latestContent = editorRef.current?.getValue()
+          if (latestContent) {
+            console.log('[Save] Post-save check:', {
+              savedLength: currentContent.length,
+              currentLength: latestContent.length,
+              match: latestContent === currentContent
+            })
+          }
+        }, 100)
       } else {
         toast.error(data.error || 'Failed to save file')
       }
@@ -129,9 +176,17 @@ export function FileEditor({
       toast.error('Failed to save file')
     } finally {
       setIsSaving(false)
-      onSavingStateChangeRef.current?.(false)
+      console.log('[Save] Setting isSaving to false, calling callback:', !!onSavingStateChangeRef.current)
+      if (onSavingStateChangeRef.current) {
+        onSavingStateChangeRef.current(false)
+      }
     }
   }, [isSaving, savedContent, taskId, filename])
+
+  // Keep handleSave ref updated
+  useEffect(() => {
+    handleSaveRef.current = handleSave
+  }, [handleSave])
 
   // Note: With the new LSP integration, we no longer need to pre-load project files
   // into Monaco. The TypeScript Language Service runs in the sandbox and has direct
@@ -247,8 +302,13 @@ export function FileEditor({
     // Add save command (Cmd/Ctrl + S)
     console.log('[Editor Mount] Adding save command...')
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      console.log('[Save Command] Cmd/Ctrl + S pressed')
-      handleSave()
+      console.log('[Save Command] Cmd/Ctrl + S pressed in editor')
+      if (handleSaveRef.current) {
+        console.log('[Save Command] Calling handleSave from ref')
+        handleSaveRef.current()
+      } else {
+        console.log('[Save Command] handleSaveRef.current is null!')
+      }
     })
     console.log('[Editor Mount] Save command added')
 
@@ -486,14 +546,20 @@ export function FileEditor({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        console.log('[Save Command] Cmd/Ctrl + S pressed globally')
         e.preventDefault()
-        handleSave()
+        if (handleSaveRef.current) {
+          console.log('[Save Command] Calling handleSave from global handler')
+          handleSaveRef.current()
+        } else {
+          console.log('[Save Command] handleSaveRef.current is null in global handler!')
+        }
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleSave])
+  }, [])
 
   // Check if this is a node_modules file (read-only)
   const isNodeModulesFile = filename.includes('/node_modules/')

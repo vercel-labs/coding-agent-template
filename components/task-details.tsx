@@ -146,7 +146,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<string | undefined>(undefined)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const loadingDiffsRef = useRef(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -170,7 +169,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [isClosingPR, setIsClosingPR] = useState(false)
   const [isReopeningPR, setIsReopeningPR] = useState(false)
   const [isMergingPR, setIsMergingPR] = useState(false)
-  const [viewMode, setViewMode] = useState<'changes' | 'all'>('changes')
+  const [filesPane, setFilesPane] = useState<'files' | 'changes'>('changes')
+  const [changesMode, setChangesMode] = useState<'local' | 'remote'>('remote')
+  const viewMode = filesPane === 'files' ? 'all' : changesMode
   const [activeTab, setActiveTab] = useState<'code' | 'chat' | 'preview'>('code')
   const [showFilesList, setShowFilesList] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -194,13 +195,43 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
-  // Tabs state for Code pane
-  const [openTabs, setOpenTabs] = useState<string[]>([])
-  const [activeTabIndex, setActiveTabIndex] = useState<number>(0)
+  // Tabs state for Code pane - each mode has its own tabs and selection
+  const [openTabsByMode, setOpenTabsByMode] = useState<{
+    local: string[]
+    remote: string[]
+    all: string[]
+  }>({
+    local: [],
+    remote: [],
+    all: [],
+  })
+  const [activeTabIndexByMode, setActiveTabIndexByMode] = useState<{
+    local: number
+    remote: number
+    all: number
+  }>({
+    local: 0,
+    remote: 0,
+    all: 0,
+  })
+  const [selectedFileByMode, setSelectedFileByMode] = useState<{
+    local: string | undefined
+    remote: string | undefined
+    all: string | undefined
+  }>({
+    local: undefined,
+    remote: undefined,
+    all: undefined,
+  })
   const [tabsWithUnsavedChanges, setTabsWithUnsavedChanges] = useState<Set<string>>(new Set())
   const [tabsSaving, setTabsSaving] = useState<Set<string>>(new Set())
   const [showCloseTabDialog, setShowCloseTabDialog] = useState(false)
   const [tabToClose, setTabToClose] = useState<number | null>(null)
+
+  // Get current mode's tabs and selection
+  const openTabs = openTabsByMode[viewMode]
+  const activeTabIndex = activeTabIndexByMode[viewMode]
+  const selectedFile = selectedFileByMode[viewMode]
 
   // Helper function to format dates - show only time if same day as today
   const formatDateTime = (date: Date) => {
@@ -214,18 +245,31 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }
 
+  // View mode change handler
+  const handleViewModeChange = useCallback((newMode: 'local' | 'remote' | 'all') => {
+    if (newMode === 'all') {
+      setFilesPane('files')
+    } else {
+      setFilesPane('changes')
+      setChangesMode(newMode)
+    }
+  }, [])
+
   // Tab management functions
   const openFileInTab = (file: string) => {
-    const existingIndex = openTabs.indexOf(file)
+    const currentTabs = openTabsByMode[viewMode]
+    const existingIndex = currentTabs.indexOf(file)
+    
     if (existingIndex !== -1) {
-      // File already open, just switch to it
-      setActiveTabIndex(existingIndex)
-      setSelectedFile(file)
+      // File already open in this mode, just switch to it
+      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
     } else {
-      // Open new tab
-      setOpenTabs([...openTabs, file])
-      setActiveTabIndex(openTabs.length)
-      setSelectedFile(file)
+      // Open new tab in current mode
+      const newTabs = [...currentTabs, file]
+      setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: newTabs }))
+      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newTabs.length - 1 }))
+      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
     }
   }
 
@@ -255,7 +299,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
   const attemptCloseTab = (index: number, e?: React.MouseEvent) => {
     e?.stopPropagation()
-    const fileToClose = openTabs[index]
+    const currentTabs = openTabsByMode[viewMode]
+    const fileToClose = currentTabs[index]
 
     // Check if the tab has unsaved changes
     if (tabsWithUnsavedChanges.has(fileToClose)) {
@@ -267,9 +312,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   }
 
   const closeTab = (index: number) => {
-    const fileToClose = openTabs[index]
-    const newTabs = openTabs.filter((_, i) => i !== index)
-    setOpenTabs(newTabs)
+    const currentTabs = openTabsByMode[viewMode]
+    const currentActiveIndex = activeTabIndexByMode[viewMode]
+    const fileToClose = currentTabs[index]
+    const newTabs = currentTabs.filter((_, i) => i !== index)
+    
+    setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: newTabs }))
 
     // Remove from unsaved changes
     setTabsWithUnsavedChanges((prev) => {
@@ -280,19 +328,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
     // Adjust active tab index
     if (newTabs.length === 0) {
-      setActiveTabIndex(0)
-      setSelectedFile(undefined)
-    } else if (activeTabIndex >= newTabs.length) {
-      setActiveTabIndex(newTabs.length - 1)
-      setSelectedFile(newTabs[newTabs.length - 1])
-    } else if (activeTabIndex === index) {
+      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: 0 }))
+      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: undefined }))
+    } else if (currentActiveIndex >= newTabs.length) {
+      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newTabs.length - 1 }))
+      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: newTabs[newTabs.length - 1] }))
+    } else if (currentActiveIndex === index) {
       // If closing the active tab, switch to the previous tab (or next if it's the first)
       const newIndex = Math.max(0, index - 1)
-      setActiveTabIndex(newIndex)
-      setSelectedFile(newTabs[newIndex])
-    } else if (activeTabIndex > index) {
+      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newIndex }))
+      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: newTabs[newIndex] }))
+    } else if (currentActiveIndex > index) {
       // Adjust index if a tab before the active one was closed
-      setActiveTabIndex(activeTabIndex - 1)
+      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: currentActiveIndex - 1 }))
     }
   }
 
@@ -321,8 +369,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   }
 
   const switchToTab = (index: number) => {
-    setActiveTabIndex(index)
-    setSelectedFile(openTabs[index])
+    const currentTabs = openTabsByMode[viewMode]
+    setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: index }))
+    setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: currentTabs[index] }))
   }
 
   // Use optimistic status if available, otherwise use actual task status
@@ -639,8 +688,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       // Store all files for search
       setAllFiles(filesList)
 
-      // Only pre-fetch diffs in "changes" mode
-      if (viewMode !== 'changes') return
+      // Only pre-fetch diffs in "local" or "remote" mode
+      if (viewMode !== 'local' && viewMode !== 'remote') return
 
       loadingDiffsRef.current = true
       const newDiffsCache: Record<string, DiffData> = {}
@@ -772,7 +821,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       setRefreshKey((prev) => prev + 1)
       // Clear diffs cache to force reload
       setDiffsCache({})
-      setSelectedFile(undefined)
+      // Clear selected files for all modes
+      setSelectedFileByMode({ local: undefined, remote: undefined, all: undefined })
     }
 
     previousStatusRef.current = currentStatus
@@ -1377,7 +1427,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 selectedFile={selectedFile}
                 refreshKey={refreshKey}
                 viewMode={viewMode}
-                onViewModeChange={setViewMode}
+                onViewModeChange={handleViewModeChange}
               />
             </div>
 
@@ -1390,22 +1440,27 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     {/* Tabs Row */}
                     {openTabs.length > 0 && (
                       <div className="flex items-center gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b">
-                        {openTabs.map((tab, index) => {
-                          const hasUnsavedChanges = tabsWithUnsavedChanges.has(tab)
-                          const isSaving = tabsSaving.has(tab)
+                        {openTabs.map((filename, index) => {
+                          const hasUnsavedChanges = tabsWithUnsavedChanges.has(filename)
+                          const isSaving = tabsSaving.has(filename)
+                          const modeSuffix =
+                            viewMode === 'local' ? ' (Local)' : viewMode === 'remote' ? ' (Remote)' : ''
                           return (
                             <button
-                              key={tab}
+                              key={filename}
                               onClick={() => switchToTab(index)}
                               className={cn(
-                                'group flex items-center gap-2 px-3 py-2 text-sm border-r hover:bg-muted transition-colors flex-shrink-0 max-w-[200px]',
+                                'group flex items-center gap-2 px-3 py-2 text-sm border-r hover:bg-muted transition-colors flex-shrink-0 max-w-[240px]',
                                 activeTabIndex === index
                                   ? 'bg-background text-foreground'
                                   : 'text-muted-foreground hover:text-foreground',
                               )}
                             >
                               <FileText className="h-3.5 w-3.5 flex-shrink-0" />
-                              <span className="truncate flex-1">{tab.split('/').pop()}</span>
+                              <span className="truncate flex-1">
+                                {filename.split('/').pop()}
+                                {modeSuffix}
+                              </span>
                               <span
                                 onClick={(e) => attemptCloseTab(index, e)}
                                 className={cn(
@@ -1666,6 +1721,16 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         isInitialLoading={Object.keys(diffsCache).length === 0}
                         viewMode={viewMode}
                         taskId={task.id}
+                        onUnsavedChanges={
+                          selectedFile ? (hasChanges) => handleUnsavedChanges(selectedFile, hasChanges) : undefined
+                        }
+                        onSavingStateChange={
+                          selectedFile ? (isSaving) => handleSavingStateChange(selectedFile, isSaving) : undefined
+                        }
+                        onOpenFile={(filename, lineNumber) => {
+                          openFileInTab(filename)
+                          // TODO: Optionally scroll to lineNumber after opening
+                        }}
                       />
                     </div>
                   </div>
@@ -1758,31 +1823,54 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             <Drawer open={showFilesList} onOpenChange={setShowFilesList}>
               <DrawerContent>
                 <DrawerHeader>
-                  <div className="flex items-center justify-between gap-2">
-                    <DrawerTitle>Files</DrawerTitle>
-                    <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
-                      <Button
-                        variant={viewMode === 'changes' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('changes')}
-                        className={`h-6 px-2 text-xs rounded-sm ${
-                          viewMode === 'changes'
-                            ? 'bg-background shadow-sm'
-                            : 'hover:bg-transparent hover:text-foreground'
-                        }`}
-                      >
-                        Changes
-                      </Button>
-                      <Button
-                        variant={viewMode === 'all' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('all')}
-                        className={`h-6 px-2 text-xs rounded-sm ${
-                          viewMode === 'all' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
-                        }`}
-                      >
-                        All Files
-                      </Button>
+                  <DrawerTitle>Files</DrawerTitle>
+                  <div className="mt-2">
+                    {/* Main Navigation with segment button on the right */}
+                    <div className="py-2 flex items-center justify-between h-[46px]">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleViewModeChange(viewMode === 'all' ? 'remote' : viewMode)}
+                          className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
+                            filesPane === 'changes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Changes
+                        </button>
+                        <button
+                          onClick={() => handleViewModeChange('all')}
+                          className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
+                            filesPane === 'files' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Files
+                        </button>
+                      </div>
+
+                      {/* Segment Button for Changes sub-modes */}
+                      {filesPane === 'changes' && (
+                        <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+                          <Button
+                            variant={viewMode === 'local' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => handleViewModeChange('local')}
+                            className={`h-6 px-2 text-xs rounded-sm ${
+                              viewMode === 'local' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                            }`}
+                          >
+                            Local
+                          </Button>
+                          <Button
+                            variant={viewMode === 'remote' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => handleViewModeChange('remote')}
+                            className={`h-6 px-2 text-xs rounded-sm ${
+                              viewMode === 'remote' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                            }`}
+                          >
+                            Remote
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </DrawerHeader>
@@ -1798,7 +1886,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     selectedFile={selectedFile}
                     refreshKey={refreshKey}
                     viewMode={viewMode}
-                    onViewModeChange={setViewMode}
+                    onViewModeChange={handleViewModeChange}
                     hideHeader={true}
                   />
                 </div>
@@ -1969,7 +2057,18 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
             <AlertDialogDescription>
               Do you want to save the changes you made to{' '}
-              {tabToClose !== null ? openTabs[tabToClose]?.split('/').pop() : 'this file'}?
+              {tabToClose !== null
+                ? (() => {
+                    const currentTabs = openTabsByMode[viewMode]
+                    const filename = currentTabs[tabToClose]
+                    if (!filename) return 'this file'
+                    const shortName = filename.split('/').pop()
+                    const suffix =
+                      viewMode === 'local' ? ' (Local)' : viewMode === 'remote' ? ' (Remote)' : ''
+                    return `${shortName}${suffix}`
+                  })()
+                : 'this file'}
+              ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

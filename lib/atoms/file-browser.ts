@@ -26,7 +26,8 @@ interface ViewModeData {
 }
 
 interface FileBrowserState {
-  changes: ViewModeData
+  local: ViewModeData
+  remote: ViewModeData
   all: ViewModeData
   loading: boolean
   error: string | null
@@ -40,7 +41,8 @@ const emptyViewModeData: ViewModeData = {
 }
 
 const defaultState: FileBrowserState = {
-  changes: structuredClone(emptyViewModeData),
+  local: structuredClone(emptyViewModeData),
+  remote: structuredClone(emptyViewModeData),
   all: structuredClone(emptyViewModeData),
   loading: false,
   error: null,

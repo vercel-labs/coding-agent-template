@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { taskId } = await params
     const searchParams = request.nextUrl.searchParams
-    const mode = searchParams.get('mode') || 'changes' // 'changes' or 'all'
+    const mode = searchParams.get('mode') || 'remote' // 'local', 'remote', or 'all'
 
     // Get task from database and verify ownership (exclude soft-deleted)
     const [task] = await db
@@ -95,8 +95,135 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     let files: FileChange[] = []
 
-    // If mode is 'all', fetch all files from the repository tree
-    if (mode === 'all') {
+    // If mode is 'local', fetch changed files from the sandbox
+    if (mode === 'local') {
+      if (!task.sandboxId) {
+        return NextResponse.json({
+          success: true,
+          files: [],
+          fileTree: {},
+          branchName: task.branchName,
+          message: 'Sandbox not available',
+        })
+      }
+
+      try {
+        const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+        const { Sandbox } = await import('@vercel/sandbox')
+
+        let sandbox = getSandbox(taskId)
+
+        // Try to reconnect if not in registry
+        if (!sandbox) {
+          const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+          const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+          const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+          if (sandboxToken && teamId && projectId) {
+            sandbox = await Sandbox.get({
+              sandboxId: task.sandboxId,
+              teamId,
+              projectId,
+              token: sandboxToken,
+            })
+          }
+        }
+
+        if (!sandbox) {
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Sandbox not found',
+          })
+        }
+
+        // Run git status to get local changes
+        const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
+
+        if (statusResult.exitCode !== 0) {
+          console.error('Failed to run git status')
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Failed to get local changes',
+          })
+        }
+
+        const statusOutput = await statusResult.stdout()
+        console.log('Git status output:', statusOutput)
+        const statusLines = statusOutput.trim().split('\n').filter((line) => line.trim())
+
+        // Parse git status output
+        // Format: XY filename (where X = index, Y = worktree)
+        files = statusLines.map((line) => {
+          // Git status --porcelain format should be: XY<space>filename
+          // Get status codes from first 2 characters
+          const indexStatus = line.charAt(0)
+          const worktreeStatus = line.charAt(1)
+          
+          // Get filename by skipping first 2 chars and trimming spaces
+          // This handles both 'XY filename' and 'XY  filename' formats
+          let filename = line.substring(2).trim()
+
+          // Handle renamed files: "old_name -> new_name"
+          if (indexStatus === 'R' || worktreeStatus === 'R') {
+            const arrowIndex = filename.indexOf(' -> ')
+            if (arrowIndex !== -1) {
+              filename = filename.substring(arrowIndex + 4).trim()
+            }
+          }
+
+          // Determine status based on both index and worktree
+          let status: 'added' | 'modified' | 'deleted' | 'renamed' = 'modified'
+          if (indexStatus === 'R' || worktreeStatus === 'R') {
+            status = 'renamed'
+          } else if (indexStatus === 'A' || worktreeStatus === 'A' || (indexStatus === '?' && worktreeStatus === '?')) {
+            status = 'added'
+          } else if (indexStatus === 'D' || worktreeStatus === 'D') {
+            status = 'deleted'
+          } else if (indexStatus === 'M' || worktreeStatus === 'M') {
+            status = 'modified'
+          }
+
+          console.log('Parsed line:', { line, indexStatus, worktreeStatus, filename, status })
+
+          return {
+            filename,
+            status,
+            additions: 0, // Git status doesn't provide line counts
+            deletions: 0,
+            changes: 0,
+          }
+        })
+
+        console.log('Found local changes:', files.length, files)
+      } catch (error) {
+        console.error('Error fetching local changes from sandbox:', error)
+        
+        // Check if it's a 410 error (sandbox not running)
+        if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Sandbox is not running',
+            },
+            { status: 410 },
+          )
+        }
+        
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to fetch local changes',
+          },
+          { status: 500 },
+        )
+      }
+    } else if (mode === 'all') {
       try {
         const treeResponse = await octokit.rest.git.getTree({
           owner,
@@ -137,7 +264,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         )
       }
     } else {
-      // Original logic for 'changes' mode
+      // Original logic for 'remote' mode (PR changes)
 
       try {
         // First check if the branch exists

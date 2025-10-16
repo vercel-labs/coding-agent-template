@@ -21,7 +21,7 @@ interface FileDiffViewerProps {
   selectedFile?: string
   diffsCache?: Record<string, DiffData>
   isInitialLoading?: boolean
-  viewMode?: 'changes' | 'all'
+  viewMode?: 'local' | 'remote' | 'all' | 'changes'
   taskId?: string
   onUnsavedChanges?: (hasChanges: boolean) => void
   onSavingStateChange?: (isSaving: boolean) => void
@@ -32,7 +32,7 @@ export function FileDiffViewer({
   selectedFile,
   diffsCache,
   isInitialLoading,
-  viewMode = 'changes',
+  viewMode = 'remote',
   taskId: taskIdProp,
   onUnsavedChanges,
   onSavingStateChange,
@@ -108,8 +108,15 @@ export function FileDiffViewer({
         const params = new URLSearchParams()
         params.set('filename', selectedFile)
 
-        // In "all" mode, fetch file content directly; in "changes" mode, fetch diff
-        const endpoint = viewMode === 'all' ? `/api/tasks/${taskId}/file-content` : `/api/tasks/${taskId}/diff`
+        // In "all" mode, fetch file content; in "local" or "remote" mode, fetch diff
+        const endpoint = viewMode === 'all'
+          ? `/api/tasks/${taskId}/file-content` 
+          : `/api/tasks/${taskId}/diff`
+        
+        // For local mode, add a query parameter to get local diff instead of PR diff
+        if (viewMode === 'local') {
+          params.set('mode', 'local')
+        }
         const response = await fetch(`${endpoint}?${params.toString()}`)
         const result = await response.json()
 

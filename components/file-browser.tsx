@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { File, Folder, FolderOpen, Clock, GitBranch, Loader2 } from 'lucide-react'
+import { File, Folder, FolderOpen, Clock, GitBranch, Loader2, GitCommit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAtom } from 'jotai'
 import { getTaskFileBrowserState } from '@/lib/atoms/file-browser'
 import { useMemo } from 'react'
+import { toast } from 'sonner'
 
 interface FileChange {
   filename: string
@@ -32,8 +33,8 @@ interface FileBrowserProps {
   onFilesLoaded?: (filenames: string[]) => void
   selectedFile?: string
   refreshKey?: number
-  viewMode?: 'changes' | 'all'
-  onViewModeChange?: (mode: 'changes' | 'all') => void
+  viewMode?: 'local' | 'remote' | 'all'
+  onViewModeChange?: (mode: 'local' | 'remote' | 'all') => void
   hideHeader?: boolean
 }
 
@@ -44,16 +45,22 @@ export function FileBrowser({
   onFilesLoaded,
   selectedFile,
   refreshKey,
-  viewMode = 'changes',
+  viewMode = 'remote',
   onViewModeChange,
   hideHeader = false,
 }: FileBrowserProps) {
   // Use Jotai atom for state management
   const taskStateAtom = useMemo(() => getTaskFileBrowserState(taskId), [taskId])
   const [state, setState] = useAtom(taskStateAtom)
+  const [isSyncing, setIsSyncing] = useState(false)
 
-  // Get current viewMode data
-  const currentViewData = state[viewMode]
+  // Get current viewMode data with default values
+  const currentViewData = state[viewMode] || {
+    files: [],
+    fileTree: {},
+    expandedFolders: new Set<string>(),
+    fetchAttempted: false,
+  }
   const { files, fileTree, expandedFolders, fetchAttempted } = currentViewData
   const { loading, error } = state
 
@@ -92,10 +99,12 @@ export function FileBrowser({
         const fetchedFiles = result.files || []
         const fetchedFileTree = result.fileTree || {}
 
-        // In "changes" mode, expand all folders by default
+        // In "local" or "remote" mode, expand all folders by default
         // In "all" mode, collapse all folders by default
         const newExpandedFolders =
-          viewMode === 'changes' ? new Set(getAllFolderPaths(fetchedFileTree)) : new Set<string>()
+          viewMode === 'local' || viewMode === 'remote'
+            ? new Set(getAllFolderPaths(fetchedFileTree))
+            : new Set<string>()
 
         // Update the specific viewMode data
         setState({
@@ -138,6 +147,47 @@ export function FileBrowser({
       })
     }
   }, [branchName, taskId, onFilesLoaded, viewMode, setState, getAllFolderPaths])
+
+  const handleSyncChanges = useCallback(async () => {
+    if (isSyncing || !branchName) return
+
+    setIsSyncing(true)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/sync-changes`, {
+        method: 'POST',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to sync changes')
+      }
+
+      toast.success('Changes synced successfully')
+
+      // Refresh the file list
+      setState({
+        [viewMode]: {
+          ...currentViewData,
+          fetchAttempted: false,
+        },
+      })
+
+      // Trigger refetch
+      fetchBranchFiles()
+    } catch (err) {
+      console.error('Error syncing changes:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to sync changes')
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [isSyncing, branchName, taskId, viewMode, currentViewData, setState, fetchBranchFiles])
+
+  // Clear error when switching modes
+  useEffect(() => {
+    setState({ error: null })
+  }, [viewMode, setState])
 
   useEffect(() => {
     // Only fetch if we don't have files for this viewMode yet AND haven't attempted to fetch
@@ -223,7 +273,7 @@ export function FileBrowser({
           >
             <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
             <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
-            {viewMode === 'changes' && (node.additions || node.deletions) && (
+            {(viewMode === 'local' || viewMode === 'remote') && (node.additions || node.deletions) && (
               <div className="flex items-center gap-1 text-xs flex-shrink-0">
                 {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
                 {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
@@ -265,33 +315,83 @@ export function FileBrowser({
     )
   }
 
+  const filesPane = viewMode === 'all' ? 'files' : 'changes'
+
   return (
     <div className="flex flex-col h-full">
       {!hideHeader && (
-        <div className="px-2 py-2 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold pl-1">Files</h3>
-          <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
-            <Button
-              variant={viewMode === 'changes' ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => onViewModeChange?.('changes')}
-              className={`h-6 px-2 text-xs rounded-sm ${
-                viewMode === 'changes' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
-              }`}
-            >
-              Changes
-            </Button>
-            <Button
-              variant={viewMode === 'all' ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => onViewModeChange?.('all')}
-              className={`h-6 px-2 text-xs rounded-sm ${
-                viewMode === 'all' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
-              }`}
-            >
-              All Files
-            </Button>
+        <div>
+          {/* Main Navigation with segment button on the right */}
+          <div className="py-2 flex items-center justify-between h-[46px]">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onViewModeChange?.(viewMode === 'all' ? 'remote' : viewMode)}
+                className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
+                  filesPane === 'changes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Changes
+              </button>
+              <button
+                onClick={() => onViewModeChange?.('all')}
+                className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
+                  filesPane === 'files' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Files
+              </button>
+            </div>
+
+            {/* Segment Button for Changes sub-modes */}
+            {filesPane === 'changes' && (
+              <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+                <Button
+                  variant={viewMode === 'local' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => onViewModeChange?.('local')}
+                  className={`h-6 px-2 text-xs rounded-sm ${
+                    viewMode === 'local' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                  }`}
+                >
+                  Local
+                </Button>
+                <Button
+                  variant={viewMode === 'remote' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => onViewModeChange?.('remote')}
+                  className={`h-6 px-2 text-xs rounded-sm ${
+                    viewMode === 'remote' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                  }`}
+                >
+                  Remote
+                </Button>
+              </div>
+            )}
           </div>
+        </div>
+      )}
+      {/* Sync button for Local Changes - show regardless of hideHeader */}
+      {viewMode === 'local' && files.length > 0 && (
+        <div className="px-2 pt-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSyncChanges}
+            disabled={isSyncing}
+            className="w-full text-xs"
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <GitCommit className="h-3 w-3 mr-1.5" />
+                Sync Changes (Add/Commit/Push)
+              </>
+            )}
+          </Button>
         </div>
       )}
       <div className="flex-1 overflow-y-auto">
@@ -303,7 +403,11 @@ export function FileBrowser({
           <div className="p-3 md:p-4 text-center text-xs md:text-sm text-destructive">{error}</div>
         ) : files.length === 0 ? (
           <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">
-            {viewMode === 'changes' ? 'No files changed' : 'No files found'}
+            {viewMode === 'local'
+              ? 'No local changes'
+              : viewMode === 'remote'
+                ? 'No changes in PR'
+                : 'No files found'}
           </div>
         ) : (
           <div className="py-2">{renderFileTree(fileTree)}</div>
