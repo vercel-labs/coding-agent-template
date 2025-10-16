@@ -5,7 +5,18 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowUp, Loader2, Copy, Check, RotateCcw, Square, CheckCircle, AlertCircle, XCircle, RefreshCw } from 'lucide-react'
+import {
+  ArrowUp,
+  Loader2,
+  Copy,
+  Check,
+  RotateCcw,
+  Square,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  RefreshCw,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Streamdown } from 'streamdown'
 import { useAtom } from 'jotai'
@@ -591,9 +602,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
         <div className="flex-1 overflow-y-auto pb-4">
           {!task.prNumber ? (
             <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
-              <div className="text-sm md:text-base">
-                No pull request yet. Create a PR to see comments here.
-              </div>
+              <div className="text-sm md:text-base">No pull request yet. Create a PR to see comments here.</div>
             </div>
           ) : loadingComments ? (
             <div className="flex items-center justify-center h-full">
@@ -890,38 +899,38 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     <div className="flex flex-col h-full">
       {/* Header Tabs */}
       <div className="py-2 flex items-center gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-              currentTab === 'chat' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Chat
-          </button>
-          <button
-            onClick={() => setActiveTab('comments')}
-            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-              currentTab === 'comments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Comments
-          </button>
-          <button
-            onClick={() => setActiveTab('actions')}
-            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-              currentTab === 'actions' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Checks
-          </button>
-          <button
-            onClick={() => setActiveTab('deployments')}
-            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-              currentTab === 'deployments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Deployments
-          </button>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+            currentTab === 'chat' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Chat
+        </button>
+        <button
+          onClick={() => setActiveTab('comments')}
+          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+            currentTab === 'comments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Comments
+        </button>
+        <button
+          onClick={() => setActiveTab('actions')}
+          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+            currentTab === 'actions' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Checks
+        </button>
+        <button
+          onClick={() => setActiveTab('deployments')}
+          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+            currentTab === 'deployments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Deployments
+        </button>
       </div>
 
       {/* Tab Content */}

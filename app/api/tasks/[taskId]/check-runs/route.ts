@@ -86,4 +86,3 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: false, error: 'Failed to fetch check runs' }, { status: 500 })
   }
 }
-
