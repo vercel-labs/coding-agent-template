@@ -119,7 +119,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ta
     })
   } catch (error) {
     console.error('Error syncing changes:', error)
-    
+
     // Check if it's a 410 error (sandbox not running)
     if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
       return NextResponse.json(
@@ -130,7 +130,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ta
         { status: 410 },
       )
     }
-    
+
     return NextResponse.json(
       {
         success: false,
@@ -140,4 +140,3 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ta
     )
   }
 }
-

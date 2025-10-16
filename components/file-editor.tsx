@@ -91,12 +91,12 @@ export function FileEditor({
     const isNodeModules = filename.includes('/node_modules/')
     if (!isNodeModules) {
       const hasChanges = content !== savedContent
-      console.log('[Unsaved Changes] Tracked:', { 
-        hasChanges, 
-        contentLength: content.length, 
+      console.log('[Unsaved Changes] Tracked:', {
+        hasChanges,
+        contentLength: content.length,
         savedContentLength: savedContent.length,
         filename,
-        hasCallback: !!onUnsavedChangesRef.current
+        hasCallback: !!onUnsavedChangesRef.current,
       })
       if (onUnsavedChangesRef.current) {
         console.log('[Unsaved Changes] Calling callback with hasChanges:', hasChanges)
@@ -117,18 +117,18 @@ export function FileEditor({
   const handleSave = useCallback(async () => {
     console.log('[Save] handleSave called')
     const currentContent = editorRef.current?.getValue()
-    console.log('[Save] Current state:', { 
-      hasContent: !!currentContent, 
-      isSaving, 
+    console.log('[Save] Current state:', {
+      hasContent: !!currentContent,
+      isSaving,
       hasChanges: currentContent !== savedContent,
-      filename 
+      filename,
     })
-    
+
     if (!currentContent || isSaving || currentContent === savedContent) {
-      console.log('[Save] Skipping save:', { 
-        noContent: !currentContent, 
-        isSaving, 
-        noChanges: currentContent === savedContent 
+      console.log('[Save] Skipping save:', {
+        noContent: !currentContent,
+        isSaving,
+        noChanges: currentContent === savedContent,
       })
       return
     }
@@ -164,7 +164,7 @@ export function FileEditor({
             console.log('[Save] Post-save check:', {
               savedLength: currentContent.length,
               currentLength: latestContent.length,
-              match: latestContent === currentContent
+              match: latestContent === currentContent,
             })
           }
         }, 100)

@@ -259,7 +259,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const openFileInTab = (file: string) => {
     const currentTabs = openTabsByMode[viewMode]
     const existingIndex = currentTabs.indexOf(file)
-    
+
     if (existingIndex !== -1) {
       // File already open in this mode, just switch to it
       setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
@@ -316,7 +316,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     const currentActiveIndex = activeTabIndexByMode[viewMode]
     const fileToClose = currentTabs[index]
     const newTabs = currentTabs.filter((_, i) => i !== index)
-    
+
     setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: newTabs }))
 
     // Remove from unsaved changes
@@ -1854,7 +1854,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                             size="sm"
                             onClick={() => handleViewModeChange('local')}
                             className={`h-6 px-2 text-xs rounded-sm ${
-                              viewMode === 'local' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                              viewMode === 'local'
+                                ? 'bg-background shadow-sm'
+                                : 'hover:bg-transparent hover:text-foreground'
                             }`}
                           >
                             Local
@@ -1864,7 +1866,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                             size="sm"
                             onClick={() => handleViewModeChange('remote')}
                             className={`h-6 px-2 text-xs rounded-sm ${
-                              viewMode === 'remote' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                              viewMode === 'remote'
+                                ? 'bg-background shadow-sm'
+                                : 'hover:bg-transparent hover:text-foreground'
                             }`}
                           >
                             Remote
@@ -2063,8 +2067,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     const filename = currentTabs[tabToClose]
                     if (!filename) return 'this file'
                     const shortName = filename.split('/').pop()
-                    const suffix =
-                      viewMode === 'local' ? ' (Local)' : viewMode === 'remote' ? ' (Remote)' : ''
+                    const suffix = viewMode === 'local' ? ' (Local)' : viewMode === 'remote' ? ' (Remote)' : ''
                     return `${shortName}${suffix}`
                   })()
                 : 'this file'}

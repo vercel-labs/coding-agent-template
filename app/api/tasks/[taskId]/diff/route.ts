@@ -11,6 +11,8 @@ function getLanguageFromFilename(filename: string): string {
   const langMap: { [key: string]: string } = {
     js: 'javascript',
     jsx: 'javascript',
+    mjs: 'javascript',
+    cjs: 'javascript',
     ts: 'typescript',
     tsx: 'typescript',
     py: 'python',
@@ -251,12 +253,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         })
       } catch (error) {
         console.error('Error getting local diff:', error)
-        
+
         // Check if it's a 410 error (sandbox not running)
         if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
           return NextResponse.json({ error: 'Sandbox is not running' }, { status: 410 })
         }
-        
+
         return NextResponse.json({ error: 'Failed to get local diff' }, { status: 500 })
       }
     }

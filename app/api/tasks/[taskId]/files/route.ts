@@ -155,7 +155,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const statusOutput = await statusResult.stdout()
         console.log('Git status output:', statusOutput)
-        const statusLines = statusOutput.trim().split('\n').filter((line) => line.trim())
+        const statusLines = statusOutput
+          .trim()
+          .split('\n')
+          .filter((line) => line.trim())
 
         // Parse git status output
         // Format: XY filename (where X = index, Y = worktree)
@@ -164,7 +167,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           // Get status codes from first 2 characters
           const indexStatus = line.charAt(0)
           const worktreeStatus = line.charAt(1)
-          
+
           // Get filename by skipping first 2 chars and trimming spaces
           // This handles both 'XY filename' and 'XY  filename' formats
           let filename = line.substring(2).trim()
@@ -203,7 +206,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.log('Found local changes:', files.length, files)
       } catch (error) {
         console.error('Error fetching local changes from sandbox:', error)
-        
+
         // Check if it's a 410 error (sandbox not running)
         if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
           return NextResponse.json(
@@ -214,7 +217,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             { status: 410 },
           )
         }
-        
+
         return NextResponse.json(
           {
             success: false,
