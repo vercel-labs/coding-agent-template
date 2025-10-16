@@ -216,17 +216,14 @@ async function processTaskWithTimeout(
 
   // Add a warning 1 minute before timeout
   const warningTimeMs = Math.max(TASK_TIMEOUT_MS - 60 * 1000, 0)
-  const warningTimeout = setTimeout(
-    async () => {
-      try {
-        const warningLogger = createTaskLogger(taskId)
-        await warningLogger.info('Task is approaching timeout, will complete soon')
-      } catch (error) {
-        console.error('Failed to add timeout warning:', error)
-      }
-    },
-    warningTimeMs,
-  )
+  const warningTimeout = setTimeout(async () => {
+    try {
+      const warningLogger = createTaskLogger(taskId)
+      await warningLogger.info('Task is approaching timeout, will complete soon')
+    } catch (error) {
+      console.error('Failed to add timeout warning:', error)
+    }
+  }, warningTimeMs)
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
@@ -264,10 +261,7 @@ async function processTaskWithTimeout(
       // Use logger for timeout error
       const timeoutLogger = createTaskLogger(taskId)
       await timeoutLogger.error('Task execution timed out')
-      await timeoutLogger.updateStatus(
-        'error',
-        'Task execution timed out. The operation took too long to complete.',
-      )
+      await timeoutLogger.updateStatus('error', 'Task execution timed out. The operation took too long to complete.')
     } else {
       // Re-throw other errors to be handled by the original error handler
       throw error
