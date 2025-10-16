@@ -256,7 +256,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const attemptCloseTab = (index: number, e?: React.MouseEvent) => {
     e?.stopPropagation()
     const fileToClose = openTabs[index]
-    
+
     // Check if the tab has unsaved changes
     if (tabsWithUnsavedChanges.has(fileToClose)) {
       setTabToClose(index)
@@ -270,14 +270,14 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     const fileToClose = openTabs[index]
     const newTabs = openTabs.filter((_, i) => i !== index)
     setOpenTabs(newTabs)
-    
+
     // Remove from unsaved changes
     setTabsWithUnsavedChanges((prev) => {
       const newSet = new Set(prev)
       newSet.delete(fileToClose)
       return newSet
     })
-    
+
     // Adjust active tab index
     if (newTabs.length === 0) {
       setActiveTabIndex(0)
@@ -298,7 +298,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
   const handleCloseTabConfirm = (save: boolean) => {
     if (tabToClose === null) return
-    
+
     if (save) {
       // Trigger save by dispatching Cmd+S event
       const event = new KeyboardEvent('keydown', {
@@ -705,7 +705,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           attemptCloseTab(activeTabIndex)
           return
         }
-        
+
         // Switch to tab 1-9 with Cmd/Ctrl + 1-9
         const digit = parseInt(event.key)
         if (digit >= 1 && digit <= 9 && openTabs.length >= digit) {
@@ -1412,7 +1412,13 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                                   'flex items-center justify-center w-4 h-4 rounded transition-all cursor-pointer hover:bg-accent flex-shrink-0',
                                   hasUnsavedChanges || isSaving ? '' : 'opacity-0 group-hover:opacity-100',
                                 )}
-                                title={isSaving ? 'Saving...' : hasUnsavedChanges ? 'Unsaved changes • Click to close' : 'Close tab'}
+                                title={
+                                  isSaving
+                                    ? 'Saving...'
+                                    : hasUnsavedChanges
+                                      ? 'Unsaved changes • Click to close'
+                                      : 'Close tab'
+                                }
                                 role="button"
                                 tabIndex={0}
                                 onKeyDown={(e) => {
@@ -1438,12 +1444,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         })}
                       </div>
                     )}
-                    
+
                     {/* Search Bar */}
-                    <div
-                      ref={fileSearchRef}
-                      className="relative flex items-center gap-2 px-3 py-2"
-                    >
+                    <div ref={fileSearchRef} className="relative flex items-center gap-2 px-3 py-2">
                       <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <input
                         type="text"
@@ -1461,7 +1464,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                       {showFileDropdown &&
                         (() => {
                           const query = fileSearchQuery.toLowerCase()
-                          const filteredFiles = allFiles.filter((file) => file.toLowerCase().includes(query)).slice(0, 50)
+                          const filteredFiles = allFiles
+                            .filter((file) => file.toLowerCase().includes(query))
+                            .slice(0, 50)
 
                           if (filteredFiles.length === 0) return null
 
@@ -1488,7 +1493,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         })()}
                     </div>
                   </div>
-                  
+
                   <div className="overflow-y-auto flex-1">
                     <FileDiffViewer
                       selectedFile={selectedFile}
@@ -1959,7 +1964,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           <AlertDialogHeader>
             <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
             <AlertDialogDescription>
-              Do you want to save the changes you made to {tabToClose !== null ? openTabs[tabToClose]?.split('/').pop() : 'this file'}?
+              Do you want to save the changes you made to{' '}
+              {tabToClose !== null ? openTabs[tabToClose]?.split('/').pop() : 'this file'}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1971,15 +1977,10 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             >
               Cancel
             </AlertDialogCancel>
-            <Button
-              variant="outline"
-              onClick={() => handleCloseTabConfirm(false)}
-            >
+            <Button variant="outline" onClick={() => handleCloseTabConfirm(false)}>
               Don&apos;t Save
             </Button>
-            <AlertDialogAction onClick={() => handleCloseTabConfirm(true)}>
-              Save
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => handleCloseTabConfirm(true)}>Save</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

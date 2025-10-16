@@ -12,7 +12,14 @@ interface FileEditorProps {
   onSavingStateChange?: (isSaving: boolean) => void
 }
 
-export function FileEditor({ filename, initialContent, language, taskId, onUnsavedChanges, onSavingStateChange }: FileEditorProps) {
+export function FileEditor({
+  filename,
+  initialContent,
+  language,
+  taskId,
+  onUnsavedChanges,
+  onSavingStateChange,
+}: FileEditorProps) {
   const [content, setContent] = useState(initialContent)
   const [isSaving, setIsSaving] = useState(false)
   const [savedContent, setSavedContent] = useState(initialContent)
@@ -106,4 +113,3 @@ export function FileEditor({ filename, initialContent, language, taskId, onUnsav
     </div>
   )
 }
-

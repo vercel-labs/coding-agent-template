@@ -71,7 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Write file to sandbox using shell command with heredoc
       // Using 'EOF' (quoted) means content is treated literally, no variable expansion
       const writeCommand = `cat > '${filename}' << 'EOF'\n${content}\nEOF`
-      
+
       const result = await sandbox.runCommand('sh', ['-c', writeCommand])
 
       if (result.exitCode !== 0) {
@@ -103,4 +103,3 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
   }
 }
-
