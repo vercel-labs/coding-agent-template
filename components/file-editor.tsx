@@ -71,6 +71,7 @@ export function FileEditor({
   const [content, setContent] = useState(initialContent)
   const [isSaving, setIsSaving] = useState(false)
   const [savedContent, setSavedContent] = useState(initialContent)
+  const [fontSize, setFontSize] = useState(16) // Default to 16px for mobile
   const editorRef = useRef<MonacoEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
   const onUnsavedChangesRef = useRef(onUnsavedChanges)
@@ -78,6 +79,21 @@ export function FileEditor({
   const onOpenFileRef = useRef(onOpenFile)
   const onSaveSuccessRef = useRef(onSaveSuccess)
   const handleSaveRef = useRef<(() => Promise<void>) | null>(null)
+
+  // Set responsive font size based on screen width
+  useEffect(() => {
+    const updateFontSize = () => {
+      // Use 16px on mobile (< 768px) to prevent zoom, 13px on desktop
+      setFontSize(window.innerWidth < 768 ? 16 : 13)
+    }
+
+    // Set initial font size
+    updateFontSize()
+
+    // Update on resize
+    window.addEventListener('resize', updateFontSize)
+    return () => window.removeEventListener('resize', updateFontSize)
+  }, [])
 
   // Keep refs updated
   useEffect(() => {
@@ -717,7 +733,7 @@ export function FileEditor({
         options={{
           readOnly: isReadOnly,
           minimap: { enabled: false },
-          fontSize: 13,
+          fontSize: fontSize,
           fontFamily: 'var(--font-geist-mono), "Geist Mono", Menlo, Monaco, "Courier New", monospace',
           lineNumbers: 'on',
           wordWrap: 'on',
