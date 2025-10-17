@@ -1,7 +1,7 @@
 'use client'
 
 import { TaskMessage, Task } from '@/lib/db/schema'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Children, isValidElement } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -695,6 +695,21 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                 {children}
                               </a>
                             ),
+                            ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                              <ul className="text-xs list-disc ml-4" {...props}>
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                              <ol className="text-xs list-decimal ml-4" {...props}>
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                              <li className="text-xs mb-2" {...props}>
+                                {Children.toArray(children).filter(c => typeof c === 'string' || isValidElement(c))}
+                              </li>
+                            ),
                           }}
                         >
                           {comment.body}
@@ -748,6 +763,26 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                         <pre className="!text-xs" {...props}>
                           {children}
                         </pre>
+                      ),
+                      p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                        <p className="text-xs" {...props}>
+                          {children}
+                        </p>
+                      ),
+                      ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                        <ul className="text-xs list-disc ml-4" {...props}>
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                        <ol className="text-xs list-decimal ml-4" {...props}>
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                        <li className="text-xs mb-2" {...props}>
+                          {Children.toArray(children).filter(c => typeof c === 'string' || isValidElement(c))}
+                        </li>
                       ),
                     }}
                   >
@@ -842,8 +877,21 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                 </pre>
                               ),
                               p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => {
-                                // Check if this paragraph is a tool call
-                                const text = String(children)
+                                // Extract text from complex children structures
+                                const childrenArray = Children.toArray(children)
+                                const textParts: string[] = []
+                                
+                                childrenArray.forEach(child => {
+                                  if (typeof child === 'string') {
+                                    textParts.push(child)
+                                  } else if (isValidElement(child)) {
+                                    // It's a React element - keep it as-is, don't stringify
+                                    // This will be handled by React
+                                  }
+                                  // Skip plain objects entirely
+                                })
+                                
+                                const text = textParts.join('')
                                 const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
                                 const isToolCall = /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(
                                   text,
@@ -852,6 +900,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                 // Remove the marker from display
                                 const displayText = text.replace('🔄SHIMMER🔄', '')
 
+                                // If we have React elements, render them; otherwise render the text
+                                const hasReactElements = childrenArray.some(child => isValidElement(child))
+                                
                                 return (
                                   <p
                                     className={
@@ -863,10 +914,25 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                     }
                                     {...props}
                                   >
-                                    {displayText}
+                                    {hasReactElements ? childrenArray.filter(child => typeof child === 'string' || isValidElement(child)) : displayText}
                                   </p>
                                 )
                               },
+                              ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                                <ul className="text-xs list-disc ml-4" {...props}>
+                                  {children}
+                                </ul>
+                              ),
+                              ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                                <ol className="text-xs list-decimal ml-4" {...props}>
+                                  {children}
+                                </ol>
+                              ),
+                              li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                                <li className="text-xs mb-2" {...props}>
+                                  {Children.toArray(children).filter(c => typeof c === 'string' || isValidElement(c))}
+                                </li>
+                              ),
                             }}
                           >
                             {processedContent}
