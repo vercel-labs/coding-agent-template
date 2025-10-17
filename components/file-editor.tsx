@@ -207,11 +207,10 @@ export function FileEditor({
     // The LSP endpoint will handle all type resolution on demand
   }, [])
 
-  const handleEditorMount: OnMount = (editor, monaco) => {
-    console.log('[Editor Mount] Editor mounting for file:', filename)
-    editorRef.current = editor
-    monacoRef.current = monaco
-
+  // Define themes before mount to prevent light mode flash
+  const handleBeforeMount = useCallback((monaco: Monaco) => {
+    console.log('[Editor Before Mount] Defining themes...')
+    
     // Define Vercel/Geist dark theme (matching ray-so)
     monaco.editor.defineTheme('vercel-dark', {
       base: 'vs-dark',
@@ -303,6 +302,14 @@ export function FileEditor({
         'editorBracketMatch.border': '#0550ae',
       },
     })
+
+    console.log('[Editor Before Mount] Themes defined successfully')
+  }, [])
+
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    console.log('[Editor Mount] Editor mounting for file:', filename)
+    editorRef.current = editor
+    monacoRef.current = monaco
 
     // IMPORTANT: Set the model to use a file:// URI so TypeScript service can resolve imports
     const model = editor.getModel()
@@ -685,6 +692,7 @@ export function FileEditor({
         language={getLanguageFromPath(filename)}
         value={content}
         onChange={handleContentChange}
+        beforeMount={handleBeforeMount}
         onMount={handleEditorMount}
         theme={currentTheme === 'dark' ? 'vercel-dark' : 'vercel-light'}
         options={{
