@@ -467,37 +467,43 @@ export function FileBrowser({
   }, [])
 
   // Drag and drop handlers
-  const handleDragStart = useCallback((e: React.DragEvent, path: string, type: 'file' | 'folder') => {
-    if (viewMode !== 'local' && viewMode !== 'all-local') {
-      e.preventDefault()
-      return
-    }
-    
-    e.stopPropagation() // Prevent folder toggle on drag start
-    setDraggedItem({ path, type })
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', path)
-  }, [viewMode])
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, path: string, type: 'file' | 'folder') => {
+      if (viewMode !== 'local' && viewMode !== 'all-local') {
+        e.preventDefault()
+        return
+      }
+
+      e.stopPropagation() // Prevent folder toggle on drag start
+      setDraggedItem({ path, type })
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', path)
+    },
+    [viewMode],
+  )
 
   const handleDragEnd = useCallback(() => {
     setDraggedItem(null)
     setDropTarget(null)
   }, [])
 
-  const handleDragOver = useCallback((e: React.DragEvent, folderPath: string) => {
-    if (!draggedItem || viewMode !== 'local' && viewMode !== 'all-local') {
-      return
-    }
-    
-    // Don't allow dropping on itself or its children
-    if (draggedItem.path === folderPath || folderPath.startsWith(draggedItem.path + '/')) {
-      return
-    }
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, folderPath: string) => {
+      if (!draggedItem || (viewMode !== 'local' && viewMode !== 'all-local')) {
+        return
+      }
 
-    e.preventDefault()
-    e.stopPropagation()
-    setDropTarget(folderPath)
-  }, [draggedItem, viewMode])
+      // Don't allow dropping on itself or its children
+      if (draggedItem.path === folderPath || folderPath.startsWith(draggedItem.path + '/')) {
+        return
+      }
+
+      e.preventDefault()
+      e.stopPropagation()
+      setDropTarget(folderPath)
+    },
+    [draggedItem, viewMode],
+  )
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -505,77 +511,80 @@ export function FileBrowser({
     setDropTarget(null)
   }, [])
 
-  const handleDrop = useCallback(async (e: React.DragEvent, targetFolderPath: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    if (!draggedItem) return
+  const handleDrop = useCallback(
+    async (e: React.DragEvent, targetFolderPath: string) => {
+      e.preventDefault()
+      e.stopPropagation()
 
-    // Don't allow dropping on itself or its children
-    if (draggedItem.path === targetFolderPath || targetFolderPath.startsWith(draggedItem.path + '/')) {
-      toast.error('Cannot move a folder into itself')
-      setDraggedItem(null)
-      setDropTarget(null)
-      return
-    }
+      if (!draggedItem) return
 
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/file-operation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          operation: 'cut', // Drag and drop is always a move operation
-          sourceFile: draggedItem.path,
-          targetPath: targetFolderPath === '__root__' ? null : targetFolderPath,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to move item')
+      // Don't allow dropping on itself or its children
+      if (draggedItem.path === targetFolderPath || targetFolderPath.startsWith(draggedItem.path + '/')) {
+        toast.error('Cannot move a folder into itself')
+        setDraggedItem(null)
+        setDropTarget(null)
+        return
       }
 
-      toast.success(`${draggedItem.type === 'folder' ? 'Folder' : 'File'} moved successfully`)
-
-      // Refresh the file list in the background
       try {
-        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
-        const fetchResponse = await fetch(url)
-        const fetchResult = await fetchResponse.json()
+        const response = await fetch(`/api/tasks/${taskId}/file-operation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            operation: 'cut', // Drag and drop is always a move operation
+            sourceFile: draggedItem.path,
+            targetPath: targetFolderPath === '__root__' ? null : targetFolderPath,
+          }),
+        })
 
-        if (fetchResult.success) {
-          const fetchedFiles = fetchResult.files || []
-          const fetchedFileTree = fetchResult.fileTree || {}
+        const result = await response.json()
 
-          // Keep the target folder expanded
-          const newExpandedFolders = new Set(currentViewData.expandedFolders)
-          if (targetFolderPath !== '__root__') {
-            newExpandedFolders.add(targetFolderPath)
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to move item')
+        }
+
+        toast.success(`${draggedItem.type === 'folder' ? 'Folder' : 'File'} moved successfully`)
+
+        // Refresh the file list in the background
+        try {
+          const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+          const fetchResponse = await fetch(url)
+          const fetchResult = await fetchResponse.json()
+
+          if (fetchResult.success) {
+            const fetchedFiles = fetchResult.files || []
+            const fetchedFileTree = fetchResult.fileTree || {}
+
+            // Keep the target folder expanded
+            const newExpandedFolders = new Set(currentViewData.expandedFolders)
+            if (targetFolderPath !== '__root__') {
+              newExpandedFolders.add(targetFolderPath)
+            }
+
+            setState({
+              [viewMode]: {
+                files: fetchedFiles,
+                fileTree: fetchedFileTree,
+                expandedFolders: newExpandedFolders,
+                fetchAttempted: true,
+              },
+            })
           }
-
-          setState({
-            [viewMode]: {
-              files: fetchedFiles,
-              fileTree: fetchedFileTree,
-              expandedFolders: newExpandedFolders,
-              fetchAttempted: true,
-            },
-          })
+        } catch (err) {
+          console.error('Error refreshing file list:', err)
         }
       } catch (err) {
-        console.error('Error refreshing file list:', err)
+        console.error('Error moving item:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to move item')
+      } finally {
+        setDraggedItem(null)
+        setDropTarget(null)
       }
-    } catch (err) {
-      console.error('Error moving item:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to move item')
-    } finally {
-      setDraggedItem(null)
-      setDropTarget(null)
-    }
-  }, [draggedItem, taskId, viewMode, currentViewData, setState])
+    },
+    [draggedItem, taskId, viewMode, currentViewData, setState],
+  )
 
   // Keyboard shortcut handler for paste
   useEffect(() => {
@@ -680,21 +689,19 @@ export function FileBrowser({
               } ${isCut || isDragging ? 'opacity-50' : ''} ${isDragging ? 'cursor-move' : 'cursor-pointer'}`}
               onClick={() => onFileSelect?.(node.filename!)}
               onContextMenu={(e) => handleContextMenu(e, node.filename!)}
-              >
-                <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {(viewMode === 'local' || viewMode === 'remote') && (node.additions || node.deletions) && (
-                    <div className="flex items-center gap-1 text-xs">
-                      {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
-                      {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
-                    </div>
-                  )}
-                  {isRemoteMode && (
-                    <Lock className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground/50" />
-                  )}
-                </div>
+            >
+              <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {(viewMode === 'local' || viewMode === 'remote') && (node.additions || node.deletions) && (
+                  <div className="flex items-center gap-1 text-xs">
+                    {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
+                    {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
+                  </div>
+                )}
+                {isRemoteMode && <Lock className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground/50" />}
               </div>
+            </div>
             <DropdownMenuContent>
               {isRemoteMode && (
                 <DropdownMenuItem onClick={() => handleOpenOnGitHub(node.filename!)}>
@@ -791,7 +798,9 @@ export function FileBrowser({
                 size="sm"
                 onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all-local' : 'local')}
                 className={`h-6 px-2 text-xs rounded-sm ${
-                  subMode === 'local' ? 'bg-background shadow-sm hover:bg-background' : 'hover:bg-transparent hover:text-foreground'
+                  subMode === 'local'
+                    ? 'bg-background shadow-sm hover:bg-background'
+                    : 'hover:bg-transparent hover:text-foreground'
                 }`}
               >
                 Sandbox
@@ -801,7 +810,9 @@ export function FileBrowser({
                 size="sm"
                 onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all' : 'remote')}
                 className={`h-6 px-2 text-xs rounded-sm ${
-                  subMode === 'remote' ? 'bg-background shadow-sm hover:bg-background' : 'hover:bg-transparent hover:text-foreground'
+                  subMode === 'remote'
+                    ? 'bg-background shadow-sm hover:bg-background'
+                    : 'hover:bg-transparent hover:text-foreground'
                 }`}
               >
                 Remote
@@ -831,9 +842,7 @@ export function FileBrowser({
             onOpenChange={(open) => !open && setContextMenuFile(null)}
           >
             <div
-              className={`py-2 min-h-full outline-none rounded-sm ${
-                dropTarget === '__root__' ? 'bg-blue-500/10' : ''
-              }`}
+              className={`py-2 min-h-full outline-none rounded-sm ${dropTarget === '__root__' ? 'bg-blue-500/10' : ''}`}
               onContextMenu={(e) => {
                 if ((viewMode === 'local' || viewMode === 'all-local') && e.target === e.currentTarget) {
                   handleContextMenu(e, '__root__')
@@ -936,9 +945,7 @@ export function FileBrowser({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Commit Message</DialogTitle>
-            <DialogDescription>
-              Enter a commit message for this reset operation (optional).
-            </DialogDescription>
+            <DialogDescription>Enter a commit message for this reset operation (optional).</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Label htmlFor="commit-message">Commit Message</Label>

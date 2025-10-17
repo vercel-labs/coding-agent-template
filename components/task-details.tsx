@@ -269,7 +269,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const openFileInTab = (file: string) => {
     const currentTabs = openTabsByMode[viewMode]
     const existingIndex = currentTabs.indexOf(file)
-    
+
     // For Changes mode (local or remote), only show one file at a time (no tabs)
     const isChangesMode = viewMode === 'local' || viewMode === 'remote'
 
