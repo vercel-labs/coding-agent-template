@@ -1042,7 +1042,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Send a follow-up message..."
-            className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-xs"
+            className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-base md:text-xs"
             disabled={isSending}
           />
           {task.status === 'processing' || task.status === 'pending' ? (
