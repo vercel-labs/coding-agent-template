@@ -352,7 +352,7 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
           value={currentCommand}
           onChange={(e) => setCurrentCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent outline-none text-white"
+          className="flex-1 bg-transparent outline-none text-white text-base md:text-xs"
           placeholder="Type a command..."
           autoFocus
         />
