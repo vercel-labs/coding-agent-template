@@ -197,7 +197,7 @@ export function FileDiffViewer({
       }
 
       file.initTheme(mounted ? theme : 'light')
-      
+
       // Wrap file.init() in try-catch to handle diff parsing errors
       try {
         file.init()

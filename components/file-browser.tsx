@@ -177,7 +177,7 @@ export function FileBrowser({
     // Only show loading spinner on initial load (when we have no files yet)
     // For refreshes, update in the background without showing spinner
     const isInitialLoad = files.length === 0 && !fetchAttempted
-    
+
     if (isInitialLoad) {
       setState({ loading: true, error: null })
     }
@@ -245,7 +245,17 @@ export function FileBrowser({
         loading: false,
       })
     }
-  }, [branchName, taskId, onFilesLoaded, viewMode, setState, getAllFolderPaths, files.length, fetchAttempted, expandedFolders])
+  }, [
+    branchName,
+    taskId,
+    onFilesLoaded,
+    viewMode,
+    setState,
+    getAllFolderPaths,
+    files.length,
+    fetchAttempted,
+    expandedFolders,
+  ])
 
   const handleSyncChanges = useCallback(async () => {
     if (isSyncing || !branchName) return
@@ -412,10 +422,12 @@ export function FileBrowser({
     setIsCreatingFile(true)
     try {
       // If a folder is selected, prepend its path to the filename
-      const isSelectedItemFolder = selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
-      const filename = isSelectedItemFolder && !newFileName.includes('/') 
-        ? `${selectedFile}/${newFileName.trim()}`
-        : newFileName.trim()
+      const isSelectedItemFolder =
+        selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
+      const filename =
+        isSelectedItemFolder && !newFileName.includes('/')
+          ? `${selectedFile}/${newFileName.trim()}`
+          : newFileName.trim()
 
       const response = await fetch(`/api/tasks/${taskId}/create-file`, {
         method: 'POST',
@@ -488,10 +500,12 @@ export function FileBrowser({
     setIsCreatingFolder(true)
     try {
       // If a folder is selected, prepend its path to the foldername
-      const isSelectedItemFolder = selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
-      const foldername = isSelectedItemFolder && !newFolderName.includes('/') 
-        ? `${selectedFile}/${newFolderName.trim()}`
-        : newFolderName.trim()
+      const isSelectedItemFolder =
+        selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
+      const foldername =
+        isSelectedItemFolder && !newFolderName.includes('/')
+          ? `${selectedFile}/${newFolderName.trim()}`
+          : newFolderName.trim()
 
       const response = await fetch(`/api/tasks/${taskId}/create-folder`, {
         method: 'POST',
@@ -1156,9 +1170,7 @@ export function FileBrowser({
                     {(node.deletions || 0) > 0 && <span className="text-red-600">-{node.deletions}</span>}
                   </div>
                 )}
-              {viewMode === 'all' && (
-                <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />
-              )}
+              {viewMode === 'all' && <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />}
             </div>
           </div>
         )
@@ -1645,7 +1657,11 @@ export function FileBrowser({
               id="new-file-name"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
-              placeholder={selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/')) ? 'filename.ts' : 'path/to/file.ts'}
+              placeholder={
+                selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
+                  ? 'filename.ts'
+                  : 'path/to/file.ts'
+              }
               className="mt-2"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -1697,7 +1713,11 @@ export function FileBrowser({
               id="new-folder-name"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder={selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/')) ? 'foldername' : 'path/to/folder'}
+              placeholder={
+                selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
+                  ? 'foldername'
+                  : 'path/to/folder'
+              }
               className="mt-2"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {

@@ -302,7 +302,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       try {
         const params = new URLSearchParams()
         params.set('filename', file)
-        
+
         const endpoint =
           viewMode === 'all' || viewMode === 'all-local'
             ? `/api/tasks/${task.id}/file-content`
@@ -311,7 +311,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
         if (viewMode === 'local' || viewMode === 'all-local') {
           params.set('mode', 'local')
         }
-        
+
         const response = await fetch(`${endpoint}?${params.toString()}`)
         const result = await response.json()
 
@@ -319,7 +319,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           // Create a simple hash of the content
           const newContent = result.data.newContent || result.data.oldContent || ''
           const newHash = `${newContent.length}-${newContent.substring(0, 100)}`
-          
+
           if (loadedFileHashes[file] !== newHash) {
             // Content has changed, show toast
             toast.info(`File "${file}" has been updated`, {
