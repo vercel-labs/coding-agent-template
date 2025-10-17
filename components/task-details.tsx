@@ -607,6 +607,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       { value: 'gpt-5-pro', label: 'GPT-5 pro' },
       { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
     ],
+    copilot: [
+      { value: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+      { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+      { value: 'claude-haiku-4.5', label: 'Claude Haiku 4.5' },
+      { value: 'gpt-5', label: 'GPT-5' },
+    ],
     cursor: [
       { value: 'auto', label: 'Auto' },
       { value: 'sonnet-4.5', label: 'Sonnet 4.5' },
