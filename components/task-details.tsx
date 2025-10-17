@@ -1217,24 +1217,28 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 )}
             </>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowTryAgainDialog(true)}
-            className="h-7 w-7 md:h-8 md:w-8 p-0 flex-shrink-0"
-            title="Try Again"
-          >
-            <RotateCcw className="h-3.5 w-3.5 md:h-4 md:w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowDeleteDialog(true)}
-            className="h-7 w-7 md:h-8 md:w-8 p-0 flex-shrink-0"
-            title="Delete Task"
-          >
-            <Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 md:h-8 md:w-8 p-0 flex-shrink-0"
+                title="More options"
+              >
+                <MoreVertical className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Try Again
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Task
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Compact info row */}
@@ -1872,14 +1876,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     <div className="py-2 flex items-center justify-between h-[46px]">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => handleViewModeChange(subMode === 'local' ? 'all-local' : 'all')}
-                          className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
-                            filesPane === 'files' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Files
-                        </button>
-                        <button
                           onClick={() => handleViewModeChange(subMode === 'local' ? 'local' : 'remote')}
                           className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
                             filesPane === 'changes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
@@ -1887,22 +1883,18 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         >
                           Changes
                         </button>
-                      </div>
-
-                      {/* Segment Button for Sandbox/Remote sub-modes */}
-                      <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
-                        <Button
-                          variant={subMode === 'local' ? 'secondary' : 'ghost'}
-                          size="sm"
-                          onClick={() => handleViewModeChange(filesPane === 'files' ? 'all-local' : 'local')}
-                          className={`h-6 px-2 text-xs rounded-sm ${
-                            subMode === 'local'
-                              ? 'bg-background shadow-sm'
-                              : 'hover:bg-transparent hover:text-foreground'
+                        <button
+                          onClick={() => handleViewModeChange(subMode === 'local' ? 'all-local' : 'all')}
+                          className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
+                            filesPane === 'files' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
-                          Sandbox
-                        </Button>
+                          Files
+                        </button>
+                      </div>
+
+                      {/* Segment Button for Remote/Sandbox sub-modes */}
+                      <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
                         <Button
                           variant={subMode === 'remote' ? 'secondary' : 'ghost'}
                           size="sm"
@@ -1914,6 +1906,18 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           }`}
                         >
                           Remote
+                        </Button>
+                        <Button
+                          variant={subMode === 'local' ? 'secondary' : 'ghost'}
+                          size="sm"
+                          onClick={() => handleViewModeChange(filesPane === 'files' ? 'all-local' : 'local')}
+                          className={`h-6 px-2 text-xs rounded-sm ${
+                            subMode === 'local'
+                              ? 'bg-background shadow-sm'
+                              : 'hover:bg-transparent hover:text-foreground'
+                          }`}
+                        >
+                          Sandbox
                         </Button>
                       </div>
                     </div>
