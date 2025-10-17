@@ -210,7 +210,7 @@ export function FileEditor({
   // Define themes before mount to prevent light mode flash
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     console.log('[Editor Before Mount] Defining themes...')
-    
+
     // Define Vercel/Geist dark theme (matching ray-so)
     monaco.editor.defineTheme('vercel-dark', {
       base: 'vs-dark',

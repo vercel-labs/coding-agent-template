@@ -23,6 +23,7 @@ interface ViewModeData {
   fileTree: { [key: string]: FileTreeNode }
   expandedFolders: Set<string>
   fetchAttempted: boolean
+  error: string | null
 }
 
 interface FileBrowserState {
@@ -39,6 +40,7 @@ const emptyViewModeData: ViewModeData = {
   fileTree: {},
   expandedFolders: new Set<string>(),
   fetchAttempted: false,
+  error: null,
 }
 
 const defaultState: FileBrowserState = {

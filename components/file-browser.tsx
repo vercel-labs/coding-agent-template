@@ -97,6 +97,7 @@ export function FileBrowser({
   const [state, setState] = useAtom(taskStateAtom)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [isStartingSandbox, setIsStartingSandbox] = useState(false)
 
   // Clipboard state for cut/copy/paste
   const [clipboardFile, setClipboardFile] = useState<{ filename: string; operation: 'cut' | 'copy' } | null>(null)
@@ -125,9 +126,10 @@ export function FileBrowser({
     fileTree: {},
     expandedFolders: new Set<string>(),
     fetchAttempted: false,
+    error: null,
   }
-  const { files, fileTree, expandedFolders, fetchAttempted } = currentViewData
-  const { loading, error } = state
+  const { files, fileTree, expandedFolders, fetchAttempted, error } = currentViewData
+  const { loading } = state
 
   // Helper function to recursively collect all folder paths
   const getAllFolderPaths = useCallback(function collectPaths(
@@ -178,9 +180,9 @@ export function FileBrowser({
             fileTree: fetchedFileTree,
             expandedFolders: newExpandedFolders,
             fetchAttempted: true,
+            error: null,
           },
           loading: false,
-          error: null,
         })
 
         // Notify parent component with list of filenames
@@ -188,15 +190,20 @@ export function FileBrowser({
           onFilesLoaded(fetchedFiles.map((f: FileChange) => f.filename))
         }
       } else {
+        // Check if the error is due to sandbox not running (410 Gone)
+        const isSandboxNotRunning =
+          response.status === 410 || result.error?.includes('Sandbox is not running') || result.error?.includes('410')
+        const errorMessage = isSandboxNotRunning ? 'SANDBOX_NOT_RUNNING' : result.error || 'Failed to fetch files'
+
         setState({
           [viewMode]: {
             files: [],
             fileTree: {},
             expandedFolders: new Set<string>(),
             fetchAttempted: true,
+            error: errorMessage,
           },
           loading: false,
-          error: result.error || 'Failed to fetch files',
         })
       }
     } catch (err) {
@@ -206,9 +213,9 @@ export function FileBrowser({
           fileTree: {},
           expandedFolders: new Set<string>(),
           fetchAttempted: true,
+          error: 'Failed to fetch branch files',
         },
         loading: false,
-        error: 'Failed to fetch branch files',
       })
     }
   }, [branchName, taskId, onFilesLoaded, viewMode, setState, getAllFolderPaths])
@@ -321,10 +328,30 @@ export function FileBrowser({
     }
   }, [isResetting, branchName, taskId, commitMessage, viewMode, currentViewData, setState])
 
-  // Clear error when switching modes
-  useEffect(() => {
-    setState({ error: null })
-  }, [viewMode, setState])
+  const handleStartSandbox = useCallback(async () => {
+    setIsStartingSandbox(true)
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/start-sandbox`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        toast.success('Sandbox started successfully!')
+        // Refresh the file list after starting
+        setTimeout(() => {
+          fetchBranchFiles()
+        }, 2000)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to start sandbox')
+      }
+    } catch (error) {
+      console.error('Error starting sandbox:', error)
+      toast.error('Failed to start sandbox')
+    } finally {
+      setIsStartingSandbox(false)
+    }
+  }, [taskId, fetchBranchFiles])
 
   useEffect(() => {
     // Only fetch if we don't have files for this viewMode yet AND haven't attempted to fetch
@@ -646,9 +673,6 @@ export function FileBrowser({
                   <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
                 )}
                 <span className="text-xs md:text-sm font-medium truncate">{name}</span>
-                {isRemoteMode && (
-                  <Lock className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground/50 flex-shrink-0 ml-auto" />
-                )}
               </div>
               {isSandboxMode && (
                 <DropdownMenuContent>
@@ -699,7 +723,6 @@ export function FileBrowser({
                     {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
                   </div>
                 )}
-                {isRemoteMode && <Lock className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground/50" />}
               </div>
             </div>
             <DropdownMenuContent>
@@ -823,18 +846,40 @@ export function FileBrowser({
       )}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-3 md:p-4 flex items-center justify-center">
+          <div className="h-full flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-destructive">{error}</div>
+          error === 'SANDBOX_NOT_RUNNING' ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="text-sm text-muted-foreground">Sandbox is not running</div>
+                <Button size="sm" onClick={handleStartSandbox} disabled={isStartingSandbox}>
+                  {isStartingSandbox ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                      Starting...
+                    </>
+                  ) : (
+                    'Start Sandbox'
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-xs md:text-sm text-destructive">{error}</div>
+            </div>
+          )
         ) : files.length === 0 ? (
-          <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">
-            {viewMode === 'local'
-              ? 'No changes in sandbox'
-              : viewMode === 'remote'
-                ? 'No changes in PR'
-                : 'No files found'}
+          <div className="h-full flex items-center justify-center">
+            <div className="text-xs md:text-sm text-muted-foreground">
+              {viewMode === 'local'
+                ? 'No changes in sandbox'
+                : viewMode === 'remote'
+                  ? 'No changes in PR'
+                  : 'No files found'}
+            </div>
           </div>
         ) : (
           <DropdownMenu

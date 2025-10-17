@@ -208,7 +208,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.error('Error fetching local changes from sandbox:', error)
 
         // Check if it's a 410 error (sandbox not running)
-        if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
+        // The error might have status in different places depending on how it was thrown
+        const is410Error =
+          (error && typeof error === 'object' && 'status' in error && error.status === 410) ||
+          (error && typeof error === 'object' && 'response' in error && 
+           typeof error.response === 'object' && error.response !== null &&
+           'status' in error.response && (error.response as any).status === 410) ||
+          (error instanceof Error && (error.message.includes('410') || error.message.includes('stopped')))
+
+        if (is410Error) {
+          // Clear sandbox info from database since it's no longer running
+          try {
+            await db
+              .update(tasks)
+              .set({
+                sandboxId: null,
+                sandboxUrl: null,
+              })
+              .where(eq(tasks.id, taskId))
+            console.log('Cleared sandbox info from task due to 410 error')
+
+            // Also remove from registry
+            const { removeSandbox } = await import('@/lib/sandbox/sandbox-registry')
+            removeSandbox(taskId)
+            console.log('Removed sandbox from registry')
+          } catch (dbError) {
+            console.error('Error clearing sandbox info from database:', dbError)
+          }
+
           return NextResponse.json(
             {
               success: false,
@@ -327,7 +354,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.error('Error fetching local files from sandbox:', error)
 
         // Check if it's a 410 error (sandbox not running)
-        if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
+        // The error might have status in different places depending on how it was thrown
+        const is410Error =
+          (error && typeof error === 'object' && 'status' in error && error.status === 410) ||
+          (error && typeof error === 'object' && 'response' in error && 
+           typeof error.response === 'object' && error.response !== null &&
+           'status' in error.response && (error.response as any).status === 410) ||
+          (error instanceof Error && (error.message.includes('410') || error.message.includes('stopped')))
+
+        if (is410Error) {
+          // Clear sandbox info from database since it's no longer running
+          try {
+            await db
+              .update(tasks)
+              .set({
+                sandboxId: null,
+                sandboxUrl: null,
+              })
+              .where(eq(tasks.id, taskId))
+            console.log('Cleared sandbox info from task due to 410 error')
+
+            // Also remove from registry
+            const { removeSandbox } = await import('@/lib/sandbox/sandbox-registry')
+            removeSandbox(taskId)
+            console.log('Removed sandbox from registry')
+          } catch (dbError) {
+            console.error('Error clearing sandbox info from database:', dbError)
+          }
+
           return NextResponse.json(
             {
               success: false,
