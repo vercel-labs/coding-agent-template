@@ -322,7 +322,7 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
       </div>
 
       {/* Terminal input */}
-      <div className="border-t border-gray-700 p-2 flex items-center gap-2">
+      <div className="border-t p-2 flex items-center gap-2">
         <div className="w-[8px] flex items-center justify-center shrink-0">
           {isAutocompleting || isExecuting ? (
             <div className="grid grid-cols-2 gap-[1px]">

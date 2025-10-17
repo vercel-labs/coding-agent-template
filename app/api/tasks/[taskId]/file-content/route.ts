@@ -148,6 +148,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { taskId } = await params
     const searchParams = request.nextUrl.searchParams
     const rawFilename = searchParams.get('filename')
+    const mode = searchParams.get('mode') || 'remote' // 'local' or 'remote'
 
     if (!rawFilename) {
       return NextResponse.json({ error: 'Missing filename parameter' }, { status: 400 })
@@ -213,111 +214,185 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Check if this is a node_modules file - always read from sandbox
       const isNodeModulesFile = filename.includes('/node_modules/')
 
-      let content = ''
+      let oldContent = ''
+      let newContent = ''
       let isBase64 = false
+      let fileFound = false
 
-      // For node_modules files, read directly from sandbox (they're not in GitHub)
-      if (isNodeModulesFile && task.sandboxId) {
-        try {
-          const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
-          const { Sandbox } = await import('@vercel/sandbox')
+      // For mode='local', we need both remote (old) and sandbox (new) versions
+      if (mode === 'local') {
+        // Get old content from GitHub (remote branch)
+        if (!isNodeModulesFile) {
+          const remoteResult = await getFileContent(octokit, owner, repo, filename, task.branchName, isImage)
+          oldContent = remoteResult.content
+          isBase64 = remoteResult.isBase64
+        }
 
-          let sandbox = getSandbox(taskId)
+        // Get new content from sandbox (local)
+        if (task.sandboxId) {
+          try {
+            const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+            const { Sandbox } = await import('@vercel/sandbox')
 
-          // Try to reconnect if not in registry
-          if (!sandbox) {
-            const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
-            const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
-            const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+            let sandbox = getSandbox(taskId)
 
-            if (sandboxToken && teamId && projectId) {
-              sandbox = await Sandbox.get({
-                sandboxId: task.sandboxId,
-                teamId,
-                projectId,
-                token: sandboxToken,
-              })
+            // Try to reconnect if not in registry
+            if (!sandbox) {
+              const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+              const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+              const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+              if (sandboxToken && teamId && projectId) {
+                sandbox = await Sandbox.get({
+                  sandboxId: task.sandboxId,
+                  teamId,
+                  projectId,
+                  token: sandboxToken,
+                })
+              }
             }
-          }
 
-          if (sandbox) {
-            // Read file from sandbox
-            const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
-            const catResult = await sandbox.runCommand('cat', [normalizedPath])
+            if (sandbox) {
+              // Read file from sandbox
+              const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
+              const catResult = await sandbox.runCommand('cat', [normalizedPath])
 
-            if (catResult.exitCode === 0) {
-              content = await catResult.stdout()
-              console.log('node_modules file read from sandbox:', filename)
-            } else {
-              console.error('Failed to read node_modules file from sandbox:', filename)
+              if (catResult.exitCode === 0) {
+                newContent = await catResult.stdout()
+                fileFound = true
+                console.log('File read from sandbox:', filename)
+              }
             }
+          } catch (sandboxError) {
+            console.error('Error reading from sandbox:', sandboxError)
           }
-        } catch (sandboxError) {
-          console.error('Error reading node_modules file from sandbox:', sandboxError)
+        }
+
+        if (!fileFound) {
+          return NextResponse.json(
+            {
+              error: 'File not found in sandbox',
+            },
+            { status: 404 },
+          )
         }
       } else {
-        // For regular files, try GitHub first
-        const result = await getFileContent(octokit, owner, repo, filename, task.branchName, isImage)
-        content = result.content
-        isBase64 = result.isBase64
-      }
+        // For mode='remote' (default), behave as before
+        let content = ''
 
-      // If file not found in GitHub and we have a sandbox, try reading from sandbox (fallback for new files)
-      if (!content && !isImage && !isNodeModulesFile && task.sandboxId) {
-        try {
-          const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
-          const { Sandbox } = await import('@vercel/sandbox')
+        // For node_modules files, read directly from sandbox (they're not in GitHub)
+        if (isNodeModulesFile && task.sandboxId) {
+          try {
+            const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+            const { Sandbox } = await import('@vercel/sandbox')
 
-          let sandbox = getSandbox(taskId)
+            let sandbox = getSandbox(taskId)
 
-          // Try to reconnect if not in registry
-          if (!sandbox) {
-            const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
-            const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
-            const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+            // Try to reconnect if not in registry
+            if (!sandbox) {
+              const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+              const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+              const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
 
-            if (sandboxToken && teamId && projectId) {
-              sandbox = await Sandbox.get({
-                sandboxId: task.sandboxId,
-                teamId,
-                projectId,
-                token: sandboxToken,
-              })
+              if (sandboxToken && teamId && projectId) {
+                sandbox = await Sandbox.get({
+                  sandboxId: task.sandboxId,
+                  teamId,
+                  projectId,
+                  token: sandboxToken,
+                })
+              }
             }
-          }
 
-          if (sandbox) {
-            // Read file from sandbox
-            const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
-            const catResult = await sandbox.runCommand('cat', [normalizedPath])
+            if (sandbox) {
+              // Read file from sandbox
+              const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
+              const catResult = await sandbox.runCommand('cat', [normalizedPath])
 
-            if (catResult.exitCode === 0) {
-              content = await catResult.stdout()
-              console.log('File read from sandbox:', filename)
+              if (catResult.exitCode === 0) {
+                content = await catResult.stdout()
+                fileFound = true
+                console.log('node_modules file read from sandbox:', filename)
+              } else {
+                console.error('Failed to read node_modules file from sandbox:', filename)
+              }
             }
+          } catch (sandboxError) {
+            console.error('Error reading node_modules file from sandbox:', sandboxError)
           }
-        } catch (sandboxError) {
-          console.error('Error reading from sandbox:', sandboxError)
-          // Continue to return 404 below
+        } else {
+          // For regular files, try GitHub first
+          const result = await getFileContent(octokit, owner, repo, filename, task.branchName, isImage)
+          content = result.content
+          isBase64 = result.isBase64
+          // If we got content from GitHub, mark as found
+          if (content || isImage) {
+            fileFound = true
+          }
         }
+
+        // If file not found in GitHub and we have a sandbox, try reading from sandbox (fallback for new files)
+        if (!fileFound && !isImage && !isNodeModulesFile && task.sandboxId) {
+          try {
+            const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+            const { Sandbox } = await import('@vercel/sandbox')
+
+            let sandbox = getSandbox(taskId)
+
+            // Try to reconnect if not in registry
+            if (!sandbox) {
+              const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+              const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+              const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+              if (sandboxToken && teamId && projectId) {
+                sandbox = await Sandbox.get({
+                  sandboxId: task.sandboxId,
+                  teamId,
+                  projectId,
+                  token: sandboxToken,
+                })
+              }
+            }
+
+            if (sandbox) {
+              // Read file from sandbox
+              const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
+              const catResult = await sandbox.runCommand('cat', [normalizedPath])
+
+              if (catResult.exitCode === 0) {
+                content = await catResult.stdout()
+                fileFound = true
+                console.log('File read from sandbox:', filename)
+              }
+            }
+          } catch (sandboxError) {
+            console.error('Error reading from sandbox:', sandboxError)
+            // Continue to return 404 below
+          }
+        }
+
+        if (!fileFound && !isImage) {
+          return NextResponse.json(
+            {
+              error: 'File not found in branch',
+            },
+            { status: 404 },
+          )
+        }
+
+        // Set old and new content for remote mode
+        oldContent = ''
+        newContent = content
       }
 
-      if (!content && !isImage) {
-        return NextResponse.json(
-          {
-            error: 'File not found in branch',
-          },
-          { status: 404 },
-        )
-      }
-
-      // Return file content with empty oldContent (so it shows as a full file, not a diff)
+      // Return file content with appropriate oldContent and newContent
       return NextResponse.json({
         success: true,
         data: {
           filename,
-          oldContent: '', // Empty old content means it will show as a new file (all additions)
-          newContent: content,
+          oldContent,
+          newContent,
           language: getLanguageFromFilename(filename),
           isBinary: false,
           isImage,

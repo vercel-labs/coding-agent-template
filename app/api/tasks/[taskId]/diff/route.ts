@@ -203,28 +203,43 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           return NextResponse.json({ error: 'Sandbox not found or inactive' }, { status: 400 })
         }
 
-        // Get the diff for this specific file
-        const diffResult = await sandbox.runCommand('git', ['diff', 'HEAD', filename])
+        console.log('Getting local diff for file:', filename)
 
-        if (diffResult.exitCode !== 0) {
-          console.error('Failed to get local diff')
-          return NextResponse.json({ error: 'Failed to get local diff' }, { status: 500 })
-        }
+        // Fetch latest from remote to ensure we have up-to-date remote refs
+        console.log('Fetching from remote branch:', task.branchName)
+        const fetchResult = await sandbox.runCommand('git', ['fetch', 'origin', task.branchName])
+        
+        // Check if remote branch actually exists (even if fetch succeeds, the branch might not exist)
+        const remoteBranchRef = `origin/${task.branchName}`
+        const checkRemoteResult = await sandbox.runCommand('git', ['rev-parse', '--verify', remoteBranchRef])
+        const remoteBranchExists = checkRemoteResult.exitCode === 0
+        
+        console.log('Remote branch exists:', remoteBranchExists)
 
-        const diffOutput = await diffResult.stdout()
+        if (!remoteBranchExists) {
+          // Remote branch doesn't exist yet, compare against HEAD (local changes only)
+          console.log('Remote branch not found, comparing against local HEAD instead')
+          
+          // Get old content (HEAD version)
+          const oldContentResult = await sandbox.runCommand('git', ['show', `HEAD:${filename}`])
+          let oldContent = ''
+          if (oldContentResult.exitCode === 0) {
+            oldContent = await oldContentResult.stdout()
+          } else {
+            // File might not exist in HEAD (new file)
+            console.log('File not found in HEAD, assuming new file:', filename)
+          }
 
-        // If no diff output, file hasn't changed
-        if (!diffOutput.trim()) {
-          // Get the current file content
-          const catResult = await sandbox.runCommand('cat', [filename])
-          const content = catResult.exitCode === 0 ? await catResult.stdout() : ''
+          // Get new content (working directory version)
+          const newContentResult = await sandbox.runCommand('cat', [filename])
+          const newContent = newContentResult.exitCode === 0 ? await newContentResult.stdout() : ''
 
           return NextResponse.json({
             success: true,
             data: {
               filename,
-              oldContent: content,
-              newContent: content,
+              oldContent,
+              newContent,
               language: getLanguageFromFilename(filename),
               isBinary: false,
               isImage: false,
@@ -232,13 +247,35 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           })
         }
 
-        // Get old content (HEAD version)
-        const oldContentResult = await sandbox.runCommand('git', ['show', `HEAD:${filename}`])
-        const oldContent = oldContentResult.exitCode === 0 ? await oldContentResult.stdout() : ''
+        // Compare working directory against remote branch
+        // This shows all uncommitted AND unpushed changes
+        console.log('Comparing against remote branch:', remoteBranchRef)
+        const diffResult = await sandbox.runCommand('git', ['diff', remoteBranchRef, filename])
+
+        if (diffResult.exitCode !== 0) {
+          const diffError = await diffResult.stderr()
+          console.error('Failed to get local diff:', diffError)
+          return NextResponse.json({ error: 'Failed to get local diff' }, { status: 500 })
+        }
+
+        const diffOutput = await diffResult.stdout()
+        console.log('Diff output length:', diffOutput.length)
+
+        // Get old content (remote branch version)
+        const oldContentResult = await sandbox.runCommand('git', ['show', `${remoteBranchRef}:${filename}`])
+        let oldContent = ''
+        if (oldContentResult.exitCode === 0) {
+          oldContent = await oldContentResult.stdout()
+        } else {
+          // File might not exist on remote (new file)
+          console.log('File not found on remote branch, assuming new file:', filename)
+        }
 
         // Get new content (working directory version)
         const newContentResult = await sandbox.runCommand('cat', [filename])
         const newContent = newContentResult.exitCode === 0 ? await newContentResult.stdout() : ''
+        
+        console.log('Old content length:', oldContent.length, 'New content length:', newContent.length)
 
         return NextResponse.json({
           success: true,

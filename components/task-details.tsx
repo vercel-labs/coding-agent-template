@@ -318,6 +318,14 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     })
   }, [])
 
+  const handleSaveSuccess = useCallback(() => {
+    // When a file is saved in 'all-local' mode, refresh the file browser
+    // to update file status (show modified files in yellow)
+    if (viewMode === 'all-local') {
+      setRefreshKey((prev) => prev + 1)
+    }
+  }, [viewMode])
+
   const attemptCloseTab = (index: number, e?: React.MouseEvent) => {
     e?.stopPropagation()
     const currentTabs = openTabsByMode[viewMode]
@@ -1487,7 +1495,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         {openTabs.map((filename, index) => {
                           const hasUnsavedChanges = tabsWithUnsavedChanges.has(filename)
                           const isSaving = tabsSaving.has(filename)
-                          const modeSuffix = viewMode === 'all-local' ? ' (Sandbox)' : ''
                           const tabKey = `${viewMode}-${index}`
                           return (
                             <button
@@ -1506,7 +1513,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                               <FileText className="h-3.5 w-3.5 flex-shrink-0" />
                               <span className="truncate flex-1">
                                 {filename.split('/').pop()}
-                                {modeSuffix}
                               </span>
                               <span
                                 onClick={(e) => attemptCloseTab(index, e)}
@@ -1613,6 +1619,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         openFileInTab(filename)
                         // TODO: Optionally scroll to lineNumber after opening
                       }}
+                      onSaveSuccess={handleSaveSuccess}
                     />
                   </div>
                 </div>
@@ -1778,6 +1785,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           openFileInTab(filename)
                           // TODO: Optionally scroll to lineNumber after opening
                         }}
+                        onSaveSuccess={handleSaveSuccess}
                       />
                     </div>
                   </div>
@@ -2113,8 +2121,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     const filename = currentTabs[tabToClose]
                     if (!filename) return 'this file'
                     const shortName = filename.split('/').pop()
-                    const suffix = viewMode === 'local' ? ' (Local)' : viewMode === 'remote' ? ' (Remote)' : ''
-                    return `${shortName}${suffix}`
+                    return shortName
                   })()
                 : 'this file'}
               ?

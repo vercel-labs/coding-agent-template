@@ -15,6 +15,9 @@ import {
   Clipboard,
   Lock,
   RotateCcw,
+  FilePlus,
+  FolderPlus,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAtom } from 'jotai'
@@ -111,8 +114,19 @@ export function FileBrowser({
 
   // Dialog state
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showSyncDialog, setShowSyncDialog] = useState(false)
+  const [syncCommitMessage, setSyncCommitMessage] = useState('')
   const [showCommitMessageDialog, setShowCommitMessageDialog] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
+  const [showNewFileDialog, setShowNewFileDialog] = useState(false)
+  const [showNewFolderDialog, setShowNewFolderDialog] = useState(false)
+  const [newFileName, setNewFileName] = useState('')
+  const [newFolderName, setNewFolderName] = useState('')
+  const [isCreatingFile, setIsCreatingFile] = useState(false)
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Detect OS for keyboard shortcuts
   const isMac = useMemo(() => {
@@ -224,10 +238,17 @@ export function FileBrowser({
     if (isSyncing || !branchName) return
 
     setIsSyncing(true)
+    setShowSyncDialog(false)
 
     try {
       const response = await fetch(`/api/tasks/${taskId}/sync-changes`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          commitMessage: syncCommitMessage || 'Sync local changes',
+        }),
       })
 
       const result = await response.json()
@@ -237,6 +258,7 @@ export function FileBrowser({
       }
 
       toast.success('Changes synced successfully')
+      setSyncCommitMessage('')
 
       // Refresh the file list in the background without showing loader
       try {
@@ -268,7 +290,7 @@ export function FileBrowser({
     } finally {
       setIsSyncing(false)
     }
-  }, [isSyncing, branchName, taskId, viewMode, currentViewData, setState])
+  }, [isSyncing, branchName, taskId, syncCommitMessage, viewMode, currentViewData, setState])
 
   const handleResetChanges = useCallback(async () => {
     if (isResetting || !branchName) return
@@ -336,11 +358,26 @@ export function FileBrowser({
       })
 
       if (response.ok) {
-        toast.success('Sandbox started successfully!')
-        // Refresh the file list after starting
-        setTimeout(() => {
-          fetchBranchFiles()
-        }, 2000)
+        toast.success('Sandbox started! Loading files...')
+        
+        // Clear the error state immediately
+        setState({
+          [viewMode]: {
+            files: [],
+            fileTree: {},
+            expandedFolders: new Set<string>(),
+            fetchAttempted: false,
+            error: null,
+          },
+          loading: true,
+        })
+        
+        // Wait for sandbox to be ready and useTask to poll the updated task data
+        // useTask polls every 5 seconds, so wait ~6 seconds to ensure we have latest data
+        await new Promise((resolve) => setTimeout(resolve, 6000))
+        
+        // Now fetch the files with the updated task data
+        await fetchBranchFiles()
       } else {
         const error = await response.json()
         toast.error(error.error || 'Failed to start sandbox')
@@ -351,7 +388,196 @@ export function FileBrowser({
     } finally {
       setIsStartingSandbox(false)
     }
-  }, [taskId, fetchBranchFiles])
+  }, [taskId, viewMode, setState, fetchBranchFiles])
+
+  const handleCreateFile = useCallback(async () => {
+    if (!newFileName.trim()) {
+      toast.error('Please enter a file name')
+      return
+    }
+
+    setIsCreatingFile(true)
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/create-file`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: newFileName.trim(),
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create file')
+      }
+
+      toast.success('File created successfully')
+      setShowNewFileDialog(false)
+      setNewFileName('')
+
+      // Refresh the file list
+      try {
+        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+        const fetchResponse = await fetch(url)
+        const fetchResult = await fetchResponse.json()
+
+        if (fetchResult.success) {
+          const fetchedFiles = fetchResult.files || []
+          const fetchedFileTree = fetchResult.fileTree || {}
+
+          setState({
+            [viewMode]: {
+              files: fetchedFiles,
+              fileTree: fetchedFileTree,
+              expandedFolders: currentViewData.expandedFolders,
+              fetchAttempted: true,
+            },
+          })
+
+          // Select the newly created file
+          if (onFileSelect) {
+            onFileSelect(newFileName.trim())
+          }
+        }
+      } catch (err) {
+        console.error('Error refreshing file list:', err)
+      }
+    } catch (err) {
+      console.error('Error creating file:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to create file')
+    } finally {
+      setIsCreatingFile(false)
+    }
+  }, [newFileName, taskId, viewMode, currentViewData, setState, onFileSelect])
+
+  const handleCreateFolder = useCallback(async () => {
+    if (!newFolderName.trim()) {
+      toast.error('Please enter a folder name')
+      return
+    }
+
+    setIsCreatingFolder(true)
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/create-folder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          foldername: newFolderName.trim(),
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create folder')
+      }
+
+      toast.success('Folder created successfully')
+      setShowNewFolderDialog(false)
+      setNewFolderName('')
+
+      // Refresh the file list
+      try {
+        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+        const fetchResponse = await fetch(url)
+        const fetchResult = await fetchResponse.json()
+
+        if (fetchResult.success) {
+          const fetchedFiles = fetchResult.files || []
+          const fetchedFileTree = fetchResult.fileTree || {}
+
+          // Expand the parent folder if the new folder is nested
+          const newExpandedFolders = new Set(currentViewData.expandedFolders)
+          const parentPath = newFolderName.trim().split('/').slice(0, -1).join('/')
+          if (parentPath) {
+            newExpandedFolders.add(parentPath)
+          }
+
+          setState({
+            [viewMode]: {
+              files: fetchedFiles,
+              fileTree: fetchedFileTree,
+              expandedFolders: newExpandedFolders,
+              fetchAttempted: true,
+            },
+          })
+        }
+      } catch (err) {
+        console.error('Error refreshing file list:', err)
+      }
+    } catch (err) {
+      console.error('Error creating folder:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to create folder')
+    } finally {
+      setIsCreatingFolder(false)
+    }
+  }, [newFolderName, taskId, viewMode, currentViewData, setState])
+
+  const handleDelete = useCallback(
+    async (filename: string) => {
+      if (!filename) {
+        toast.error('No file selected for deletion')
+        return
+      }
+
+      setIsDeleting(true)
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/delete-file`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filename,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to delete file')
+        }
+
+        toast.success('File deleted successfully')
+        setShowDeleteConfirm(false)
+        setFileToDelete(null)
+
+        // Refresh the file list
+        try {
+          const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+          const fetchResponse = await fetch(url)
+          const fetchResult = await fetchResponse.json()
+
+          if (fetchResult.success) {
+            const fetchedFiles = fetchResult.files || []
+            const fetchedFileTree = fetchResult.fileTree || {}
+
+            setState({
+              [viewMode]: {
+                files: fetchedFiles,
+                fileTree: fetchedFileTree,
+                expandedFolders: currentViewData.expandedFolders,
+                fetchAttempted: true,
+              },
+            })
+          }
+        } catch (err) {
+          console.error('Error refreshing file list:', err)
+        }
+      } catch (err) {
+        console.error('Error deleting file:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to delete file')
+      } finally {
+        setIsDeleting(false)
+      }
+    },
+    [taskId, viewMode, currentViewData, setState],
+  )
 
   useEffect(() => {
     // Only fetch if we don't have files for this viewMode yet AND haven't attempted to fetch
@@ -654,26 +880,33 @@ export function FileBrowser({
         return (
           <div key={fullPath}>
             <DropdownMenu open={isFolderContextMenuOpen} onOpenChange={(open) => !open && setContextMenuFile(null)}>
-              <div
-                draggable={isSandboxMode}
-                onDragStart={(e) => handleDragStart(e, fullPath, 'folder')}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, fullPath)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, fullPath)}
-                className={`flex items-center gap-2 px-2 md:px-3 py-1.5 hover:bg-card/50 rounded-sm ${
-                  isDropTarget ? 'bg-blue-500/20' : ''
-                } ${isDragging ? 'opacity-50 cursor-move' : 'cursor-pointer'}`}
-                onClick={() => toggleFolder(fullPath)}
-                onContextMenu={(e) => handleContextMenu(e, fullPath)}
-              >
-                {isExpanded ? (
-                  <FolderOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
-                ) : (
-                  <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
-                )}
+              <DropdownMenuTrigger asChild>
+                <div
+                  draggable={isSandboxMode}
+                  onDragStart={(e) => handleDragStart(e, fullPath, 'folder')}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, fullPath)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, fullPath)}
+                  className={`flex items-center gap-2 px-2 md:px-3 py-1.5 hover:bg-card/50 rounded-sm ${
+                    isDropTarget ? 'bg-blue-500/20' : ''
+                  } ${isDragging ? 'opacity-50 cursor-move' : 'cursor-pointer'}`}
+                  onClick={() => toggleFolder(fullPath)}
+                  onContextMenu={(e) => handleContextMenu(e, fullPath)}
+                >
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {isExpanded ? (
+                    <FolderOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+                  ) : (
+                    <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+                  )}
+                  {viewMode === 'all' && (
+                    <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />
+                  )}
+                </div>
                 <span className="text-xs md:text-sm font-medium truncate">{name}</span>
               </div>
+              </DropdownMenuTrigger>
               {isSandboxMode && (
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={() => handlePaste(fullPath)} disabled={!clipboardFile}>
@@ -704,27 +937,44 @@ export function FileBrowser({
             open={isContextMenuOpen}
             onOpenChange={(open) => !open && setContextMenuFile(null)}
           >
-            <div
-              draggable={isSandboxMode}
-              onDragStart={(e) => handleDragStart(e, node.filename!, 'file')}
-              onDragEnd={handleDragEnd}
-              className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-sm ${
-                isSelected ? 'bg-card' : 'hover:bg-card/50'
-              } ${isCut || isDragging ? 'opacity-50' : ''} ${isDragging ? 'cursor-move' : 'cursor-pointer'}`}
-              onClick={() => onFileSelect?.(node.filename!)}
-              onContextMenu={(e) => handleContextMenu(e, node.filename!)}
-            >
-              <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
+            <DropdownMenuTrigger asChild>
+              <div
+                draggable={isSandboxMode}
+                onDragStart={(e) => handleDragStart(e, node.filename!, 'file')}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-sm ${
+                  isSelected ? 'bg-card' : 'hover:bg-card/50'
+                } ${isCut || isDragging ? 'opacity-50' : ''} ${isDragging ? 'cursor-move' : 'cursor-pointer'}`}
+                onClick={() => onFileSelect?.(node.filename!)}
+                onContextMenu={(e) => handleContextMenu(e, node.filename!)}
+              >
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
+                {viewMode === 'all' && (
+                  <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />
+                )}
+              </div>
+              <span 
+                className={`text-xs md:text-sm flex-1 truncate ${
+                  viewMode === 'all-local' && node.status === 'added' 
+                    ? 'text-green-600' 
+                    : viewMode === 'all-local' && node.status === 'modified'
+                    ? 'text-yellow-600'
+                    : ''
+                }`}
+              >
+                {name}
+              </span>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                {(viewMode === 'local' || viewMode === 'remote') && (node.additions || node.deletions) && (
+                {(viewMode === 'local' || viewMode === 'remote') && (((node.additions || 0) > 0) || ((node.deletions || 0) > 0)) && (
                   <div className="flex items-center gap-1 text-xs">
-                    {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
-                    {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
+                    {(node.additions || 0) > 0 && <span className="text-green-600">+{node.additions}</span>}
+                    {(node.deletions || 0) > 0 && <span className="text-red-600">-{node.deletions}</span>}
                   </div>
                 )}
               </div>
             </div>
+            </DropdownMenuTrigger>
             <DropdownMenuContent>
               {isRemoteMode && (
                 <DropdownMenuItem onClick={() => handleOpenOnGitHub(node.filename!)}>
@@ -746,6 +996,16 @@ export function FileBrowser({
                     <Clipboard className="w-4 h-4 mr-2" />
                     Paste
                     <DropdownMenuShortcut>{isMac ? '⌘V' : 'Ctrl+V'}</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setFileToDelete(node.filename!)
+                      setShowDeleteConfirm(true)
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
                   </DropdownMenuItem>
                 </>
               )}
@@ -814,32 +1074,84 @@ export function FileBrowser({
               </button>
             </div>
 
-            {/* Segment Button for Remote/Sandbox sub-modes */}
-            <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
-              <Button
-                variant={subMode === 'remote' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all' : 'remote')}
-                className={`h-6 px-2 text-xs rounded-sm ${
-                  subMode === 'remote'
-                    ? 'bg-background shadow-sm hover:bg-background'
-                    : 'hover:bg-transparent hover:text-foreground'
-                }`}
-              >
-                Remote
-              </Button>
-              <Button
-                variant={subMode === 'local' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all-local' : 'local')}
-                className={`h-6 px-2 text-xs rounded-sm ${
-                  subMode === 'local'
-                    ? 'bg-background shadow-sm hover:bg-background'
-                    : 'hover:bg-transparent hover:text-foreground'
-                }`}
-              >
-                Sandbox
-              </Button>
+            {/* Action Buttons and Segment Button */}
+            <div className="flex items-center gap-2">
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1">
+                {/* Show New File/Folder buttons only in Files > Sandbox mode */}
+                {viewMode === 'all-local' && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowNewFileDialog(true)}
+                      disabled={loading}
+                      className="h-6 w-6 p-0"
+                      title="New File"
+                    >
+                      <FilePlus className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowNewFolderDialog(true)}
+                      disabled={loading}
+                      className="h-6 w-6 p-0"
+                      title="New Folder"
+                    >
+                      <FolderPlus className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+                {/* Refresh Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    // Reset fetchAttempted to force refetch
+                    setState({
+                      [viewMode]: {
+                        ...currentViewData,
+                        fetchAttempted: false,
+                      },
+                    })
+                    fetchBranchFiles()
+                  }}
+                  disabled={loading}
+                  className="h-6 w-6 p-0"
+                  title="Refresh"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              
+              {/* Segment Button for Remote/Sandbox sub-modes */}
+              <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+                <Button
+                  variant={subMode === 'remote' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all' : 'remote')}
+                  className={`h-6 px-2 text-xs rounded-sm ${
+                    subMode === 'remote'
+                      ? 'bg-background shadow-sm hover:bg-background'
+                      : 'hover:bg-transparent hover:text-foreground'
+                  }`}
+                >
+                  Remote
+                </Button>
+                <Button
+                  variant={subMode === 'local' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all-local' : 'local')}
+                  className={`h-6 px-2 text-xs rounded-sm ${
+                    subMode === 'local'
+                      ? 'bg-background shadow-sm hover:bg-background'
+                      : 'hover:bg-transparent hover:text-foreground'
+                  }`}
+                >
+                  Sandbox
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -920,11 +1232,11 @@ export function FileBrowser({
 
       {/* Sync and Reset buttons for Sandbox Changes - positioned at bottom */}
       {viewMode === 'local' && files.length > 0 && (
-        <div className="p-2 border-t flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0">
           <Button
             size="sm"
             variant="outline"
-            onClick={handleSyncChanges}
+            onClick={() => setShowSyncDialog(true)}
             disabled={isSyncing || isResetting}
             className="flex-1 text-xs"
           >
@@ -962,6 +1274,54 @@ export function FileBrowser({
         </div>
       )}
 
+      {/* Sync Changes Dialog */}
+      <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sync Changes</DialogTitle>
+            <DialogDescription>Enter a commit message for syncing your changes to the remote branch.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="sync-commit-message">Commit Message</Label>
+            <Input
+              id="sync-commit-message"
+              value={syncCommitMessage}
+              onChange={(e) => setSyncCommitMessage(e.target.value)}
+              placeholder="Sync local changes"
+              className="mt-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSyncChanges()
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSyncDialog(false)
+                setSyncCommitMessage('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSyncChanges} disabled={isSyncing}>
+              {isSyncing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                'Sync Changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Reset Confirmation Dialog */}
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
         <AlertDialogContent>
@@ -976,7 +1336,7 @@ export function FileBrowser({
             <AlertDialogAction
               onClick={() => {
                 setShowResetConfirm(false)
-                setShowCommitMessageDialog(true)
+                handleResetChanges()
               }}
             >
               Continue
@@ -1031,6 +1391,142 @@ export function FileBrowser({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* New File Dialog */}
+      <Dialog open={showNewFileDialog} onOpenChange={setShowNewFileDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New File</DialogTitle>
+            <DialogDescription>Enter the name for the new file (e.g., src/utils/helper.ts).</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="new-file-name">File Name</Label>
+            <Input
+              id="new-file-name"
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="path/to/file.ts"
+              className="mt-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleCreateFile()
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowNewFileDialog(false)
+                setNewFileName('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateFile} disabled={isCreatingFile || !newFileName.trim()}>
+              {isCreatingFile ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create File'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Folder Dialog */}
+      <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription>Enter the name for the new folder (e.g., src/components).</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="new-folder-name">Folder Name</Label>
+            <Input
+              id="new-folder-name"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="path/to/folder"
+              className="mt-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleCreateFolder()
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowNewFolderDialog(false)
+                setNewFolderName('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateFolder} disabled={isCreatingFolder || !newFolderName.trim()}>
+              {isCreatingFolder ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Folder'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete File?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{fileToDelete}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                setFileToDelete(null)
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (fileToDelete) {
+                  handleDelete(fileToDelete)
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 
-export async function POST(_request: Request, { params }: { params: Promise<{ taskId: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
     if (!session?.user?.id) {
@@ -12,6 +12,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ta
     }
 
     const { taskId } = await params
+    const body = await request.json().catch(() => ({}))
+    const { commitMessage } = body
 
     // Get task from database and verify ownership (exclude soft-deleted)
     const [task] = await db
@@ -91,7 +93,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ ta
 
     // Step 3: Commit changes
     console.log('Committing changes...')
-    const commitResult = await sandbox.runCommand('git', ['commit', '-m', 'Sync local changes'])
+    const message = commitMessage || 'Sync local changes'
+    const commitResult = await sandbox.runCommand('git', ['commit', '-m', message])
 
     if (commitResult.exitCode !== 0) {
       const stderr = await commitResult.stderr()

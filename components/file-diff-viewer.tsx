@@ -26,6 +26,7 @@ interface FileDiffViewerProps {
   onUnsavedChanges?: (hasChanges: boolean) => void
   onSavingStateChange?: (isSaving: boolean) => void
   onOpenFile?: (filename: string, lineNumber?: number) => void
+  onSaveSuccess?: () => void
 }
 
 export function FileDiffViewer({
@@ -37,6 +38,7 @@ export function FileDiffViewer({
   onUnsavedChanges,
   onSavingStateChange,
   onOpenFile,
+  onSaveSuccess,
 }: FileDiffViewerProps) {
   const params = useParams()
   const taskId = taskIdProp || (params.taskId as string)
@@ -311,6 +313,7 @@ export function FileDiffViewer({
         onUnsavedChanges={onUnsavedChanges}
         onSavingStateChange={onSavingStateChange}
         onOpenFile={onOpenFile}
+        onSaveSuccess={onSaveSuccess}
       />
     )
   }

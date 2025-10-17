@@ -18,6 +18,7 @@ interface FileEditorProps {
   onUnsavedChanges?: (hasChanges: boolean) => void
   onSavingStateChange?: (isSaving: boolean) => void
   onOpenFile?: (filename: string, lineNumber?: number) => void
+  onSaveSuccess?: () => void
 }
 
 // Helper function to map file extensions to Monaco language IDs
@@ -63,6 +64,7 @@ export function FileEditor({
   onUnsavedChanges,
   onSavingStateChange,
   onOpenFile,
+  onSaveSuccess,
 }: FileEditorProps) {
   const { theme, systemTheme } = useTheme()
   const currentTheme = theme === 'system' ? systemTheme : theme
@@ -74,6 +76,7 @@ export function FileEditor({
   const onUnsavedChangesRef = useRef(onUnsavedChanges)
   const onSavingStateChangeRef = useRef(onSavingStateChange)
   const onOpenFileRef = useRef(onOpenFile)
+  const onSaveSuccessRef = useRef(onSaveSuccess)
   const handleSaveRef = useRef<(() => Promise<void>) | null>(null)
 
   // Keep refs updated
@@ -88,6 +91,10 @@ export function FileEditor({
   useEffect(() => {
     onOpenFileRef.current = onOpenFile
   }, [onOpenFile])
+
+  useEffect(() => {
+    onSaveSuccessRef.current = onSaveSuccess
+  }, [onSaveSuccess])
 
   useEffect(() => {
     setContent(initialContent)
@@ -165,6 +172,10 @@ export function FileEditor({
       if (response.ok && data.success) {
         console.log('[Save] Save successful, updating savedContent')
         setSavedContent(currentContent)
+        // Notify parent component of successful save
+        if (onSaveSuccessRef.current) {
+          onSaveSuccessRef.current()
+        }
         // Force a re-check of unsaved changes
         setTimeout(() => {
           const latestContent = editorRef.current?.getValue()
