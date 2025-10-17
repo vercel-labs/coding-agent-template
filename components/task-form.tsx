@@ -435,9 +435,10 @@ export function TaskForm({
 
           {/* Agent Selection */}
           <div className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2">
+            <div className="flex items-center justify-between gap-2">
+              {/* Left side: Agent, Model, and Option Chips */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                {/* Agent Selection */}
+                {/* Agent Selection - Icon only on mobile, minimal width */}
                 <Select
                   value={selectedAgent}
                   onValueChange={(value) => {
@@ -447,8 +448,19 @@ export function TaskForm({
                   }}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue placeholder="Agent" />
+                  <SelectTrigger className="w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 shrink-0">
+                    <SelectValue placeholder="Agent">
+                      {selectedAgent &&
+                        (() => {
+                          const agent = CODING_AGENTS.find((a) => a.value === selectedAgent)
+                          return agent ? (
+                            <div className="flex items-center gap-2">
+                              <agent.icon className="w-4 h-4" />
+                              <span className="hidden sm:inline">{agent.label}</span>
+                            </div>
+                          ) : null
+                        })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {CODING_AGENTS.map((agent) => (
@@ -462,7 +474,7 @@ export function TaskForm({
                   </SelectContent>
                 </Select>
 
-                {/* Model Selection */}
+                {/* Model Selection - Fills available width on mobile */}
                 <Select
                   value={selectedModel}
                   onValueChange={(value) => {
@@ -472,8 +484,8 @@ export function TaskForm({
                   }}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue placeholder="Model" />
+                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8 min-w-0">
+                    <SelectValue placeholder="Model" className="truncate" />
                   </SelectTrigger>
                   <SelectContent>
                     {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
@@ -551,77 +563,9 @@ export function TaskForm({
                 )}
               </div>
 
-              {/* Options and Submit Buttons */}
-              <div className="flex items-center justify-between gap-2">
-                {/* Option Chips - Mobile version (left side) */}
-                <div className="flex sm:hidden items-center gap-2 flex-wrap">
-                  {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
-                    <>
-                      {!installDependencies && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                          onClick={() => setShowOptionsDialog(true)}
-                        >
-                          Skip Install
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-3 w-3 p-0 hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              updateInstallDependencies(true)
-                            }}
-                          >
-                            <X className="h-2 w-2" />
-                          </Button>
-                        </Badge>
-                      )}
-                      {maxDuration !== maxSandboxDuration && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                          onClick={() => setShowOptionsDialog(true)}
-                        >
-                          {maxDuration}m
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-3 w-3 p-0 hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              updateMaxDuration(maxSandboxDuration)
-                            }}
-                          >
-                            <X className="h-2 w-2" />
-                          </Button>
-                        </Badge>
-                      )}
-                      {keepAlive && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                          onClick={() => setShowOptionsDialog(true)}
-                        >
-                          Keep Alive
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-3 w-3 p-0 hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              updateKeepAlive(false)
-                            }}
-                          >
-                            <X className="h-2 w-2" />
-                          </Button>
-                        </Badge>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Buttons - right side */}
+              {/* Right side: Action Icons and Submit Button */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Buttons */}
                 <div className="flex items-center gap-2">
                   <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
                     <Tooltip>
@@ -678,8 +622,28 @@ export function TaskForm({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DialogTrigger asChild>
-                            <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="rounded-full h-8 w-8 p-0 relative"
+                            >
                               <Settings className="h-4 w-4" />
+                              {(() => {
+                                const customOptionsCount = [
+                                  !installDependencies,
+                                  maxDuration !== maxSandboxDuration,
+                                  keepAlive,
+                                ].filter(Boolean).length
+                                return customOptionsCount > 0 ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full sm:hidden"
+                                  >
+                                    {customOptionsCount}
+                                  </Badge>
+                                ) : null
+                              })()}
                             </Button>
                           </DialogTrigger>
                         </TooltipTrigger>
