@@ -448,7 +448,17 @@ export function TaskForm({
                   disabled={isSubmitting}
                 >
                   <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue placeholder="Agent" />
+                    <SelectValue placeholder="Agent">
+                      {selectedAgent && (() => {
+                        const agent = CODING_AGENTS.find((a) => a.value === selectedAgent)
+                        return agent ? (
+                          <div className="flex items-center gap-2">
+                            <agent.icon className="w-4 h-4" />
+                            <span className="hidden sm:inline">{agent.label}</span>
+                          </div>
+                        ) : null
+                      })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {CODING_AGENTS.map((agent) => (
