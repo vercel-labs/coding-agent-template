@@ -290,7 +290,7 @@ export function TaskForm({
       try {
         // Check cache first
         const cacheKey = `github-repos-${selectedOwner}`
-        const cachedRepos = sessionStorage.getItem(cacheKey)
+        const cachedRepos = localStorage.getItem(cacheKey)
 
         if (cachedRepos) {
           try {
@@ -300,7 +300,7 @@ export function TaskForm({
             return
           } catch {
             console.warn('Failed to parse cached repos, fetching fresh data')
-            sessionStorage.removeItem(cacheKey)
+            localStorage.removeItem(cacheKey)
           }
         }
 
@@ -310,7 +310,7 @@ export function TaskForm({
           setRepos(reposList)
 
           // Cache the results
-          sessionStorage.setItem(cacheKey, JSON.stringify(reposList))
+          localStorage.setItem(cacheKey, JSON.stringify(reposList))
         }
       } catch (error) {
         console.error('Error fetching repositories:', error)

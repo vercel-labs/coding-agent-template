@@ -62,7 +62,7 @@ export function HomePageHeader({
     setIsRefreshing(true)
     try {
       // Clear only owners cache
-      sessionStorage.removeItem('github-owners')
+      localStorage.removeItem('github-owners')
       toast.success('Refreshing owners...')
 
       // Reload the page to fetch fresh data
@@ -80,16 +80,16 @@ export function HomePageHeader({
     try {
       // Clear repos cache for current owner
       if (selectedOwner) {
-        sessionStorage.removeItem(`github-repos-${selectedOwner}`)
+        localStorage.removeItem(`github-repos-${selectedOwner}`)
         toast.success('Refreshing repositories...')
 
         // Reload the page to fetch fresh data
         window.location.reload()
       } else {
         // Clear all repos if no owner selected
-        Object.keys(sessionStorage).forEach((key) => {
+        Object.keys(localStorage).forEach((key) => {
           if (key.startsWith('github-repos-')) {
-            sessionStorage.removeItem(key)
+            localStorage.removeItem(key)
           }
         })
         toast.success('Refreshing all repositories...')
@@ -112,22 +112,22 @@ export function HomePageHeader({
 
       if (response.ok) {
         toast.success('GitHub disconnected')
-
-        // Clear GitHub data from sessionStorage
-        sessionStorage.removeItem('github-owners')
-        Object.keys(sessionStorage).forEach((key) => {
+        
+        // Clear GitHub data from localStorage
+        localStorage.removeItem('github-owners')
+        Object.keys(localStorage).forEach((key) => {
           if (key.startsWith('github-repos-')) {
-            sessionStorage.removeItem(key)
+            localStorage.removeItem(key)
           }
         })
-
+        
         // Clear selected owner/repo
         onOwnerChange('')
         onRepoChange('')
-
+        
         // Update connection state
         setGitHubConnection({ connected: false })
-
+        
         // Refresh the page
         router.refresh()
       } else {
@@ -169,7 +169,7 @@ export function HomePageHeader({
 
         // Clear repos cache for current owner
         if (selectedOwner) {
-          sessionStorage.removeItem(`github-repos-${selectedOwner}`)
+          localStorage.removeItem(`github-repos-${selectedOwner}`)
         }
 
         // Set the newly created repo as selected

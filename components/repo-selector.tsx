@@ -73,10 +73,10 @@ export function RepoSelector({
     // If GitHub was disconnected, clear data and cache
     if (githubConnectionRef.current && !githubConnection.connected) {
       // Clear cache
-      sessionStorage.removeItem('github-owners')
-      Object.keys(sessionStorage).forEach((key) => {
+      localStorage.removeItem('github-owners')
+      Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('github-repos-')) {
-          sessionStorage.removeItem(key)
+          localStorage.removeItem(key)
         }
       })
 
@@ -114,7 +114,7 @@ export function RepoSelector({
         }
 
         // Check cache first - but only use it if we're not forcing a refresh
-        const cachedOwners = sessionStorage.getItem('github-owners')
+        const cachedOwners = localStorage.getItem('github-owners')
         if (cachedOwners && owners.length === 0) {
           const parsedOwners = JSON.parse(cachedOwners)
           setOwners(parsedOwners)
@@ -129,10 +129,10 @@ export function RepoSelector({
         if (!userResponse.ok) {
           if (userResponse.status === 401 || userResponse.status === 403) {
             // Clear cache
-            sessionStorage.removeItem('github-owners')
-            Object.keys(sessionStorage).forEach((key) => {
+            localStorage.removeItem('github-owners')
+            Object.keys(localStorage).forEach((key) => {
               if (key.startsWith('github-repos-')) {
-                sessionStorage.removeItem(key)
+                localStorage.removeItem(key)
               }
             })
 
@@ -184,7 +184,7 @@ export function RepoSelector({
 
         setOwners(sortedOwners)
         // Cache the owners
-        sessionStorage.setItem('github-owners', JSON.stringify(sortedOwners))
+        localStorage.setItem('github-owners', JSON.stringify(sortedOwners))
       } catch (error) {
         console.error('Error loading owners:', error)
 
@@ -234,7 +234,7 @@ export function RepoSelector({
         try {
           // Check cache first - show cached data immediately if available
           const cacheKey = `github-repos-${selectedOwner}`
-          const cachedRepos = sessionStorage.getItem(cacheKey)
+          const cachedRepos = localStorage.getItem(cacheKey)
           if (cachedRepos && repos.length === 0) {
             const parsedRepos = JSON.parse(cachedRepos)
             setRepos(parsedRepos)
@@ -253,10 +253,10 @@ export function RepoSelector({
           if (!response.ok) {
             if (response.status === 401 || response.status === 403) {
               // Clear cache
-              sessionStorage.removeItem('github-owners')
-              Object.keys(sessionStorage).forEach((key) => {
+              localStorage.removeItem('github-owners')
+              Object.keys(localStorage).forEach((key) => {
                 if (key.startsWith('github-repos-')) {
-                  sessionStorage.removeItem(key)
+                  localStorage.removeItem(key)
                 }
               })
 
@@ -282,7 +282,7 @@ export function RepoSelector({
           const reposList = await response.json()
           setRepos(reposList)
           // Cache the repos
-          sessionStorage.setItem(cacheKey, JSON.stringify(reposList))
+          localStorage.setItem(cacheKey, JSON.stringify(reposList))
         } catch (error) {
           console.error('Error loading repos:', error)
 
