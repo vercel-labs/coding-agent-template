@@ -286,7 +286,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         const lsFilesOutput = await lsFilesResult.stdout()
         console.log('Git ls-files output length:', lsFilesOutput.length)
-        const fileLines = lsFilesOutput.trim().split('\n').filter((line) => line.trim())
+        const fileLines = lsFilesOutput
+          .trim()
+          .split('\n')
+          .filter((line) => line.trim())
 
         files = fileLines.map((filename) => ({
           filename: filename.trim(),
@@ -299,7 +302,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.log('Found all local files')
       } catch (error) {
         console.error('Error fetching local files from sandbox:', error)
-        
+
         // Check if it's a 410 error (sandbox not running)
         if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
           return NextResponse.json(
@@ -310,7 +313,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             { status: 410 },
           )
         }
-        
+
         return NextResponse.json(
           {
             success: false,

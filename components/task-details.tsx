@@ -171,10 +171,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [isMergingPR, setIsMergingPR] = useState(false)
   const [filesPane, setFilesPane] = useState<'files' | 'changes'>('changes')
   const [subMode, setSubMode] = useState<'local' | 'remote'>('remote')
-  const viewMode: 'local' | 'remote' | 'all' | 'all-local' = 
-    filesPane === 'files' 
-      ? (subMode === 'local' ? 'all-local' : 'all')
-      : subMode
+  const viewMode: 'local' | 'remote' | 'all' | 'all-local' =
+    filesPane === 'files' ? (subMode === 'local' ? 'all-local' : 'all') : subMode
   const [activeTab, setActiveTab] = useState<'code' | 'chat' | 'preview'>('code')
   const [showFilesList, setShowFilesList] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -855,7 +853,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   useEffect(() => {
     const tabKey = `${viewMode}-${activeTabIndex}`
     const activeTabButton = tabButtonRefs.current[tabKey]
-    
+
     if (activeTabButton && tabsContainerRef.current) {
       // Use scrollIntoView with smooth behavior and inline: 'center' to center the tab in view
       activeTabButton.scrollIntoView({
@@ -1466,7 +1464,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   <div className="flex flex-col border-b bg-muted/50 flex-shrink-0">
                     {/* Tabs Row */}
                     {openTabs.length > 0 && (
-                      <div 
+                      <div
                         ref={tabsContainerRef}
                         className="flex items-center gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b"
                       >
@@ -1479,7 +1477,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           return (
                             <button
                               key={filename}
-                              ref={(el) => { tabButtonRefs.current[tabKey] = el }}
+                              ref={(el) => {
+                                tabButtonRefs.current[tabKey] = el
+                              }}
                               onClick={() => switchToTab(index)}
                               className={cn(
                                 'group flex items-center gap-2 px-3 py-2 text-sm border-r transition-colors flex-shrink-0 max-w-[240px]',
