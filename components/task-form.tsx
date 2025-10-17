@@ -450,15 +450,16 @@ export function TaskForm({
                 >
                   <SelectTrigger className="w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 shrink-0">
                     <SelectValue placeholder="Agent">
-                      {selectedAgent && (() => {
-                        const agent = CODING_AGENTS.find((a) => a.value === selectedAgent)
-                        return agent ? (
-                          <div className="flex items-center gap-2">
-                            <agent.icon className="w-4 h-4" />
-                            <span className="hidden sm:inline">{agent.label}</span>
-                          </div>
-                        ) : null
-                      })()}
+                      {selectedAgent &&
+                        (() => {
+                          const agent = CODING_AGENTS.find((a) => a.value === selectedAgent)
+                          return agent ? (
+                            <div className="flex items-center gap-2">
+                              <agent.icon className="w-4 h-4" />
+                              <span className="hidden sm:inline">{agent.label}</span>
+                            </div>
+                          ) : null
+                        })()}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -621,13 +622,18 @@ export function TaskForm({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DialogTrigger asChild>
-                            <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 relative">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="rounded-full h-8 w-8 p-0 relative"
+                            >
                               <Settings className="h-4 w-4" />
                               {(() => {
                                 const customOptionsCount = [
                                   !installDependencies,
                                   maxDuration !== maxSandboxDuration,
-                                  keepAlive
+                                  keepAlive,
                                 ].filter(Boolean).length
                                 return customOptionsCount > 0 ? (
                                   <Badge
