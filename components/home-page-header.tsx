@@ -112,7 +112,7 @@ export function HomePageHeader({
 
       if (response.ok) {
         toast.success('GitHub disconnected')
-        
+
         // Clear GitHub data from localStorage
         localStorage.removeItem('github-owners')
         Object.keys(localStorage).forEach((key) => {
@@ -120,14 +120,14 @@ export function HomePageHeader({
             localStorage.removeItem(key)
           }
         })
-        
+
         // Clear selected owner/repo
         onOwnerChange('')
         onRepoChange('')
-        
+
         // Update connection state
         setGitHubConnection({ connected: false })
-        
+
         // Refresh the page
         router.refresh()
       } else {
