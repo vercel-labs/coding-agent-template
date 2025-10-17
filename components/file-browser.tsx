@@ -148,7 +148,8 @@ export function FileBrowser({
     error: string | null
   }
   
-  const currentViewData = ((state as Record<string, ViewModeData>)[viewMode] as ViewModeData | undefined) || {
+  type ViewModeKey = 'local' | 'remote' | 'all' | 'all-local'
+  const currentViewData = (state[viewMode as ViewModeKey] as ViewModeData | undefined) || {
     files: [],
     fileTree: {},
     expandedFolders: new Set<string>(),
