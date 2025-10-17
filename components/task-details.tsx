@@ -269,17 +269,28 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const openFileInTab = (file: string) => {
     const currentTabs = openTabsByMode[viewMode]
     const existingIndex = currentTabs.indexOf(file)
+    
+    // For Changes mode (local or remote), only show one file at a time (no tabs)
+    const isChangesMode = viewMode === 'local' || viewMode === 'remote'
 
-    if (existingIndex !== -1) {
-      // File already open in this mode, just switch to it
-      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+    if (isChangesMode) {
+      // Replace the current file (only one file at a time)
+      setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: [file] }))
+      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: 0 }))
       setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
     } else {
-      // Open new tab in current mode
-      const newTabs = [...currentTabs, file]
-      setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: newTabs }))
-      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newTabs.length - 1 }))
-      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+      // Files mode: use tabs
+      if (existingIndex !== -1) {
+        // File already open in this mode, just switch to it
+        setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+        setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+      } else {
+        // Open new tab in current mode
+        const newTabs = [...currentTabs, file]
+        setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: newTabs }))
+        setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newTabs.length - 1 }))
+        setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+      }
     }
   }
 
@@ -1464,7 +1475,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   {/* Tabs and Search Bar */}
                   <div className="flex flex-col border-b bg-muted/50 flex-shrink-0">
                     {/* Tabs Row */}
-                    {openTabs.length > 0 && (
+                    {openTabs.length > 0 && (viewMode === 'all' || viewMode === 'all-local') && (
                       <div
                         ref={tabsContainerRef}
                         className="flex items-center gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b"
@@ -1472,8 +1483,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         {openTabs.map((filename, index) => {
                           const hasUnsavedChanges = tabsWithUnsavedChanges.has(filename)
                           const isSaving = tabsSaving.has(filename)
-                          const modeSuffix =
-                            viewMode === 'local' ? ' (Sandbox)' : viewMode === 'remote' ? ' (Remote)' : ''
+                          const modeSuffix = viewMode === 'all-local' ? ' (Sandbox)' : ''
                           const tabKey = `${viewMode}-${index}`
                           return (
                             <button
