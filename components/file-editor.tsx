@@ -413,7 +413,10 @@ export function FileEditor({
     console.log('[Editor Mount] Save command added')
 
     // Helper function to get definitions using remote LSP server in sandbox
-    const getDefinitions = async (model: ReturnType<MonacoEditor['getModel']>, position: ReturnType<MonacoEditor['getPosition']>) => {
+    const getDefinitions = async (
+      model: ReturnType<MonacoEditor['getModel']>,
+      position: ReturnType<MonacoEditor['getPosition']>,
+    ) => {
       if (!model || !position) return null
       console.log(
         '[Go to Definition] Starting definition lookup',
@@ -658,7 +661,7 @@ export function FileEditor({
 
   // Check if this is a node_modules file (read-only)
   const isNodeModulesFile = filename.includes('/node_modules/')
-  
+
   // Remote files (from GitHub) should be read-only
   // 'remote' = Changes view showing remote files
   // 'all' = Files view showing remote files (should also be read-only)
