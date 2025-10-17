@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { Sandbox } from '@vercel/sandbox'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getGitHubUser } from '@/lib/github/client'
-import { registerSandbox } from '@/lib/sandbox/sandbox-registry'
+import { registerSandbox, unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
 import { runCommandInSandbox } from '@/lib/sandbox/commands'
 import { detectPackageManager, installDependencies } from '@/lib/sandbox/package-manager'
 import { createTaskLogger } from '@/lib/utils/task-logger'
@@ -37,12 +37,38 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'Keep-alive is not enabled for this task' }, { status: 400 })
     }
 
-    // Check if sandbox is already running
+    const logger = createTaskLogger(taskId)
+
+    // Check if sandbox is already running by verifying if it's actually accessible
     if (task.sandboxId && task.sandboxUrl) {
-      return NextResponse.json({ error: 'Sandbox is already running' }, { status: 400 })
+      try {
+        const existingSandbox = await Sandbox.get({
+          sandboxId: task.sandboxId,
+          teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
+          projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
+          token: process.env.SANDBOX_VERCEL_TOKEN!,
+        })
+
+        // Try a simple command to verify it's accessible
+        const testResult = await runCommandInSandbox(existingSandbox, 'echo', ['test'])
+        if (testResult.success) {
+          return NextResponse.json({ error: 'Sandbox is already running' }, { status: 400 })
+        }
+      } catch (error) {
+        // Sandbox is not accessible, clear it from the database and registry, then continue
+        await logger.info('Existing sandbox not accessible, clearing and creating new one')
+        unregisterSandbox(taskId)
+        await db
+          .update(tasks)
+          .set({
+            sandboxId: null,
+            sandboxUrl: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId))
+      }
     }
 
-    const logger = createTaskLogger(taskId)
     await logger.info('Starting sandbox')
 
     // Get GitHub user info for git author configuration

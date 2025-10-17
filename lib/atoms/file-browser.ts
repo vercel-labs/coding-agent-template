@@ -23,11 +23,14 @@ interface ViewModeData {
   fileTree: { [key: string]: FileTreeNode }
   expandedFolders: Set<string>
   fetchAttempted: boolean
+  error: string | null
 }
 
 interface FileBrowserState {
-  changes: ViewModeData
+  local: ViewModeData
+  remote: ViewModeData
   all: ViewModeData
+  'all-local': ViewModeData
   loading: boolean
   error: string | null
 }
@@ -37,11 +40,14 @@ const emptyViewModeData: ViewModeData = {
   fileTree: {},
   expandedFolders: new Set<string>(),
   fetchAttempted: false,
+  error: null,
 }
 
 const defaultState: FileBrowserState = {
-  changes: structuredClone(emptyViewModeData),
+  local: structuredClone(emptyViewModeData),
+  remote: structuredClone(emptyViewModeData),
   all: structuredClone(emptyViewModeData),
+  'all-local': structuredClone(emptyViewModeData),
   loading: false,
   error: null,
 }

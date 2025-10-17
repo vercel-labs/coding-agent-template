@@ -11,6 +11,8 @@ function getLanguageFromFilename(filename: string): string {
   const langMap: { [key: string]: string } = {
     js: 'javascript',
     jsx: 'javascript',
+    mjs: 'javascript',
+    cjs: 'javascript',
     ts: 'typescript',
     tsx: 'typescript',
     py: 'python',
@@ -148,6 +150,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { taskId } = await params
     const searchParams = request.nextUrl.searchParams
     const filename = searchParams.get('filename')
+    const mode = searchParams.get('mode') // 'local' or undefined (default: remote/PR diff)
 
     if (!filename) {
       return NextResponse.json({ error: 'Missing filename parameter' }, { status: 400 })
@@ -166,6 +169,121 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!task.branchName || !task.repoUrl) {
       return NextResponse.json({ error: 'Task does not have branch or repository information' }, { status: 400 })
+    }
+
+    // Handle local diff mode (git diff in sandbox)
+    if (mode === 'local') {
+      if (!task.sandboxId) {
+        return NextResponse.json({ error: 'Sandbox not available' }, { status: 400 })
+      }
+
+      try {
+        const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+        const { Sandbox } = await import('@vercel/sandbox')
+
+        let sandbox = getSandbox(taskId)
+
+        // Try to reconnect if not in registry
+        if (!sandbox) {
+          const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+          const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+          const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+          if (sandboxToken && teamId && projectId) {
+            sandbox = await Sandbox.get({
+              sandboxId: task.sandboxId,
+              teamId,
+              projectId,
+              token: sandboxToken,
+            })
+          }
+        }
+
+        if (!sandbox) {
+          return NextResponse.json({ error: 'Sandbox not found or inactive' }, { status: 400 })
+        }
+
+        // Fetch latest from remote to ensure we have up-to-date remote refs
+        const fetchResult = await sandbox.runCommand('git', ['fetch', 'origin', task.branchName])
+
+        // Check if remote branch actually exists (even if fetch succeeds, the branch might not exist)
+        const remoteBranchRef = `origin/${task.branchName}`
+        const checkRemoteResult = await sandbox.runCommand('git', ['rev-parse', '--verify', remoteBranchRef])
+        const remoteBranchExists = checkRemoteResult.exitCode === 0
+
+        if (!remoteBranchExists) {
+          // Remote branch doesn't exist yet, compare against HEAD (local changes only)
+
+          // Get old content (HEAD version)
+          const oldContentResult = await sandbox.runCommand('git', ['show', `HEAD:${filename}`])
+          let oldContent = ''
+          if (oldContentResult.exitCode === 0) {
+            oldContent = await oldContentResult.stdout()
+          }
+          // File might not exist in HEAD (new file)
+
+          // Get new content (working directory version)
+          const newContentResult = await sandbox.runCommand('cat', [filename])
+          const newContent = newContentResult.exitCode === 0 ? await newContentResult.stdout() : ''
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              filename,
+              oldContent,
+              newContent,
+              language: getLanguageFromFilename(filename),
+              isBinary: false,
+              isImage: false,
+            },
+          })
+        }
+
+        // Compare working directory against remote branch
+        // This shows all uncommitted AND unpushed changes
+        const diffResult = await sandbox.runCommand('git', ['diff', remoteBranchRef, filename])
+
+        if (diffResult.exitCode !== 0) {
+          const diffError = await diffResult.stderr()
+          console.error('Failed to get local diff:', diffError)
+          return NextResponse.json({ error: 'Failed to get local diff' }, { status: 500 })
+        }
+
+        const diffOutput = await diffResult.stdout()
+
+        // Get old content (remote branch version)
+        const oldContentResult = await sandbox.runCommand('git', ['show', `${remoteBranchRef}:${filename}`])
+        let oldContent = ''
+        if (oldContentResult.exitCode === 0) {
+          oldContent = await oldContentResult.stdout()
+        }
+        // File might not exist on remote (new file)
+
+        // Get new content (working directory version)
+        const newContentResult = await sandbox.runCommand('cat', [filename])
+        const newContent = newContentResult.exitCode === 0 ? await newContentResult.stdout() : ''
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            filename,
+            oldContent,
+            newContent,
+            language: getLanguageFromFilename(filename),
+            isBinary: false,
+            isImage: false,
+          },
+        })
+      } catch (error) {
+        console.error('Error getting local diff:', error)
+
+        // Check if it's a 410 error (sandbox not running)
+        if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
+          return NextResponse.json({ error: 'Sandbox is not running' }, { status: 410 })
+        }
+
+        return NextResponse.json({ error: 'Failed to get local diff' }, { status: 500 })
+      }
     }
 
     // Get user's authenticated GitHub client

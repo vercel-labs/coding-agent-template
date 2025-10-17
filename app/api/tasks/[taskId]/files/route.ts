@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { taskId } = await params
     const searchParams = request.nextUrl.searchParams
-    const mode = searchParams.get('mode') || 'changes' // 'changes' or 'all'
+    const mode = searchParams.get('mode') || 'remote' // 'local', 'remote', 'all', or 'all-local'
 
     // Get task from database and verify ownership (exclude soft-deleted)
     const [task] = await db
@@ -42,7 +42,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .limit(1)
 
     if (!task) {
-      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 })
+      const response = NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 })
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+      return response
     }
 
     // Check if task has a branch assigned
@@ -95,8 +97,412 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     let files: FileChange[] = []
 
-    // If mode is 'all', fetch all files from the repository tree
-    if (mode === 'all') {
+    // If mode is 'local', fetch changed files from the sandbox
+    if (mode === 'local') {
+      if (!task.sandboxId) {
+        const response = NextResponse.json(
+          {
+            success: false,
+            error: 'Sandbox is not running',
+          },
+          { status: 410 },
+        )
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+        return response
+      }
+
+      try {
+        const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+        const { Sandbox } = await import('@vercel/sandbox')
+
+        let sandbox = getSandbox(taskId)
+
+        // Try to reconnect if not in registry
+        if (!sandbox) {
+          const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+          const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+          const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+          if (sandboxToken && teamId && projectId) {
+            sandbox = await Sandbox.get({
+              sandboxId: task.sandboxId,
+              teamId,
+              projectId,
+              token: sandboxToken,
+            })
+          }
+        }
+
+        if (!sandbox) {
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Sandbox not found',
+          })
+        }
+
+        // Run git status to get local changes
+        const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
+
+        if (statusResult.exitCode !== 0) {
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Failed to get local changes',
+          })
+        }
+
+        const statusOutput = await statusResult.stdout()
+        const statusLines = statusOutput
+          .trim()
+          .split('\n')
+          .filter((line) => line.trim())
+
+        // First, check if remote branch exists to determine comparison base
+        const lsRemoteResult = await sandbox.runCommand('git', ['ls-remote', '--heads', 'origin', task.branchName])
+        const remoteBranchRef = `origin/${task.branchName}`
+        const checkRemoteResult = await sandbox.runCommand('git', ['rev-parse', '--verify', remoteBranchRef])
+        const remoteBranchExists = checkRemoteResult.exitCode === 0
+        const compareRef = remoteBranchExists ? remoteBranchRef : 'HEAD'
+
+        // Get diff stats using git diff --numstat
+        const numstatResult = await sandbox.runCommand('git', ['diff', '--numstat', compareRef])
+        const diffStats: Record<string, { additions: number; deletions: number }> = {}
+
+        if (numstatResult.exitCode === 0) {
+          const numstatOutput = await numstatResult.stdout()
+          const numstatLines = numstatOutput
+            .trim()
+            .split('\n')
+            .filter((line) => line.trim())
+
+          for (const line of numstatLines) {
+            const parts = line.split('\t')
+            if (parts.length >= 3) {
+              const additions = parseInt(parts[0]) || 0
+              const deletions = parseInt(parts[1]) || 0
+              const filename = parts[2]
+              diffStats[filename] = { additions, deletions }
+            }
+          }
+        }
+
+        // Parse git status output and get stats for each file
+        // Format: XY filename (where X = index, Y = worktree)
+        const filePromises = statusLines.map(async (line) => {
+          // Git status --porcelain format should be: XY<space>filename
+          // Get status codes from first 2 characters
+          const indexStatus = line.charAt(0)
+          const worktreeStatus = line.charAt(1)
+
+          // Get filename by skipping first 2 chars and trimming spaces
+          // This handles both 'XY filename' and 'XY  filename' formats
+          let filename = line.substring(2).trim()
+
+          // Handle renamed files: "old_name -> new_name"
+          if (indexStatus === 'R' || worktreeStatus === 'R') {
+            const arrowIndex = filename.indexOf(' -> ')
+            if (arrowIndex !== -1) {
+              filename = filename.substring(arrowIndex + 4).trim()
+            }
+          }
+
+          // Determine status based on both index and worktree
+          let status: 'added' | 'modified' | 'deleted' | 'renamed' = 'modified'
+          if (indexStatus === 'R' || worktreeStatus === 'R') {
+            status = 'renamed'
+          } else if (indexStatus === 'A' || worktreeStatus === 'A' || (indexStatus === '?' && worktreeStatus === '?')) {
+            status = 'added'
+          } else if (indexStatus === 'D' || worktreeStatus === 'D') {
+            status = 'deleted'
+          } else if (indexStatus === 'M' || worktreeStatus === 'M') {
+            status = 'modified'
+          }
+
+          // Get diff stats for this file
+          let stats = diffStats[filename] || { additions: 0, deletions: 0 }
+
+          // For untracked/new files (??), git diff doesn't include them
+          // Count lines manually
+          if (
+            (indexStatus === '?' && worktreeStatus === '?') ||
+            (indexStatus === 'A' && !stats.additions && !stats.deletions)
+          ) {
+            try {
+              const wcResult = await sandbox.runCommand('wc', ['-l', filename])
+              if (wcResult.exitCode === 0) {
+                const wcOutput = await wcResult.stdout()
+                const lineCount = parseInt(wcOutput.trim().split(/\s+/)[0]) || 0
+                stats = { additions: lineCount, deletions: 0 }
+              }
+            } catch (err) {
+              console.error('Error counting lines for new file:', err)
+            }
+          }
+
+          return {
+            filename,
+            status,
+            additions: stats.additions,
+            deletions: stats.deletions,
+            changes: stats.additions + stats.deletions,
+          }
+        })
+
+        files = await Promise.all(filePromises)
+      } catch (error) {
+        console.error('Error fetching local changes from sandbox:', error)
+
+        // Check if it's a 410 error (sandbox not running)
+        const is410Error =
+          (error && typeof error === 'object' && 'status' in error && error.status === 410) ||
+          (error &&
+            typeof error === 'object' &&
+            'response' in error &&
+            typeof error.response === 'object' &&
+            error.response !== null &&
+            'status' in error.response &&
+            (error.response as { status: number }).status === 410)
+
+        if (is410Error) {
+          // Clear sandbox info from database since it's no longer running
+          try {
+            await db
+              .update(tasks)
+              .set({
+                sandboxId: null,
+                sandboxUrl: null,
+              })
+              .where(eq(tasks.id, taskId))
+
+            // Also remove from registry
+            const { unregisterSandbox } = await import('@/lib/sandbox/sandbox-registry')
+            unregisterSandbox(taskId)
+          } catch (dbError) {
+            console.error('Error clearing sandbox info:', dbError)
+          }
+
+          const response = NextResponse.json(
+            {
+              success: false,
+              error: 'Sandbox is not running',
+            },
+            { status: 410 },
+          )
+          response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+          return response
+        }
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to fetch local changes',
+          },
+          { status: 500 },
+        )
+      }
+    } else if (mode === 'all-local') {
+      // Get all files from local sandbox using find command
+      if (!task.sandboxId) {
+        const response = NextResponse.json(
+          {
+            success: false,
+            error: 'Sandbox is not running',
+          },
+          { status: 410 },
+        )
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+        return response
+      }
+
+      try {
+        const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+        const { Sandbox } = await import('@vercel/sandbox')
+
+        let sandbox = getSandbox(taskId)
+
+        // Try to reconnect if not in registry
+        if (!sandbox) {
+          const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+          const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+          const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+          if (sandboxToken && teamId && projectId) {
+            sandbox = await Sandbox.get({
+              sandboxId: task.sandboxId,
+              teamId,
+              projectId,
+              token: sandboxToken,
+            })
+          }
+        }
+
+        if (!sandbox) {
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Sandbox not found',
+          })
+        }
+
+        // Use find to list all files in the sandbox, excluding .git directory and common build directories
+        const findResult = await sandbox.runCommand('find', [
+          '.',
+          '-type',
+          'f',
+          '-not',
+          '-path',
+          '*/.git/*',
+          '-not',
+          '-path',
+          '*/node_modules/*',
+          '-not',
+          '-path',
+          '*/.next/*',
+          '-not',
+          '-path',
+          '*/dist/*',
+          '-not',
+          '-path',
+          '*/build/*',
+          '-not',
+          '-path',
+          '*/.vercel/*',
+        ])
+
+        if (findResult.exitCode !== 0) {
+          console.error('Failed to run find command')
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Failed to list files',
+          })
+        }
+
+        const findOutput = await findResult.stdout()
+        const fileLines = findOutput
+          .trim()
+          .split('\n')
+          .filter((line) => line.trim() && line !== '.')
+          .map((line) => line.replace(/^\.\//, '')) // Remove leading ./
+
+        // Get git status to determine which files are added/modified
+        const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
+        const changedFilesMap: Record<string, 'added' | 'modified' | 'deleted' | 'renamed'> = {}
+
+        if (statusResult.exitCode === 0) {
+          const statusOutput = await statusResult.stdout()
+          const statusLines = statusOutput
+            .trim()
+            .split('\n')
+            .filter((line) => line.trim())
+
+          for (const line of statusLines) {
+            const indexStatus = line.charAt(0)
+            const worktreeStatus = line.charAt(1)
+            let filename = line.substring(2).trim()
+
+            // Handle renamed files
+            if (indexStatus === 'R' || worktreeStatus === 'R') {
+              const arrowIndex = filename.indexOf(' -> ')
+              if (arrowIndex !== -1) {
+                filename = filename.substring(arrowIndex + 4).trim()
+              }
+            }
+
+            // Determine status
+            let status: 'added' | 'modified' | 'deleted' | 'renamed' = 'modified'
+            if (indexStatus === 'R' || worktreeStatus === 'R') {
+              status = 'renamed'
+            } else if (
+              indexStatus === 'A' ||
+              worktreeStatus === 'A' ||
+              (indexStatus === '?' && worktreeStatus === '?')
+            ) {
+              status = 'added'
+            } else if (indexStatus === 'D' || worktreeStatus === 'D') {
+              status = 'deleted'
+            } else if (indexStatus === 'M' || worktreeStatus === 'M') {
+              status = 'modified'
+            }
+
+            changedFilesMap[filename] = status
+          }
+        }
+
+        files = fileLines.map((filename) => {
+          const trimmedFilename = filename.trim()
+          // Use the actual status from git if available, otherwise 'renamed' (which won't trigger coloring)
+          const status = changedFilesMap[trimmedFilename] || ('renamed' as const)
+
+          return {
+            filename: trimmedFilename,
+            status,
+            additions: 0,
+            deletions: 0,
+            changes: 0,
+          }
+        })
+      } catch (error) {
+        console.error('Error fetching local files from sandbox:', error)
+
+        // Check if it's a 410 error (sandbox not running)
+        const is410Error =
+          (error && typeof error === 'object' && 'status' in error && error.status === 410) ||
+          (error &&
+            typeof error === 'object' &&
+            'response' in error &&
+            typeof error.response === 'object' &&
+            error.response !== null &&
+            'status' in error.response &&
+            (error.response as { status: number }).status === 410)
+
+        if (is410Error) {
+          // Clear sandbox info from database since it's no longer running
+          try {
+            await db
+              .update(tasks)
+              .set({
+                sandboxId: null,
+                sandboxUrl: null,
+              })
+              .where(eq(tasks.id, taskId))
+
+            // Also remove from registry
+            const { unregisterSandbox } = await import('@/lib/sandbox/sandbox-registry')
+            unregisterSandbox(taskId)
+          } catch (dbError) {
+            console.error('Error clearing sandbox info:', dbError)
+          }
+
+          const response = NextResponse.json(
+            {
+              success: false,
+              error: 'Sandbox is not running',
+            },
+            { status: 410 },
+          )
+          response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+          return response
+        }
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to fetch local files',
+          },
+          { status: 500 },
+        )
+      }
+    } else if (mode === 'all') {
       try {
         const treeResponse = await octokit.rest.git.getTree({
           owner,
@@ -114,12 +520,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             deletions: 0,
             changes: 0,
           }))
-
-        console.log('Found all files in branch')
       } catch (error: unknown) {
         console.error('Error fetching repository tree:', error)
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-          console.log('Branch or repository not found, returning empty file list')
           return NextResponse.json({
             success: true,
             files: [],
@@ -137,7 +540,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         )
       }
     } else {
-      // Original logic for 'changes' mode
+      // Original logic for 'remote' mode (PR changes)
 
       try {
         // First check if the branch exists
@@ -150,7 +553,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         } catch (branchError: unknown) {
           if (branchError && typeof branchError === 'object' && 'status' in branchError && branchError.status === 404) {
             // Branch doesn't exist yet (task is still processing)
-            console.log('Branch does not exist yet, returning empty file list')
             return NextResponse.json({
               success: true,
               files: [],
@@ -190,7 +592,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 masterError.status === 404
               ) {
                 // Neither main nor master exists, or head branch doesn't exist
-                console.log('Could not compare branches')
                 return NextResponse.json({
                   success: true,
                   files: [],
@@ -216,14 +617,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             deletions: file.deletions || 0,
             changes: file.changes || 0,
           })) || []
-
-        console.log('Found changed files in branch')
       } catch (error: unknown) {
         console.error('Error fetching file changes from GitHub:', error)
 
         // If it's a 404 error, return empty results instead of failing
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-          console.log(`Branch or repository not found, returning empty file list`)
           return NextResponse.json({
             success: true,
             files: [],
@@ -250,15 +648,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       addToFileTree(fileTree, file.filename, file)
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       files,
       fileTree,
       branchName: task.branchName,
     })
+    // Don't cache file listings as they change frequently
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     console.error('Error fetching task files:', error)
-    return NextResponse.json({ success: false, error: 'Failed to fetch task files' }, { status: 500 })
+    const response = NextResponse.json({ success: false, error: 'Failed to fetch task files' }, { status: 500 })
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   }
 }
 

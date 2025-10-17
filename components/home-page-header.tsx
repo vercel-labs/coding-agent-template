@@ -44,7 +44,7 @@ export function HomePageHeader({
   onOwnerChange,
   onRepoChange,
   user,
-  initialStars = 1022,
+  initialStars = 1056,
 }: HomePageHeaderProps) {
   const { toggleSidebar } = useTasks()
   const router = useRouter()

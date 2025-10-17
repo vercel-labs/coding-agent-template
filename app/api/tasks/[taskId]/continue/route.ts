@@ -424,10 +424,8 @@ async function continueTask(
 
     await logger.updateStatus('error')
     await logger.error('Task failed to continue')
-    // Log the actual error message to help with debugging
-    if (errorMessage && errorMessage !== 'Unknown error occurred') {
-      await logger.error(`Error: ${errorMessage.substring(0, 200)}`)
-    }
+    // Error details are saved to the database for debugging
+    console.error('Task error details:', errorMessage)
 
     await db
       .update(tasks)

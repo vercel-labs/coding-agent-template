@@ -1,7 +1,7 @@
 'use client'
 
 import { TaskMessage, Task } from '@/lib/db/schema'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Children, isValidElement } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -80,6 +80,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
 
+  // Track if each tab has been loaded to avoid refetching on tab switch
+  const commentsLoadedRef = useRef(false)
+  const actionsLoadedRef = useRef(false)
+  const deploymentLoadedRef = useRef(false)
+
   const isNearBottom = () => {
     const container = scrollContainerRef.current
     if (!container) return true // Default to true if no container
@@ -128,6 +133,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const fetchPRComments = useCallback(async () => {
     if (!task.prNumber || !task.repoUrl) return
 
+    // Don't refetch if already loaded
+    if (commentsLoadedRef.current) return
+
     setLoadingComments(true)
     setCommentsError(null)
 
@@ -137,6 +145,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
       if (response.ok && data.success) {
         setPrComments(data.comments || [])
+        commentsLoadedRef.current = true
       } else {
         setCommentsError(data.error || 'Failed to fetch comments')
       }
@@ -151,6 +160,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const fetchCheckRuns = useCallback(async () => {
     if (!task.branchName || !task.repoUrl) return
 
+    // Don't refetch if already loaded
+    if (actionsLoadedRef.current) return
+
     setLoadingActions(true)
     setActionsError(null)
 
@@ -160,6 +172,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
       if (response.ok && data.success) {
         setCheckRuns(data.checkRuns || [])
+        actionsLoadedRef.current = true
       } else {
         setActionsError(data.error || 'Failed to fetch check runs')
       }
@@ -172,6 +185,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   }, [taskId, task.branchName, task.repoUrl])
 
   const fetchDeployment = useCallback(async () => {
+    // Don't refetch if already loaded
+    if (deploymentLoadedRef.current) return
+
     setLoadingDeployment(true)
     setDeploymentError(null)
 
@@ -181,6 +197,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
       if (response.ok && data.success) {
         setDeployment(data.data)
+        deploymentLoadedRef.current = true
       } else {
         setDeploymentError(data.error || 'Failed to fetch deployment')
       }
@@ -199,15 +216,18 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
         break
       case 'comments':
         if (task.prNumber) {
+          commentsLoadedRef.current = false
           fetchPRComments()
         }
         break
       case 'actions':
         if (task.branchName) {
+          actionsLoadedRef.current = false
           fetchCheckRuns()
         }
         break
       case 'deployments':
+        deploymentLoadedRef.current = false
         fetchDeployment()
         break
     }
@@ -224,14 +244,34 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     return () => clearInterval(interval)
   }, [fetchMessages])
 
-  // Fetch PR comments when tab switches to comments or when PR is created
+  // Reset cache and refetch when PR number changes (PR created/updated)
+  useEffect(() => {
+    if (task.prNumber) {
+      commentsLoadedRef.current = false
+      if (activeTab === 'comments') {
+        fetchPRComments()
+      }
+    }
+  }, [task.prNumber, activeTab, fetchPRComments])
+
+  // Reset cache and refetch when branch name changes (branch created)
+  useEffect(() => {
+    if (task.branchName) {
+      actionsLoadedRef.current = false
+      if (activeTab === 'actions') {
+        fetchCheckRuns()
+      }
+    }
+  }, [task.branchName, activeTab, fetchCheckRuns])
+
+  // Fetch PR comments when tab switches to comments
   useEffect(() => {
     if (activeTab === 'comments' && task.prNumber) {
       fetchPRComments()
     }
   }, [activeTab, task.prNumber, fetchPRComments])
 
-  // Fetch check runs when tab switches to actions or when branch is created
+  // Fetch check runs when tab switches to actions
   useEffect(() => {
     if (activeTab === 'actions' && task.branchName) {
       fetchCheckRuns()
@@ -461,10 +501,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-xs md:text-sm text-muted-foreground">Loading messages...</p>
-        </div>
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -486,10 +523,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
         <div className="flex-1 overflow-y-auto pb-4">
           {loadingDeployment ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-xs md:text-sm text-muted-foreground">Loading deployment...</p>
-              </div>
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : deploymentError ? (
             <div className="flex items-center justify-center h-full">
@@ -553,10 +587,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             </div>
           ) : loadingActions ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-xs md:text-sm text-muted-foreground">Loading checks...</p>
-              </div>
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : actionsError ? (
             <div className="flex items-center justify-center h-full">
@@ -606,10 +637,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             </div>
           ) : loadingComments ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                <p className="text-xs md:text-sm text-muted-foreground">Loading comments...</p>
-              </div>
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : commentsError ? (
             <div className="flex items-center justify-center h-full">
@@ -667,6 +695,21 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                 {children}
                               </a>
                             ),
+                            ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                              <ul className="text-xs list-disc ml-4" {...props}>
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                              <ol className="text-xs list-decimal ml-4" {...props}>
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                              <li className="text-xs mb-2" {...props}>
+                                {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                              </li>
+                            ),
                           }}
                         >
                           {comment.body}
@@ -720,6 +763,26 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                         <pre className="!text-xs" {...props}>
                           {children}
                         </pre>
+                      ),
+                      p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                        <p className="text-xs" {...props}>
+                          {children}
+                        </p>
+                      ),
+                      ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                        <ul className="text-xs list-disc ml-4" {...props}>
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                        <ol className="text-xs list-decimal ml-4" {...props}>
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                        <li className="text-xs mb-2" {...props}>
+                          {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                        </li>
                       ),
                     }}
                   >
@@ -814,8 +877,21 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                 </pre>
                               ),
                               p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => {
-                                // Check if this paragraph is a tool call
-                                const text = String(children)
+                                // Extract text from complex children structures
+                                const childrenArray = Children.toArray(children)
+                                const textParts: string[] = []
+
+                                childrenArray.forEach((child) => {
+                                  if (typeof child === 'string') {
+                                    textParts.push(child)
+                                  } else if (isValidElement(child)) {
+                                    // It's a React element - keep it as-is, don't stringify
+                                    // This will be handled by React
+                                  }
+                                  // Skip plain objects entirely
+                                })
+
+                                const text = textParts.join('')
                                 const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
                                 const isToolCall = /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(
                                   text,
@@ -823,6 +899,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
                                 // Remove the marker from display
                                 const displayText = text.replace('🔄SHIMMER🔄', '')
+
+                                // If we have React elements, render them; otherwise render the text
+                                const hasReactElements = childrenArray.some((child) => isValidElement(child))
 
                                 return (
                                   <p
@@ -835,10 +914,29 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                     }
                                     {...props}
                                   >
-                                    {displayText}
+                                    {hasReactElements
+                                      ? childrenArray.filter(
+                                          (child) => typeof child === 'string' || isValidElement(child),
+                                        )
+                                      : displayText}
                                   </p>
                                 )
                               },
+                              ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                                <ul className="text-xs list-disc ml-4" {...props}>
+                                  {children}
+                                </ul>
+                              ),
+                              ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                                <ol className="text-xs list-decimal ml-4" {...props}>
+                                  {children}
+                                </ol>
+                              ),
+                              li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                                <li className="text-xs mb-2" {...props}>
+                                  {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                                </li>
+                              ),
                             }}
                           >
                             {processedContent}
