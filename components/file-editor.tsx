@@ -494,7 +494,15 @@ export function FileEditor({
         }
 
         // Convert LSP response to Monaco Location format
-        const convertedDefinitions = data.definitions.map((def: any) => {
+        interface LspDefinition {
+          uri: string
+          range: {
+            start: { line: number; character: number }
+            end: { line: number; character: number }
+          }
+        }
+        
+        const convertedDefinitions = (data.definitions as LspDefinition[]).map((def) => {
           console.log('[Go to Definition] Processing definition:', JSON.stringify(def))
 
           const result = {

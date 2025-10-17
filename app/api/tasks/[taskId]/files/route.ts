@@ -283,17 +283,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.error('Error message:', error instanceof Error ? error.message : 'N/A')
         console.error(
           'Error status:',
-          error && typeof error === 'object' && 'status' in error ? (error as any).status : 'N/A',
+          error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 'N/A',
         )
         console.error(
           'Error response status:',
           error &&
             typeof error === 'object' &&
             'response' in error &&
-            typeof (error as any).response === 'object' &&
-            (error as any).response !== null &&
-            'status' in (error as any).response
-            ? (error as any).response.status
+            typeof (error as { response: unknown }).response === 'object' &&
+            (error as { response: unknown }).response !== null &&
+            'status' in (error as { response: { status: number } }).response
+            ? (error as { response: { status: number } }).response.status
             : 'N/A',
         )
 
@@ -307,7 +307,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             typeof error.response === 'object' &&
             error.response !== null &&
             'status' in error.response &&
-            (error.response as any).status === 410)
+            (error.response as { status: number }).status === 410)
 
         console.error('Is 410 error:', is410Error)
 
@@ -506,17 +506,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.error('Error message:', error instanceof Error ? error.message : 'N/A')
         console.error(
           'Error status:',
-          error && typeof error === 'object' && 'status' in error ? (error as any).status : 'N/A',
+          error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 'N/A',
         )
         console.error(
           'Error response status:',
           error &&
             typeof error === 'object' &&
             'response' in error &&
-            typeof (error as any).response === 'object' &&
-            (error as any).response !== null &&
-            'status' in (error as any).response
-            ? (error as any).response.status
+            typeof (error as { response: unknown }).response === 'object' &&
+            (error as { response: unknown }).response !== null &&
+            'status' in (error as { response: { status: number } }).response
+            ? (error as { response: { status: number } }).response.status
             : 'N/A',
         )
 
@@ -530,7 +530,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             typeof error.response === 'object' &&
             error.response !== null &&
             'status' in error.response &&
-            (error.response as any).status === 410)
+            (error.response as { status: number }).status === 410)
 
         console.error('Is 410 error:', is410Error)
 

@@ -1623,7 +1623,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault()
-                                    attemptCloseTab(index, e as any)
+                                    attemptCloseTab(index)
                                   }
                                 }}
                               >

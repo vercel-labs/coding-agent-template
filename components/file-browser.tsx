@@ -140,7 +140,15 @@ export function FileBrowser({
   }, [])
 
   // Get current viewMode data with default values
-  const currentViewData = (state as any)[viewMode] || {
+  interface ViewModeData {
+    files: FileChange[]
+    fileTree: { [key: string]: FileTreeNode }
+    expandedFolders: Set<string>
+    fetchAttempted: boolean
+    error: string | null
+  }
+  
+  const currentViewData = ((state as Record<string, ViewModeData>)[viewMode] as ViewModeData | undefined) || {
     files: [],
     fileTree: {},
     expandedFolders: new Set<string>(),

@@ -50,7 +50,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
         })
 
         // Try a simple command to verify it's accessible
-        const testResult = await existingSandbox.runCommand({ cmd: 'echo', args: ['test'] })
+        const testResult = await runCommandInSandbox(existingSandbox, 'echo', ['test'])
         if (testResult.success) {
           return NextResponse.json({ error: 'Sandbox is already running' }, { status: 400 })
         }
