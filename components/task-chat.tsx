@@ -569,12 +569,12 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           } else if (conclusion === 'failure') {
             return <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
           } else if (conclusion === 'cancelled') {
-            return <XCircle className="h-4 w-4 text-gray-500 flex-shrink-0" />
+            return <XCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           }
         } else if (status === 'in_progress') {
           return <Loader2 className="h-4 w-4 text-blue-500 animate-spin flex-shrink-0" />
         }
-        return <Square className="h-4 w-4 text-gray-400 flex-shrink-0" />
+        return <Square className="h-4 w-4 text-muted-foreground flex-shrink-0" />
       }
 
       return (

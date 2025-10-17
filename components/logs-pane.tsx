@@ -316,7 +316,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             const getLogColor = (logType: LogEntry['type']) => {
               switch (logType) {
                 case 'command':
-                  return 'text-gray-400'
+                  return 'text-cyan-400'
                 case 'error':
                   return 'text-red-400'
                 case 'success':
@@ -339,9 +339,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
 
             return (
               <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
-                <span className="text-gray-500 text-[10px] shrink-0 opacity-60">
-                  [{formatTime(log.timestamp || new Date())}]
-                </span>
+                <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
                 <span className="flex-1">{log.message}</span>
               </div>
             )
