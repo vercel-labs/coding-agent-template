@@ -25,7 +25,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useSetAtom, useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
-import { githubConnectionAtom } from '@/lib/atoms/github-connection'
+import { githubConnectionAtom, githubConnectionInitializedAtom } from '@/lib/atoms/github-connection'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { GitHubStarsButton } from '@/components/github-stars-button'
 
@@ -49,6 +49,7 @@ export function HomePageHeader({
   const { toggleSidebar } = useTasks()
   const router = useRouter()
   const githubConnection = useAtomValue(githubConnectionAtom)
+  const githubConnectionInitialized = useAtomValue(githubConnectionInitializedAtom)
   const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showNewRepoDialog, setShowNewRepoDialog] = useState(false)
@@ -61,7 +62,7 @@ export function HomePageHeader({
     setIsRefreshing(true)
     try {
       // Clear only owners cache
-      sessionStorage.removeItem('github-owners')
+      localStorage.removeItem('github-owners')
       toast.success('Refreshing owners...')
 
       // Reload the page to fetch fresh data
@@ -79,16 +80,16 @@ export function HomePageHeader({
     try {
       // Clear repos cache for current owner
       if (selectedOwner) {
-        sessionStorage.removeItem(`github-repos-${selectedOwner}`)
+        localStorage.removeItem(`github-repos-${selectedOwner}`)
         toast.success('Refreshing repositories...')
 
         // Reload the page to fetch fresh data
         window.location.reload()
       } else {
         // Clear all repos if no owner selected
-        Object.keys(sessionStorage).forEach((key) => {
+        Object.keys(localStorage).forEach((key) => {
           if (key.startsWith('github-repos-')) {
-            sessionStorage.removeItem(key)
+            localStorage.removeItem(key)
           }
         })
         toast.success('Refreshing all repositories...')
@@ -111,7 +112,23 @@ export function HomePageHeader({
 
       if (response.ok) {
         toast.success('GitHub disconnected')
+
+        // Clear GitHub data from localStorage
+        localStorage.removeItem('github-owners')
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('github-repos-')) {
+            localStorage.removeItem(key)
+          }
+        })
+
+        // Clear selected owner/repo
+        onOwnerChange('')
+        onRepoChange('')
+
+        // Update connection state
         setGitHubConnection({ connected: false })
+
+        // Refresh the page
         router.refresh()
       } else {
         const error = await response.json()
@@ -152,7 +169,7 @@ export function HomePageHeader({
 
         // Clear repos cache for current owner
         if (selectedOwner) {
-          sessionStorage.removeItem(`github-repos-${selectedOwner}`)
+          localStorage.removeItem(`github-repos-${selectedOwner}`)
         }
 
         // Set the newly created repo as selected
@@ -224,8 +241,8 @@ export function HomePageHeader({
 
   // Always render leftActions container to prevent layout shift
   const leftActions = (
-    <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1 overflow-hidden">
-      {githubConnection.connected || isGitHubAuthUser ? (
+    <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1">
+      {!githubConnectionInitialized ? null : githubConnection.connected || isGitHubAuthUser ? ( // Show nothing while loading to prevent flash of "Connect GitHub" button
         <>
           <RepoSelector
             selectedOwner={selectedOwner}
