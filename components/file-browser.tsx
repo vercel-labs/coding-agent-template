@@ -369,7 +369,7 @@ export function FileBrowser({
           </div>
         </div>
       )}
-      {/* Sync button for Local Changes - show regardless of hideHeader */}
+      {/* Sync button for Sandbox Changes - show regardless of hideHeader */}
       {viewMode === 'local' && files.length > 0 && (
         <div className="px-2 pt-2">
           <Button
@@ -402,7 +402,7 @@ export function FileBrowser({
           <div className="p-3 md:p-4 text-center text-xs md:text-sm text-destructive">{error}</div>
         ) : files.length === 0 ? (
           <div className="p-3 md:p-4 text-center text-xs md:text-sm text-muted-foreground">
-            {viewMode === 'local' ? 'No local changes' : viewMode === 'remote' ? 'No changes in PR' : 'No files found'}
+            {viewMode === 'local' ? 'No changes in sandbox' : viewMode === 'remote' ? 'No changes in PR' : 'No files found'}
           </div>
         ) : (
           <div className="py-2">{renderFileTree(fileTree)}</div>
