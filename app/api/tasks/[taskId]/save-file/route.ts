@@ -71,9 +71,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Escape filename for safe shell interpolation
       // This prevents shell injection attacks when filename contains special characters
       const escapedFilename = "'" + filename.replace(/'/g, "'\\''") + "'"
-      // Write file to sandbox using shell command with heredoc
-      // Using 'EOF' (quoted) means content is treated literally, no variable expansion
-      const writeCommand = `cat > ${escapedFilename} << 'EOF'\n${content}\nEOF`
+      
+      // Encode content as base64 to safely handle arbitrary content including special characters
+      // This prevents shell injection attacks when content contains sequences like 'EOF'
+      const encodedContent = Buffer.from(content).toString('base64')
+      
+      // Write file using base64 decoding to avoid heredoc injection vulnerabilities
+      // The base64-encoded content cannot contain shell metacharacters or newlines that would break the command
+      const writeCommand = `echo '${encodedContent}' | base64 -d > ${escapedFilename}`
 
       const result = await sandbox.runCommand('sh', ['-c', writeCommand])
 
