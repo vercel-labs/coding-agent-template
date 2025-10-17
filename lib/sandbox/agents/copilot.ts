@@ -153,11 +153,11 @@ export async function executeCopilotInSandbox(
             url: server.baseUrl!,
             tools: [], // Empty array to allow all tools
           }
-          
+
           if (Object.keys(headers).length > 0) {
             httpConfig.headers = headers
           }
-          
+
           mcpConfig.mcpServers[serverName] = httpConfig
 
           await logger.info('Added remote MCP server')
@@ -272,8 +272,7 @@ EOF`
     const mcpConfigPath = `${homeDir}/.copilot/mcp-config.json`
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
     const resumeFlag = isResumed && sessionId ? ` --resume ${sessionId}` : ''
-    const additionalMcpConfig =
-      mcpServers && mcpServers.length > 0 ? ` --additional-mcp-config @${mcpConfigPath}` : ''
+    const additionalMcpConfig = mcpServers && mcpServers.length > 0 ? ` --additional-mcp-config @${mcpConfigPath}` : ''
 
     // Use non-interactive mode with --allow-all-tools
     // Note: File paths in --additional-mcp-config must be prefixed with @
