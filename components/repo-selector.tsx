@@ -453,7 +453,7 @@ export function RepoSelector({
                     value={repoFilter}
                     onChange={(e) => setRepoFilter(e.target.value)}
                     disabled={disabled}
-                    className="text-sm h-8"
+                    className="text-base md:text-sm h-8"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   />
