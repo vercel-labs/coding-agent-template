@@ -61,7 +61,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Create the folder using mkdir -p
-    console.log('Creating folder...')
     const mkdirResult = await sandbox.runCommand('mkdir', ['-p', foldername])
 
     if (mkdirResult.exitCode !== 0) {
@@ -69,8 +68,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       console.error('Failed to create folder:', stderr)
       return NextResponse.json({ success: false, error: 'Failed to create folder' }, { status: 500 })
     }
-
-    console.log('Folder created successfully')
 
     return NextResponse.json({
       success: true,

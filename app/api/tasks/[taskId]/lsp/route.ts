@@ -75,8 +75,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Normalize filename to absolute path
     const absoluteFilename = filename.startsWith('/') ? filename : `/${filename}`
 
-    console.log('[LSP] Request:', { method, filename: absoluteFilename, position })
-
     switch (method) {
       case 'textDocument/definition': {
         // Execute TypeScript language service query in sandbox
@@ -185,40 +183,34 @@ if (definitions && definitions.length > 0) {
         // Execute the script
         const result = await sandbox.runCommand('node', [scriptPath])
 
-        console.log('[LSP] Command exit code:', result.exitCode)
-
         // Read stdout and stderr
         let stdout = ''
         let stderr = ''
         try {
           stdout = await result.stdout()
         } catch (e) {
-          console.error('[LSP] Failed to read stdout:', e)
+          console.error('Failed to read LSP stdout:', e)
         }
         try {
           stderr = await result.stderr()
         } catch (e) {
-          console.error('[LSP] Failed to read stderr:', e)
+          console.error('Failed to read LSP stderr:', e)
         }
-
-        console.log('[LSP] stdout:', stdout)
-        console.log('[LSP] stderr:', stderr)
 
         // Clean up
         await sandbox.runCommand('rm', [scriptPath])
 
         // Parse the result
         if (result.exitCode !== 0) {
-          console.error('[LSP] Script failed with exit code:', result.exitCode)
+          console.error('LSP script failed:', stderr)
           return NextResponse.json({ definitions: [], error: stderr || 'Script execution failed' })
         }
 
         try {
           const parsed = JSON.parse(stdout.trim())
-          console.log('[LSP] Parsed result:', JSON.stringify(parsed))
           return NextResponse.json(parsed)
         } catch (parseError) {
-          console.error('[LSP] Failed to parse result:', parseError)
+          console.error('Failed to parse LSP result:', parseError)
           return NextResponse.json({ definitions: [], error: 'Failed to parse TypeScript response' })
         }
       }

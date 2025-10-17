@@ -61,8 +61,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Create the file using touch and mkdir -p for parent directories
-    console.log('Creating file...')
-
     // Extract directory path if file is in a subdirectory
     const pathParts = filename.split('/')
     if (pathParts.length > 1) {
@@ -84,8 +82,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       console.error('Failed to create file:', stderr)
       return NextResponse.json({ success: false, error: 'Failed to create file' }, { status: 500 })
     }
-
-    console.log('File created successfully')
 
     return NextResponse.json({
       success: true,

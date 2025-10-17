@@ -34,10 +34,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const searchParams = request.nextUrl.searchParams
     const mode = searchParams.get('mode') || 'remote' // 'local', 'remote', 'all', or 'all-local'
 
-    console.log('=== FILES API CALLED ===')
-    console.log('TaskId:', taskId)
-    console.log('Mode:', mode)
-
     // Get task from database and verify ownership (exclude soft-deleted)
     const [task] = await db
       .select()
@@ -50,9 +46,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
       return response
     }
-
-    console.log('Task sandboxId:', task.sandboxId)
-    console.log('Task sandboxUrl:', task.sandboxUrl)
 
     // Check if task has a branch assigned
     if (!task.branchName) {
@@ -122,9 +115,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
         const { Sandbox } = await import('@vercel/sandbox')
 
-        console.log('Fetching sandbox for task:', taskId, 'sandboxId:', task.sandboxId)
         let sandbox = getSandbox(taskId)
-        console.log('Sandbox from registry:', sandbox ? 'found' : 'not found')
 
         // Try to reconnect if not in registry
         if (!sandbox) {
@@ -133,19 +124,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
 
           if (sandboxToken && teamId && projectId) {
-            console.log('Attempting to reconnect to sandbox:', task.sandboxId)
             sandbox = await Sandbox.get({
               sandboxId: task.sandboxId,
               teamId,
               projectId,
               token: sandboxToken,
             })
-            console.log('Reconnected to sandbox successfully')
           }
         }
 
         if (!sandbox) {
-          console.log('Sandbox not found after reconnection attempt')
           return NextResponse.json({
             success: true,
             files: [],
@@ -155,13 +143,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           })
         }
 
-        console.log('Running git status in sandbox')
         // Run git status to get local changes
         const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
-        console.log('Git status completed with exit code:', statusResult.exitCode)
 
         if (statusResult.exitCode !== 0) {
-          console.error('Failed to run git status')
           return NextResponse.json({
             success: true,
             files: [],
@@ -172,7 +157,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         const statusOutput = await statusResult.stdout()
-        console.log('Git status output:', statusOutput)
         const statusLines = statusOutput
           .trim()
           .split('\n')
@@ -184,8 +168,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const checkRemoteResult = await sandbox.runCommand('git', ['rev-parse', '--verify', remoteBranchRef])
         const remoteBranchExists = checkRemoteResult.exitCode === 0
         const compareRef = remoteBranchExists ? remoteBranchRef : 'HEAD'
-
-        console.log('Comparing against:', compareRef)
 
         // Get diff stats using git diff --numstat
         const numstatResult = await sandbox.runCommand('git', ['diff', '--numstat', compareRef])
@@ -258,11 +240,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 stats = { additions: lineCount, deletions: 0 }
               }
             } catch (err) {
-              console.error('Error counting lines for new file:', filename, err)
+              console.error('Error counting lines for new file:', err)
             }
           }
-
-          console.log('Parsed line:', { line, indexStatus, worktreeStatus, filename, status, stats })
 
           return {
             filename,
@@ -274,31 +254,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         })
 
         files = await Promise.all(filePromises)
-
-        console.log('Found local changes:', files.length, files)
       } catch (error) {
         console.error('Error fetching local changes from sandbox:', error)
-        console.error('Error type:', typeof error)
-        console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'N/A')
-        console.error('Error message:', error instanceof Error ? error.message : 'N/A')
-        console.error(
-          'Error status:',
-          error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 'N/A',
-        )
-        console.error(
-          'Error response status:',
-          error &&
-            typeof error === 'object' &&
-            'response' in error &&
-            typeof (error as { response: unknown }).response === 'object' &&
-            (error as { response: unknown }).response !== null &&
-            'status' in (error as { response: { status: number } }).response
-            ? (error as { response: { status: number } }).response.status
-            : 'N/A',
-        )
 
         // Check if it's a 410 error (sandbox not running)
-        // Only check for actual 410 status codes, not error messages that mention "410"
         const is410Error =
           (error && typeof error === 'object' && 'status' in error && error.status === 410) ||
           (error &&
@@ -308,8 +267,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             error.response !== null &&
             'status' in error.response &&
             (error.response as { status: number }).status === 410)
-
-        console.error('Is 410 error:', is410Error)
 
         if (is410Error) {
           // Clear sandbox info from database since it's no longer running
@@ -321,14 +278,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 sandboxUrl: null,
               })
               .where(eq(tasks.id, taskId))
-            console.log('Cleared sandbox info from task due to 410 error')
 
             // Also remove from registry
             const { unregisterSandbox } = await import('@/lib/sandbox/sandbox-registry')
             unregisterSandbox(taskId)
-            console.log('Removed sandbox from registry')
           } catch (dbError) {
-            console.error('Error clearing sandbox info from database:', dbError)
+            console.error('Error clearing sandbox info:', dbError)
           }
 
           const response = NextResponse.json(
@@ -433,7 +388,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         const findOutput = await findResult.stdout()
-        console.log('Find command output length:', findOutput.length)
         const fileLines = findOutput
           .trim()
           .split('\n')
@@ -497,31 +451,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             changes: 0,
           }
         })
-
-        console.log('Found all local files')
       } catch (error) {
         console.error('Error fetching local files from sandbox:', error)
-        console.error('Error type:', typeof error)
-        console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'N/A')
-        console.error('Error message:', error instanceof Error ? error.message : 'N/A')
-        console.error(
-          'Error status:',
-          error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 'N/A',
-        )
-        console.error(
-          'Error response status:',
-          error &&
-            typeof error === 'object' &&
-            'response' in error &&
-            typeof (error as { response: unknown }).response === 'object' &&
-            (error as { response: unknown }).response !== null &&
-            'status' in (error as { response: { status: number } }).response
-            ? (error as { response: { status: number } }).response.status
-            : 'N/A',
-        )
 
         // Check if it's a 410 error (sandbox not running)
-        // Only check for actual 410 status codes, not error messages that mention "410"
         const is410Error =
           (error && typeof error === 'object' && 'status' in error && error.status === 410) ||
           (error &&
@@ -531,8 +464,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             error.response !== null &&
             'status' in error.response &&
             (error.response as { status: number }).status === 410)
-
-        console.error('Is 410 error:', is410Error)
 
         if (is410Error) {
           // Clear sandbox info from database since it's no longer running
@@ -544,14 +475,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 sandboxUrl: null,
               })
               .where(eq(tasks.id, taskId))
-            console.log('Cleared sandbox info from task due to 410 error')
 
             // Also remove from registry
             const { unregisterSandbox } = await import('@/lib/sandbox/sandbox-registry')
             unregisterSandbox(taskId)
-            console.log('Removed sandbox from registry')
           } catch (dbError) {
-            console.error('Error clearing sandbox info from database:', dbError)
+            console.error('Error clearing sandbox info:', dbError)
           }
 
           const response = NextResponse.json(
@@ -591,12 +520,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             deletions: 0,
             changes: 0,
           }))
-
-        console.log('Found all files in branch')
       } catch (error: unknown) {
         console.error('Error fetching repository tree:', error)
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-          console.log('Branch or repository not found, returning empty file list')
           return NextResponse.json({
             success: true,
             files: [],
@@ -627,7 +553,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         } catch (branchError: unknown) {
           if (branchError && typeof branchError === 'object' && 'status' in branchError && branchError.status === 404) {
             // Branch doesn't exist yet (task is still processing)
-            console.log('Branch does not exist yet, returning empty file list')
             return NextResponse.json({
               success: true,
               files: [],
@@ -667,7 +592,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 masterError.status === 404
               ) {
                 // Neither main nor master exists, or head branch doesn't exist
-                console.log('Could not compare branches')
                 return NextResponse.json({
                   success: true,
                   files: [],
@@ -693,14 +617,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             deletions: file.deletions || 0,
             changes: file.changes || 0,
           })) || []
-
-        console.log('Found changed files in branch')
       } catch (error: unknown) {
         console.error('Error fetching file changes from GitHub:', error)
 
         // If it's a 404 error, return empty results instead of failing
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-          console.log(`Branch or repository not found, returning empty file list`)
           return NextResponse.json({
             success: true,
             files: [],

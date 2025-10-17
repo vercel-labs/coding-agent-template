@@ -61,7 +61,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
     }
 
     // Step 1: Add all changes
-    console.log('Adding all changes...')
     const addResult = await sandbox.runCommand('git', ['add', '.'])
 
     if (addResult.exitCode !== 0) {
@@ -92,7 +91,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
     }
 
     // Step 3: Commit changes
-    console.log('Committing changes...')
     const message = commitMessage || 'Sync local changes'
     const commitResult = await sandbox.runCommand('git', ['commit', '-m', message])
 
@@ -103,7 +101,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
     }
 
     // Step 4: Push changes
-    console.log('Pushing changes...')
     const pushResult = await sandbox.runCommand('git', ['push', 'origin', task.branchName])
 
     if (pushResult.exitCode !== 0) {
@@ -111,8 +108,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
       console.error('Failed to push changes:', stderr)
       return NextResponse.json({ success: false, error: 'Failed to push changes' }, { status: 500 })
     }
-
-    console.log('Changes synced successfully')
 
     return NextResponse.json({
       success: true,

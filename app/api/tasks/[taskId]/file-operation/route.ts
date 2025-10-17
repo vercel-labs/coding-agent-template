@@ -65,8 +65,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const sourceBasename = sourceFile.split('/').pop()
     const targetFile = targetPath ? `${targetPath}/${sourceBasename}` : sourceBasename
 
-    console.log('File operation:', { operation, sourceFile, targetPath, targetDir, targetFile })
-
     if (operation === 'copy') {
       // Copy file
       const copyResult = await sandbox.runCommand('cp', ['-r', sourceFile, targetFile])
@@ -77,7 +75,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return NextResponse.json({ success: false, error: 'Failed to copy file' }, { status: 500 })
       }
 
-      console.log('File copied successfully')
       return NextResponse.json({ success: true, message: 'File copied successfully' })
     } else if (operation === 'cut') {
       // Move file
@@ -89,7 +86,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return NextResponse.json({ success: false, error: 'Failed to move file' }, { status: 500 })
       }
 
-      console.log('File moved successfully')
       return NextResponse.json({ success: true, message: 'File moved successfully' })
     } else {
       return NextResponse.json({ success: false, error: 'Invalid operation' }, { status: 400 })

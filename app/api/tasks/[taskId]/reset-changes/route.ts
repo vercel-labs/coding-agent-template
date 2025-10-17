@@ -61,7 +61,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Step 1: Check if there are local changes
-    console.log('Checking for local changes...')
     const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
 
     if (statusResult.exitCode !== 0) {
@@ -75,8 +74,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Step 2: If there are changes, commit them first (before resetting)
     if (hasChanges) {
-      console.log('Committing local changes before reset...')
-
       // Add all changes
       const addResult = await sandbox.runCommand('git', ['add', '.'])
       if (addResult.exitCode !== 0) {
@@ -93,12 +90,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         console.error('Failed to commit changes:', stderr)
         return NextResponse.json({ success: false, error: 'Failed to commit changes' }, { status: 500 })
       }
-
-      console.log('Local changes committed')
     }
 
     // Step 3: Check if remote branch exists
-    console.log('Checking if remote branch exists...')
     const lsRemoteResult = await sandbox.runCommand('git', ['ls-remote', '--heads', 'origin', task.branchName])
 
     let resetTarget: string
@@ -108,7 +102,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (remoteBranchExists) {
         // Remote branch exists, fetch and reset to it
-        console.log('Remote branch exists, fetching latest changes...')
         const fetchResult = await sandbox.runCommand('git', ['fetch', 'origin', task.branchName])
 
         if (fetchResult.exitCode !== 0) {
@@ -121,17 +114,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         resetTarget = 'FETCH_HEAD'
       } else {
         // Remote branch doesn't exist yet, reset to local branch's last commit
-        console.log('Remote branch does not exist yet, resetting to local branch HEAD...')
         resetTarget = 'HEAD'
       }
     } else {
       // If ls-remote fails, try to reset to local HEAD as fallback
-      console.log('Unable to check remote, resetting to local HEAD...')
       resetTarget = 'HEAD'
     }
 
     // Step 4: Reset to determined target (hard reset)
-    console.log('Resetting to target:', resetTarget)
     const resetResult = await sandbox.runCommand('git', ['reset', '--hard', resetTarget])
 
     if (resetResult.exitCode !== 0) {
@@ -141,7 +131,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Step 5: Clean untracked files
-    console.log('Cleaning untracked files...')
     const cleanResult = await sandbox.runCommand('git', ['clean', '-fd'])
 
     if (cleanResult.exitCode !== 0) {
@@ -149,8 +138,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       console.error('Failed to clean:', stderr)
       // Don't fail the operation if clean fails
     }
-
-    console.log('Changes reset successfully')
 
     return NextResponse.json({
       success: true,

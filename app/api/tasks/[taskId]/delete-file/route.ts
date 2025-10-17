@@ -61,8 +61,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Delete the file using rm
-    console.log('Deleting file')
-
     const rmResult = await sandbox.runCommand('rm', [filename])
 
     if (rmResult.exitCode !== 0) {
@@ -70,8 +68,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       console.error('Failed to delete file:', stderr)
       return NextResponse.json({ success: false, error: 'Failed to delete file' }, { status: 500 })
     }
-
-    console.log('File deleted successfully')
 
     return NextResponse.json({
       success: true,

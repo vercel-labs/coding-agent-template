@@ -260,7 +260,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               if (catResult.exitCode === 0) {
                 newContent = await catResult.stdout()
                 fileFound = true
-                console.log('File read from sandbox:', filename)
               }
             }
           } catch (sandboxError) {
@@ -312,9 +311,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               if (catResult.exitCode === 0) {
                 content = await catResult.stdout()
                 fileFound = true
-                console.log('node_modules file read from sandbox:', filename)
               } else {
-                console.error('Failed to read node_modules file from sandbox:', filename)
+                console.error('Failed to read node_modules file from sandbox')
               }
             }
           } catch (sandboxError) {
@@ -363,7 +361,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               if (catResult.exitCode === 0) {
                 content = await catResult.stdout()
                 fileFound = true
-                console.log('File read from sandbox:', filename)
               }
             }
           } catch (sandboxError) {
