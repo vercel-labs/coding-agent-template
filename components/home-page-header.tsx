@@ -242,8 +242,7 @@ export function HomePageHeader({
   // Always render leftActions container to prevent layout shift
   const leftActions = (
     <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1">
-      {!githubConnectionInitialized ? // Show nothing while loading to prevent flash of "Connect GitHub" button
-      null : githubConnection.connected || isGitHubAuthUser ? (
+      {!githubConnectionInitialized ? null : githubConnection.connected || isGitHubAuthUser ? ( // Show nothing while loading to prevent flash of "Connect GitHub" button
         <>
           <RepoSelector
             selectedOwner={selectedOwner}
