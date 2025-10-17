@@ -435,134 +435,132 @@ export function TaskForm({
 
           {/* Agent Selection */}
           <div className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                {/* Agent Selection */}
-                <Select
-                  value={selectedAgent}
-                  onValueChange={(value) => {
-                    setSelectedAgent(value)
-                    // Save to localStorage immediately
-                    localStorage.setItem('last-selected-agent', value)
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue placeholder="Agent">
-                      {selectedAgent && (() => {
-                        const agent = CODING_AGENTS.find((a) => a.value === selectedAgent)
-                        return agent ? (
-                          <div className="flex items-center gap-2">
-                            <agent.icon className="w-4 h-4" />
-                            <span className="hidden sm:inline">{agent.label}</span>
-                          </div>
-                        ) : null
-                      })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CODING_AGENTS.map((agent) => (
-                      <SelectItem key={agent.value} value={agent.value}>
+            <div className="flex items-center gap-2">
+              {/* Agent Selection - Icon only on mobile, minimal width */}
+              <Select
+                value={selectedAgent}
+                onValueChange={(value) => {
+                  setSelectedAgent(value)
+                  // Save to localStorage immediately
+                  localStorage.setItem('last-selected-agent', value)
+                }}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger className="w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 shrink-0">
+                  <SelectValue placeholder="Agent">
+                    {selectedAgent && (() => {
+                      const agent = CODING_AGENTS.find((a) => a.value === selectedAgent)
+                      return agent ? (
                         <div className="flex items-center gap-2">
                           <agent.icon className="w-4 h-4" />
-                          <span>{agent.label}</span>
+                          <span className="hidden sm:inline">{agent.label}</span>
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      ) : null
+                    })()}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {CODING_AGENTS.map((agent) => (
+                    <SelectItem key={agent.value} value={agent.value}>
+                      <div className="flex items-center gap-2">
+                        <agent.icon className="w-4 h-4" />
+                        <span>{agent.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-                {/* Model Selection */}
-                <Select
-                  value={selectedModel}
-                  onValueChange={(value) => {
-                    setSelectedModel(value)
-                    // Save to localStorage immediately
-                    localStorage.setItem(`last-selected-model-${selectedAgent}`, value)
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                    <SelectValue placeholder="Model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        {model.label}
-                      </SelectItem>
-                    )) || []}
-                  </SelectContent>
-                </Select>
+              {/* Model Selection - Fills available width on mobile */}
+              <Select
+                value={selectedModel}
+                onValueChange={(value) => {
+                  setSelectedModel(value)
+                  // Save to localStorage immediately
+                  localStorage.setItem(`last-selected-model-${selectedAgent}`, value)
+                }}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
+                  <SelectValue placeholder="Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      {model.label}
+                    </SelectItem>
+                  )) || []}
+                </SelectContent>
+              </Select>
 
-                {/* Option Chips - Only visible on desktop */}
-                {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
-                  <div className="hidden sm:flex items-center gap-2 flex-wrap">
-                    {!installDependencies && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                        onClick={() => setShowOptionsDialog(true)}
+              {/* Option Chips - Only visible on desktop */}
+              {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
+                <div className="hidden sm:flex items-center gap-2 flex-wrap">
+                  {!installDependencies && (
+                    <Badge
+                      variant="secondary"
+                      className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                      onClick={() => setShowOptionsDialog(true)}
+                    >
+                      Skip Install
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-3 w-3 p-0 hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          updateInstallDependencies(true)
+                        }}
                       >
-                        Skip Install
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-3 p-0 hover:bg-transparent"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            updateInstallDependencies(true)
-                          }}
-                        >
-                          <X className="h-2 w-2" />
-                        </Button>
-                      </Badge>
-                    )}
-                    {maxDuration !== maxSandboxDuration && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                        onClick={() => setShowOptionsDialog(true)}
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {maxDuration !== maxSandboxDuration && (
+                    <Badge
+                      variant="secondary"
+                      className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                      onClick={() => setShowOptionsDialog(true)}
+                    >
+                      {maxDuration}m
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-3 w-3 p-0 hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          updateMaxDuration(maxSandboxDuration)
+                        }}
                       >
-                        {maxDuration}m
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-3 p-0 hover:bg-transparent"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            updateMaxDuration(maxSandboxDuration)
-                          }}
-                        >
-                          <X className="h-2 w-2" />
-                        </Button>
-                      </Badge>
-                    )}
-                    {keepAlive && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                        onClick={() => setShowOptionsDialog(true)}
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {keepAlive && (
+                    <Badge
+                      variant="secondary"
+                      className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                      onClick={() => setShowOptionsDialog(true)}
+                    >
+                      Keep Alive
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-3 w-3 p-0 hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          updateKeepAlive(false)
+                        }}
                       >
-                        Keep Alive
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-3 p-0 hover:bg-transparent"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            updateKeepAlive(false)
-                          }}
-                        >
-                          <X className="h-2 w-2" />
-                        </Button>
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
+                        <X className="h-2 w-2" />
+                      </Button>
+                    </Badge>
+                  )}
+                </div>
+              )}
 
-              {/* Options and Submit Buttons */}
-              <div className="flex items-center justify-end gap-2">
+              {/* Action Icons and Submit Button */}
+              <div className="flex items-center gap-2 shrink-0">
                 {/* Buttons */}
                 <div className="flex items-center gap-2">
                   <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
