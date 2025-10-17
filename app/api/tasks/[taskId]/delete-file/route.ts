@@ -62,7 +62,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     // Delete the file using rm
     console.log('Deleting file')
-    
+
     const rmResult = await sandbox.runCommand('rm', [filename])
 
     if (rmResult.exitCode !== 0) {
@@ -101,4 +101,3 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     )
   }
 }
-

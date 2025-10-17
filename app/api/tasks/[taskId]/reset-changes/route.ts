@@ -100,23 +100,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Step 3: Check if remote branch exists
     console.log('Checking if remote branch exists...')
     const lsRemoteResult = await sandbox.runCommand('git', ['ls-remote', '--heads', 'origin', task.branchName])
-    
+
     let resetTarget: string
     if (lsRemoteResult.exitCode === 0) {
       const lsRemoteOutput = await lsRemoteResult.stdout()
       const remoteBranchExists = lsRemoteOutput.trim().length > 0
-      
+
       if (remoteBranchExists) {
         // Remote branch exists, fetch and reset to it
         console.log('Remote branch exists, fetching latest changes...')
         const fetchResult = await sandbox.runCommand('git', ['fetch', 'origin', task.branchName])
-        
+
         if (fetchResult.exitCode !== 0) {
           const stderr = await fetchResult.stderr()
           console.error('Failed to fetch from remote:', stderr)
           return NextResponse.json({ success: false, error: 'Failed to fetch from remote' }, { status: 500 })
         }
-        
+
         resetTarget = `origin/${task.branchName}`
       } else {
         // Remote branch doesn't exist yet, reset to local branch's last commit

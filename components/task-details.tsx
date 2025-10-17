@@ -1511,9 +1511,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                               )}
                             >
                               <FileText className="h-3.5 w-3.5 flex-shrink-0" />
-                              <span className="truncate flex-1">
-                                {filename.split('/').pop()}
-                              </span>
+                              <span className="truncate flex-1">{filename.split('/').pop()}</span>
                               <span
                                 onClick={(e) => attemptCloseTab(index, e)}
                                 className={cn(

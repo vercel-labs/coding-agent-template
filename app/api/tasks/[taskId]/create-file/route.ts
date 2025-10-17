@@ -62,13 +62,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Create the file using touch and mkdir -p for parent directories
     console.log('Creating file...')
-    
+
     // Extract directory path if file is in a subdirectory
     const pathParts = filename.split('/')
     if (pathParts.length > 1) {
       const dirPath = pathParts.slice(0, -1).join('/')
       const mkdirResult = await sandbox.runCommand('mkdir', ['-p', dirPath])
-      
+
       if (mkdirResult.exitCode !== 0) {
         const stderr = await mkdirResult.stderr()
         console.error('Failed to create parent directories:', stderr)
@@ -115,4 +115,3 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
   }
 }
-

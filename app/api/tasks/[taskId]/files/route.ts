@@ -184,17 +184,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const checkRemoteResult = await sandbox.runCommand('git', ['rev-parse', '--verify', remoteBranchRef])
         const remoteBranchExists = checkRemoteResult.exitCode === 0
         const compareRef = remoteBranchExists ? remoteBranchRef : 'HEAD'
-        
+
         console.log('Comparing against:', compareRef)
 
         // Get diff stats using git diff --numstat
         const numstatResult = await sandbox.runCommand('git', ['diff', '--numstat', compareRef])
         const diffStats: Record<string, { additions: number; deletions: number }> = {}
-        
+
         if (numstatResult.exitCode === 0) {
           const numstatOutput = await numstatResult.stdout()
-          const numstatLines = numstatOutput.trim().split('\n').filter((line) => line.trim())
-          
+          const numstatLines = numstatOutput
+            .trim()
+            .split('\n')
+            .filter((line) => line.trim())
+
           for (const line of numstatLines) {
             const parts = line.split('\t')
             if (parts.length >= 3) {
@@ -243,7 +246,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
           // For untracked/new files (??), git diff doesn't include them
           // Count lines manually
-          if ((indexStatus === '?' && worktreeStatus === '?') || (indexStatus === 'A' && !stats.additions && !stats.deletions)) {
+          if (
+            (indexStatus === '?' && worktreeStatus === '?') ||
+            (indexStatus === 'A' && !stats.additions && !stats.deletions)
+          ) {
             try {
               const wcResult = await sandbox.runCommand('wc', ['-l', filename])
               if (wcResult.exitCode === 0) {
@@ -275,8 +281,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.error('Error type:', typeof error)
         console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'N/A')
         console.error('Error message:', error instanceof Error ? error.message : 'N/A')
-        console.error('Error status:', error && typeof error === 'object' && 'status' in error ? (error as any).status : 'N/A')
-        console.error('Error response status:', error && typeof error === 'object' && 'response' in error && typeof (error as any).response === 'object' && (error as any).response !== null && 'status' in (error as any).response ? (error as any).response.status : 'N/A')
+        console.error(
+          'Error status:',
+          error && typeof error === 'object' && 'status' in error ? (error as any).status : 'N/A',
+        )
+        console.error(
+          'Error response status:',
+          error &&
+            typeof error === 'object' &&
+            'response' in error &&
+            typeof (error as any).response === 'object' &&
+            (error as any).response !== null &&
+            'status' in (error as any).response
+            ? (error as any).response.status
+            : 'N/A',
+        )
 
         // Check if it's a 410 error (sandbox not running)
         // Only check for actual 410 status codes, not error messages that mention "410"
@@ -424,16 +443,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // Get git status to determine which files are added/modified
         const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
         const changedFilesMap: Record<string, 'added' | 'modified' | 'deleted' | 'renamed'> = {}
-        
+
         if (statusResult.exitCode === 0) {
           const statusOutput = await statusResult.stdout()
-          const statusLines = statusOutput.trim().split('\n').filter((line) => line.trim())
-          
+          const statusLines = statusOutput
+            .trim()
+            .split('\n')
+            .filter((line) => line.trim())
+
           for (const line of statusLines) {
             const indexStatus = line.charAt(0)
             const worktreeStatus = line.charAt(1)
             let filename = line.substring(2).trim()
-            
+
             // Handle renamed files
             if (indexStatus === 'R' || worktreeStatus === 'R') {
               const arrowIndex = filename.indexOf(' -> ')
@@ -441,19 +463,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 filename = filename.substring(arrowIndex + 4).trim()
               }
             }
-            
+
             // Determine status
             let status: 'added' | 'modified' | 'deleted' | 'renamed' = 'modified'
             if (indexStatus === 'R' || worktreeStatus === 'R') {
               status = 'renamed'
-            } else if (indexStatus === 'A' || worktreeStatus === 'A' || (indexStatus === '?' && worktreeStatus === '?')) {
+            } else if (
+              indexStatus === 'A' ||
+              worktreeStatus === 'A' ||
+              (indexStatus === '?' && worktreeStatus === '?')
+            ) {
               status = 'added'
             } else if (indexStatus === 'D' || worktreeStatus === 'D') {
               status = 'deleted'
             } else if (indexStatus === 'M' || worktreeStatus === 'M') {
               status = 'modified'
             }
-            
+
             changedFilesMap[filename] = status
           }
         }
@@ -462,7 +488,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           const trimmedFilename = filename.trim()
           // Use the actual status from git if available, otherwise 'renamed' (which won't trigger coloring)
           const status = changedFilesMap[trimmedFilename] || ('renamed' as const)
-          
+
           return {
             filename: trimmedFilename,
             status,
@@ -478,8 +504,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         console.error('Error type:', typeof error)
         console.error('Error keys:', error && typeof error === 'object' ? Object.keys(error) : 'N/A')
         console.error('Error message:', error instanceof Error ? error.message : 'N/A')
-        console.error('Error status:', error && typeof error === 'object' && 'status' in error ? (error as any).status : 'N/A')
-        console.error('Error response status:', error && typeof error === 'object' && 'response' in error && typeof (error as any).response === 'object' && (error as any).response !== null && 'status' in (error as any).response ? (error as any).response.status : 'N/A')
+        console.error(
+          'Error status:',
+          error && typeof error === 'object' && 'status' in error ? (error as any).status : 'N/A',
+        )
+        console.error(
+          'Error response status:',
+          error &&
+            typeof error === 'object' &&
+            'response' in error &&
+            typeof (error as any).response === 'object' &&
+            (error as any).response !== null &&
+            'status' in (error as any).response
+            ? (error as any).response.status
+            : 'N/A',
+        )
 
         // Check if it's a 410 error (sandbox not running)
         // Only check for actual 410 status codes, not error messages that mention "410"

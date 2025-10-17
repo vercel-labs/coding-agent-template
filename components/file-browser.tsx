@@ -359,7 +359,7 @@ export function FileBrowser({
 
       if (response.ok) {
         toast.success('Sandbox started! Loading files...')
-        
+
         // Clear the error state immediately
         setState({
           [viewMode]: {
@@ -371,11 +371,11 @@ export function FileBrowser({
           },
           loading: true,
         })
-        
+
         // Wait for sandbox to be ready and useTask to poll the updated task data
         // useTask polls every 5 seconds, so wait ~6 seconds to ensure we have latest data
         await new Promise((resolve) => setTimeout(resolve, 6000))
-        
+
         // Now fetch the files with the updated task data
         await fetchBranchFiles()
       } else {
@@ -894,18 +894,18 @@ export function FileBrowser({
                   onClick={() => toggleFolder(fullPath)}
                   onContextMenu={(e) => handleContextMenu(e, fullPath)}
                 >
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {isExpanded ? (
-                    <FolderOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
-                  ) : (
-                    <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
-                  )}
-                  {viewMode === 'all' && (
-                    <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />
-                  )}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {isExpanded ? (
+                      <FolderOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+                    ) : (
+                      <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+                    )}
+                    {viewMode === 'all' && (
+                      <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </div>
+                  <span className="text-xs md:text-sm font-medium truncate">{name}</span>
                 </div>
-                <span className="text-xs md:text-sm font-medium truncate">{name}</span>
-              </div>
               </DropdownMenuTrigger>
               {isSandboxMode && (
                 <DropdownMenuContent>
@@ -948,32 +948,33 @@ export function FileBrowser({
                 onClick={() => onFileSelect?.(node.filename!)}
                 onContextMenu={(e) => handleContextMenu(e, node.filename!)}
               >
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
-                {viewMode === 'all' && (
-                  <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />
-                )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
+                  {viewMode === 'all' && (
+                    <Lock className="w-2.5 h-2.5 md:w-3 md:h-3 text-muted-foreground flex-shrink-0" />
+                  )}
+                </div>
+                <span
+                  className={`text-xs md:text-sm flex-1 truncate ${
+                    viewMode === 'all-local' && node.status === 'added'
+                      ? 'text-green-600'
+                      : viewMode === 'all-local' && node.status === 'modified'
+                        ? 'text-yellow-600'
+                        : ''
+                  }`}
+                >
+                  {name}
+                </span>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {(viewMode === 'local' || viewMode === 'remote') &&
+                    ((node.additions || 0) > 0 || (node.deletions || 0) > 0) && (
+                      <div className="flex items-center gap-1 text-xs">
+                        {(node.additions || 0) > 0 && <span className="text-green-600">+{node.additions}</span>}
+                        {(node.deletions || 0) > 0 && <span className="text-red-600">-{node.deletions}</span>}
+                      </div>
+                    )}
+                </div>
               </div>
-              <span 
-                className={`text-xs md:text-sm flex-1 truncate ${
-                  viewMode === 'all-local' && node.status === 'added' 
-                    ? 'text-green-600' 
-                    : viewMode === 'all-local' && node.status === 'modified'
-                    ? 'text-yellow-600'
-                    : ''
-                }`}
-              >
-                {name}
-              </span>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                {(viewMode === 'local' || viewMode === 'remote') && (((node.additions || 0) > 0) || ((node.deletions || 0) > 0)) && (
-                  <div className="flex items-center gap-1 text-xs">
-                    {(node.additions || 0) > 0 && <span className="text-green-600">+{node.additions}</span>}
-                    {(node.deletions || 0) > 0 && <span className="text-red-600">-{node.deletions}</span>}
-                  </div>
-                )}
-              </div>
-            </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               {isRemoteMode && (
@@ -1124,7 +1125,7 @@ export function FileBrowser({
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              
+
               {/* Segment Button for Remote/Sandbox sub-modes */}
               <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
                 <Button
