@@ -68,9 +68,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     try {
+      // Escape filename for safe shell interpolation
+      // This prevents shell injection attacks when filename contains special characters
+      const escapedFilename = "'" + filename.replace(/'/g, "'\\''") + "'"
       // Write file to sandbox using shell command with heredoc
       // Using 'EOF' (quoted) means content is treated literally, no variable expansion
-      const writeCommand = `cat > '${filename}' << 'EOF'\n${content}\nEOF`
+      const writeCommand = `cat > ${escapedFilename} << 'EOF'\n${content}\nEOF`
 
       const result = await sandbox.runCommand('sh', ['-c', writeCommand])
 

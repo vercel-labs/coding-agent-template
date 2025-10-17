@@ -107,8 +107,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         prefix = lastPart
       }
 
+      // Escape directory path for safe shell interpolation
+      // This prevents shell injection attacks when dir contains special characters
+      const escapedDir = "'" + dir.replace(/'/g, "'\\''") + "'"
       // Get directory listing
-      const lsCommand = `cd "${dir}" 2>/dev/null && ls -1ap 2>/dev/null || echo ""`
+      const lsCommand = `cd ${escapedDir} 2>/dev/null && ls -1ap 2>/dev/null || echo ""`
       const result = await sandbox.runCommand('sh', ['-c', lsCommand])
 
       let stdout = ''
