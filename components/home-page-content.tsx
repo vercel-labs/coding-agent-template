@@ -35,7 +35,7 @@ export function HomePageContent({
   initialKeepAlive = false,
   maxSandboxDuration = 300,
   user = null,
-  initialStars = 1022,
+  initialStars = 1056,
 }: HomePageContentProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)

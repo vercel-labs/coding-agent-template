@@ -232,15 +232,29 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     all: undefined,
     'all-local': undefined,
   })
+  const [selectedItemIsFolderByMode, setSelectedItemIsFolderByMode] = useState<{
+    local: boolean
+    remote: boolean
+    all: boolean
+    'all-local': boolean
+  }>({
+    local: false,
+    remote: false,
+    all: false,
+    'all-local': false,
+  })
   const [tabsWithUnsavedChanges, setTabsWithUnsavedChanges] = useState<Set<string>>(new Set())
   const [tabsSaving, setTabsSaving] = useState<Set<string>>(new Set())
   const [showCloseTabDialog, setShowCloseTabDialog] = useState(false)
   const [tabToClose, setTabToClose] = useState<number | null>(null)
+  // Track loaded file content hashes to detect changes
+  const [loadedFileHashes, setLoadedFileHashes] = useState<Record<string, string>>({})
 
   // Get current mode's tabs and selection
   const openTabs = openTabsByMode[viewMode]
   const activeTabIndex = activeTabIndexByMode[viewMode]
   const selectedFile = selectedFileByMode[viewMode]
+  const selectedItemIsFolder = selectedItemIsFolderByMode[viewMode]
 
   // Helper function to format dates - show only time if same day as today
   const formatDateTime = (date: Date) => {
@@ -266,12 +280,81 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   }, [])
 
   // Tab management functions
-  const openFileInTab = (file: string) => {
+  const openFileInTab = async (file: string, isFolder?: boolean) => {
+    // If it's a folder, just update the selected file state (for creating files/folders in that location)
+    if (isFolder) {
+      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+      setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: true }))
+      return
+    }
+
+    // Mark as not a folder
+    setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: false }))
+
     const currentTabs = openTabsByMode[viewMode]
     const existingIndex = currentTabs.indexOf(file)
 
     // For Changes mode (local or remote), only show one file at a time (no tabs)
     const isChangesMode = viewMode === 'local' || viewMode === 'remote'
+
+    // Check if file is already loaded and has changed
+    if (existingIndex !== -1 && loadedFileHashes[file]) {
+      try {
+        const params = new URLSearchParams()
+        params.set('filename', file)
+        
+        const endpoint =
+          viewMode === 'all' || viewMode === 'all-local'
+            ? `/api/tasks/${task.id}/file-content`
+            : `/api/tasks/${task.id}/diff`
+
+        if (viewMode === 'local' || viewMode === 'all-local') {
+          params.set('mode', 'local')
+        }
+        
+        const response = await fetch(`${endpoint}?${params.toString()}`)
+        const result = await response.json()
+
+        if (result.success && result.data) {
+          // Create a simple hash of the content
+          const newContent = result.data.newContent || result.data.oldContent || ''
+          const newHash = `${newContent.length}-${newContent.substring(0, 100)}`
+          
+          if (loadedFileHashes[file] !== newHash) {
+            // Content has changed, show toast
+            toast.info(`File "${file}" has been updated`, {
+              description: 'The file has new changes. Would you like to reload it?',
+              duration: 10000,
+              action: {
+                label: 'Load Latest',
+                onClick: () => {
+                  // Update hash and force reload by changing selection
+                  setLoadedFileHashes((prev) => ({ ...prev, [file]: newHash }))
+                  // Force reload by briefly deselecting then reselecting
+                  setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: undefined }))
+                  setTimeout(() => {
+                    setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+                    setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+                  }, 10)
+                },
+              },
+              cancel: {
+                label: 'Ignore',
+                onClick: () => {
+                  // Just switch to the tab without reloading
+                  setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+                  setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+                },
+              },
+            })
+            return
+          }
+        }
+      } catch (err) {
+        console.error('Error checking for file changes:', err)
+        // Continue with normal flow on error
+      }
+    }
 
     if (isChangesMode) {
       // Replace the current file (only one file at a time)
@@ -326,6 +409,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }, [viewMode])
 
+  const handleFileLoaded = useCallback((filename: string, content: string) => {
+    // Create a simple hash of the content when file is loaded
+    const hash = `${content.length}-${content.substring(0, 100)}`
+    setLoadedFileHashes((prev) => ({ ...prev, [filename]: hash }))
+  }, [])
+
   const attemptCloseTab = (index: number, e?: React.MouseEvent) => {
     e?.stopPropagation()
     const currentTabs = openTabsByMode[viewMode]
@@ -359,14 +448,17 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     if (newTabs.length === 0) {
       setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: 0 }))
       setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: undefined }))
+      setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: false }))
     } else if (currentActiveIndex >= newTabs.length) {
       setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newTabs.length - 1 }))
       setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: newTabs[newTabs.length - 1] }))
+      setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: false }))
     } else if (currentActiveIndex === index) {
       // If closing the active tab, switch to the previous tab (or next if it's the first)
       const newIndex = Math.max(0, index - 1)
       setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newIndex }))
       setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: newTabs[newIndex] }))
+      setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: false }))
     } else if (currentActiveIndex > index) {
       // Adjust index if a tab before the active one was closed
       setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: currentActiveIndex - 1 }))
@@ -401,6 +493,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     const currentTabs = openTabsByMode[viewMode]
     setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: index }))
     setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: currentTabs[index] }))
+    setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: false }))
   }
 
   // Use optimistic status if available, otherwise use actual task status
@@ -1602,7 +1695,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
                   <div className="overflow-y-auto flex-1">
                     <FileDiffViewer
-                      selectedFile={selectedFile}
+                      selectedFile={selectedItemIsFolder ? undefined : selectedFile}
                       diffsCache={diffsCache}
                       isInitialLoading={Object.keys(diffsCache).length === 0}
                       viewMode={viewMode}
@@ -1618,6 +1711,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         // TODO: Optionally scroll to lineNumber after opening
                       }}
                       onSaveSuccess={handleSaveSuccess}
+                      onFileLoaded={handleFileLoaded}
                     />
                   </div>
                 </div>
@@ -1768,7 +1862,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   <div className="bg-card rounded-md border overflow-hidden h-[calc(100%-3rem)]">
                     <div className="overflow-y-auto h-full">
                       <FileDiffViewer
-                        selectedFile={selectedFile}
+                        selectedFile={selectedItemIsFolder ? undefined : selectedFile}
                         diffsCache={diffsCache}
                         isInitialLoading={Object.keys(diffsCache).length === 0}
                         viewMode={viewMode}
@@ -1783,6 +1877,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           openFileInTab(filename)
                           // TODO: Optionally scroll to lineNumber after opening
                         }}
+                        onFileLoaded={handleFileLoaded}
                         onSaveSuccess={handleSaveSuccess}
                       />
                     </div>
@@ -1934,9 +2029,11 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     taskId={task.id}
                     branchName={task.branchName}
                     repoUrl={task.repoUrl}
-                    onFileSelect={(file) => {
-                      openFileInTab(file)
-                      setShowFilesList(false)
+                    onFileSelect={(file, isFolder) => {
+                      openFileInTab(file, isFolder)
+                      if (!isFolder) {
+                        setShowFilesList(false)
+                      }
                     }}
                     onFilesLoaded={fetchAllDiffs}
                     selectedFile={selectedFile}

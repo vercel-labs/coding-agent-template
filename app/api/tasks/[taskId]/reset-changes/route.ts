@@ -117,7 +117,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           return NextResponse.json({ success: false, error: 'Failed to fetch from remote' }, { status: 500 })
         }
 
-        resetTarget = `origin/${task.branchName}`
+        // Use FETCH_HEAD which contains the just-fetched branch
+        resetTarget = 'FETCH_HEAD'
       } else {
         // Remote branch doesn't exist yet, reset to local branch's last commit
         console.log('Remote branch does not exist yet, resetting to local branch HEAD...')

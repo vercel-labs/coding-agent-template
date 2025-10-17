@@ -27,6 +27,7 @@ interface FileDiffViewerProps {
   onSavingStateChange?: (isSaving: boolean) => void
   onOpenFile?: (filename: string, lineNumber?: number) => void
   onSaveSuccess?: () => void
+  onFileLoaded?: (filename: string, content: string) => void
 }
 
 export function FileDiffViewer({
@@ -39,6 +40,7 @@ export function FileDiffViewer({
   onSavingStateChange,
   onOpenFile,
   onSaveSuccess,
+  onFileLoaded,
 }: FileDiffViewerProps) {
   const params = useParams()
   const taskId = taskIdProp || (params.taskId as string)
@@ -156,10 +158,23 @@ export function FileDiffViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, selectedFile, diffsCache, viewMode])
 
+  // Call onFileLoaded when diffData is loaded
+  useEffect(() => {
+    if (diffData && selectedFile && onFileLoaded) {
+      const content = diffData.newContent || diffData.oldContent || ''
+      onFileLoaded(selectedFile, content)
+    }
+  }, [diffData, selectedFile, onFileLoaded])
+
   const diffFile = useMemo(() => {
     if (!diffData) return null
 
-    // In "all" mode, show the file content without diff (oldContent will be empty)
+    // In "all" or "all-local" mode (Files view), NEVER generate a diff file
+    // We always use FileEditor to show the raw file content, not diffs
+    if (viewMode === 'all' || viewMode === 'all-local') {
+      return null
+    }
+
     // In "local" or "remote" mode, check if contents are identical - no diff to show
     if ((viewMode === 'local' || viewMode === 'remote') && diffData.oldContent === diffData.newContent) {
       console.log('File contents are identical - no changes to display')
@@ -182,9 +197,21 @@ export function FileDiffViewer({
       }
 
       file.initTheme(mounted ? theme : 'light')
-      file.init()
-      file.buildSplitDiffLines()
-      file.buildUnifiedDiffLines()
+      
+      // Wrap file.init() in try-catch to handle diff parsing errors
+      try {
+        file.init()
+        file.buildSplitDiffLines()
+        file.buildUnifiedDiffLines()
+      } catch (initError) {
+        console.error('Error initializing diff file:', initError, {
+          filename: diffData.filename,
+          hasOldContent: !!diffData.oldContent,
+          hasNewContent: !!diffData.newContent,
+          viewMode,
+        })
+        throw initError
+      }
 
       return file
     } catch (error) {
