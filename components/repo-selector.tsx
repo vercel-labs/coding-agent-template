@@ -365,7 +365,7 @@ export function RepoSelector({
 
   const repoTriggerClassName =
     size === 'sm'
-      ? 'w-auto min-w-[80px] sm:min-w-[120px] max-w-[160px] sm:max-w-none border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs'
+      ? 'w-auto min-w-[80px] sm:min-w-[120px] max-w-[240px] sm:max-w-none border-0 bg-transparent shadow-none focus:ring-0 h-8 text-xs'
       : 'w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
 
   // Find the selected owner for avatar display
