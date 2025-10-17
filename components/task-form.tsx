@@ -481,8 +481,8 @@ export function TaskForm({
                 }}
                 disabled={isSubmitting}
               >
-                <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8">
-                  <SelectValue placeholder="Model" />
+                <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8 min-w-0">
+                  <SelectValue placeholder="Model" className="truncate" />
                 </SelectTrigger>
                 <SelectContent>
                   {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
