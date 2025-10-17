@@ -16,7 +16,12 @@ export function HomePageMobileFooter({ initialStars = 1056 }: HomePageMobileFoot
       <div className="flex items-center justify-center gap-3 p-4">
         {/* GitHub Stars Button */}
         <Button asChild variant="ghost" size="default">
-          <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+          <a
+            href={GITHUB_REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2"
+          >
             <Star className="h-4 w-4" />
             <span className="text-sm font-medium">{initialStars.toLocaleString()}</span>
           </a>
@@ -29,7 +34,12 @@ export function HomePageMobileFooter({ initialStars = 1056 }: HomePageMobileFoot
           size="default"
           className="bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
         >
-          <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+          <a
+            href={VERCEL_DEPLOY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2"
+          >
             <svg viewBox="0 0 76 65" className="h-3.5 w-3.5" fill="currentColor">
               <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
             </svg>
