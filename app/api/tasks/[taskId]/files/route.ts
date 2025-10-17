@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { taskId } = await params
     const searchParams = request.nextUrl.searchParams
-    const mode = searchParams.get('mode') || 'remote' // 'local', 'remote', or 'all'
+    const mode = searchParams.get('mode') || 'remote' // 'local', 'remote', 'all', or 'all-local'
 
     // Get task from database and verify ownership (exclude soft-deleted)
     const [task] = await db
@@ -222,6 +222,99 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           {
             success: false,
             error: 'Failed to fetch local changes',
+          },
+          { status: 500 },
+        )
+      }
+    } else if (mode === 'all-local') {
+      // Get all files from local sandbox using git ls-files
+      if (!task.sandboxId) {
+        return NextResponse.json({
+          success: true,
+          files: [],
+          fileTree: {},
+          branchName: task.branchName,
+          message: 'Sandbox not available',
+        })
+      }
+
+      try {
+        const { getSandbox } = await import('@/lib/sandbox/sandbox-registry')
+        const { Sandbox } = await import('@vercel/sandbox')
+
+        let sandbox = getSandbox(taskId)
+
+        // Try to reconnect if not in registry
+        if (!sandbox) {
+          const sandboxToken = process.env.SANDBOX_VERCEL_TOKEN
+          const teamId = process.env.SANDBOX_VERCEL_TEAM_ID
+          const projectId = process.env.SANDBOX_VERCEL_PROJECT_ID
+
+          if (sandboxToken && teamId && projectId) {
+            sandbox = await Sandbox.get({
+              sandboxId: task.sandboxId,
+              teamId,
+              projectId,
+              token: sandboxToken,
+            })
+          }
+        }
+
+        if (!sandbox) {
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Sandbox not found',
+          })
+        }
+
+        // Use git ls-files to list all tracked files in the repository
+        const lsFilesResult = await sandbox.runCommand('git', ['ls-files'])
+
+        if (lsFilesResult.exitCode !== 0) {
+          console.error('Failed to run git ls-files')
+          return NextResponse.json({
+            success: true,
+            files: [],
+            fileTree: {},
+            branchName: task.branchName,
+            message: 'Failed to list files',
+          })
+        }
+
+        const lsFilesOutput = await lsFilesResult.stdout()
+        console.log('Git ls-files output length:', lsFilesOutput.length)
+        const fileLines = lsFilesOutput.trim().split('\n').filter((line) => line.trim())
+
+        files = fileLines.map((filename) => ({
+          filename: filename.trim(),
+          status: 'modified' as const,
+          additions: 0,
+          deletions: 0,
+          changes: 0,
+        }))
+
+        console.log('Found all local files')
+      } catch (error) {
+        console.error('Error fetching local files from sandbox:', error)
+        
+        // Check if it's a 410 error (sandbox not running)
+        if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Sandbox is not running',
+            },
+            { status: 410 },
+          )
+        }
+        
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to fetch local files',
           },
           { status: 500 },
         )

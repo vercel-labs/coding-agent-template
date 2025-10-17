@@ -33,8 +33,8 @@ interface FileBrowserProps {
   onFilesLoaded?: (filenames: string[]) => void
   selectedFile?: string
   refreshKey?: number
-  viewMode?: 'local' | 'remote' | 'all'
-  onViewModeChange?: (mode: 'local' | 'remote' | 'all') => void
+  viewMode?: 'local' | 'remote' | 'all' | 'all-local'
+  onViewModeChange?: (mode: 'local' | 'remote' | 'all' | 'all-local') => void
   hideHeader?: boolean
 }
 
@@ -315,7 +315,8 @@ export function FileBrowser({
     )
   }
 
-  const filesPane = viewMode === 'all' ? 'files' : 'changes'
+  const filesPane = viewMode === 'all' || viewMode === 'all-local' ? 'files' : 'changes'
+  const subMode = viewMode === 'all' || viewMode === 'remote' ? 'remote' : 'local'
 
   return (
     <div className="flex flex-col h-full">
@@ -325,48 +326,46 @@ export function FileBrowser({
           <div className="py-2 flex items-center justify-between h-[46px]">
             <div className="flex items-center gap-1">
               <button
-                onClick={() => onViewModeChange?.(viewMode === 'all' ? 'remote' : viewMode)}
-                className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
-                  filesPane === 'changes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Changes
-              </button>
-              <button
-                onClick={() => onViewModeChange?.('all')}
+                onClick={() => onViewModeChange?.(subMode === 'local' ? 'all-local' : 'all')}
                 className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
                   filesPane === 'files' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 Files
               </button>
+              <button
+                onClick={() => onViewModeChange?.(subMode === 'local' ? 'local' : 'remote')}
+                className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
+                  filesPane === 'changes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Changes
+              </button>
             </div>
 
-            {/* Segment Button for Changes sub-modes */}
-            {filesPane === 'changes' && (
-              <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
-                <Button
-                  variant={viewMode === 'local' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => onViewModeChange?.('local')}
-                  className={`h-6 px-2 text-xs rounded-sm ${
-                    viewMode === 'local' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
-                  }`}
-                >
-                  Local
-                </Button>
-                <Button
-                  variant={viewMode === 'remote' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => onViewModeChange?.('remote')}
-                  className={`h-6 px-2 text-xs rounded-sm ${
-                    viewMode === 'remote' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
-                  }`}
-                >
-                  Remote
-                </Button>
-              </div>
-            )}
+            {/* Segment Button for Sandbox/Remote sub-modes */}
+            <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+              <Button
+                variant={subMode === 'local' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all-local' : 'local')}
+                className={`h-6 px-2 text-xs rounded-sm ${
+                  subMode === 'local' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                }`}
+              >
+                Sandbox
+              </Button>
+              <Button
+                variant={subMode === 'remote' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => onViewModeChange?.(filesPane === 'files' ? 'all' : 'remote')}
+                className={`h-6 px-2 text-xs rounded-sm ${
+                  subMode === 'remote' ? 'bg-background shadow-sm' : 'hover:bg-transparent hover:text-foreground'
+                }`}
+              >
+                Remote
+              </Button>
+            </div>
           </div>
         </div>
       )}

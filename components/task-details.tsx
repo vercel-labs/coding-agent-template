@@ -170,8 +170,11 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [isReopeningPR, setIsReopeningPR] = useState(false)
   const [isMergingPR, setIsMergingPR] = useState(false)
   const [filesPane, setFilesPane] = useState<'files' | 'changes'>('changes')
-  const [changesMode, setChangesMode] = useState<'local' | 'remote'>('remote')
-  const viewMode = filesPane === 'files' ? 'all' : changesMode
+  const [subMode, setSubMode] = useState<'local' | 'remote'>('remote')
+  const viewMode: 'local' | 'remote' | 'all' | 'all-local' = 
+    filesPane === 'files' 
+      ? (subMode === 'local' ? 'all-local' : 'all')
+      : subMode
   const [activeTab, setActiveTab] = useState<'code' | 'chat' | 'preview'>('code')
   const [showFilesList, setShowFilesList] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -192,6 +195,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [showFileDropdown, setShowFileDropdown] = useState(false)
   const [allFiles, setAllFiles] = useState<string[]>([])
   const fileSearchRef = useRef<HTMLDivElement>(null)
+  const tabsContainerRef = useRef<HTMLDivElement>(null)
+  const tabButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
   const { refreshTasks } = useTasks()
   const router = useRouter()
 
@@ -200,28 +205,34 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     local: string[]
     remote: string[]
     all: string[]
+    'all-local': string[]
   }>({
     local: [],
     remote: [],
     all: [],
+    'all-local': [],
   })
   const [activeTabIndexByMode, setActiveTabIndexByMode] = useState<{
     local: number
     remote: number
     all: number
+    'all-local': number
   }>({
     local: 0,
     remote: 0,
     all: 0,
+    'all-local': 0,
   })
   const [selectedFileByMode, setSelectedFileByMode] = useState<{
     local: string | undefined
     remote: string | undefined
     all: string | undefined
+    'all-local': string | undefined
   }>({
     local: undefined,
     remote: undefined,
     all: undefined,
+    'all-local': undefined,
   })
   const [tabsWithUnsavedChanges, setTabsWithUnsavedChanges] = useState<Set<string>>(new Set())
   const [tabsSaving, setTabsSaving] = useState<Set<string>>(new Set())
@@ -246,12 +257,13 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   }
 
   // View mode change handler
-  const handleViewModeChange = useCallback((newMode: 'local' | 'remote' | 'all') => {
-    if (newMode === 'all') {
+  const handleViewModeChange = useCallback((newMode: 'local' | 'remote' | 'all' | 'all-local') => {
+    if (newMode === 'all' || newMode === 'all-local') {
       setFilesPane('files')
+      setSubMode(newMode === 'all-local' ? 'local' : 'remote')
     } else {
       setFilesPane('changes')
-      setChangesMode(newMode)
+      setSubMode(newMode)
     }
   }, [])
 
@@ -822,7 +834,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       // Clear diffs cache to force reload
       setDiffsCache({})
       // Clear selected files for all modes
-      setSelectedFileByMode({ local: undefined, remote: undefined, all: undefined })
+      setSelectedFileByMode({ local: undefined, remote: undefined, all: undefined, 'all-local': undefined })
     }
 
     previousStatusRef.current = currentStatus
@@ -838,6 +850,21 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       }
     }
   }, [selectedAgent])
+
+  // Scroll active tab into view when it changes
+  useEffect(() => {
+    const tabKey = `${viewMode}-${activeTabIndex}`
+    const activeTabButton = tabButtonRefs.current[tabKey]
+    
+    if (activeTabButton && tabsContainerRef.current) {
+      // Use scrollIntoView with smooth behavior and inline: 'center' to center the tab in view
+      activeTabButton.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      })
+    }
+  }, [activeTabIndex, selectedFile, viewMode])
 
   const handleOpenPR = () => {
     if (prUrl) {
@@ -1439,21 +1466,26 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   <div className="flex flex-col border-b bg-muted/50 flex-shrink-0">
                     {/* Tabs Row */}
                     {openTabs.length > 0 && (
-                      <div className="flex items-center gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b">
+                      <div 
+                        ref={tabsContainerRef}
+                        className="flex items-center gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b"
+                      >
                         {openTabs.map((filename, index) => {
                           const hasUnsavedChanges = tabsWithUnsavedChanges.has(filename)
                           const isSaving = tabsSaving.has(filename)
                           const modeSuffix =
-                            viewMode === 'local' ? ' (Local)' : viewMode === 'remote' ? ' (Remote)' : ''
+                            viewMode === 'local' ? ' (Sandbox)' : viewMode === 'remote' ? ' (Remote)' : ''
+                          const tabKey = `${viewMode}-${index}`
                           return (
                             <button
                               key={filename}
+                              ref={(el) => { tabButtonRefs.current[tabKey] = el }}
                               onClick={() => switchToTab(index)}
                               className={cn(
-                                'group flex items-center gap-2 px-3 py-2 text-sm border-r hover:bg-muted transition-colors flex-shrink-0 max-w-[240px]',
+                                'group flex items-center gap-2 px-3 py-2 text-sm border-r transition-colors flex-shrink-0 max-w-[240px]',
                                 activeTabIndex === index
                                   ? 'bg-background text-foreground'
-                                  : 'text-muted-foreground hover:text-foreground',
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                               )}
                             >
                               <FileText className="h-3.5 w-3.5 flex-shrink-0" />
@@ -1829,52 +1861,50 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     <div className="py-2 flex items-center justify-between h-[46px]">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => handleViewModeChange(viewMode === 'all' ? 'remote' : viewMode)}
-                          className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
-                            filesPane === 'changes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Changes
-                        </button>
-                        <button
-                          onClick={() => handleViewModeChange('all')}
+                          onClick={() => handleViewModeChange(subMode === 'local' ? 'all-local' : 'all')}
                           className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
                             filesPane === 'files' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
                           Files
                         </button>
+                        <button
+                          onClick={() => handleViewModeChange(subMode === 'local' ? 'local' : 'remote')}
+                          className={`text-sm font-semibold px-2 py-1 rounded transition-colors ${
+                            filesPane === 'changes' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Changes
+                        </button>
                       </div>
 
-                      {/* Segment Button for Changes sub-modes */}
-                      {filesPane === 'changes' && (
-                        <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
-                          <Button
-                            variant={viewMode === 'local' ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => handleViewModeChange('local')}
-                            className={`h-6 px-2 text-xs rounded-sm ${
-                              viewMode === 'local'
-                                ? 'bg-background shadow-sm'
-                                : 'hover:bg-transparent hover:text-foreground'
-                            }`}
-                          >
-                            Local
-                          </Button>
-                          <Button
-                            variant={viewMode === 'remote' ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => handleViewModeChange('remote')}
-                            className={`h-6 px-2 text-xs rounded-sm ${
-                              viewMode === 'remote'
-                                ? 'bg-background shadow-sm'
-                                : 'hover:bg-transparent hover:text-foreground'
-                            }`}
-                          >
-                            Remote
-                          </Button>
-                        </div>
-                      )}
+                      {/* Segment Button for Sandbox/Remote sub-modes */}
+                      <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+                        <Button
+                          variant={subMode === 'local' ? 'secondary' : 'ghost'}
+                          size="sm"
+                          onClick={() => handleViewModeChange(filesPane === 'files' ? 'all-local' : 'local')}
+                          className={`h-6 px-2 text-xs rounded-sm ${
+                            subMode === 'local'
+                              ? 'bg-background shadow-sm'
+                              : 'hover:bg-transparent hover:text-foreground'
+                          }`}
+                        >
+                          Sandbox
+                        </Button>
+                        <Button
+                          variant={subMode === 'remote' ? 'secondary' : 'ghost'}
+                          size="sm"
+                          onClick={() => handleViewModeChange(filesPane === 'files' ? 'all' : 'remote')}
+                          className={`h-6 px-2 text-xs rounded-sm ${
+                            subMode === 'remote'
+                              ? 'bg-background shadow-sm'
+                              : 'hover:bg-transparent hover:text-foreground'
+                          }`}
+                        >
+                          Remote
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </DrawerHeader>

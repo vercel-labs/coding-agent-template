@@ -21,7 +21,7 @@ interface FileDiffViewerProps {
   selectedFile?: string
   diffsCache?: Record<string, DiffData>
   isInitialLoading?: boolean
-  viewMode?: 'local' | 'remote' | 'all' | 'changes'
+  viewMode?: 'local' | 'remote' | 'all' | 'all-local' | 'changes'
   taskId?: string
   onUnsavedChanges?: (hasChanges: boolean) => void
   onSavingStateChange?: (isSaving: boolean) => void
@@ -108,11 +108,11 @@ export function FileDiffViewer({
         const params = new URLSearchParams()
         params.set('filename', selectedFile)
 
-        // In "all" mode, fetch file content; in "local" or "remote" mode, fetch diff
-        const endpoint = viewMode === 'all' ? `/api/tasks/${taskId}/file-content` : `/api/tasks/${taskId}/diff`
+        // In "all" or "all-local" mode, fetch file content; in "local" or "remote" mode, fetch diff
+        const endpoint = (viewMode === 'all' || viewMode === 'all-local') ? `/api/tasks/${taskId}/file-content` : `/api/tasks/${taskId}/diff`
 
         // For local mode, add a query parameter to get local diff instead of PR diff
-        if (viewMode === 'local') {
+        if (viewMode === 'local' || viewMode === 'all-local') {
           params.set('mode', 'local')
         }
         const response = await fetch(`${endpoint}?${params.toString()}`)
@@ -278,8 +278,8 @@ export function FileDiffViewer({
     )
   }
 
-  // Render FileEditor for "all" mode with text files
-  if (viewMode === 'all' && diffData && !diffData.isBinary && !diffData.isImage) {
+  // Render FileEditor for "all" or "all-local" mode with text files
+  if ((viewMode === 'all' || viewMode === 'all-local') && diffData && !diffData.isBinary && !diffData.isImage) {
     return (
       <FileEditor
         filename={diffData.filename}
