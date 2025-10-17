@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       const { getUserGitHubToken } = await import('@/lib/github/user-token')
       const githubToken = await getUserGitHubToken()
       const hasKey = !!githubToken
-      
+
       return NextResponse.json({
         success: true,
         hasKey,

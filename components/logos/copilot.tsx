@@ -16,4 +16,3 @@ const Copilot = (props: SVGProps<SVGSVGElement>) => (
 )
 
 export default Copilot
-

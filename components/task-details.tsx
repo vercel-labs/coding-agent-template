@@ -202,14 +202,14 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   useEffect(() => {
     const agent = selectedAgent as keyof typeof DEFAULT_MODELS
     const taskModel = task.selectedModel
-    
+
     // Check if the task's model exists in the agent's model list
     const agentModels = AGENT_MODELS[agent]
     const modelExists = agentModels?.some((m) => m.value === taskModel)
-    
+
     // Use task model if it exists for the agent, otherwise use default
     const correctModel = modelExists && taskModel ? taskModel : DEFAULT_MODELS[agent]
-    
+
     if (correctModel !== selectedModel) {
       setSelectedModel(correctModel)
     }

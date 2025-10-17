@@ -40,11 +40,7 @@ export async function executeCopilotInSandbox(
 ): Promise<AgentExecutionResult> {
   try {
     // Check if GitHub Copilot CLI is already installed (for resumed sandboxes)
-    const existingCliCheck = await runCommandInSandbox(
-      sandbox,
-      'sh',
-      ['-c', 'which copilot 2>/dev/null'],
-    )
+    const existingCliCheck = await runCommandInSandbox(sandbox, 'sh', ['-c', 'which copilot 2>/dev/null'])
 
     let copilotInstall: { success: boolean; output?: string; error?: string } = { success: true }
 
@@ -108,8 +104,8 @@ export async function executeCopilotInSandbox(
       const mcpConfig: {
         mcpServers: Record<
           string,
-          | { url: string; headers?: Record<string, string> }
-          | { command: string; args?: string[]; env?: Record<string, string> }
+          | { type: 'http'; url: string; headers?: Record<string, string>; tools: string[] }
+          | { type: 'stdio'; command: string; args?: string[]; env?: Record<string, string>; tools: string[] }
         >
       } = {
         mcpServers: {},
@@ -135,17 +131,15 @@ export async function executeCopilotInSandbox(
           }
 
           mcpConfig.mcpServers[serverName] = {
+            type: 'stdio',
             command: executable,
             ...(args.length > 0 ? { args } : {}),
             ...(envObject ? { env: envObject } : {}),
+            tools: [], // Empty array to allow all tools
           }
           await logger.info('Added local MCP server')
         } else {
           // Remote HTTP/SSE server
-          mcpConfig.mcpServers[serverName] = {
-            url: server.baseUrl!,
-          }
-
           const headers: Record<string, string> = {}
           if (server.oauthClientSecret) {
             headers.Authorization = `Bearer ${server.oauthClientSecret}`
@@ -153,17 +147,26 @@ export async function executeCopilotInSandbox(
           if (server.oauthClientId) {
             headers['X-Client-ID'] = server.oauthClientId
           }
-          if (Object.keys(headers).length > 0) {
-            mcpConfig.mcpServers[serverName].headers = headers
+
+          const httpConfig: { type: 'http'; url: string; headers?: Record<string, string>; tools: string[] } = {
+            type: 'http',
+            url: server.baseUrl!,
+            tools: [], // Empty array to allow all tools
           }
+          
+          if (Object.keys(headers).length > 0) {
+            httpConfig.headers = headers
+          }
+          
+          mcpConfig.mcpServers[serverName] = httpConfig
 
           await logger.info('Added remote MCP server')
         }
       }
 
-      // Write the MCP configuration file
+      // Write the MCP configuration file (use $HOME instead of ~)
       const mcpConfigJson = JSON.stringify(mcpConfig, null, 2)
-      const createMcpConfigCmd = `mkdir -p ~/.copilot && cat > ~/.copilot/mcp-config.json << 'EOF'
+      const createMcpConfigCmd = `mkdir -p $HOME/.copilot && cat > $HOME/.copilot/mcp-config.json << 'EOF'
 ${mcpConfigJson}
 EOF`
 
@@ -185,7 +188,6 @@ EOF`
     // Capture output by intercepting the streams
     let capturedOutput = ''
     let capturedError = ''
-    let isCompleted = false
 
     // Create custom writable streams to capture the output
     const { Writable } = await import('stream')
@@ -241,11 +243,6 @@ EOF`
           }
         }
 
-        // Check for completion indicators
-        if (data.includes('Task completed') || data.includes('Done')) {
-          isCompleted = true
-        }
-
         callback()
       },
     })
@@ -271,10 +268,13 @@ EOF`
 
     // Build the copilot command
     const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
+    const homeDir = '/home/vercel-sandbox'
+    const mcpConfigPath = `${homeDir}/.copilot/mcp-config.json`
     const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
     const resumeFlag = isResumed && sessionId ? ` --resume ${sessionId}` : ''
-    const additionalMcpConfig = mcpServers && mcpServers.length > 0 ? ' --additional-mcp-config @~/.copilot/mcp-config.json' : ''
-    
+    const additionalMcpConfig =
+      mcpServers && mcpServers.length > 0 ? ` --additional-mcp-config @${mcpConfigPath}` : ''
+
     // Use non-interactive mode with --allow-all-tools
     // Note: File paths in --additional-mcp-config must be prefixed with @
     const args = [
@@ -283,7 +283,7 @@ EOF`
       '--allow-all-tools',
       ...(selectedModel ? ['--model', selectedModel] : []),
       ...(isResumed && sessionId ? ['--resume', sessionId] : []),
-      ...(mcpServers && mcpServers.length > 0 ? ['--additional-mcp-config', '@~/.copilot/mcp-config.json'] : []),
+      ...(mcpServers && mcpServers.length > 0 ? ['--additional-mcp-config', `@${mcpConfigPath}`] : []),
     ]
 
     const logCommand = `copilot${modelFlag}${resumeFlag}${additionalMcpConfig} -p "${instruction}" --allow-all-tools`
@@ -293,46 +293,28 @@ EOF`
       await logger.info('Executing GitHub Copilot CLI in non-interactive mode')
     }
 
-    // Execute copilot CLI
-    await sandbox.runCommand({
-      cmd: 'copilot',
-      args: args,
-      env: {
-        GH_TOKEN: token!,
-        GITHUB_TOKEN: token!,
-      },
-      sudo: false,
-      detached: true,
-      stdout: captureStdout,
-      stderr: captureStderr,
-    })
+    // Execute copilot CLI (without detached mode so we can wait for completion)
+    try {
+      await sandbox.runCommand({
+        cmd: 'copilot',
+        args: args,
+        env: {
+          GH_TOKEN: token!,
+          GITHUB_TOKEN: token!,
+        },
+        sudo: false,
+        stdout: captureStdout,
+        stderr: captureStderr,
+      })
 
-    if (logger) {
-      await logger.info('GitHub Copilot command started, monitoring for completion...')
-    }
-
-    // Wait for completion - let sandbox timeout handle the hard limit
-    let attempts = 0
-    while (!isCompleted) {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      attempts++
-
-      // Safety check: if we've been waiting over 4 minutes, break
-      if (attempts > 240) {
-        if (logger) {
-          await logger.info('Approaching sandbox timeout, checking for changes...')
-        }
-        break
-      }
-    }
-
-    if (isCompleted) {
       if (logger) {
-        await logger.info('GitHub Copilot completed successfully')
+        await logger.info('GitHub Copilot CLI execution completed')
       }
-    } else {
+    } catch (error) {
+      // Command may exit with non-zero code, but that's okay
+      // We'll check for changes below
       if (logger) {
-        await logger.info('GitHub Copilot execution ended, checking for changes')
+        await logger.info('GitHub Copilot CLI execution finished')
       }
     }
 
@@ -388,4 +370,3 @@ EOF`
     }
   }
 }
-
