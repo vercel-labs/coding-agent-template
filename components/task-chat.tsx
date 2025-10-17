@@ -707,7 +707,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                             ),
                             li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
                               <li className="text-xs mb-2" {...props}>
-                                {Children.toArray(children).filter(c => typeof c === 'string' || isValidElement(c))}
+                                {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
                               </li>
                             ),
                           }}
@@ -781,7 +781,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                       ),
                       li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
                         <li className="text-xs mb-2" {...props}>
-                          {Children.toArray(children).filter(c => typeof c === 'string' || isValidElement(c))}
+                          {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
                         </li>
                       ),
                     }}
@@ -880,8 +880,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                 // Extract text from complex children structures
                                 const childrenArray = Children.toArray(children)
                                 const textParts: string[] = []
-                                
-                                childrenArray.forEach(child => {
+
+                                childrenArray.forEach((child) => {
                                   if (typeof child === 'string') {
                                     textParts.push(child)
                                   } else if (isValidElement(child)) {
@@ -890,7 +890,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                   }
                                   // Skip plain objects entirely
                                 })
-                                
+
                                 const text = textParts.join('')
                                 const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
                                 const isToolCall = /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(
@@ -901,8 +901,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                 const displayText = text.replace('🔄SHIMMER🔄', '')
 
                                 // If we have React elements, render them; otherwise render the text
-                                const hasReactElements = childrenArray.some(child => isValidElement(child))
-                                
+                                const hasReactElements = childrenArray.some((child) => isValidElement(child))
+
                                 return (
                                   <p
                                     className={
@@ -914,7 +914,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                     }
                                     {...props}
                                   >
-                                    {hasReactElements ? childrenArray.filter(child => typeof child === 'string' || isValidElement(child)) : displayText}
+                                    {hasReactElements
+                                      ? childrenArray.filter(
+                                          (child) => typeof child === 'string' || isValidElement(child),
+                                        )
+                                      : displayText}
                                   </p>
                                 )
                               },
@@ -930,7 +934,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                               ),
                               li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
                                 <li className="text-xs mb-2" {...props}>
-                                  {Children.toArray(children).filter(c => typeof c === 'string' || isValidElement(c))}
+                                  {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
                                 </li>
                               ),
                             }}
