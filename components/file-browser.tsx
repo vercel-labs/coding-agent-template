@@ -1,7 +1,19 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { File, Folder, FolderOpen, Clock, GitBranch, Loader2, GitCommit, ExternalLink, Scissors, Copy, Clipboard } from 'lucide-react'
+import {
+  File,
+  Folder,
+  FolderOpen,
+  Clock,
+  GitBranch,
+  Loader2,
+  GitCommit,
+  ExternalLink,
+  Scissors,
+  Copy,
+  Clipboard,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAtom } from 'jotai'
 import { getTaskFileBrowserState } from '@/lib/atoms/file-browser'
@@ -62,13 +74,13 @@ export function FileBrowser({
   const taskStateAtom = useMemo(() => getTaskFileBrowserState(taskId), [taskId])
   const [state, setState] = useAtom(taskStateAtom)
   const [isSyncing, setIsSyncing] = useState(false)
-  
+
   // Clipboard state for cut/copy/paste
   const [clipboardFile, setClipboardFile] = useState<{ filename: string; operation: 'cut' | 'copy' } | null>(null)
-  
+
   // Context menu state - track which file has an open context menu
   const [contextMenuFile, setContextMenuFile] = useState<string | null>(null)
-  
+
   // Detect OS for keyboard shortcuts
   const isMac = useMemo(() => {
     if (typeof window === 'undefined') return false
@@ -263,22 +275,25 @@ export function FileBrowser({
   }
 
   // Context menu handlers
-  const handleOpenOnGitHub = useCallback((filename: string) => {
-    if (!repoUrl || !branchName) {
-      toast.error('Repository URL or branch name not available')
-      return
-    }
+  const handleOpenOnGitHub = useCallback(
+    (filename: string) => {
+      if (!repoUrl || !branchName) {
+        toast.error('Repository URL or branch name not available')
+        return
+      }
 
-    try {
-      // Parse repo URL to get owner/repo
-      const repoPath = repoUrl.replace('https://github.com/', '').replace('.git', '')
-      const githubFileUrl = `https://github.com/${repoPath}/blob/${branchName}/${filename}`
-      window.open(githubFileUrl, '_blank', 'noopener,noreferrer')
-    } catch (err) {
-      console.error('Error opening GitHub URL:', err)
-      toast.error('Failed to open file on GitHub')
-    }
-  }, [repoUrl, branchName])
+      try {
+        // Parse repo URL to get owner/repo
+        const repoPath = repoUrl.replace('https://github.com/', '').replace('.git', '')
+        const githubFileUrl = `https://github.com/${repoPath}/blob/${branchName}/${filename}`
+        window.open(githubFileUrl, '_blank', 'noopener,noreferrer')
+      } catch (err) {
+        console.error('Error opening GitHub URL:', err)
+        toast.error('Failed to open file on GitHub')
+      }
+    },
+    [repoUrl, branchName],
+  )
 
   const handleCut = useCallback((filename: string) => {
     setClipboardFile({ filename, operation: 'cut' })
@@ -366,7 +381,7 @@ export function FileBrowser({
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle paste in sandbox mode
       if (viewMode !== 'local' && viewMode !== 'all-local') return
-      
+
       // Check for Ctrl+V (Windows/Linux) or Cmd+V (Mac)
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboardFile) {
         e.preventDefault()
@@ -395,13 +410,10 @@ export function FileBrowser({
         const isExpanded = expandedFolders.has(fullPath)
         const isSandboxMode = viewMode === 'local' || viewMode === 'all-local'
         const isFolderContextMenuOpen = contextMenuFile === fullPath
-        
+
         return (
           <div key={fullPath}>
-            <DropdownMenu
-              open={isFolderContextMenuOpen}
-              onOpenChange={(open) => !open && setContextMenuFile(null)}
-            >
+            <DropdownMenu open={isFolderContextMenuOpen} onOpenChange={(open) => !open && setContextMenuFile(null)}>
               <DropdownMenuTrigger asChild>
                 <div
                   className="flex items-center gap-2 px-2 md:px-3 py-1.5 hover:bg-card/50 cursor-pointer rounded-sm"
@@ -438,9 +450,9 @@ export function FileBrowser({
         const isRemoteMode = viewMode === 'remote' || viewMode === 'all'
         const isContextMenuOpen = contextMenuFile === node.filename
         const isCut = clipboardFile?.filename === node.filename && clipboardFile?.operation === 'cut'
-        
+
         return (
-          <DropdownMenu 
+          <DropdownMenu
             key={fullPath}
             open={isContextMenuOpen}
             onOpenChange={(open) => !open && setContextMenuFile(null)}
