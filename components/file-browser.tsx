@@ -1,12 +1,19 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { File, Folder, FolderOpen, Clock, GitBranch, Loader2, GitCommit } from 'lucide-react'
+import { File, Folder, FolderOpen, Clock, GitBranch, Loader2, GitCommit, ExternalLink, Scissors, Copy, Clipboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAtom } from 'jotai'
 import { getTaskFileBrowserState } from '@/lib/atoms/file-browser'
 import { useMemo } from 'react'
 import { toast } from 'sonner'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuShortcut,
+} from '@/components/ui/dropdown-menu'
 
 interface FileChange {
   filename: string
@@ -29,6 +36,7 @@ interface FileTreeNode {
 interface FileBrowserProps {
   taskId: string
   branchName?: string | null
+  repoUrl?: string | null
   onFileSelect?: (filename: string) => void
   onFilesLoaded?: (filenames: string[]) => void
   selectedFile?: string
@@ -41,6 +49,7 @@ interface FileBrowserProps {
 export function FileBrowser({
   taskId,
   branchName,
+  repoUrl,
   onFileSelect,
   onFilesLoaded,
   selectedFile,
@@ -53,6 +62,18 @@ export function FileBrowser({
   const taskStateAtom = useMemo(() => getTaskFileBrowserState(taskId), [taskId])
   const [state, setState] = useAtom(taskStateAtom)
   const [isSyncing, setIsSyncing] = useState(false)
+  
+  // Clipboard state for cut/copy/paste
+  const [clipboardFile, setClipboardFile] = useState<{ filename: string; operation: 'cut' | 'copy' } | null>(null)
+  
+  // Context menu state - track which file has an open context menu
+  const [contextMenuFile, setContextMenuFile] = useState<string | null>(null)
+  
+  // Detect OS for keyboard shortcuts
+  const isMac = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    return navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  }, [])
 
   // Get current viewMode data with default values
   const currentViewData = state[viewMode] || {
@@ -166,23 +187,37 @@ export function FileBrowser({
 
       toast.success('Changes synced successfully')
 
-      // Refresh the file list
-      setState({
-        [viewMode]: {
-          ...currentViewData,
-          fetchAttempted: false,
-        },
-      })
+      // Refresh the file list in the background without showing loader
+      try {
+        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+        const fetchResponse = await fetch(url)
+        const fetchResult = await fetchResponse.json()
 
-      // Trigger refetch
-      fetchBranchFiles()
+        if (fetchResult.success) {
+          const fetchedFiles = fetchResult.files || []
+          const fetchedFileTree = fetchResult.fileTree || {}
+
+          // Update the specific viewMode data without changing loading state
+          setState({
+            [viewMode]: {
+              files: fetchedFiles,
+              fileTree: fetchedFileTree,
+              expandedFolders: currentViewData.expandedFolders, // Preserve expanded state
+              fetchAttempted: true,
+            },
+          })
+        }
+      } catch (err) {
+        console.error('Error refreshing file list:', err)
+        // Silently fail - the sync operation succeeded
+      }
     } catch (err) {
       console.error('Error syncing changes:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to sync changes')
     } finally {
       setIsSyncing(false)
     }
-  }, [isSyncing, branchName, taskId, viewMode, currentViewData, setState, fetchBranchFiles])
+  }, [isSyncing, branchName, taskId, viewMode, currentViewData, setState])
 
   // Clear error when switching modes
   useEffect(() => {
@@ -227,6 +262,122 @@ export function FileBrowser({
     })
   }
 
+  // Context menu handlers
+  const handleOpenOnGitHub = useCallback((filename: string) => {
+    if (!repoUrl || !branchName) {
+      toast.error('Repository URL or branch name not available')
+      return
+    }
+
+    try {
+      // Parse repo URL to get owner/repo
+      const repoPath = repoUrl.replace('https://github.com/', '').replace('.git', '')
+      const githubFileUrl = `https://github.com/${repoPath}/blob/${branchName}/${filename}`
+      window.open(githubFileUrl, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      console.error('Error opening GitHub URL:', err)
+      toast.error('Failed to open file on GitHub')
+    }
+  }, [repoUrl, branchName])
+
+  const handleCut = useCallback((filename: string) => {
+    setClipboardFile({ filename, operation: 'cut' })
+    toast.success('File cut to clipboard')
+  }, [])
+
+  const handleCopy = useCallback((filename: string) => {
+    setClipboardFile({ filename, operation: 'copy' })
+    toast.success('File copied to clipboard')
+  }, [])
+
+  const handlePaste = useCallback(
+    async (targetPath?: string) => {
+      if (!clipboardFile) {
+        toast.error('No file in clipboard')
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/file-operation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            operation: clipboardFile.operation,
+            sourceFile: clipboardFile.filename,
+            targetPath: targetPath || null,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to paste file')
+        }
+
+        toast.success(clipboardFile.operation === 'cut' ? 'File moved successfully' : 'File copied successfully')
+
+        // Clear clipboard after paste
+        if (clipboardFile.operation === 'cut') {
+          setClipboardFile(null)
+        }
+
+        // Refresh the file list in the background without showing loader
+        try {
+          const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+          const fetchResponse = await fetch(url)
+          const fetchResult = await fetchResponse.json()
+
+          if (fetchResult.success) {
+            const fetchedFiles = fetchResult.files || []
+            const fetchedFileTree = fetchResult.fileTree || {}
+
+            // Update the specific viewMode data without changing loading state
+            setState({
+              [viewMode]: {
+                files: fetchedFiles,
+                fileTree: fetchedFileTree,
+                expandedFolders: currentViewData.expandedFolders, // Preserve expanded state
+                fetchAttempted: true,
+              },
+            })
+          }
+        } catch (err) {
+          console.error('Error refreshing file list:', err)
+          // Silently fail - the paste operation succeeded
+        }
+      } catch (err) {
+        console.error('Error pasting file:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to paste file')
+      }
+    },
+    [clipboardFile, taskId, viewMode, currentViewData, setState],
+  )
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, filename: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenuFile(filename)
+  }, [])
+
+  // Keyboard shortcut handler for paste
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle paste in sandbox mode
+      if (viewMode !== 'local' && viewMode !== 'all-local') return
+      
+      // Check for Ctrl+V (Windows/Linux) or Cmd+V (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboardFile) {
+        e.preventDefault()
+        handlePaste()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [viewMode, clipboardFile, handlePaste])
+
   const renderFileTree = (tree: { [key: string]: FileTreeNode }, path = '') => {
     // Sort entries: directories first, then files, both alphabetically
     const sortedEntries = Object.entries(tree).sort(([nameA, nodeA], [nameB, nodeB]) => {
@@ -242,19 +393,39 @@ export function FileBrowser({
 
       if (node.type === 'directory') {
         const isExpanded = expandedFolders.has(fullPath)
+        const isSandboxMode = viewMode === 'local' || viewMode === 'all-local'
+        const isFolderContextMenuOpen = contextMenuFile === fullPath
+        
         return (
           <div key={fullPath}>
-            <div
-              className="flex items-center gap-2 px-2 md:px-3 py-1.5 hover:bg-card/50 cursor-pointer rounded-sm"
-              onClick={() => toggleFolder(fullPath)}
+            <DropdownMenu
+              open={isFolderContextMenuOpen}
+              onOpenChange={(open) => !open && setContextMenuFile(null)}
             >
-              {isExpanded ? (
-                <FolderOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
-              ) : (
-                <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+              <DropdownMenuTrigger asChild>
+                <div
+                  className="flex items-center gap-2 px-2 md:px-3 py-1.5 hover:bg-card/50 cursor-pointer rounded-sm"
+                  onClick={() => toggleFolder(fullPath)}
+                  onContextMenu={(e) => handleContextMenu(e, fullPath)}
+                >
+                  {isExpanded ? (
+                    <FolderOpen className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+                  ) : (
+                    <Folder className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
+                  )}
+                  <span className="text-xs md:text-sm font-medium truncate">{name}</span>
+                </div>
+              </DropdownMenuTrigger>
+              {isSandboxMode && (
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handlePaste(fullPath)} disabled={!clipboardFile}>
+                    <Clipboard className="w-4 h-4 mr-2" />
+                    Paste
+                    <DropdownMenuShortcut>{isMac ? '⌘V' : 'Ctrl+V'}</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
               )}
-              <span className="text-xs md:text-sm font-medium truncate">{name}</span>
-            </div>
+            </DropdownMenu>
             {isExpanded && node.children && (
               <div className="ml-3 md:ml-4">{renderFileTree(node.children, fullPath)}</div>
             )}
@@ -263,23 +434,61 @@ export function FileBrowser({
       } else {
         // File node
         const isSelected = selectedFile === node.filename
+        const isSandboxMode = viewMode === 'local' || viewMode === 'all-local'
+        const isRemoteMode = viewMode === 'remote' || viewMode === 'all'
+        const isContextMenuOpen = contextMenuFile === node.filename
+        const isCut = clipboardFile?.filename === node.filename && clipboardFile?.operation === 'cut'
+        
         return (
-          <div
+          <DropdownMenu 
             key={fullPath}
-            className={`flex items-center gap-2 px-2 md:px-3 py-1.5 cursor-pointer rounded-sm ${
-              isSelected ? 'bg-card' : 'hover:bg-card/50'
-            }`}
-            onClick={() => onFileSelect?.(node.filename!)}
+            open={isContextMenuOpen}
+            onOpenChange={(open) => !open && setContextMenuFile(null)}
           >
-            <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
-            {(viewMode === 'local' || viewMode === 'remote') && (node.additions || node.deletions) && (
-              <div className="flex items-center gap-1 text-xs flex-shrink-0">
-                {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
-                {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
+            <DropdownMenuTrigger asChild>
+              <div
+                className={`flex items-center gap-2 px-2 md:px-3 py-1.5 cursor-pointer rounded-sm ${
+                  isSelected ? 'bg-card' : 'hover:bg-card/50'
+                } ${isCut ? 'opacity-50' : ''}`}
+                onClick={() => onFileSelect?.(node.filename!)}
+                onContextMenu={(e) => handleContextMenu(e, node.filename!)}
+              >
+                <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-xs md:text-sm flex-1 truncate">{name}</span>
+                {(viewMode === 'local' || viewMode === 'remote') && (node.additions || node.deletions) && (
+                  <div className="flex items-center gap-1 text-xs flex-shrink-0">
+                    {node.additions && node.additions > 0 && <span className="text-green-600">+{node.additions}</span>}
+                    {node.deletions && node.deletions > 0 && <span className="text-red-600">-{node.deletions}</span>}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {isRemoteMode && (
+                <DropdownMenuItem onClick={() => handleOpenOnGitHub(node.filename!)}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open on GitHub
+                </DropdownMenuItem>
+              )}
+              {isSandboxMode && (
+                <>
+                  <DropdownMenuItem onClick={() => handleCut(node.filename!)}>
+                    <Scissors className="w-4 h-4 mr-2" />
+                    Cut
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleCopy(node.filename!)}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePaste()} disabled={!clipboardFile}>
+                    <Clipboard className="w-4 h-4 mr-2" />
+                    Paste
+                    <DropdownMenuShortcut>{isMac ? '⌘V' : 'Ctrl+V'}</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       }
     })
@@ -409,7 +618,30 @@ export function FileBrowser({
                 : 'No files found'}
           </div>
         ) : (
-          <div className="py-2">{renderFileTree(fileTree)}</div>
+          <DropdownMenu
+            open={contextMenuFile === '__root__'}
+            onOpenChange={(open) => !open && setContextMenuFile(null)}
+          >
+            <DropdownMenuTrigger asChild>
+              <div
+                className="py-2 min-h-full"
+                onContextMenu={(e) => {
+                  if ((viewMode === 'local' || viewMode === 'all-local') && e.target === e.currentTarget) {
+                    handleContextMenu(e, '__root__')
+                  }
+                }}
+              >
+                {renderFileTree(fileTree)}
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handlePaste()} disabled={!clipboardFile}>
+                <Clipboard className="w-4 h-4 mr-2" />
+                Paste
+                <DropdownMenuShortcut>{isMac ? '⌘V' : 'Ctrl+V'}</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>

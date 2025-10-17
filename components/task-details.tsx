@@ -1447,6 +1447,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               <FileBrowser
                 taskId={task.id}
                 branchName={task.branchName}
+                repoUrl={task.repoUrl}
                 onFileSelect={openFileInTab}
                 onFilesLoaded={fetchAllDiffs}
                 selectedFile={selectedFile}
@@ -1912,6 +1913,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   <FileBrowser
                     taskId={task.id}
                     branchName={task.branchName}
+                    repoUrl={task.repoUrl}
                     onFileSelect={(file) => {
                       openFileInTab(file)
                       setShowFilesList(false)

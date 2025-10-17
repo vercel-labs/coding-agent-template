@@ -227,7 +227,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         )
       }
     } else if (mode === 'all-local') {
-      // Get all files from local sandbox using git ls-files
+      // Get all files from local sandbox using find command
       if (!task.sandboxId) {
         return NextResponse.json({
           success: true,
@@ -270,11 +270,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           })
         }
 
-        // Use git ls-files to list all tracked files in the repository
-        const lsFilesResult = await sandbox.runCommand('git', ['ls-files'])
+        // Use find to list all files in the sandbox, excluding .git directory and common build directories
+        const findResult = await sandbox.runCommand('find', [
+          '.',
+          '-type',
+          'f',
+          '-not',
+          '-path',
+          '*/.git/*',
+          '-not',
+          '-path',
+          '*/node_modules/*',
+          '-not',
+          '-path',
+          '*/.next/*',
+          '-not',
+          '-path',
+          '*/dist/*',
+          '-not',
+          '-path',
+          '*/build/*',
+          '-not',
+          '-path',
+          '*/.vercel/*',
+        ])
 
-        if (lsFilesResult.exitCode !== 0) {
-          console.error('Failed to run git ls-files')
+        if (findResult.exitCode !== 0) {
+          console.error('Failed to run find command')
           return NextResponse.json({
             success: true,
             files: [],
@@ -284,12 +306,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           })
         }
 
-        const lsFilesOutput = await lsFilesResult.stdout()
-        console.log('Git ls-files output length:', lsFilesOutput.length)
-        const fileLines = lsFilesOutput
+        const findOutput = await findResult.stdout()
+        console.log('Find command output length:', findOutput.length)
+        const fileLines = findOutput
           .trim()
           .split('\n')
-          .filter((line) => line.trim())
+          .filter((line) => line.trim() && line !== '.')
+          .map((line) => line.replace(/^\.\//, '')) // Remove leading ./
 
         files = fileLines.map((filename) => ({
           filename: filename.trim(),
