@@ -25,7 +25,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useSetAtom, useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
-import { githubConnectionAtom } from '@/lib/atoms/github-connection'
+import { githubConnectionAtom, githubConnectionInitializedAtom } from '@/lib/atoms/github-connection'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { GitHubStarsButton } from '@/components/github-stars-button'
 
@@ -49,6 +49,7 @@ export function HomePageHeader({
   const { toggleSidebar } = useTasks()
   const router = useRouter()
   const githubConnection = useAtomValue(githubConnectionAtom)
+  const githubConnectionInitialized = useAtomValue(githubConnectionInitializedAtom)
   const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showNewRepoDialog, setShowNewRepoDialog] = useState(false)
@@ -111,7 +112,23 @@ export function HomePageHeader({
 
       if (response.ok) {
         toast.success('GitHub disconnected')
+
+        // Clear GitHub data from sessionStorage
+        sessionStorage.removeItem('github-owners')
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith('github-repos-')) {
+            sessionStorage.removeItem(key)
+          }
+        })
+
+        // Clear selected owner/repo
+        onOwnerChange('')
+        onRepoChange('')
+
+        // Update connection state
         setGitHubConnection({ connected: false })
+
+        // Refresh the page
         router.refresh()
       } else {
         const error = await response.json()
@@ -224,8 +241,9 @@ export function HomePageHeader({
 
   // Always render leftActions container to prevent layout shift
   const leftActions = (
-    <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1 overflow-hidden">
-      {githubConnection.connected || isGitHubAuthUser ? (
+    <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1">
+      {!githubConnectionInitialized ? // Show nothing while loading to prevent flash of "Connect GitHub" button
+      null : githubConnection.connected || isGitHubAuthUser ? (
         <>
           <RepoSelector
             selectedOwner={selectedOwner}
