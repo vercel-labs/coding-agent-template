@@ -351,6 +351,7 @@ export function RepoSelector({
     onOwnerChange(value)
     onRepoChange('') // Reset repo when owner changes
     setRepoFilter('') // Reset filter when owner changes
+    setRepos([]) // Clear repos to trigger loading state for new owner
   }
 
   const handleRepoChange = (value: string) => {
