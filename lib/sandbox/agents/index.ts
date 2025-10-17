@@ -2,13 +2,14 @@ import { Sandbox } from '@vercel/sandbox'
 import { AgentExecutionResult } from '../types'
 import { executeClaudeInSandbox } from './claude'
 import { executeCodexInSandbox } from './codex'
+import { executeCopilotInSandbox } from './copilot'
 import { executeCursorInSandbox } from './cursor'
 import { executeGeminiInSandbox } from './gemini'
 import { executeOpenCodeInSandbox } from './opencode'
 import { TaskLogger } from '@/lib/utils/task-logger'
 import { Connector } from '@/lib/db/schema'
 
-export type AgentType = 'claude' | 'codex' | 'cursor' | 'gemini' | 'opencode'
+export type AgentType = 'claude' | 'codex' | 'copilot' | 'cursor' | 'gemini' | 'opencode'
 
 // Re-export types
 export type { AgentExecutionResult } from '../types'
@@ -45,6 +46,13 @@ export async function executeAgentInSandbox(
     }
   }
 
+  // For Copilot agent, get the GitHub token from the user's GitHub account
+  let githubToken: string | undefined
+  if (agentType === 'copilot') {
+    const { getUserGitHubToken } = await import('@/lib/github/user-token')
+    githubToken = (await getUserGitHubToken()) || undefined
+  }
+
   // Temporarily override process.env with user's API keys if provided
   const originalEnv = {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
@@ -52,6 +60,8 @@ export async function executeAgentInSandbox(
     CURSOR_API_KEY: process.env.CURSOR_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+    GH_TOKEN: process.env.GH_TOKEN,
+    GITHUB_TOKEN: process.env.GITHUB_TOKEN,
   }
 
   if (apiKeys?.OPENAI_API_KEY) process.env.OPENAI_API_KEY = apiKeys.OPENAI_API_KEY
@@ -59,6 +69,10 @@ export async function executeAgentInSandbox(
   if (apiKeys?.CURSOR_API_KEY) process.env.CURSOR_API_KEY = apiKeys.CURSOR_API_KEY
   if (apiKeys?.ANTHROPIC_API_KEY) process.env.ANTHROPIC_API_KEY = apiKeys.ANTHROPIC_API_KEY
   if (apiKeys?.AI_GATEWAY_API_KEY) process.env.AI_GATEWAY_API_KEY = apiKeys.AI_GATEWAY_API_KEY
+  if (githubToken) {
+    process.env.GH_TOKEN = githubToken
+    process.env.GITHUB_TOKEN = githubToken
+  }
 
   try {
     switch (agentType) {
@@ -84,6 +98,18 @@ export async function executeAgentInSandbox(
           mcpServers,
           isResumed,
           sessionId,
+        )
+
+      case 'copilot':
+        return await executeCopilotInSandbox(
+          sandbox,
+          instruction,
+          logger,
+          selectedModel,
+          mcpServers,
+          isResumed,
+          sessionId,
+          taskId,
         )
 
       case 'cursor':
@@ -127,5 +153,7 @@ export async function executeAgentInSandbox(
     process.env.CURSOR_API_KEY = originalEnv.CURSOR_API_KEY
     process.env.ANTHROPIC_API_KEY = originalEnv.ANTHROPIC_API_KEY
     process.env.AI_GATEWAY_API_KEY = originalEnv.AI_GATEWAY_API_KEY
+    process.env.GH_TOKEN = originalEnv.GH_TOKEN
+    process.env.GITHUB_TOKEN = originalEnv.GITHUB_TOKEN
   }
 }

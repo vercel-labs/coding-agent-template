@@ -119,6 +119,9 @@ Never expose these in logs or to the client:
 - `SANDBOX_VERCEL_PROJECT_ID` - Vercel project identifier
 - `ANTHROPIC_API_KEY` - Anthropic/Claude API key
 - `OPENAI_API_KEY` - OpenAI API key
+- `GEMINI_API_KEY` - Google Gemini API key
+- `CURSOR_API_KEY` - Cursor API key
+- `GH_TOKEN` / `GITHUB_TOKEN` - GitHub personal access token
 - `JWE_SECRET` - Encryption secret
 - `ENCRYPTION_KEY` - Encryption key
 - Any user-provided API keys
