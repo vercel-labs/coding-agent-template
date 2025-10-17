@@ -2,14 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import Editor, { OnMount } from '@monaco-editor/react'
-import type * as Monaco from 'monaco-editor'
+import Editor, { type OnMount } from '@monaco-editor/react'
+import { useTheme } from 'next-themes'
+
+// Monaco types for editor and monaco instances
+type MonacoEditor = Parameters<OnMount>[0]
+type Monaco = Parameters<OnMount>[1]
 
 interface FileEditorProps {
   filename: string
   initialContent: string
   language: string
   taskId: string
+  viewMode?: 'local' | 'remote' | 'all' | 'all-local'
   onUnsavedChanges?: (hasChanges: boolean) => void
   onSavingStateChange?: (isSaving: boolean) => void
   onOpenFile?: (filename: string, lineNumber?: number) => void
@@ -54,15 +59,18 @@ export function FileEditor({
   initialContent,
   language,
   taskId,
+  viewMode = 'local',
   onUnsavedChanges,
   onSavingStateChange,
   onOpenFile,
 }: FileEditorProps) {
+  const { theme, systemTheme } = useTheme()
+  const currentTheme = theme === 'system' ? systemTheme : theme
   const [content, setContent] = useState(initialContent)
   const [isSaving, setIsSaving] = useState(false)
   const [savedContent, setSavedContent] = useState(initialContent)
-  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
-  const monacoRef = useRef<typeof Monaco | null>(null)
+  const editorRef = useRef<MonacoEditor | null>(null)
+  const monacoRef = useRef<Monaco | null>(null)
   const onUnsavedChangesRef = useRef(onUnsavedChanges)
   const onSavingStateChangeRef = useRef(onSavingStateChange)
   const onOpenFileRef = useRef(onOpenFile)
@@ -204,6 +212,98 @@ export function FileEditor({
     editorRef.current = editor
     monacoRef.current = monaco
 
+    // Define Vercel/Geist dark theme (matching ray-so)
+    monaco.editor.defineTheme('vercel-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'ededed' },
+        { token: 'comment', foreground: 'a1a1a1' },
+        { token: 'keyword', foreground: 'ff6b9d' },
+        { token: 'string', foreground: '79f2a8' },
+        { token: 'string.escape', foreground: '79f2a8' },
+        { token: 'number', foreground: 'ffffff' },
+        { token: 'constant', foreground: '9ca7ff' },
+        { token: 'constant.numeric', foreground: 'ffffff' },
+        { token: 'variable', foreground: 'ededed' },
+        { token: 'variable.parameter', foreground: 'ffd494' },
+        { token: 'function', foreground: 'ea94ea' },
+        { token: 'identifier', foreground: 'ededed' },
+        { token: 'type', foreground: '9ca7ff' },
+        { token: 'type.identifier', foreground: '9ca7ff' },
+        { token: 'class.name', foreground: '9ca7ff' },
+        { token: 'delimiter', foreground: 'ededed' },
+        { token: 'delimiter.bracket', foreground: 'ededed' },
+        { token: 'tag', foreground: 'ff6b9d' },
+        { token: 'tag.id', foreground: '9ca7ff' },
+        { token: 'tag.class', foreground: '9ca7ff' },
+        { token: 'attribute.name', foreground: '9ca7ff' },
+        { token: 'attribute.value', foreground: '79f2a8' },
+        { token: 'meta.tag', foreground: 'ededed' },
+      ],
+      colors: {
+        'editor.background': '#000000',
+        'editor.foreground': '#ededed',
+        'editor.lineHighlightBackground': '#1a1a1a',
+        'editorLineNumber.foreground': '#6b6b6b',
+        'editorLineNumber.activeForeground': '#a1a1a1',
+        'editor.selectionBackground': '#3d5a80',
+        'editor.inactiveSelectionBackground': '#2d4a60',
+        'editorCursor.foreground': '#ededed',
+        'editorWhitespace.foreground': '#3a3a3a',
+        'editorIndentGuide.background': '#1a1a1a',
+        'editorIndentGuide.activeBackground': '#2a2a2a',
+        'editorBracketMatch.background': '#1a1a1a',
+        'editorBracketMatch.border': '#9ca7ff',
+      },
+    })
+
+    // Define Vercel/Geist light theme (matching ray-so)
+    monaco.editor.defineTheme('vercel-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: '', foreground: '171717' },
+        { token: 'comment', foreground: '666666' },
+        { token: 'keyword', foreground: 'd63384' },
+        { token: 'string', foreground: '028a5a' },
+        { token: 'string.escape', foreground: '028a5a' },
+        { token: 'number', foreground: '111111' },
+        { token: 'constant', foreground: '0550ae' },
+        { token: 'constant.numeric', foreground: '111111' },
+        { token: 'variable', foreground: '171717' },
+        { token: 'variable.parameter', foreground: 'c77700' },
+        { token: 'function', foreground: '8250df' },
+        { token: 'identifier', foreground: '171717' },
+        { token: 'type', foreground: '0550ae' },
+        { token: 'type.identifier', foreground: '0550ae' },
+        { token: 'class.name', foreground: '0550ae' },
+        { token: 'delimiter', foreground: '171717' },
+        { token: 'delimiter.bracket', foreground: '171717' },
+        { token: 'tag', foreground: 'd63384' },
+        { token: 'tag.id', foreground: '0550ae' },
+        { token: 'tag.class', foreground: '0550ae' },
+        { token: 'attribute.name', foreground: '0550ae' },
+        { token: 'attribute.value', foreground: '028a5a' },
+        { token: 'meta.tag', foreground: '171717' },
+      ],
+      colors: {
+        'editor.background': '#ffffff',
+        'editor.foreground': '#171717',
+        'editor.lineHighlightBackground': '#f8f8f8',
+        'editorLineNumber.foreground': '#9ca3af',
+        'editorLineNumber.activeForeground': '#666666',
+        'editor.selectionBackground': '#b3d7ff',
+        'editor.inactiveSelectionBackground': '#d3e5f8',
+        'editorCursor.foreground': '#171717',
+        'editorWhitespace.foreground': '#e5e5e5',
+        'editorIndentGuide.background': '#f0f0f0',
+        'editorIndentGuide.activeBackground': '#e0e0e0',
+        'editorBracketMatch.background': '#f0f0f0',
+        'editorBracketMatch.border': '#0550ae',
+      },
+    })
+
     // IMPORTANT: Set the model to use a file:// URI so TypeScript service can resolve imports
     const model = editor.getModel()
     if (model) {
@@ -313,7 +413,8 @@ export function FileEditor({
     console.log('[Editor Mount] Save command added')
 
     // Helper function to get definitions using remote LSP server in sandbox
-    const getDefinitions = async (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
+    const getDefinitions = async (model: ReturnType<MonacoEditor['getModel']>, position: ReturnType<MonacoEditor['getPosition']>) => {
+      if (!model || !position) return null
       console.log(
         '[Go to Definition] Starting definition lookup',
         JSON.stringify({
@@ -475,13 +576,7 @@ export function FileEditor({
         }
       },
     })
-    console.log('[Editor Mount] Go to Definition action registered. Action ID:', actionDisposable?.id)
-
-    // List all registered actions
-    console.log(
-      '[Editor Mount] All editor actions:',
-      editor.getActions().map((a) => a.id),
-    )
+    console.log('[Editor Mount] Go to Definition action registered')
 
     // Also handle Cmd/Ctrl + Click (go to definition)
     console.log('[Editor Mount] Setting up mouse handler...')
@@ -563,6 +658,12 @@ export function FileEditor({
 
   // Check if this is a node_modules file (read-only)
   const isNodeModulesFile = filename.includes('/node_modules/')
+  
+  // Remote files (from GitHub) should be read-only
+  // 'remote' = Changes view showing remote files
+  // 'all' = Files view showing remote files (should also be read-only)
+  const isRemoteFile = viewMode === 'remote' || viewMode === 'all'
+  const isReadOnly = isNodeModulesFile || isRemoteFile
 
   return (
     <div className="flex flex-col h-full">
@@ -571,17 +672,23 @@ export function FileEditor({
           Read-only: node_modules file
         </div>
       )}
+      {isRemoteFile && !isNodeModulesFile && (
+        <div className="px-3 py-2 text-xs bg-blue-500/10 border-b border-blue-500/20 text-blue-600 dark:text-blue-400">
+          Read-only: Remote file (from GitHub)
+        </div>
+      )}
       <Editor
         height="100%"
         language={getLanguageFromPath(filename)}
         value={content}
         onChange={handleContentChange}
         onMount={handleEditorMount}
-        theme="vs-dark"
+        theme={currentTheme === 'dark' ? 'vercel-dark' : 'vercel-light'}
         options={{
-          readOnly: isNodeModulesFile,
+          readOnly: isReadOnly,
           minimap: { enabled: false },
-          fontSize: 14,
+          fontSize: 13,
+          fontFamily: 'var(--font-geist-mono), "Geist Mono", Menlo, Monaco, "Courier New", monospace',
           lineNumbers: 'on',
           wordWrap: 'on',
           automaticLayout: true,

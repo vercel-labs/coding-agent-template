@@ -289,6 +289,7 @@ export function FileDiffViewer({
         initialContent={diffData.newContent}
         language={diffData.language}
         taskId={taskId}
+        viewMode={viewMode}
         onUnsavedChanges={onUnsavedChanges}
         onSavingStateChange={onSavingStateChange}
         onOpenFile={onOpenFile}
