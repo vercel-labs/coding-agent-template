@@ -4,9 +4,10 @@ import { getUserApiKey } from '@/lib/api-keys/user-keys'
 type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
 
 // Map agents to their required providers
-const AGENT_PROVIDER_MAP: Record<string, Provider> = {
+const AGENT_PROVIDER_MAP: Record<string, Provider | null> = {
   claude: 'anthropic',
   codex: 'aigateway', // Codex uses Vercel AI Gateway
+  copilot: null, // Copilot uses user's GitHub token from their account
   cursor: 'cursor',
   gemini: 'gemini',
   opencode: 'openai', // OpenCode can use OpenAI or Anthropic, but primarily OpenAI
@@ -44,8 +45,22 @@ export async function GET(req: NextRequest) {
     }
 
     let provider = AGENT_PROVIDER_MAP[agent]
-    if (!provider) {
+    if (provider === undefined) {
       return NextResponse.json({ error: 'Invalid agent' }, { status: 400 })
+    }
+
+    // Special handling for Copilot - check if user has GitHub token
+    if (agent === 'copilot') {
+      const { getUserGitHubToken } = await import('@/lib/github/user-token')
+      const githubToken = await getUserGitHubToken()
+      const hasKey = !!githubToken
+      
+      return NextResponse.json({
+        success: true,
+        hasKey,
+        provider: 'github',
+        agentName: 'Copilot',
+      })
     }
 
     // Override provider based on model for multi-provider agents
@@ -62,7 +77,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if API key is available (either user's or system)
-    const apiKey = await getUserApiKey(provider)
+    const apiKey = await getUserApiKey(provider!)
     const hasKey = !!apiKey
 
     return NextResponse.json({

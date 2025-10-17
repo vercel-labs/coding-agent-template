@@ -31,7 +31,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
-import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
+import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
 import {
   getShowFilesPane,
@@ -90,6 +90,7 @@ interface DiffData {
 const CODING_AGENTS = [
   { value: 'claude', label: 'Claude', icon: Claude },
   { value: 'codex', label: 'Codex', icon: Codex },
+  { value: 'copilot', label: 'Copilot', icon: Copilot },
   { value: 'cursor', label: 'Cursor', icon: Cursor },
   { value: 'gemini', label: 'Gemini', icon: Gemini },
   { value: 'opencode', label: 'opencode', icon: OpenCode },
@@ -109,6 +110,12 @@ const AGENT_MODELS = {
     { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
     { value: 'gpt-5-pro', label: 'GPT-5 pro' },
     { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
+  ],
+  copilot: [
+    { value: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+    { value: 'claude-haiku-4.5', label: 'Claude Haiku 4.5' },
+    { value: 'gpt-5', label: 'GPT-5' },
   ],
   cursor: [
     { value: 'auto', label: 'Auto' },
@@ -137,6 +144,7 @@ const AGENT_MODELS = {
 const DEFAULT_MODELS = {
   claude: 'claude-sonnet-4-5-20250929',
   codex: 'openai/gpt-5',
+  copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
   gemini: 'gemini-2.5-pro',
   opencode: 'gpt-5',
@@ -155,7 +163,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [isDeleting, setIsDeleting] = useState(false)
   const [isTryingAgain, setIsTryingAgain] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(task.selectedAgent || 'claude')
-  const [selectedModel, setSelectedModel] = useState<string>(task.selectedModel || DEFAULT_MODELS.claude)
+  const [selectedModel, setSelectedModel] = useState<string>(
+    task.selectedModel || DEFAULT_MODELS[(task.selectedAgent as keyof typeof DEFAULT_MODELS) || 'claude'],
+  )
   const [tryAgainInstallDeps, setTryAgainInstallDeps] = useState(task.installDependencies || false)
   const [tryAgainMaxDuration, setTryAgainMaxDuration] = useState(task.maxDuration || maxSandboxDuration)
   const [tryAgainKeepAlive, setTryAgainKeepAlive] = useState(task.keepAlive || false)
@@ -187,6 +197,23 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [isRestartingDevServer, setIsRestartingDevServer] = useState(false)
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false)
   const [isStartingSandbox, setIsStartingSandbox] = useState(false)
+
+  // Initialize model correctly on mount and when agent changes in Try Again dialog
+  useEffect(() => {
+    const agent = selectedAgent as keyof typeof DEFAULT_MODELS
+    const taskModel = task.selectedModel
+    
+    // Check if the task's model exists in the agent's model list
+    const agentModels = AGENT_MODELS[agent]
+    const modelExists = agentModels?.some((m) => m.value === taskModel)
+    
+    // Use task model if it exists for the agent, otherwise use default
+    const correctModel = modelExists && taskModel ? taskModel : DEFAULT_MODELS[agent]
+    
+    if (correctModel !== selectedModel) {
+      setSelectedModel(correctModel)
+    }
+  }, [selectedAgent, task.selectedModel, selectedModel])
 
   // File search state
   const [fileSearchQuery, setFileSearchQuery] = useState('')
@@ -551,6 +578,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
         return Claude
       case 'codex':
         return Codex
+      case 'copilot':
+        return Copilot
       case 'cursor':
         return Cursor
       case 'gemini':

@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Loader2, ArrowUp, Settings, X, Cable, Key } from 'lucide-react'
-import { Claude, Codex, Cursor, Gemini, OpenCode } from '@/components/logos'
+import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
@@ -57,6 +57,7 @@ interface TaskFormProps {
 const CODING_AGENTS = [
   { value: 'claude', label: 'Claude', icon: Claude },
   { value: 'codex', label: 'Codex', icon: Codex },
+  { value: 'copilot', label: 'Copilot', icon: Copilot },
   { value: 'cursor', label: 'Cursor', icon: Cursor },
   { value: 'gemini', label: 'Gemini', icon: Gemini },
   { value: 'opencode', label: 'opencode', icon: OpenCode },
@@ -77,6 +78,12 @@ const AGENT_MODELS = {
     { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
     { value: 'gpt-5-pro', label: 'GPT-5 pro' },
     { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
+  ],
+  copilot: [
+    { value: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+    { value: 'claude-haiku-4.5', label: 'Claude Haiku 4.5' },
+    { value: 'gpt-5', label: 'GPT-5' },
   ],
   cursor: [
     { value: 'auto', label: 'Auto' },
@@ -106,6 +113,7 @@ const AGENT_MODELS = {
 const DEFAULT_MODELS = {
   claude: 'claude-sonnet-4-5-20250929',
   codex: 'openai/gpt-5',
+  copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
   gemini: 'gemini-2.5-pro',
   opencode: 'gpt-5',
@@ -115,6 +123,7 @@ const DEFAULT_MODELS = {
 const AGENT_API_KEY_REQUIREMENTS: Record<string, Provider[]> = {
   claude: ['anthropic'],
   codex: ['aigateway'], // Uses AI Gateway for OpenAI proxy
+  copilot: [], // Uses user's GitHub account token automatically
   cursor: ['cursor'],
   gemini: ['gemini'],
   opencode: [], // Will be determined dynamically based on selected model

@@ -1,5 +1,6 @@
 export { default as Claude } from './claude'
 export { default as Codex } from './codex'
+export { default as Copilot } from './copilot'
 export { default as Cursor } from './cursor'
 export { default as Gemini } from './gemini'
 export { default as OpenCode } from './opencode'

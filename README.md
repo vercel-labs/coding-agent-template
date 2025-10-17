@@ -1,6 +1,6 @@
 # Coding Agent Template
 
-A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, Cursor CLI, Google Gemini CLI, and opencode with [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) to automatically execute coding tasks on your repositories.
+A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, GitHub Copilot CLI, Cursor CLI, Google Gemini CLI, and opencode with [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) to automatically execute coding tasks on your repositories.
 
 ![Coding Agent Template Screenshot](screenshot.png)
 
@@ -17,7 +17,7 @@ You can deploy your own version of the coding agent template to Vercel with one 
 
 ## Features
 
-- **Multi-Agent Support**: Choose from Claude Code, OpenAI Codex CLI, Cursor CLI, Google Gemini CLI, or opencode to execute coding tasks
+- **Multi-Agent Support**: Choose from Claude Code, OpenAI Codex CLI, GitHub Copilot CLI, Cursor CLI, Google Gemini CLI, or opencode to execute coding tasks
 - **User Authentication**: Secure sign-in with GitHub or Vercel OAuth
 - **Multi-User Support**: Each user has their own tasks, API keys, and GitHub connection
 - **Vercel Sandbox**: Runs code in isolated, secure sandboxes ([docs](https://vercel.com/docs/vercel-sandbox))
@@ -124,7 +124,7 @@ When Keep Alive is enabled, the sandbox stays alive after task completion for th
 1. **Task Creation**: When you submit a task, it's stored in the database
 2. **AI Branch Name Generation**: AI SDK 5 + AI Gateway automatically generates a descriptive branch name based on your task (non-blocking using Next.js 15's `after()`)
 3. **Sandbox Setup**: A Vercel sandbox is created with your repository
-4. **Agent Execution**: Your chosen coding agent (Claude Code, Codex CLI, Cursor CLI, Gemini CLI, or opencode) analyzes your prompt and makes changes
+4. **Agent Execution**: Your chosen coding agent (Claude Code, Codex CLI, GitHub Copilot CLI, Cursor CLI, Gemini CLI, or opencode) analyzes your prompt and makes changes
 5. **Git Operations**: Changes are committed and pushed to the AI-generated branch
 6. **Cleanup**: The sandbox is shut down to free resources
 
@@ -151,7 +151,7 @@ The system automatically generates descriptive Git branch names using AI SDK 5 a
 - **UI Components**: shadcn/ui
 - **Database**: PostgreSQL with Drizzle ORM
 - **AI SDK**: AI SDK 5 with Vercel AI Gateway integration
-- **AI Agents**: Claude Code, OpenAI Codex CLI, Cursor CLI, Google Gemini CLI, opencode
+- **AI Agents**: Claude Code, OpenAI Codex CLI, GitHub Copilot CLI, Cursor CLI, Google Gemini CLI, opencode
 - **Sandbox**: [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
 - **Authentication**: Next Auth (OAuth with GitHub/Vercel)
 - **Git**: Automated branching and commits with AI-generated branch names
