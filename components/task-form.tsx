@@ -562,76 +562,8 @@ export function TaskForm({
               </div>
 
               {/* Options and Submit Buttons */}
-              <div className="flex items-center justify-between gap-2">
-                {/* Option Chips - Mobile version (left side) */}
-                <div className="flex sm:hidden items-center gap-2 flex-wrap">
-                  {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
-                    <>
-                      {!installDependencies && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                          onClick={() => setShowOptionsDialog(true)}
-                        >
-                          Skip Install
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-3 w-3 p-0 hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              updateInstallDependencies(true)
-                            }}
-                          >
-                            <X className="h-2 w-2" />
-                          </Button>
-                        </Badge>
-                      )}
-                      {maxDuration !== maxSandboxDuration && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                          onClick={() => setShowOptionsDialog(true)}
-                        >
-                          {maxDuration}m
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-3 w-3 p-0 hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              updateMaxDuration(maxSandboxDuration)
-                            }}
-                          >
-                            <X className="h-2 w-2" />
-                          </Button>
-                        </Badge>
-                      )}
-                      {keepAlive && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                          onClick={() => setShowOptionsDialog(true)}
-                        >
-                          Keep Alive
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-3 w-3 p-0 hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              updateKeepAlive(false)
-                            }}
-                          >
-                            <X className="h-2 w-2" />
-                          </Button>
-                        </Badge>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Buttons - right side */}
+              <div className="flex items-center justify-end gap-2">
+                {/* Buttons */}
                 <div className="flex items-center gap-2">
                   <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
                     <Tooltip>
@@ -688,8 +620,23 @@ export function TaskForm({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DialogTrigger asChild>
-                            <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
+                            <Button type="button" variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 relative">
                               <Settings className="h-4 w-4" />
+                              {(() => {
+                                const customOptionsCount = [
+                                  !installDependencies,
+                                  maxDuration !== maxSandboxDuration,
+                                  keepAlive
+                                ].filter(Boolean).length
+                                return customOptionsCount > 0 ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full sm:hidden"
+                                  >
+                                    {customOptionsCount}
+                                  </Badge>
+                                ) : null
+                              })()}
                             </Button>
                           </DialogTrigger>
                         </TooltipTrigger>
