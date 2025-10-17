@@ -38,6 +38,9 @@ export async function executeCopilotInSandbox(
   sessionId?: string,
   taskId?: string,
 ): Promise<AgentExecutionResult> {
+  let agentMessageId: string | null = null
+  let accumulatedContent = ''
+
   try {
     // Check if GitHub Copilot CLI is already installed (for resumed sandboxes)
     const existingCliCheck = await runCommandInSandbox(sandbox, 'sh', ['-c', 'which copilot 2>/dev/null'])
@@ -196,7 +199,6 @@ EOF`
       (error?: Error | null): void
     }
 
-    let accumulatedContent = ''
     let extractedSessionId: string | undefined
 
     const captureStdout = new Writable({
@@ -208,37 +210,37 @@ EOF`
           capturedOutput += data
         }
 
-        // Parse streaming JSON chunks if available
-        const lines = data.split('\n')
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const parsed = JSON.parse(line)
+        // Parse text-based streaming output with --no-color
+        // GitHub Copilot CLI outputs lines with different prefixes:
+        // ● = thought/status, ✓ = completed action, $ = command, ╭─ = diff start, etc.
+        // Filter out the diff boxes (lines containing ╭, ╰, │, ─, ═) to keep output clean
+        if (agentMessageId && taskId) {
+          const lines = data.split('\n')
+          for (const line of lines) {
+            if (line.trim()) {
+              // Skip diff box lines (containing box drawing characters)
+              const isDiffBox = /[╭╰│─═╮╯]/.test(line)
 
-              // Extract session_id from result
-              if (parsed.type === 'result' && parsed.session_id) {
-                extractedSessionId = parsed.session_id
-              }
+              if (!isDiffBox) {
+                // Check if this is a new action line (starts with ● or ✓)
+                const isActionLine = /^[●✓]/.test(line.trim())
 
-              // Update database if streaming to taskId
-              if (agentMessageId && taskId) {
-                if (parsed.type === 'assistant' && parsed.message?.content) {
-                  const textContent = parsed.message.content
-                    .filter((item: { type: string; text?: string }) => item.type === 'text')
-                    .map((item: { text?: string }) => item.text)
-                    .join('')
-
-                  if (textContent) {
-                    accumulatedContent += '\n\n' + textContent
-                    db.update(taskMessages)
-                      .set({ content: accumulatedContent })
-                      .where(eq(taskMessages.id, agentMessageId))
-                      .catch((err: Error) => console.error('Failed to update message:', err))
-                  }
+                // Add blank line before action lines for better readability
+                if (isActionLine && accumulatedContent.length > 0) {
+                  accumulatedContent += '\n'
                 }
+
+                // Append each line to accumulated content
+                accumulatedContent += line + '\n'
+
+                // Update database with accumulated content (throttled via catch)
+                db.update(taskMessages)
+                  .set({ content: accumulatedContent })
+                  .where(eq(taskMessages.id, agentMessageId))
+                  .catch((err: Error) => {
+                    // Silently ignore update errors to avoid flooding logs
+                  })
               }
-            } catch {
-              // Not JSON, just regular output
             }
           }
         }
@@ -255,15 +257,16 @@ EOF`
     })
 
     // Create initial agent message in database if taskId provided
-    let agentMessageId: string | null = null
     if (taskId) {
       agentMessageId = generateId(12)
       await db.insert(taskMessages).values({
         id: agentMessageId,
         taskId,
         role: 'agent',
-        content: '',
+        content: '<pre class="whitespace-pre-wrap font-sans text-xs">',
       })
+      // Initialize accumulated content with opening pre tag
+      accumulatedContent = '<pre class="whitespace-pre-wrap font-sans text-xs">'
     }
 
     // Build the copilot command
@@ -274,18 +277,19 @@ EOF`
     const resumeFlag = isResumed && sessionId ? ` --resume ${sessionId}` : ''
     const additionalMcpConfig = mcpServers && mcpServers.length > 0 ? ` --additional-mcp-config @${mcpConfigPath}` : ''
 
-    // Use non-interactive mode with --allow-all-tools
+    // Use non-interactive mode with --allow-all-tools and --no-color for streaming text output
     // Note: File paths in --additional-mcp-config must be prefixed with @
     const args = [
       '-p',
       instruction,
       '--allow-all-tools',
+      '--no-color',
       ...(selectedModel ? ['--model', selectedModel] : []),
       ...(isResumed && sessionId ? ['--resume', sessionId] : []),
       ...(mcpServers && mcpServers.length > 0 ? ['--additional-mcp-config', `@${mcpConfigPath}`] : []),
     ]
 
-    const logCommand = `copilot${modelFlag}${resumeFlag}${additionalMcpConfig} -p "${instruction}" --allow-all-tools`
+    const logCommand = `copilot${modelFlag}${resumeFlag}${additionalMcpConfig} -p "${instruction}" --allow-all-tools --no-color`
     await logger.command(logCommand)
 
     if (logger) {
@@ -335,6 +339,16 @@ EOF`
       await logger.error(redactedError)
     }
 
+    // Close the pre tag if streaming to database
+    if (agentMessageId && taskId) {
+      accumulatedContent += '</pre>'
+      await db
+        .update(taskMessages)
+        .set({ content: accumulatedContent })
+        .where(eq(taskMessages.id, agentMessageId))
+        .catch((err: Error) => console.error('Failed to update message:', err))
+    }
+
     // Check if any files were modified
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
@@ -360,6 +374,16 @@ EOF`
       }
     }
   } catch (error: unknown) {
+    // Close the pre tag if streaming to database and there was an error
+    if (agentMessageId && taskId) {
+      accumulatedContent += '</pre>'
+      await db
+        .update(taskMessages)
+        .set({ content: accumulatedContent })
+        .where(eq(taskMessages.id, agentMessageId))
+        .catch((err: Error) => console.error('Failed to update message:', err))
+    }
+
     const errorMessage = error instanceof Error ? error.message : 'Failed to execute GitHub Copilot CLI in sandbox'
     return {
       success: false,
