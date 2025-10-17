@@ -147,7 +147,7 @@ export function FileBrowser({
     fetchAttempted: boolean
     error: string | null
   }
-  
+
   type ViewModeKey = 'local' | 'remote' | 'all' | 'all-local'
   const currentViewData = (state[viewMode as ViewModeKey] as ViewModeData | undefined) || {
     files: [],

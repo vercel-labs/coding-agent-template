@@ -501,7 +501,7 @@ export function FileEditor({
             end: { line: number; character: number }
           }
         }
-        
+
         const convertedDefinitions = (data.definitions as LspDefinition[]).map((def) => {
           console.log('[Go to Definition] Processing definition:', JSON.stringify(def))
 
