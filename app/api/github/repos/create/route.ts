@@ -41,32 +41,49 @@ export async function POST(request: Request) {
     // Initialize Octokit with user's token
     const octokit = new Octokit({ auth: token })
 
-    // Template repository mappings - repositories that can be used as starting points
-    const templates: Record<string, { owner: string; repo: string; url: string }> = {
+    // Template repository mappings - actual boilerplate/starter templates
+    const templates: Record<string, { owner: string; repo: string; url: string; isTemplate: boolean }> = {
       nextjs: {
         owner: 'ctate',
         repo: 'nextjs-starter',
         url: 'https://github.com/ctate/nextjs-starter',
+        isTemplate: false, // Will use fallback method
+      },
+      nuxt: {
+        owner: 'viandwi24',
+        repo: 'nuxt3-awesome-starter',
+        url: 'https://github.com/viandwi24/nuxt3-awesome-starter',
+        isTemplate: true,
+      },
+      remix: {
+        owner: 'remix-run',
+        repo: 'indie-stack',
+        url: 'https://github.com/remix-run/indie-stack',
+        isTemplate: true,
       },
       react: {
-        owner: 'vitejs',
-        repo: 'vite',
-        url: 'https://github.com/vitejs/vite',
+        owner: 'kriasoft',
+        repo: 'react-starter-kit',
+        url: 'https://github.com/kriasoft/react-starter-kit',
+        isTemplate: true,
       },
       vue: {
-        owner: 'vuejs',
-        repo: 'core',
-        url: 'https://github.com/vuejs/core',
+        owner: 'antfu-collective',
+        repo: 'vitesse',
+        url: 'https://github.com/antfu-collective/vitesse',
+        isTemplate: true,
       },
       express: {
-        owner: 'expressjs',
-        repo: 'express',
-        url: 'https://github.com/expressjs/express',
+        owner: 'hagopj13',
+        repo: 'node-express-boilerplate',
+        url: 'https://github.com/hagopj13/node-express-boilerplate',
+        isTemplate: true,
       },
       typescript: {
-        owner: 'microsoft',
-        repo: 'TypeScript-Node-Starter',
-        url: 'https://github.com/microsoft/TypeScript-Node-Starter',
+        owner: 'BearStudio',
+        repo: 'start-ui-web',
+        url: 'https://github.com/BearStudio/start-ui-web',
+        isTemplate: true,
       },
     }
 
@@ -139,7 +156,7 @@ export async function POST(request: Request) {
             private: repo.data.private,
             template_info: {
               url: templateInfo.url,
-              message: `Repository created. To use the ${template} template, you can clone or copy files from ${templateInfo.url}`,
+              message: `Repository created. To use the ${template} template, clone or copy files from ${templateInfo.url}`,
             },
           })
         }

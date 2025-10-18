@@ -334,11 +334,13 @@ export function HomePageHeader({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="blank">Blank repository</SelectItem>
-                  <SelectItem value="nextjs">Next.js Starter</SelectItem>
-                  <SelectItem value="react">React + Vite</SelectItem>
-                  <SelectItem value="vue">Vue.js</SelectItem>
-                  <SelectItem value="express">Express.js API</SelectItem>
-                  <SelectItem value="typescript">TypeScript Node.js</SelectItem>
+                  <SelectItem value="nextjs">Next.js Starter (ctate/nextjs-starter)</SelectItem>
+                  <SelectItem value="nuxt">Nuxt 4 Starter (Nuxt 3 + Tailwind)</SelectItem>
+                  <SelectItem value="remix">Remix 3 Indie Stack (SQLite + Fly)</SelectItem>
+                  <SelectItem value="react">React Starter (Vite + TypeScript + Tailwind)</SelectItem>
+                  <SelectItem value="vue">Vue Vitesse (Vite + Vue 3)</SelectItem>
+                  <SelectItem value="express">Express API (Node.js + MongoDB)</SelectItem>
+                  <SelectItem value="typescript">TypeScript Full-Stack (React + TanStack)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
