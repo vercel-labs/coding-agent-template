@@ -81,6 +81,11 @@ export function CreatePRDialog({
     }
   }
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    handleCreatePR()
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
@@ -91,38 +96,46 @@ export function CreatePRDialog({
             new tab.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              placeholder="Brief description of the changes"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={isCreating}
-            />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                placeholder="Brief description of the changes"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={isCreating}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="body">Description</Label>
+              <Textarea
+                id="body"
+                placeholder="Detailed description of the changes (optional)"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                disabled={isCreating}
+                className="min-h-[120px] max-h-[300px] resize-none"
+                onKeyDown={(e) => {
+                  // Prevent form submission on Enter in textarea
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.stopPropagation()
+                  }
+                }}
+              />
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="body">Description</Label>
-            <Textarea
-              id="body"
-              placeholder="Detailed description of the changes (optional)"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              disabled={isCreating}
-              className="min-h-[120px] max-h-[300px] resize-none"
-            />
-          </div>
-        </div>
-        <DialogFooter className="flex-shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
-            Cancel
-          </Button>
-          <Button onClick={handleCreatePR} disabled={isCreating || !title.trim()}>
-            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isCreating ? 'Creating...' : 'Create Pull Request'}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="flex-shrink-0">
+            <Button variant="outline" type="button" onClick={() => onOpenChange(false)} disabled={isCreating}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isCreating || !title.trim()}>
+              {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isCreating ? 'Creating...' : 'Create Pull Request'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
