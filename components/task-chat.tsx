@@ -133,84 +133,105 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     [taskId],
   )
 
-  const fetchPRComments = useCallback(async () => {
-    if (!task.prNumber || !task.repoUrl) return
+  const fetchPRComments = useCallback(
+    async (showLoading = true) => {
+      if (!task.prNumber || !task.repoUrl) return
 
-    // Don't refetch if already loaded
-    if (commentsLoadedRef.current) return
+      // Don't refetch if already loaded
+      if (commentsLoadedRef.current && showLoading) return
 
-    setLoadingComments(true)
-    setCommentsError(null)
-
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/pr-comments`)
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        setPrComments(data.comments || [])
-        commentsLoadedRef.current = true
-      } else {
-        setCommentsError(data.error || 'Failed to fetch comments')
+      if (showLoading) {
+        setLoadingComments(true)
       }
-    } catch (err) {
-      console.error('Error fetching PR comments:', err)
-      setCommentsError('Failed to fetch comments')
-    } finally {
-      setLoadingComments(false)
-    }
-  }, [taskId, task.prNumber, task.repoUrl])
+      setCommentsError(null)
 
-  const fetchCheckRuns = useCallback(async () => {
-    if (!task.branchName || !task.repoUrl) return
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/pr-comments`)
+        const data = await response.json()
 
-    // Don't refetch if already loaded
-    if (actionsLoadedRef.current) return
-
-    setLoadingActions(true)
-    setActionsError(null)
-
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/check-runs`)
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        setCheckRuns(data.checkRuns || [])
-        actionsLoadedRef.current = true
-      } else {
-        setActionsError(data.error || 'Failed to fetch check runs')
+        if (response.ok && data.success) {
+          setPrComments(data.comments || [])
+          commentsLoadedRef.current = true
+        } else {
+          setCommentsError(data.error || 'Failed to fetch comments')
+        }
+      } catch (err) {
+        console.error('Error fetching PR comments:', err)
+        setCommentsError('Failed to fetch comments')
+      } finally {
+        if (showLoading) {
+          setLoadingComments(false)
+        }
       }
-    } catch (err) {
-      console.error('Error fetching check runs:', err)
-      setActionsError('Failed to fetch check runs')
-    } finally {
-      setLoadingActions(false)
-    }
-  }, [taskId, task.branchName, task.repoUrl])
+    },
+    [taskId, task.prNumber, task.repoUrl],
+  )
 
-  const fetchDeployment = useCallback(async () => {
-    // Don't refetch if already loaded
-    if (deploymentLoadedRef.current) return
+  const fetchCheckRuns = useCallback(
+    async (showLoading = true) => {
+      if (!task.branchName || !task.repoUrl) return
 
-    setLoadingDeployment(true)
-    setDeploymentError(null)
+      // Don't refetch if already loaded
+      if (actionsLoadedRef.current && showLoading) return
 
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/deployment`)
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        setDeployment(data.data)
-        deploymentLoadedRef.current = true
-      } else {
-        setDeploymentError(data.error || 'Failed to fetch deployment')
+      if (showLoading) {
+        setLoadingActions(true)
       }
-    } catch (err) {
-      console.error('Error fetching deployment:', err)
-      setDeploymentError('Failed to fetch deployment')
-    } finally {
-      setLoadingDeployment(false)
-    }
-  }, [taskId])
+      setActionsError(null)
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/check-runs`)
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          setCheckRuns(data.checkRuns || [])
+          actionsLoadedRef.current = true
+        } else {
+          setActionsError(data.error || 'Failed to fetch check runs')
+        }
+      } catch (err) {
+        console.error('Error fetching check runs:', err)
+        setActionsError('Failed to fetch check runs')
+      } finally {
+        if (showLoading) {
+          setLoadingActions(false)
+        }
+      }
+    },
+    [taskId, task.branchName, task.repoUrl],
+  )
+
+  const fetchDeployment = useCallback(
+    async (showLoading = true) => {
+      // Don't refetch if already loaded
+      if (deploymentLoadedRef.current && showLoading) return
+
+      if (showLoading) {
+        setLoadingDeployment(true)
+      }
+      setDeploymentError(null)
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/deployment`)
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          setDeployment(data.data)
+          deploymentLoadedRef.current = true
+        } else {
+          setDeploymentError(data.error || 'Failed to fetch deployment')
+        }
+      } catch (err) {
+        console.error('Error fetching deployment:', err)
+        setDeploymentError('Failed to fetch deployment')
+      } finally {
+        if (showLoading) {
+          setLoadingDeployment(false)
+        }
+      }
+    },
+    [taskId],
+  )
 
   const handleRefresh = useCallback(() => {
     switch (activeTab) {
@@ -258,18 +279,18 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
         case 'comments':
           if (task.prNumber) {
             commentsLoadedRef.current = false
-            fetchPRComments()
+            fetchPRComments(false) // Don't show loading on auto-refresh
           }
           break
         case 'actions':
           if (task.branchName) {
             actionsLoadedRef.current = false
-            fetchCheckRuns()
+            fetchCheckRuns(false) // Don't show loading on auto-refresh
           }
           break
         case 'deployments':
           deploymentLoadedRef.current = false
-          fetchDeployment()
+          fetchDeployment(false) // Don't show loading on auto-refresh
           break
       }
     }, refreshInterval)
