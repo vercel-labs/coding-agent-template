@@ -53,17 +53,24 @@ The `redactSensitiveInfo()` function in `lib/utils/logging.ts` automatically red
 
 ## Code Quality Guidelines
 
-### Code Formatting
+### Code Formatting and Quality Checks
 
-**Always run `pnpm format` after making changes to TypeScript/TSX files.**
+**Always run `pnpm format`, `pnpm type-check`, and `pnpm lint` after making changes to TypeScript/TSX files.**
 
-The project uses Prettier to enforce consistent code formatting. After editing any `.ts` or `.tsx` files, run:
+The project uses Prettier for code formatting, TypeScript for type checking, and ESLint for linting. After editing any `.ts` or `.tsx` files, run:
 
 ```bash
 pnpm format
+pnpm type-check
+pnpm lint
 ```
 
-This ensures all code follows the project's formatting standards and prevents formatting-related issues in pull requests.
+**If any errors are found:**
+1. **Type errors**: Fix TypeScript type errors by correcting type annotations, adding missing imports, or fixing type mismatches
+2. **Lint errors**: Fix ESLint errors by following the suggested fixes or adjusting the code to meet the linting rules
+3. **Do not skip or ignore errors** - all errors must be resolved before considering the task complete
+
+This ensures all code follows the project's formatting standards, type safety requirements, and linting rules, preventing issues in pull requests.
 
 ### Logging Best Practices
 
@@ -154,6 +161,9 @@ Before submitting changes, verify:
 - [ ] No sensitive data in error messages
 - [ ] Tested in UI to confirm no data leakage
 - [ ] Server-side debugging logs don't expose credentials
+- [ ] Ran `pnpm format` and code is properly formatted
+- [ ] Ran `pnpm type-check` and all type errors are fixed
+- [ ] Ran `pnpm lint` and all linting errors are fixed
 
 ## Questions?
 
