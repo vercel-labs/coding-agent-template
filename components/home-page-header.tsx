@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus } from 'lucide-react'
+import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -57,6 +57,9 @@ export function HomePageHeader({
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoPrivate, setNewRepoPrivate] = useState(true)
+  const [showOpenRepoUrlDialog, setShowOpenRepoUrlDialog] = useState(false)
+  const [repoUrl, setRepoUrl] = useState('')
+  const [taskPrompt, setTaskPrompt] = useState('')
 
   const handleRefreshOwners = async () => {
     setIsRefreshing(true)
@@ -194,6 +197,30 @@ export function HomePageHeader({
     }
   }
 
+  const handleOpenRepoUrl = () => {
+    if (!repoUrl.trim()) {
+      toast.error('Repository URL is required')
+      return
+    }
+
+    if (!taskPrompt.trim()) {
+      toast.error('Task description is required')
+      return
+    }
+
+    // Navigate to home page with repo URL and prompt as query parameters
+    const params = new URLSearchParams({
+      repoUrl: repoUrl.trim(),
+      prompt: taskPrompt.trim(),
+    })
+    router.push(`/?${params.toString()}`)
+
+    // Reset form and close dialog
+    setRepoUrl('')
+    setTaskPrompt('')
+    setShowOpenRepoUrlDialog(false)
+  }
+
   const actions = (
     <div className="flex items-center gap-2 flex-shrink-0">
       {/* GitHub Stars Button - Hidden on mobile */}
@@ -265,6 +292,10 @@ export function HomePageHeader({
               <DropdownMenuItem onClick={() => setShowNewRepoDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Repo
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowOpenRepoUrlDialog(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Repo URL
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
@@ -385,6 +416,61 @@ export function HomePageHeader({
               ) : (
                 'Create Repository'
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Open Repo URL Dialog */}
+      <Dialog open={showOpenRepoUrlDialog} onOpenChange={setShowOpenRepoUrlDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Open Repository URL</DialogTitle>
+            <DialogDescription>Enter a repository URL and task description to create a task.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="repo-url">Repository URL *</Label>
+              <Input
+                id="repo-url"
+                placeholder="https://github.com/owner/repo"
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleOpenRepoUrl()
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">Enter the full GitHub repository URL.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="task-prompt">Task Description *</Label>
+              <Textarea
+                id="task-prompt"
+                placeholder="Describe what you want the AI agent to do..."
+                value={taskPrompt}
+                onChange={(e) => setTaskPrompt(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowOpenRepoUrlDialog(false)
+                setRepoUrl('')
+                setTaskPrompt('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleOpenRepoUrl} disabled={!repoUrl.trim() || !taskPrompt.trim()}>
+              Create Task
             </Button>
           </div>
         </DialogContent>
