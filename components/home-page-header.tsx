@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus } from 'lucide-react'
+import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { User } from '@/components/auth/user'
@@ -23,6 +23,8 @@ import { sessionAtom } from '@/lib/atoms/session'
 import { githubConnectionAtom, githubConnectionInitializedAtom } from '@/lib/atoms/github-connection'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { GitHubStarsButton } from '@/components/github-stars-button'
+import { OpenRepoUrlDialog } from '@/components/open-repo-url-dialog'
+import { useTasks as useTasksContext } from '@/components/app-layout'
 
 interface HomePageHeaderProps {
   selectedOwner: string
@@ -42,11 +44,13 @@ export function HomePageHeader({
   initialStars = 1056,
 }: HomePageHeaderProps) {
   const { toggleSidebar } = useTasks()
-  const router = useRouter()
+  const routerNav = useRouter()
   const githubConnection = useAtomValue(githubConnectionAtom)
   const githubConnectionInitialized = useAtomValue(githubConnectionInitializedAtom)
   const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showOpenRepoDialog, setShowOpenRepoDialog] = useState(false)
+  const { addTaskOptimistically } = useTasksContext()
 
   const handleRefreshOwners = async () => {
     setIsRefreshing(true)
@@ -119,7 +123,7 @@ export function HomePageHeader({
         setGitHubConnection({ connected: false })
 
         // Refresh the page
-        router.refresh()
+        routerNav.refresh()
       } else {
         const error = await response.json()
         console.error('Failed to disconnect GitHub:', error)
@@ -134,7 +138,55 @@ export function HomePageHeader({
   const handleNewRepo = () => {
     // Navigate to the new repo page with owner as query param
     const url = selectedOwner ? `/repos/new?owner=${selectedOwner}` : '/repos/new'
-    router.push(url)
+    routerNav.push(url)
+  }
+
+  const handleOpenRepoUrl = async (repoUrl: string) => {
+    try {
+      if (!user) {
+        toast.error('Sign in required', {
+          description: 'Please sign in to create tasks with custom repository URLs.',
+        })
+        return
+      }
+
+      // Create a task with the provided repo URL
+      // Use default settings for the task
+      const taskData = {
+        prompt: 'Work on this repository',
+        repoUrl: repoUrl,
+        selectedAgent: localStorage.getItem('last-selected-agent') || 'claude',
+        selectedModel: localStorage.getItem('last-selected-model-claude') || 'claude-sonnet-4-5-20250929',
+        installDependencies: true,
+        maxDuration: 300,
+        keepAlive: false,
+      }
+
+      // Add task optimistically to sidebar immediately
+      const { id } = addTaskOptimistically(taskData)
+
+      // Navigate to the new task page immediately
+      routerNav.push(`/tasks/${id}`)
+
+      // Create the task on the server
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...taskData, id }),
+      })
+
+      if (response.ok) {
+        toast.success('Task created successfully!')
+      } else {
+        const error = await response.json()
+        toast.error(error.message || error.error || 'Failed to create task')
+      }
+    } catch (error) {
+      console.error('Error creating task:', error)
+      toast.error('Failed to create task')
+    }
   }
 
   const actions = (
@@ -209,6 +261,10 @@ export function HomePageHeader({
                 <Plus className="h-4 w-4 mr-2" />
                 New Repo
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowOpenRepoDialog(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Repo URL
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -249,6 +305,7 @@ export function HomePageHeader({
         actions={actions}
         leftActions={leftActions}
       />
+      <OpenRepoUrlDialog open={showOpenRepoDialog} onOpenChange={setShowOpenRepoDialog} onSubmit={handleOpenRepoUrl} />
     </>
   )
 }
