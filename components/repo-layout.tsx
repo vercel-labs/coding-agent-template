@@ -9,7 +9,6 @@ import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { User } from '@/components/auth/user'
 import type { Session } from '@/lib/session/types'
 import { GitHubStarsButton } from '@/components/github-stars-button'
-import { GitBranch, GitPullRequest, CircleDot } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface RepoLayoutProps {
@@ -26,9 +25,9 @@ export function RepoLayout({ owner, repo, user, authProvider, initialStars = 105
   const pathname = usePathname()
 
   const tabs = [
-    { name: 'Commits', href: `/repos/${owner}/${repo}/commits`, icon: GitBranch },
-    { name: 'Issues', href: `/repos/${owner}/${repo}/issues`, icon: CircleDot },
-    { name: 'Pull Requests', href: `/repos/${owner}/${repo}/pull-requests`, icon: GitPullRequest },
+    { name: 'Commits', href: `/repos/${owner}/${repo}/commits` },
+    { name: 'Issues', href: `/repos/${owner}/${repo}/issues` },
+    { name: 'Pull Requests', href: `/repos/${owner}/${repo}/pull-requests` },
   ]
 
   return (
@@ -79,7 +78,6 @@ export function RepoLayout({ owner, repo, user, authProvider, initialStars = 105
         <div className="flex-shrink-0 border-b border-border mb-4">
           <nav className="flex gap-6" aria-label="Repository navigation">
             {tabs.map((tab) => {
-              const Icon = tab.icon
               const isActive = pathname === tab.href
               return (
                 <Link
@@ -92,7 +90,6 @@ export function RepoLayout({ owner, repo, user, authProvider, initialStars = 105
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
                   )}
                 >
-                  <Icon className="h-4 w-4" />
                   {tab.name}
                 </Link>
               )
