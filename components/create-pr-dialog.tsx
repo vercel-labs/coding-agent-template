@@ -39,7 +39,7 @@ export function CreatePRDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!title.trim()) {
       toast.error('Please enter a PR title')
       return
@@ -93,7 +93,7 @@ export function CreatePRDialog({
             new tab.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <form id="create-pr-form" onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
             <div className="grid gap-2">
               <Label htmlFor="title">Title *</Label>
@@ -114,25 +114,19 @@ export function CreatePRDialog({
                 onChange={(e) => setBody(e.target.value)}
                 disabled={isCreating}
                 className="min-h-[120px] max-h-[300px] resize-none"
-                onKeyDown={(e) => {
-                  // Prevent form submission on Enter in textarea
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.stopPropagation()
-                  }
-                }}
               />
             </div>
           </div>
-          <DialogFooter className="flex-shrink-0">
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)} disabled={isCreating}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isCreating || !title.trim()}>
-              {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isCreating ? 'Creating...' : 'Create Pull Request'}
-            </Button>
-          </DialogFooter>
         </form>
+        <DialogFooter className="flex-shrink-0">
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)} disabled={isCreating}>
+            Cancel
+          </Button>
+          <Button type="submit" form="create-pr-form" disabled={isCreating || !title.trim()}>
+            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isCreating ? 'Creating...' : 'Create Pull Request'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
