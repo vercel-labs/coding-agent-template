@@ -130,8 +130,9 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
             if (repoMap.has(repoKey)) {
               const existing = repoMap.get(repoKey)!
               existing.taskCount++
-              if (task.createdAt > existing.lastUsed) {
-                existing.lastUsed = task.createdAt
+              const taskCreatedAt = new Date(task.createdAt)
+              if (taskCreatedAt > existing.lastUsed) {
+                existing.lastUsed = taskCreatedAt
               }
             } else {
               repoMap.set(repoKey, {
@@ -139,7 +140,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                 owner,
                 name,
                 taskCount: 1,
-                lastUsed: task.createdAt,
+                lastUsed: new Date(task.createdAt),
               })
             }
           }
