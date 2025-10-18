@@ -225,6 +225,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
     selectedModel: string
     installDependencies: boolean
     maxDuration: number
+    autoCreatePr?: boolean
   }) => {
     const id = nanoid()
     const optimisticTask: Task = {
@@ -237,6 +238,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       installDependencies: taskData.installDependencies,
       maxDuration: taskData.maxDuration,
       keepAlive: false,
+      autoCreatePr: taskData.autoCreatePr ?? false,
       status: 'pending',
       progress: 0,
       logs: [],
