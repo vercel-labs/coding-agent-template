@@ -353,25 +353,16 @@ EOF`
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
-    if (hasChanges) {
-      return {
-        success: true,
-        output: 'GitHub Copilot CLI executed successfully (Changes detected)',
-        agentResponse: agentMessageId ? undefined : result.output || 'GitHub Copilot CLI completed the task',
-        cliName: 'copilot',
-        changesDetected: true,
-        error: undefined,
-        sessionId: extractedSessionId,
-      }
-    } else {
-      return {
-        success: false,
-        error: 'GitHub Copilot CLI failed: No changes were made to the repository',
-        agentResponse: agentMessageId ? undefined : result.output,
-        cliName: 'copilot',
-        changesDetected: false,
-        sessionId: extractedSessionId,
-      }
+    // Success is determined by the CLI execution, not by code changes
+    // Sometimes users just ask questions and no code changes are expected
+    return {
+      success: true,
+      output: `GitHub Copilot CLI executed successfully${hasChanges ? ' (Changes detected)' : ' (No changes made)'}`,
+      agentResponse: agentMessageId ? undefined : result.output || 'GitHub Copilot CLI completed the task',
+      cliName: 'copilot',
+      changesDetected: !!hasChanges,
+      error: undefined,
+      sessionId: extractedSessionId,
     }
   } catch (error: unknown) {
     // Close the pre tag if streaming to database and there was an error
