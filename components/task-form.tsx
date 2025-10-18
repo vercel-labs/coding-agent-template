@@ -16,12 +16,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowUp, Settings, X, Cable, Key } from 'lucide-react'
+import { Loader2, ArrowUp, Settings, X, Cable } from 'lucide-react'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
-import { ApiKeysDialog } from '@/components/api-keys-dialog'
 import { toast } from 'sonner'
 import { useAtom } from 'jotai'
 import { taskPromptAtom } from '@/lib/atoms/task'
@@ -167,13 +166,9 @@ export function TaskForm({
   const [keepAlive, setKeepAliveState] = useState(initialKeepAlive)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
-  const [showApiKeysDialog, setShowApiKeysDialog] = useState(false)
 
   // Connectors state
   const { connectors } = useConnectors()
-
-  // API keys state
-  const [savedApiKeys, setSavedApiKeys] = useState<Set<Provider>>(new Set())
 
   // Ref for the textarea to focus it programmatically
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -239,26 +234,6 @@ export function TaskForm({
     if (textareaRef.current) {
       textareaRef.current.focus()
     }
-
-    // Fetch user's saved API keys
-    const fetchApiKeys = async () => {
-      try {
-        const response = await fetch('/api/api-keys')
-        const data = await response.json()
-
-        if (data.success) {
-          const saved = new Set<Provider>()
-          data.apiKeys.forEach((key: { provider: Provider }) => {
-            saved.add(key.provider)
-          })
-          setSavedApiKeys(saved)
-        }
-      } catch (error) {
-        console.error('Error fetching API keys:', error)
-      }
-    }
-
-    fetchApiKeys()
   }, [])
 
   // Update model when agent changes
@@ -364,11 +339,7 @@ export function TaskForm({
           const providerName = providerNames[data.provider] || data.provider
 
           toast.error(`${providerName} API key required`, {
-            description: `Please add your ${providerName} API key to use the ${data.agentName} agent with this model.`,
-            action: {
-              label: 'Add API Key',
-              onClick: () => setShowApiKeysDialog(true),
-            },
+            description: `Please add your ${providerName} API key in the user menu to use the ${data.agentName} agent with this model.`,
           })
           return
         }
@@ -575,31 +546,6 @@ export function TaskForm({
                           variant="ghost"
                           size="sm"
                           className="rounded-full h-8 w-8 p-0 relative"
-                          onClick={() => setShowApiKeysDialog(true)}
-                        >
-                          <Key className="h-4 w-4" />
-                          {savedApiKeys.size > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
-                            >
-                              {savedApiKeys.size}
-                            </Badge>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>API Keys</p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-full h-8 w-8 p-0 relative"
                           onClick={() => setShowMcpServersDialog(true)}
                         >
                           <Cable className="h-4 w-4" />
@@ -734,27 +680,6 @@ export function TaskForm({
         </div>
       </form>
 
-      <ApiKeysDialog
-        open={showApiKeysDialog}
-        onOpenChange={(open) => {
-          setShowApiKeysDialog(open)
-          // Refetch API keys when dialog closes to update the saved keys state
-          if (!open) {
-            fetch('/api/api-keys')
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.success) {
-                  const saved = new Set<Provider>()
-                  data.apiKeys.forEach((key: { provider: Provider }) => {
-                    saved.add(key.provider)
-                  })
-                  setSavedApiKeys(saved)
-                }
-              })
-              .catch((error) => console.error('Error refetching API keys:', error))
-          }
-        }}
-      />
       <ConnectorDialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog} />
     </div>
   )
