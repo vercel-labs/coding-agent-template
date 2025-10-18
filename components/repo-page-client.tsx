@@ -83,7 +83,7 @@ export function RepoPageClient({ owner, repo, user, authProvider, initialStars =
           </TabsList>
 
           <TabsContent value="commits" className="flex-1 min-h-0 overflow-auto">
-            <RepoCommits owner={owner} repo={repo} />
+            <RepoCommits owner={owner} repo={repo} user={user} />
           </TabsContent>
 
           <TabsContent value="pull-requests" className="flex-1 min-h-0 overflow-auto">
