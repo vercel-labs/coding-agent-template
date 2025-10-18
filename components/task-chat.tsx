@@ -16,11 +16,14 @@ import {
   AlertCircle,
   XCircle,
   RefreshCw,
+  MoreVertical,
+  MessageSquare,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Streamdown } from 'streamdown'
 import { useAtom } from 'jotai'
 import { taskChatInputAtomFamily } from '@/lib/atoms/task'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 interface TaskChatProps {
   taskId: string
@@ -525,6 +528,20 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     }
   }
 
+  const handleSendCommentAsFollowUp = (comment: PRComment) => {
+    // Format the message to indicate it came from a PR comment
+    const formattedMessage = `**PR Comment from @${comment.user.login}:**\n\n${comment.body}\n\n---\n\nPlease address the above PR comment and make the necessary changes to ensure the feedback is accurately addressed.`
+
+    // Set the message in the chat input
+    setNewMessage(formattedMessage)
+
+    // Switch to chat tab
+    setActiveTab('chat')
+
+    // Show success toast
+    toast.success('Comment added to chat input')
+  }
+
   // Use a non-narrowed variable for tab button comparisons
   const currentTab = activeTab as string
 
@@ -746,6 +763,19 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                         </Streamdown>
                       </div>
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
+                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleSendCommentAsFollowUp(comment)}>
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Send as Follow-Up
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
