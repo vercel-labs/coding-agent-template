@@ -180,6 +180,36 @@ export function FileBrowser({
     return paths
   }, [])
 
+  // Helper function to find the first file in the tree (following visual sort order)
+  const getFirstFile = useCallback(function findFirstFile(
+    tree: { [key: string]: FileTreeNode },
+    path = '',
+  ): string | null {
+    // Sort entries: directories first, then files, both alphabetically (same as renderFileTree)
+    const sortedEntries = Object.entries(tree).sort(([nameA, nodeA], [nameB, nodeB]) => {
+      if (nodeA.type === 'directory' && nodeB.type === 'file') return -1
+      if (nodeA.type === 'file' && nodeB.type === 'directory') return 1
+      return nameA.toLowerCase().localeCompare(nameB.toLowerCase())
+    })
+
+    for (const [name, node] of sortedEntries) {
+      const fullPath = path ? `${path}/${name}` : name
+
+      if (node.type === 'file' && node.filename) {
+        // Found the first file
+        return node.filename
+      } else if (node.type === 'directory' && node.children) {
+        // Recursively search in this directory
+        const firstFileInDir = findFirstFile(node.children, fullPath)
+        if (firstFileInDir) {
+          return firstFileInDir
+        }
+      }
+    }
+
+    return null
+  }, [])
+
   const fetchBranchFiles = useCallback(async () => {
     if (!branchName) return
 
@@ -225,6 +255,14 @@ export function FileBrowser({
         if (onFilesLoaded && fetchedFiles.length > 0) {
           onFilesLoaded(fetchedFiles.map((f: FileChange) => f.filename))
         }
+
+        // Auto-select the first file if no file is currently selected
+        if (isInitialLoad && !selectedFile && fetchedFileTree && Object.keys(fetchedFileTree).length > 0) {
+          const firstFile = getFirstFile(fetchedFileTree)
+          if (firstFile && onFileSelect) {
+            onFileSelect(firstFile, false)
+          }
+        }
       } else {
         // Check if the error is due to sandbox not running (410 Gone)
         const isSandboxNotRunning =
@@ -264,6 +302,9 @@ export function FileBrowser({
     files.length,
     fetchAttempted,
     expandedFolders,
+    selectedFile,
+    onFileSelect,
+    getFirstFile,
   ])
 
   const handleSyncChanges = useCallback(async () => {
