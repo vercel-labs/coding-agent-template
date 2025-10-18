@@ -37,7 +37,9 @@ export function CreatePRDialog({
   const [body, setBody] = useState(defaultBody)
   const [isCreating, setIsCreating] = useState(false)
 
-  const handleCreatePR = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
     if (!title.trim()) {
       toast.error('Please enter a PR title')
       return
@@ -91,34 +93,36 @@ export function CreatePRDialog({
             new tab.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              placeholder="Brief description of the changes"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={isCreating}
-            />
+        <form id="create-pr-form" onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                placeholder="Brief description of the changes"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={isCreating}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="body">Description</Label>
+              <Textarea
+                id="body"
+                placeholder="Detailed description of the changes (optional)"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                disabled={isCreating}
+                className="min-h-[120px] max-h-[300px] resize-none"
+              />
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="body">Description</Label>
-            <Textarea
-              id="body"
-              placeholder="Detailed description of the changes (optional)"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              disabled={isCreating}
-              className="min-h-[120px] max-h-[300px] resize-none"
-            />
-          </div>
-        </div>
+        </form>
         <DialogFooter className="flex-shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)} disabled={isCreating}>
             Cancel
           </Button>
-          <Button onClick={handleCreatePR} disabled={isCreating || !title.trim()}>
+          <Button type="submit" form="create-pr-form" disabled={isCreating || !title.trim()}>
             {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isCreating ? 'Creating...' : 'Create Pull Request'}
           </Button>
