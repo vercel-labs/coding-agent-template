@@ -244,6 +244,36 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     return () => clearInterval(interval)
   }, [fetchMessages])
 
+  // Auto-refresh for active tab (Comments, Checks, Deployments)
+  useEffect(() => {
+    if (activeTab === 'chat') return // Chat already has its own refresh
+
+    const refreshInterval = 30000 // 30 seconds
+
+    const interval = setInterval(() => {
+      switch (activeTab) {
+        case 'comments':
+          if (task.prNumber) {
+            commentsLoadedRef.current = false
+            fetchPRComments()
+          }
+          break
+        case 'actions':
+          if (task.branchName) {
+            actionsLoadedRef.current = false
+            fetchCheckRuns()
+          }
+          break
+        case 'deployments':
+          deploymentLoadedRef.current = false
+          fetchDeployment()
+          break
+      }
+    }, refreshInterval)
+
+    return () => clearInterval(interval)
+  }, [activeTab, task.prNumber, task.branchName, fetchPRComments, fetchCheckRuns, fetchDeployment])
+
   // Reset cache and refetch when PR number changes (PR created/updated)
   useEffect(() => {
     if (task.prNumber) {
@@ -996,39 +1026,44 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header Tabs */}
-      <div className="py-2 flex items-center gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <button
-          onClick={() => setActiveTab('chat')}
-          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-            currentTab === 'chat' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Chat
-        </button>
-        <button
-          onClick={() => setActiveTab('comments')}
-          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-            currentTab === 'comments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Comments
-        </button>
-        <button
-          onClick={() => setActiveTab('actions')}
-          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-            currentTab === 'actions' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Checks
-        </button>
-        <button
-          onClick={() => setActiveTab('deployments')}
-          className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
-            currentTab === 'deployments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Deployments
-        </button>
+      <div className="py-2 flex items-center justify-between gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'chat' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => setActiveTab('comments')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'comments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Comments
+          </button>
+          <button
+            onClick={() => setActiveTab('actions')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'actions' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Checks
+          </button>
+          <button
+            onClick={() => setActiveTab('deployments')}
+            className={`text-sm font-semibold px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+              currentTab === 'deployments' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Deployments
+          </button>
+        </div>
+        <Button variant="ghost" size="sm" onClick={handleRefresh} className="h-6 w-6 p-0 flex-shrink-0" title="Refresh">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Tab Content */}
