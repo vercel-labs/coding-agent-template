@@ -32,6 +32,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     aigateway: '',
   })
   const [savedKeys, setSavedKeys] = useState<Set<Provider>>(new Set())
+  const [clearedKeys, setClearedKeys] = useState<Set<Provider>>(new Set())
   const [showKeys, setShowKeys] = useState<Record<Provider, boolean>>({
     openai: false,
     gemini: false,
@@ -87,6 +88,11 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
       if (response.ok) {
         toast.success(`${PROVIDERS.find((p) => p.id === provider)?.name} API key saved`)
         setSavedKeys((prev) => new Set(prev).add(provider))
+        setClearedKeys((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(provider)
+          return newSet
+        })
         setApiKeys((prev) => ({ ...prev, [provider]: '' }))
       } else {
         const error = await response.json()
@@ -114,6 +120,11 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
           newSet.delete(provider)
           return newSet
         })
+        setClearedKeys((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(provider)
+          return newSet
+        })
       } else {
         const error = await response.json()
         toast.error(error.error || 'Failed to delete API key')
@@ -124,6 +135,12 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleClear = (provider: Provider) => {
+    // Mark as cleared locally, no DB changes
+    setClearedKeys((prev) => new Set(prev).add(provider))
+    setApiKeys((prev) => ({ ...prev, [provider]: '' }))
   }
 
   const toggleShowKey = (provider: Provider) => {
@@ -141,51 +158,59 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
         </DialogHeader>
 
         <div className="space-y-2">
-          {PROVIDERS.map((provider) => (
-            <div key={provider.id} className="flex items-center gap-2">
-              <Label htmlFor={provider.id} className="text-sm w-24 shrink-0">
-                {provider.name}
-              </Label>
-              <div className="relative flex-1">
-                <Input
-                  id={provider.id}
-                  type={showKeys[provider.id] ? 'text' : 'password'}
-                  placeholder={savedKeys.has(provider.id) ? '••••••••••••••••' : provider.placeholder}
-                  value={apiKeys[provider.id]}
-                  onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
-                  disabled={loading}
-                  className="pr-9 h-8 text-sm"
-                />
-                <button
-                  onClick={() => toggleShowKey(provider.id)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  type="button"
-                  disabled={loading}
-                >
-                  {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                </button>
+          {PROVIDERS.map((provider) => {
+            const hasSavedKey = savedKeys.has(provider.id)
+            const isCleared = clearedKeys.has(provider.id)
+            const showSaveButton = !hasSavedKey || isCleared
+            const isInputDisabled = hasSavedKey && !isCleared
+
+            return (
+              <div key={provider.id} className="flex items-center gap-2">
+                <Label htmlFor={provider.id} className="text-sm w-24 shrink-0">
+                  {provider.name}
+                </Label>
+                <div className="relative flex-1">
+                  <Input
+                    id={provider.id}
+                    type={showKeys[provider.id] ? 'text' : 'password'}
+                    placeholder={hasSavedKey && !isCleared ? '••••••••••••••••' : provider.placeholder}
+                    value={apiKeys[provider.id]}
+                    onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
+                    disabled={loading || isInputDisabled}
+                    className="pr-9 h-8 text-sm"
+                  />
+                  <button
+                    onClick={() => toggleShowKey(provider.id)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    type="button"
+                    disabled={loading || isInputDisabled}
+                  >
+                    {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+                {showSaveButton ? (
+                  <Button
+                    size="sm"
+                    onClick={() => handleSave(provider.id)}
+                    disabled={loading || !apiKeys[provider.id].trim()}
+                    className="h-8 px-3 text-xs w-16"
+                  >
+                    Save
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleClear(provider.id)}
+                    disabled={loading}
+                    className="h-8 px-3 text-xs w-16"
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
-              <Button
-                size="sm"
-                onClick={() => handleSave(provider.id)}
-                disabled={loading || !apiKeys[provider.id].trim()}
-                className="h-8 px-3 text-xs"
-              >
-                Save
-              </Button>
-              {savedKeys.has(provider.id) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(provider.id)}
-                  disabled={loading}
-                  className="h-8 px-2 text-xs"
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </DialogContent>
     </Dialog>
