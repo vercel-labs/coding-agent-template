@@ -439,7 +439,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
           ) : (
             repositories.map((repo) => {
               const repoPath = `/repos/${repo.owner}/${repo.name}`
-              const isActive = pathname.startsWith(repoPath)
+              const isActive = pathname === repoPath || pathname.startsWith(repoPath + '/')
 
               return (
                 <Link
