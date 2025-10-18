@@ -1378,7 +1378,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
         </div>
 
         {/* Compact info row */}
-        <div className="flex items-center gap-2 md:gap-4 flex-wrap text-xs md:text-sm">
+        <div className="flex items-center gap-2 md:gap-4 md:flex-wrap text-xs md:text-sm overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {/* Repo */}
           {task.repoUrl && (
             <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
