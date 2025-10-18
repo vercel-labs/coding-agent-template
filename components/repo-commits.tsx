@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useTasks } from '@/components/app-layout'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { RevertCommitDialog } from '@/components/revert-commit-dialog'
 
 function formatDistanceToNow(date: Date): string {
   const now = new Date()
@@ -48,6 +49,8 @@ export function RepoCommits({ owner, repo }: RepoCommitsProps) {
   const [commits, setCommits] = useState<Commit[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showRevertDialog, setShowRevertDialog] = useState(false)
+  const [selectedCommit, setSelectedCommit] = useState<Commit | null>(null)
   const { addTaskOptimistically } = useTasks()
   const router = useRouter()
 
@@ -72,21 +75,33 @@ export function RepoCommits({ owner, repo }: RepoCommitsProps) {
     fetchCommits()
   }, [owner, repo])
 
-  const handleRevertCommit = async (commit: Commit) => {
+  const handleOpenRevertDialog = (commit: Commit) => {
+    setSelectedCommit(commit)
+    setShowRevertDialog(true)
+  }
+
+  const handleRevertCommit = async (config: {
+    commit: Commit
+    selectedAgent: string
+    selectedModel: string
+    installDependencies: boolean
+    maxDuration: number
+    keepAlive: boolean
+  }) => {
     try {
       const repoUrl = `https://github.com/${owner}/${repo}`
-      const commitShortSha = commit.sha.substring(0, 7)
-      const commitMessage = commit.commit.message.split('\n')[0]
+      const commitShortSha = config.commit.sha.substring(0, 7)
+      const commitMessage = config.commit.commit.message.split('\n')[0]
       const prompt = `Revert commit ${commitShortSha}: ${commitMessage}`
 
       // Create task optimistically
       const { id } = addTaskOptimistically({
         prompt,
         repoUrl,
-        selectedAgent: 'claude',
-        selectedModel: 'claude-3-5-sonnet-20241022',
-        installDependencies: false,
-        maxDuration: 300,
+        selectedAgent: config.selectedAgent,
+        selectedModel: config.selectedModel,
+        installDependencies: config.installDependencies,
+        maxDuration: config.maxDuration,
       })
 
       // Navigate to the new task page
@@ -102,11 +117,11 @@ export function RepoCommits({ owner, repo }: RepoCommitsProps) {
           id,
           prompt,
           repoUrl,
-          selectedAgent: 'claude',
-          selectedModel: 'claude-3-5-sonnet-20241022',
-          installDependencies: false,
-          maxDuration: 300,
-          keepAlive: false,
+          selectedAgent: config.selectedAgent,
+          selectedModel: config.selectedModel,
+          installDependencies: config.installDependencies,
+          maxDuration: config.maxDuration,
+          keepAlive: config.keepAlive,
         }),
       })
 
@@ -157,63 +172,75 @@ export function RepoCommits({ owner, repo }: RepoCommitsProps) {
   }
 
   return (
-    <div className="space-y-3 pb-6">
-      {commits.map((commit) => (
-        <Card key={commit.sha} className="p-4 hover:bg-muted/50 transition-colors">
-          <div className="flex items-start gap-3">
-            {commit.author?.avatar_url ? (
-              <img
-                src={commit.author.avatar_url}
-                alt={commit.author.login}
-                className="h-10 w-10 rounded-full flex-shrink-0"
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <User className="h-5 w-5 text-muted-foreground" />
-              </div>
-            )}
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <a href={commit.html_url} target="_blank" rel="noopener noreferrer" className="block">
-                    <p className="font-medium text-sm leading-tight mb-1 hover:underline">
-                      {commit.commit.message.split('\n')[0]}
-                    </p>
-                  </a>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {commit.author?.login || commit.commit.author.name}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {formatDistanceToNow(new Date(commit.commit.author.date))}
-                    </span>
-                  </div>
+    <>
+      <div className="space-y-3 pb-6">
+        {commits.map((commit) => (
+          <Card key={commit.sha} className="p-4 hover:bg-muted/50 transition-colors">
+            <div className="flex items-start gap-3">
+              {commit.author?.avatar_url ? (
+                <img
+                  src={commit.author.avatar_url}
+                  alt={commit.author.login}
+                  className="h-10 w-10 rounded-full flex-shrink-0"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                  <User className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <code className="text-xs bg-muted px-2 py-1 rounded">{commit.sha.substring(0, 7)}</code>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleRevertCommit(commit)}>
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Revert
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+              )}
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <a href={commit.html_url} target="_blank" rel="noopener noreferrer" className="block">
+                      <p className="font-medium text-sm leading-tight mb-1 hover:underline">
+                        {commit.commit.message.split('\n')[0]}
+                      </p>
+                    </a>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {commit.author?.login || commit.commit.author.name}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(commit.commit.author.date))}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <code className="text-xs bg-muted px-2 py-1 rounded">{commit.sha.substring(0, 7)}</code>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenRevertDialog(commit)}>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Revert
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
-      ))}
-    </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Revert Commit Dialog */}
+      <RevertCommitDialog
+        open={showRevertDialog}
+        onOpenChange={setShowRevertDialog}
+        commit={selectedCommit}
+        owner={owner}
+        repo={repo}
+        onRevert={handleRevertCommit}
+      />
+    </>
   )
 }
