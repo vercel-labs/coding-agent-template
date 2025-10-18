@@ -155,7 +155,6 @@ export function FileDiffViewer({
     }
 
     fetchDiffData()
-     
   }, [taskId, selectedFile, diffsCache, viewMode])
 
   // Call onFileLoaded when diffData is loaded
