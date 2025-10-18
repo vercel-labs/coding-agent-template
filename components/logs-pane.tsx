@@ -15,11 +15,13 @@ interface LogsPaneProps {
   onHeightChange?: (height: number) => void
 }
 
-type TabType = 'logs' | 'terminal'
+type TabType = 'logs' | 'terminal' | 'client' | 'server'
 
 export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
   const [copiedTerminal, setCopiedTerminal] = useState(false)
+  const [copiedClient, setCopiedClient] = useState(false)
+  const [copiedServer, setCopiedServer] = useState(false)
   const [isCollapsed, setIsCollapsedState] = useState(true)
   const [paneHeight, setPaneHeight] = useState(200)
   const [isResizing, setIsResizing] = useState(false)
@@ -28,8 +30,12 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [activeTab, setActiveTab] = useState<TabType>('logs')
   const [isClearingLogs, setIsClearingLogs] = useState(false)
   const logsContainerRef = useRef<HTMLDivElement>(null)
+  const clientLogsContainerRef = useRef<HTMLDivElement>(null)
+  const serverLogsContainerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<TerminalRef>(null)
   const prevLogsLengthRef = useRef<number>(0)
+  const prevClientLogsLengthRef = useRef<number>(0)
+  const prevServerLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
   const { isSidebarOpen, isSidebarResizing, refreshTasks } = useTasks()
 
@@ -135,6 +141,32 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
     prevLogsLengthRef.current = currentLogsLength
   }, [task.logs])
 
+  // Auto-scroll to bottom when new client logs are added
+  useEffect(() => {
+    const currentLogsLength = task.clientLogs?.length || 0
+
+    if (currentLogsLength > prevClientLogsLengthRef.current && prevClientLogsLengthRef.current > 0) {
+      if (clientLogsContainerRef.current) {
+        clientLogsContainerRef.current.scrollTop = clientLogsContainerRef.current.scrollHeight
+      }
+    }
+
+    prevClientLogsLengthRef.current = currentLogsLength
+  }, [task.clientLogs])
+
+  // Auto-scroll to bottom when new server logs are added
+  useEffect(() => {
+    const currentLogsLength = task.serverLogs?.length || 0
+
+    if (currentLogsLength > prevServerLogsLengthRef.current && prevServerLogsLengthRef.current > 0) {
+      if (serverLogsContainerRef.current) {
+        serverLogsContainerRef.current.scrollTop = serverLogsContainerRef.current.scrollHeight
+      }
+    }
+
+    prevServerLogsLengthRef.current = currentLogsLength
+  }, [task.serverLogs])
+
   const copyLogsToClipboard = async () => {
     try {
       const logsText = (task.logs || []).map((log) => log.message).join('\n')
@@ -186,6 +218,76 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
       } catch {
         toast.error('Failed to copy terminal to clipboard')
       }
+    }
+  }
+
+  const clearClientLogs = async () => {
+    if (isClearingLogs) return
+
+    setIsClearingLogs(true)
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/clear-client-logs`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        refreshTasks()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to clear client logs')
+      }
+    } catch (error) {
+      console.error('Error clearing client logs:', error)
+      toast.error('Failed to clear client logs')
+    } finally {
+      setIsClearingLogs(false)
+    }
+  }
+
+  const clearServerLogs = async () => {
+    if (isClearingLogs) return
+
+    setIsClearingLogs(true)
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/clear-server-logs`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        refreshTasks()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to clear server logs')
+      }
+    } catch (error) {
+      console.error('Error clearing server logs:', error)
+      toast.error('Failed to clear server logs')
+    } finally {
+      setIsClearingLogs(false)
+    }
+  }
+
+  const copyClientLogsToClipboard = async () => {
+    try {
+      const logsText = (task.clientLogs || []).map((log) => log.message).join('\n')
+
+      await navigator.clipboard.writeText(logsText)
+      setCopiedClient(true)
+      setTimeout(() => setCopiedClient(false), 2000)
+    } catch {
+      toast.error('Failed to copy client logs to clipboard')
+    }
+  }
+
+  const copyServerLogsToClipboard = async () => {
+    try {
+      const logsText = (task.serverLogs || []).map((log) => log.message).join('\n')
+
+      await navigator.clipboard.writeText(logsText)
+      setCopiedServer(true)
+      setTimeout(() => setCopiedServer(false), 2000)
+    } catch {
+      toast.error('Failed to copy server logs to clipboard')
     }
   }
 
@@ -257,6 +359,40 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
               >
                 Terminal
               </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isCollapsed) {
+                    setIsCollapsed(false)
+                  }
+                  setActiveTab('client')
+                }}
+                className={cn(
+                  'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
+                  activeTab === 'client'
+                    ? 'text-foreground bg-accent'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                )}
+              >
+                Client
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isCollapsed) {
+                    setIsCollapsed(false)
+                  }
+                  setActiveTab('server')
+                }}
+                className={cn(
+                  'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
+                  activeTab === 'server'
+                    ? 'text-foreground bg-accent'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                )}
+              >
+                Server
+              </button>
             </div>
           </div>
           {activeTab === 'logs' && (
@@ -301,6 +437,52 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                 title="Copy terminal to clipboard"
               >
                 {copiedTerminal ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          )}
+          {activeTab === 'client' && (
+            <div className="flex items-center gap-1 mr-3" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearClientLogs}
+                disabled={isClearingLogs}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Clear client logs"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyClientLogsToClipboard}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Copy client logs to clipboard"
+              >
+                {copiedClient ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          )}
+          {activeTab === 'server' && (
+            <div className="flex items-center gap-1 mr-3" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearServerLogs}
+                disabled={isClearingLogs}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Clear server logs"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyServerLogsToClipboard}
+                className="h-5 w-5 p-0 hover:bg-accent"
+                title="Copy server logs to clipboard"
+              >
+                {copiedServer ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
               </Button>
             </div>
           )}
@@ -352,6 +534,86 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             isActive={activeTab === 'terminal' && !isCollapsed}
             isMobile={!isDesktop}
           />
+        </div>
+        <div
+          ref={clientLogsContainerRef}
+          className={cn(
+            'bg-black text-green-400 p-2 font-mono text-xs flex-1 overflow-y-auto leading-relaxed',
+            (isCollapsed || activeTab !== 'client') && 'hidden',
+          )}
+        >
+          {(task.clientLogs || []).map((log, index) => {
+            const getLogColor = (logType: LogEntry['type']) => {
+              switch (logType) {
+                case 'command':
+                  return 'text-cyan-400'
+                case 'error':
+                  return 'text-red-400'
+                case 'success':
+                  return 'text-green-400'
+                case 'info':
+                default:
+                  return 'text-white'
+              }
+            }
+
+            const formatTime = (timestamp: Date) => {
+              return new Date(timestamp).toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+              })
+            }
+
+            return (
+              <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
+                <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
+                <span className="flex-1">{log.message}</span>
+              </div>
+            )
+          })}
+        </div>
+        <div
+          ref={serverLogsContainerRef}
+          className={cn(
+            'bg-black text-green-400 p-2 font-mono text-xs flex-1 overflow-y-auto leading-relaxed',
+            (isCollapsed || activeTab !== 'server') && 'hidden',
+          )}
+        >
+          {(task.serverLogs || []).map((log, index) => {
+            const getLogColor = (logType: LogEntry['type']) => {
+              switch (logType) {
+                case 'command':
+                  return 'text-cyan-400'
+                case 'error':
+                  return 'text-red-400'
+                case 'success':
+                  return 'text-green-400'
+                case 'info':
+                default:
+                  return 'text-white'
+              }
+            }
+
+            const formatTime = (timestamp: Date) => {
+              return new Date(timestamp).toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+              })
+            }
+
+            return (
+              <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
+                <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
+                <span className="flex-1">{log.message}</span>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

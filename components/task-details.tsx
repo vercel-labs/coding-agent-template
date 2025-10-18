@@ -75,6 +75,7 @@ import PlaywrightIcon from '@/components/icons/playwright-icon'
 import SupabaseIcon from '@/components/icons/supabase-icon'
 import VercelIcon from '@/components/icons/vercel-icon'
 import { PRStatusIcon } from '@/components/pr-status-icon'
+import { IframeLogCapture } from '@/components/iframe-log-capture'
 
 interface TaskDetailsProps {
   task: Task
@@ -1240,6 +1241,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      {/* Add IframeLogCapture to capture logs from sandbox iframe */}
+      <IframeLogCapture taskId={task.id} sandboxUrl={task.sandboxUrl} />
+
       {/* Overview Section */}
       <div className="space-y-2 md:space-y-3 pb-3 md:pb-6 border-b pl-3 md:pl-6 pr-3 flex-shrink-0">
         {/* Prompt */}
