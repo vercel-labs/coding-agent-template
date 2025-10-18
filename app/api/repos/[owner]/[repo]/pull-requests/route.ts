@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOctokit } from '@/lib/github/client'
 
-export async function GET(request: NextRequest, context: { params: { owner: string; repo: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ owner: string; repo: string }> }) {
   try {
     const { owner, repo } = await context.params
 
