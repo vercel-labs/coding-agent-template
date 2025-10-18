@@ -177,11 +177,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                         type="button"
                         disabled={loading}
                       >
-                        {showKeys[provider.id] ? (
-                          <EyeOff className="h-3.5 w-3.5" />
-                        ) : (
-                          <Eye className="h-3.5 w-3.5" />
-                        )}
+                        {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </button>
                     </div>
 
