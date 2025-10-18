@@ -7,6 +7,7 @@ interface TerminalProps {
   taskId: string
   className?: string
   isActive?: boolean
+  isMobile?: boolean
 }
 
 interface TerminalLine {
@@ -20,7 +21,10 @@ export interface TerminalRef {
   getTerminalText: () => string
 }
 
-export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal({ taskId, className, isActive }, ref) {
+export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal(
+  { taskId, className, isActive, isMobile },
+  ref,
+) {
   const [history, setHistory] = useState<TerminalLine[]>([])
   const [currentCommand, setCurrentCommand] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
@@ -57,21 +61,23 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
     }
   }, [history])
 
-  // Focus input when terminal becomes active
+  // Focus input when terminal becomes active (desktop only)
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isMobile) {
       inputRef.current?.focus()
     }
-  }, [isActive])
+  }, [isActive, isMobile])
 
-  // Focus input when clicking anywhere in terminal (but not when selecting text)
+  // Focus input when clicking anywhere in terminal (but not when selecting text or on mobile)
   const handleTerminalClick = () => {
-    // Don't focus if user is selecting text
+    // Don't focus if user is selecting text or on mobile
     const selection = window.getSelection()
     if (selection && selection.toString().length > 0) {
       return
     }
-    inputRef.current?.focus()
+    if (!isMobile) {
+      inputRef.current?.focus()
+    }
   }
 
   const executeCommand = async (command: string) => {
@@ -354,7 +360,7 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
           onKeyDown={handleKeyDown}
           className="flex-1 bg-transparent outline-none text-white text-base md:text-xs"
           placeholder="Type a command..."
-          autoFocus
+          autoFocus={!isMobile}
         />
       </div>
     </div>

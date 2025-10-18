@@ -346,7 +346,12 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
           })}
         </div>
         <div className={cn('flex-1 overflow-hidden', (isCollapsed || activeTab !== 'terminal') && 'hidden')}>
-          <Terminal ref={terminalRef} taskId={task.id} isActive={activeTab === 'terminal' && !isCollapsed} />
+          <Terminal
+            ref={terminalRef}
+            taskId={task.id}
+            isActive={activeTab === 'terminal' && !isCollapsed}
+            isMobile={!isDesktop}
+          />
         </div>
       </div>
     </div>
