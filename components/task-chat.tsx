@@ -811,43 +811,46 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           >
             {message.role === 'user' ? (
               <Card className="p-2 bg-card rounded-md relative z-10">
-                <div className="text-xs">
-                  <Streamdown
-                    components={{
-                      code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                        <code className={`${className} !text-xs`} {...props}>
-                          {children}
-                        </code>
-                      ),
-                      pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                        <pre className="!text-xs" {...props}>
-                          {children}
-                        </pre>
-                      ),
-                      p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
-                        <p className="text-xs" {...props}>
-                          {children}
-                        </p>
-                      ),
-                      ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-                        <ul className="text-xs list-disc ml-4" {...props}>
-                          {children}
-                        </ul>
-                      ),
-                      ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-                        <ol className="text-xs list-decimal ml-4" {...props}>
-                          {children}
-                        </ol>
-                      ),
-                      li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-                        <li className="text-xs mb-2" {...props}>
-                          {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
-                        </li>
-                      ),
-                    }}
-                  >
-                    {message.content}
-                  </Streamdown>
+                <div className="relative max-h-[80px] overflow-hidden">
+                  <div className="text-xs">
+                    <Streamdown
+                      components={{
+                        code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                          <code className={`${className} !text-xs`} {...props}>
+                            {children}
+                          </code>
+                        ),
+                        pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                          <pre className="!text-xs" {...props}>
+                            {children}
+                          </pre>
+                        ),
+                        p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                          <p className="text-xs" {...props}>
+                            {children}
+                          </p>
+                        ),
+                        ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                          <ul className="text-xs list-disc ml-4" {...props}>
+                            {children}
+                          </ul>
+                        ),
+                        ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                          <ol className="text-xs list-decimal ml-4" {...props}>
+                            {children}
+                          </ol>
+                        ),
+                        li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                          <li className="text-xs mb-2" {...props}>
+                            {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                          </li>
+                        ),
+                      }}
+                    >
+                      {message.content}
+                    </Streamdown>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
                 </div>
                 <div className="flex items-center gap-0.5 justify-end">
                   <button
