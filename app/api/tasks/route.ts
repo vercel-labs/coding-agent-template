@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
           validatedData.selectedModel,
           validatedData.installDependencies || false,
           validatedData.keepAlive || false,
+          validatedData.autoCreatePr || false,
           userApiKeys,
           userGithubToken,
           githubUser,
