@@ -226,8 +226,32 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
         style={{ width: `${width}px` }}
       >
         <div className="mb-3 md:mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex-1" />
+          <div className="flex items-center justify-between">
+            {/* Tabs */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className={cn(
+                  'text-xs font-medium tracking-wide transition-colors px-2 py-1 rounded',
+                  activeTab === 'tasks'
+                    ? 'text-foreground bg-accent'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                )}
+              >
+                Tasks
+              </button>
+              <button
+                onClick={() => setActiveTab('repos')}
+                className={cn(
+                  'text-xs font-medium tracking-wide transition-colors px-2 py-1 rounded',
+                  activeTab === 'repos'
+                    ? 'text-foreground bg-accent'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                )}
+              >
+                Repos
+              </button>
+            </div>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -245,31 +269,6 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                 </Button>
               </Link>
             </div>
-          </div>
-          {/* Tabs */}
-          <div className="flex items-center gap-1 px-1">
-            <button
-              onClick={() => setActiveTab('tasks')}
-              className={cn(
-                'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
-                activeTab === 'tasks'
-                  ? 'text-foreground bg-accent'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
-              )}
-            >
-              Tasks
-            </button>
-            <button
-              onClick={() => setActiveTab('repos')}
-              className={cn(
-                'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
-                activeTab === 'repos'
-                  ? 'text-foreground bg-accent'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
-              )}
-            >
-              Repos
-            </button>
           </div>
         </div>
         <div className="space-y-1">
@@ -298,8 +297,32 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
       style={{ width: `${width}px` }}
     >
       <div className="mb-3 md:mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex-1" />
+        <div className="flex items-center justify-between">
+          {/* Tabs */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab('tasks')}
+              className={cn(
+                'text-xs font-medium tracking-wide transition-colors px-2 py-1 rounded',
+                activeTab === 'tasks'
+                  ? 'text-foreground bg-accent'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+              )}
+            >
+              Tasks
+            </button>
+            <button
+              onClick={() => setActiveTab('repos')}
+              className={cn(
+                'text-xs font-medium tracking-wide transition-colors px-2 py-1 rounded',
+                activeTab === 'repos'
+                  ? 'text-foreground bg-accent'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+              )}
+            >
+              Repos
+            </button>
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -317,31 +340,6 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
               </Button>
             </Link>
           </div>
-        </div>
-        {/* Tabs */}
-        <div className="flex items-center gap-1 px-1">
-          <button
-            onClick={() => setActiveTab('tasks')}
-            className={cn(
-              'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
-              activeTab === 'tasks'
-                ? 'text-foreground bg-accent'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
-            )}
-          >
-            Tasks
-          </button>
-          <button
-            onClick={() => setActiveTab('repos')}
-            className={cn(
-              'text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded',
-              activeTab === 'repos'
-                ? 'text-foreground bg-accent'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
-            )}
-          >
-            Repos
-          </button>
         </div>
       </div>
 
