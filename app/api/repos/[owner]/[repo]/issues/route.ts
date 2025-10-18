@@ -19,7 +19,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ own
       per_page: 30,
     })
 
-    return NextResponse.json({ issues })
+    // Filter out pull requests (PRs are technically issues in GitHub's API)
+    const filteredIssues = issues.filter((issue) => !issue.pull_request)
+
+    return NextResponse.json({ issues: filteredIssues })
   } catch (error) {
     console.error('Error fetching issues:', error)
     return NextResponse.json({ error: 'Failed to fetch issues' }, { status: 500 })
