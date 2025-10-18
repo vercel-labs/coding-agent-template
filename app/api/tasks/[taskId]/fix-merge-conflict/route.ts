@@ -42,9 +42,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         repoUrl: originalTask.repoUrl,
         branchName: originalTask.branchName,
         selectedAgent: originalTask.selectedAgent || 'claude',
-        selectedModel: originalTask.selectedModel,
+        selectedModel: originalTask.selectedModel || undefined,
         keepAlive: originalTask.keepAlive || false,
-        maxDuration: originalTask.maxDuration,
+        maxDuration: originalTask.maxDuration || undefined,
       },
     })
   } catch (error) {
