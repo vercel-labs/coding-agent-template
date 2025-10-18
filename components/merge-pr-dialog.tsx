@@ -68,7 +68,8 @@ export function MergePRDialog({
         onOpenChange(false)
       } else {
         // Check if this is a merge conflict error
-        if (result.error && result.error.includes('conflict')) {
+        // GitHub returns "Pull request is not mergeable" (405) or "Merge conflict - cannot auto-merge" (409)
+        if (result.error && (result.error.includes('conflict') || result.error.includes('mergeable'))) {
           // Show the conflict resolution dialog
           setShowConflictDialog(true)
         } else {
