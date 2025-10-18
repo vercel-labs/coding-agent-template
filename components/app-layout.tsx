@@ -51,8 +51,8 @@ function SidebarLoader({ width }: { width: number }) {
       style={{ width: `${width}px` }}
     >
       <div className="mb-3 md:mb-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm md:text-base font-semibold pl-3">Tasks</h2>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex-1" />
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={true} title="Delete Tasks">
               <Trash2 className="h-4 w-4" />
@@ -63,6 +63,21 @@ function SidebarLoader({ width }: { width: number }) {
               </Button>
             </Link>
           </div>
+        </div>
+        {/* Tabs */}
+        <div className="flex items-center gap-1 px-1">
+          <button
+            className="text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded text-foreground bg-accent"
+            disabled
+          >
+            Tasks
+          </button>
+          <button
+            className="text-xs font-medium uppercase tracking-wide transition-colors px-2 py-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            disabled
+          >
+            Repos
+          </button>
         </div>
       </div>
 

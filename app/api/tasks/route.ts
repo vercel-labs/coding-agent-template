@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
           const url = new URL(validatedData.repoUrl || '')
           const pathParts = url.pathname.split('/')
           if (pathParts.length >= 3) {
-            repoName = pathParts[pathParts.length - 1].replace('.git', '')
+            repoName = pathParts[pathParts.length - 1].replace(/\.git$/, '')
           }
         } catch {
           // Ignore URL parsing errors
