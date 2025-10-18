@@ -14,7 +14,7 @@ export function GitHubStarsButton({ initialStars = 1056 }: GitHubStarsButtonProp
     <Button asChild variant="ghost" size="sm" className="h-8 px-2 sm:px-3 gap-1.5">
       <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center">
         <Star className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline text-sm">{initialStars.toLocaleString()}</span>
+        <span className="text-sm">{initialStars.toLocaleString()}</span>
       </a>
     </Button>
   )
