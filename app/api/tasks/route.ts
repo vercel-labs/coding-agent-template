@@ -19,6 +19,7 @@ import { getGitHubUser } from '@/lib/github/client'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
+import { createPullRequest } from '@/lib/github/client'
 
 export async function GET() {
   try {
@@ -172,6 +173,7 @@ export async function POST(request: NextRequest) {
           validatedData.selectedModel,
           validatedData.installDependencies || false,
           validatedData.keepAlive || false,
+          validatedData.autoCreatePr || false,
           userApiKeys,
           userGithubToken,
           githubUser,
@@ -198,6 +200,7 @@ async function processTaskWithTimeout(
   selectedModel?: string,
   installDependencies: boolean = false,
   keepAlive: boolean = false,
+  autoCreatePr: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -242,6 +245,7 @@ async function processTaskWithTimeout(
         selectedModel,
         installDependencies,
         keepAlive,
+        autoCreatePr,
         apiKeys,
         githubToken,
         githubUser,
@@ -310,6 +314,7 @@ async function processTask(
   selectedModel?: string,
   installDependencies: boolean = false,
   keepAlive: boolean = false,
+  autoCreatePr: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -629,6 +634,47 @@ async function processTask(
         await logger.updateProgress(100, 'Task completed successfully')
 
         console.log('Task completed successfully')
+
+        // Auto-create PR if enabled
+        if (autoCreatePr && branchName && repoUrl) {
+          try {
+            await logger.info('Creating pull request automatically')
+
+            // Generate PR title from the prompt (max 80 chars)
+            const prTitle = prompt.length > 80 ? `${prompt.substring(0, 77)}...` : prompt
+
+            // Generate PR body
+            const prBody = `This pull request was automatically created by the coding agent.\n\n**Task**: ${prompt}\n\n**Agent**: ${selectedAgent}${selectedModel ? ` (${selectedModel})` : ''}`
+
+            const prResult = await createPullRequest({
+              repoUrl,
+              branchName,
+              title: prTitle,
+              body: prBody,
+              baseBranch: 'main',
+            })
+
+            if (prResult.success && prResult.prUrl && prResult.prNumber) {
+              // Update task with PR information
+              await db
+                .update(tasks)
+                .set({
+                  prUrl: prResult.prUrl,
+                  prNumber: prResult.prNumber,
+                  prStatus: 'open',
+                  updatedAt: new Date(),
+                })
+                .where(eq(tasks.id, taskId))
+
+              await logger.success('Pull request created automatically')
+            } else {
+              await logger.error('Failed to create pull request automatically')
+            }
+          } catch (prError) {
+            console.error('Error creating auto PR:', prError)
+            await logger.error('Failed to create pull request automatically')
+          }
+        }
       }
     } else {
       // Agent failed, but we still want to capture its logs

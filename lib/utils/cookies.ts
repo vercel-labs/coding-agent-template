@@ -7,6 +7,7 @@ const LOGS_PANE_COLLAPSED_COOKIE = 'logs-pane-collapsed'
 const INSTALL_DEPENDENCIES_COOKIE = 'install-dependencies'
 const MAX_DURATION_COOKIE = 'max-duration'
 const KEEP_ALIVE_COOKIE = 'keep-alive'
+const AUTO_CREATE_PR_COOKIE = 'auto-create-pr'
 const SELECTED_OWNER_COOKIE = 'selected-owner'
 const SELECTED_REPO_COOKIE = 'selected-repo'
 const SHOW_FILES_PANE_COOKIE = 'show-files-pane'
@@ -20,6 +21,7 @@ const DEFAULT_LOGS_PANE_COLLAPSED = true // Default to collapsed
 const DEFAULT_INSTALL_DEPENDENCIES = false
 const DEFAULT_MAX_DURATION = 5
 const DEFAULT_KEEP_ALIVE = false
+const DEFAULT_AUTO_CREATE_PR = false
 const DEFAULT_SHOW_FILES_PANE = true
 const DEFAULT_SHOW_CODE_PANE = true
 const DEFAULT_SHOW_PREVIEW_PANE = false
@@ -241,6 +243,28 @@ export function setKeepAlive(keepAlive: boolean): void {
   if (typeof window === 'undefined') return
 
   Cookies.set(KEEP_ALIVE_COOKIE, keepAlive.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
+}
+
+export function getAutoCreatePr(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_AUTO_CREATE_PR
+  }
+
+  const cookieValue = Cookies.get(AUTO_CREATE_PR_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_AUTO_CREATE_PR
+}
+
+export function setAutoCreatePr(autoCreatePr: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(AUTO_CREATE_PR_COOKIE, autoCreatePr.toString(), {
     expires: 365, // 1 year
     sameSite: 'strict',
   })
