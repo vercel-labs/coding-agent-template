@@ -8,6 +8,10 @@
  * 1. Add this file to your project (e.g., public/sandbox-logger.js)
  * 2. Include it in your HTML: <script src="/sandbox-logger.js"></script>
  * 3. Logs will automatically be captured and sent to the parent window
+ * 
+ * For security, you can optionally specify the parent origin:
+ * - Via query parameter: ?parentOrigin=https://example.com
+ * - Via window variable: window.SANDBOX_LOGGER_PARENT_ORIGIN = 'https://example.com'
  */
 
 (function () {
@@ -23,6 +27,37 @@
     warn: console.warn,
     info: console.info,
   };
+
+  // Determine the parent origin for secure postMessage
+  let parentOrigin = '*'; // Default fallback
+  
+  // First, try to get parent origin from window variable (set by parent)
+  if (window.SANDBOX_LOGGER_PARENT_ORIGIN) {
+    parentOrigin = window.SANDBOX_LOGGER_PARENT_ORIGIN;
+  } else {
+    // Try to get from URL query parameter
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryOrigin = params.get('parentOrigin');
+      if (queryOrigin) {
+        // Validate it's a proper origin URL
+        new URL(queryOrigin); // This will throw if invalid
+        parentOrigin = queryOrigin;
+      }
+    } catch (e) {
+      // Invalid origin format, will use fallback
+    }
+  }
+  
+  // Try to get parent origin from same-origin access (if available)
+  if (parentOrigin === '*') {
+    try {
+      const parentUrl = new URL(window.parent.location.href);
+      parentOrigin = parentUrl.origin;
+    } catch (e) {
+      // Parent is cross-origin, will use fallback '*'
+    }
+  }
 
   // Function to send log to parent
   function sendLogToParent(type, args) {
@@ -46,7 +81,7 @@
           logType: type,
           message: message,
         },
-        '*' // In production, specify the parent origin
+        parentOrigin
       );
     } catch (error) {
       // Silently fail if we can't send the message

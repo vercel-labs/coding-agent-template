@@ -1239,6 +1239,24 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }
 
+  // Helper function to create sandbox URL with parent origin for secure postMessage
+  const getSandboxUrl = (baseUrl: string | null): string | null => {
+    if (!baseUrl) return null
+
+    try {
+      const url = new URL(baseUrl)
+      // Get the current window's origin
+      const parentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+      if (parentOrigin && !url.searchParams.has('parentOrigin')) {
+        url.searchParams.set('parentOrigin', parentOrigin)
+      }
+      return url.toString()
+    } catch {
+      // If URL parsing fails, return the original URL
+      return baseUrl
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Add IframeLogCapture to capture logs from sandbox iframe */}
@@ -1848,7 +1866,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     {task.sandboxUrl ? (
                       <iframe
                         key={previewKey}
-                        src={task.sandboxUrl}
+                        src={getSandboxUrl(task.sandboxUrl) || ''}
                         className="w-full h-full border-0"
                         title="Preview"
                         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
@@ -1933,7 +1951,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   <div className="bg-card rounded-md border overflow-hidden h-full">
                     {task.sandboxUrl ? (
                       <iframe
-                        src={task.sandboxUrl}
+                        src={getSandboxUrl(task.sandboxUrl) || ''}
                         className="w-full h-full border-0"
                         title="Preview"
                         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
