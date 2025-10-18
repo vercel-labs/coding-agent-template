@@ -266,11 +266,20 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
           </div>
         </div>
         <div className="space-y-1">
-          <Card>
-            <CardContent className="p-3 text-center text-xs text-muted-foreground">
-              Sign in to view and create tasks
-            </CardContent>
-          </Card>
+          {activeTab === 'tasks' && (
+            <Card>
+              <CardContent className="p-3 text-center text-xs text-muted-foreground">
+                Sign in to view and create tasks
+              </CardContent>
+            </Card>
+          )}
+          {activeTab === 'repos' && (
+            <Card>
+              <CardContent className="p-3 text-center text-xs text-muted-foreground">
+                Sign in to view repositories
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     )
