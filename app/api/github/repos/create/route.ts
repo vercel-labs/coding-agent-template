@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Parse request body
-    const { name, description, private: isPrivate, owner } = await request.json()
+    const { name, description, private: isPrivate, owner, template } = await request.json()
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Repository name is required' }, { status: 400 })
@@ -41,50 +41,148 @@ export async function POST(request: Request) {
     // Initialize Octokit with user's token
     const octokit = new Octokit({ auth: token })
 
+    // Template repository mappings - repositories that can be used as starting points
+    const templates: Record<string, { owner: string; repo: string; url: string }> = {
+      nextjs: {
+        owner: 'ctate',
+        repo: 'nextjs-starter',
+        url: 'https://github.com/ctate/nextjs-starter',
+      },
+      react: {
+        owner: 'vitejs',
+        repo: 'vite',
+        url: 'https://github.com/vitejs/vite',
+      },
+      vue: {
+        owner: 'vuejs',
+        repo: 'core',
+        url: 'https://github.com/vuejs/core',
+      },
+      express: {
+        owner: 'expressjs',
+        repo: 'express',
+        url: 'https://github.com/expressjs/express',
+      },
+      typescript: {
+        owner: 'microsoft',
+        repo: 'TypeScript-Node-Starter',
+        url: 'https://github.com/microsoft/TypeScript-Node-Starter',
+      },
+    }
+
     try {
       // Check if owner is an org or the user's personal account
       let repo
 
-      if (owner) {
-        // First, check if the owner is the user's personal account
-        const { data: user } = await octokit.users.getAuthenticated()
+      // Determine the target owner
+      const { data: user } = await octokit.users.getAuthenticated()
+      const targetOwner = owner || user.login
 
-        if (user.login === owner) {
-          // Create in user's personal account
+      // Check if we should use a template
+      if (template && template !== 'blank' && templates[template]) {
+        const templateInfo = templates[template]
+
+        // Try GitHub's template repository feature first
+        try {
+          repo = await octokit.repos.createUsingTemplate({
+            template_owner: templateInfo.owner,
+            template_repo: templateInfo.repo,
+            owner: targetOwner,
+            name,
+            description: description || undefined,
+            private: isPrivate || false,
+            include_all_branches: false,
+          })
+        } catch (templateError: unknown) {
+          console.error('Template creation error - falling back to blank repo with template reference:', templateError)
+
+          // If template creation fails, create a blank repo with reference to the template
+          // This happens when the template repo doesn't have the template feature enabled
+          const templateNote = description
+            ? `${description} (Clone from ${templateInfo.url} to use template)`
+            : `Clone from ${templateInfo.url} to use template`
+
+          // Create blank repository with template reference
+          if (owner) {
+            if (user.login === owner) {
+              repo = await octokit.repos.createForAuthenticatedUser({
+                name,
+                description: templateNote,
+                private: isPrivate || false,
+                auto_init: true,
+              })
+            } else {
+              repo = await octokit.repos.createInOrg({
+                org: owner,
+                name,
+                description: templateNote,
+                private: isPrivate || false,
+                auto_init: true,
+              })
+            }
+          } else {
+            repo = await octokit.repos.createForAuthenticatedUser({
+              name,
+              description: templateNote,
+              private: isPrivate || false,
+              auto_init: true,
+            })
+          }
+
+          // Return with a note about the template
+          return NextResponse.json({
+            success: true,
+            name: repo.data.name,
+            full_name: repo.data.full_name,
+            clone_url: repo.data.clone_url,
+            html_url: repo.data.html_url,
+            private: repo.data.private,
+            template_info: {
+              url: templateInfo.url,
+              message: `Repository created. To use the ${template} template, you can clone or copy files from ${templateInfo.url}`,
+            },
+          })
+        }
+      } else {
+        // Create blank repository
+        if (owner) {
+          if (user.login === owner) {
+            // Create in user's personal account
+            repo = await octokit.repos.createForAuthenticatedUser({
+              name,
+              description: description || undefined,
+              private: isPrivate || false,
+              auto_init: true, // Initialize with README
+            })
+          } else {
+            // Try to create in organization
+            try {
+              repo = await octokit.repos.createInOrg({
+                org: owner,
+                name,
+                description: description || undefined,
+                private: isPrivate || false,
+                auto_init: true, // Initialize with README
+              })
+            } catch (error: unknown) {
+              if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+                return NextResponse.json(
+                  { error: 'Organization not found or you do not have permission to create repositories' },
+                  { status: 403 },
+                )
+              }
+              throw error
+            }
+          }
+        } else {
+          // Create in user's personal account if no owner specified
           repo = await octokit.repos.createForAuthenticatedUser({
             name,
             description: description || undefined,
             private: isPrivate || false,
             auto_init: true, // Initialize with README
           })
-        } else {
-          // Try to create in organization
-          try {
-            repo = await octokit.repos.createInOrg({
-              org: owner,
-              name,
-              description: description || undefined,
-              private: isPrivate || false,
-              auto_init: true, // Initialize with README
-            })
-          } catch (error: unknown) {
-            if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
-              return NextResponse.json(
-                { error: 'Organization not found or you do not have permission to create repositories' },
-                { status: 403 },
-              )
-            }
-            throw error
-          }
         }
-      } else {
-        // Create in user's personal account if no owner specified
-        repo = await octokit.repos.createForAuthenticatedUser({
-          name,
-          description: description || undefined,
-          private: isPrivate || false,
-          auto_init: true, // Initialize with README
-        })
       }
 
       return NextResponse.json({

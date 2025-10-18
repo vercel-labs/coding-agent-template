@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -57,6 +58,7 @@ export function HomePageHeader({
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoPrivate, setNewRepoPrivate] = useState(true)
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
 
   const handleRefreshOwners = async () => {
     setIsRefreshing(true)
@@ -159,6 +161,7 @@ export function HomePageHeader({
           description: newRepoDescription.trim(),
           private: newRepoPrivate,
           owner: selectedOwner,
+          template: selectedTemplate || undefined,
         }),
       })
 
@@ -166,6 +169,11 @@ export function HomePageHeader({
 
       if (response.ok) {
         toast.success('Repository created successfully')
+
+        // Show template info if provided
+        if (data.template_info) {
+          toast.info(data.template_info.message, { duration: 8000 })
+        }
 
         // Clear repos cache for current owner
         if (selectedOwner) {
@@ -179,6 +187,7 @@ export function HomePageHeader({
         setNewRepoName('')
         setNewRepoDescription('')
         setNewRepoPrivate(true)
+        setSelectedTemplate('')
         setShowNewRepoDialog(false)
 
         // Reload the page to refresh repos list
@@ -318,6 +327,26 @@ export function HomePageHeader({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <Label htmlFor="template-select">Start from Template (optional)</Label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate} disabled={isCreatingRepo}>
+                <SelectTrigger id="template-select">
+                  <SelectValue placeholder="Blank repository" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="blank">Blank repository</SelectItem>
+                  <SelectItem value="nextjs">Next.js Starter</SelectItem>
+                  <SelectItem value="react">React + Vite</SelectItem>
+                  <SelectItem value="vue">Vue.js</SelectItem>
+                  <SelectItem value="express">Express.js API</SelectItem>
+                  <SelectItem value="typescript">TypeScript Node.js</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose a template to get started quickly with popular frameworks.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="repo-name">Repository Name *</Label>
               <Input
                 id="repo-name"
@@ -371,6 +400,7 @@ export function HomePageHeader({
                 setNewRepoName('')
                 setNewRepoDescription('')
                 setNewRepoPrivate(true)
+                setSelectedTemplate('')
               }}
               disabled={isCreatingRepo}
             >
