@@ -37,7 +37,7 @@ export function MergePRDialog({
   const [mergeMethod, setMergeMethod] = useState<'squash' | 'merge' | 'rebase'>('squash')
   const [isMerging, setIsMerging] = useState(false)
   const [showConflictDialog, setShowConflictDialog] = useState(false)
-  const [isCreatingFixTask, setIsCreatingFixTask] = useState(false)
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
 
   const handleMergePR = async () => {
     setIsMerging(true)
@@ -85,62 +85,35 @@ export function MergePRDialog({
   }
 
   const handleAgentFixConflict = async () => {
-    setIsCreatingFixTask(true)
+    setIsSendingMessage(true)
 
     try {
-      // Get task data from the fix-merge-conflict endpoint
-      const taskDataResponse = await fetch(`/api/tasks/${taskId}/fix-merge-conflict`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const taskDataResult = await taskDataResponse.json()
-
-      if (!taskDataResponse.ok || !taskDataResult.success) {
-        toast.error(taskDataResult.error || 'Failed to get task data')
-        return
-      }
-
-      const taskData = taskDataResult.taskData
-
-      // Create a new task to fix the merge conflict
-      const response = await fetch('/api/tasks', {
+      // Send a follow-up message to the current task to fix merge conflicts
+      const response = await fetch(`/api/tasks/${taskId}/continue`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt:
+          message:
             'Fix merge conflicts in the current branch and prepare it for merging. Review the conflicting changes carefully and resolve them intelligently, preserving the intent of both sets of changes where possible.',
-          repoUrl: taskData.repoUrl,
-          branchName: taskData.branchName, // Continue on the same branch
-          selectedAgent: taskData.selectedAgent,
-          selectedModel: taskData.selectedModel,
-          installDependencies: false,
-          keepAlive: taskData.keepAlive,
-          maxDuration: taskData.maxDuration,
         }),
       })
 
       const result = await response.json()
 
-      if (response.ok && result.task) {
-        toast.success('Agent task created to fix merge conflict')
+      if (response.ok && result.success) {
+        toast.success('Agent is now fixing the merge conflict')
         setShowConflictDialog(false)
         onOpenChange(false)
-
-        // Redirect to the new task
-        window.location.href = `/tasks/${result.task.id}`
       } else {
-        toast.error(result.error || 'Failed to create agent task')
+        toast.error(result.error || 'Failed to send message to agent')
       }
     } catch (error) {
-      console.error('Error creating agent task:', error)
-      toast.error('Failed to create agent task')
+      console.error('Error sending message to agent:', error)
+      toast.error('Failed to send message to agent')
     } finally {
-      setIsCreatingFixTask(false)
+      setIsSendingMessage(false)
     }
   }
 
@@ -222,12 +195,12 @@ export function MergePRDialog({
             </ul>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancelConflictDialog} disabled={isCreatingFixTask}>
+            <Button variant="outline" onClick={handleCancelConflictDialog} disabled={isSendingMessage}>
               Cancel
             </Button>
-            <Button onClick={handleAgentFixConflict} disabled={isCreatingFixTask}>
-              {isCreatingFixTask && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isCreatingFixTask ? 'Creating Task...' : 'Fix with Agent'}
+            <Button onClick={handleAgentFixConflict} disabled={isSendingMessage}>
+              {isSendingMessage && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSendingMessage ? 'Sending Message...' : 'Fix with Agent'}
             </Button>
           </DialogFooter>
         </DialogContent>
