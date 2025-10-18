@@ -53,6 +53,18 @@ The `redactSensitiveInfo()` function in `lib/utils/logging.ts` automatically red
 
 ## Code Quality Guidelines
 
+### Code Formatting
+
+**Always run `pnpm format` after making changes to TypeScript/TSX files.**
+
+The project uses Prettier to enforce consistent code formatting. After editing any `.ts` or `.tsx` files, run:
+
+```bash
+pnpm format
+```
+
+This ensures all code follows the project's formatting standards and prevents formatting-related issues in pull requests.
+
 ### Logging Best Practices
 
 1. **Use descriptive static messages**
