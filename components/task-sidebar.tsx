@@ -106,6 +106,13 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
     }
   }
 
+  // Close sidebar on mobile when selecting a repo
+  const handleRepoClick = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      toggleSidebar()
+    }
+  }
+
   // Extract unique repositories from tasks
   const repositories = useMemo(() => {
     const repoMap = new Map<string, RepoInfo>()
@@ -445,6 +452,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                 <Link
                   key={`${repo.owner}/${repo.name}`}
                   href={repoPath}
+                  onClick={handleRepoClick}
                   className={cn('block rounded-lg', isActive && 'ring-1 ring-primary/50 ring-offset-0')}
                 >
                   <Card
