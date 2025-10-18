@@ -2,15 +2,15 @@ import { RepoLayout } from '@/components/repo-layout'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getGitHubStars } from '@/lib/github-stars'
 
-interface RepoLayoutProps {
-  params: {
+interface LayoutPageProps {
+  params: Promise<{
     owner: string
     repo: string
-  }
+  }>
   children: React.ReactNode
 }
 
-export default async function Layout({ params, children }: RepoLayoutProps) {
+export default async function Layout({ params, children }: LayoutPageProps) {
   const { owner, repo } = await params
   const session = await getServerSession()
   const stars = await getGitHubStars()
@@ -28,7 +28,7 @@ export default async function Layout({ params, children }: RepoLayoutProps) {
   )
 }
 
-export async function generateMetadata({ params }: Pick<RepoLayoutProps, 'params'>) {
+export async function generateMetadata({ params }: LayoutPageProps) {
   const { owner, repo } = await params
 
   return {
