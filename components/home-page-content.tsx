@@ -23,6 +23,7 @@ interface HomePageContentProps {
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
   initialKeepAlive?: boolean
+  initialAutoCreatePR?: boolean
   maxSandboxDuration?: number
   user?: Session['user'] | null
   initialStars?: number
@@ -34,6 +35,7 @@ export function HomePageContent({
   initialInstallDependencies = false,
   initialMaxDuration = 300,
   initialKeepAlive = false,
+  initialAutoCreatePR = false,
   maxSandboxDuration = 300,
   user = null,
   initialStars = 1056,
@@ -87,6 +89,7 @@ export function HomePageContent({
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
+    autoCreatePR: boolean
   }) => {
     // Check if user is authenticated
     if (!user) {
@@ -175,6 +178,7 @@ export function HomePageContent({
           initialInstallDependencies={initialInstallDependencies}
           initialMaxDuration={initialMaxDuration}
           initialKeepAlive={initialKeepAlive}
+          initialAutoCreatePR={initialAutoCreatePR}
           maxSandboxDuration={maxSandboxDuration}
         />
       </div>

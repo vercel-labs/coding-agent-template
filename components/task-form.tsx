@@ -18,7 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Loader2, ArrowUp, Settings, X, Cable } from 'lucide-react'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
-import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
+import { setInstallDependencies, setMaxDuration, setKeepAlive, setAutoCreatePR } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 import { toast } from 'sonner'
@@ -43,6 +43,7 @@ interface TaskFormProps {
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
+    autoCreatePR: boolean
   }) => void
   isSubmitting: boolean
   selectedOwner: string
@@ -50,6 +51,7 @@ interface TaskFormProps {
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
   initialKeepAlive?: boolean
+  initialAutoCreatePR?: boolean
   maxSandboxDuration?: number
 }
 
@@ -152,6 +154,7 @@ export function TaskForm({
   initialInstallDependencies = false,
   initialMaxDuration = 300,
   initialKeepAlive = false,
+  initialAutoCreatePR = false,
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
@@ -164,6 +167,7 @@ export function TaskForm({
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [keepAlive, setKeepAliveState] = useState(initialKeepAlive)
+  const [autoCreatePR, setAutoCreatePRState] = useState(initialAutoCreatePR)
   const [showOptionsDialog, setShowOptionsDialog] = useState(false)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
 
@@ -187,6 +191,11 @@ export function TaskForm({
   const updateKeepAlive = (value: boolean) => {
     setKeepAliveState(value)
     setKeepAlive(value)
+  }
+
+  const updateAutoCreatePR = (value: boolean) => {
+    setAutoCreatePRState(value)
+    setAutoCreatePR(value)
   }
 
   // Handle keyboard events in textarea
@@ -357,6 +366,7 @@ export function TaskForm({
       installDependencies,
       maxDuration,
       keepAlive,
+      autoCreatePR,
     })
   }
 
@@ -468,7 +478,7 @@ export function TaskForm({
                 </Select>
 
                 {/* Option Chips - Only visible on desktop */}
-                {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
+                {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive || autoCreatePR) && (
                   <div className="hidden sm:flex items-center gap-2 flex-wrap">
                     {!installDependencies && (
                       <Badge
@@ -530,6 +540,26 @@ export function TaskForm({
                         </Button>
                       </Badge>
                     )}
+                    {autoCreatePR && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
+                        onClick={() => setShowOptionsDialog(true)}
+                      >
+                        Auto PR
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-3 w-3 p-0 hover:bg-transparent"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            updateAutoCreatePR(false)
+                          }}
+                        >
+                          <X className="h-2 w-2" />
+                        </Button>
+                      </Badge>
+                    )}
                   </div>
                 )}
               </div>
@@ -580,6 +610,7 @@ export function TaskForm({
                                   !installDependencies,
                                   maxDuration !== maxSandboxDuration,
                                   keepAlive,
+                                  autoCreatePR,
                                 ].filter(Boolean).length
                                 return customOptionsCount > 0 ? (
                                   <Badge
@@ -658,6 +689,22 @@ export function TaskForm({
                             </div>
                             <p className="text-xs text-muted-foreground">
                               Keep the sandbox running after task completion to reuse it for follow-up messages.
+                            </p>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="auto-create-pr"
+                                checked={autoCreatePR}
+                                onCheckedChange={(checked) => updateAutoCreatePR(checked === true)}
+                              />
+                              <Label
+                                htmlFor="auto-create-pr"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                Create PR automatically
+                              </Label>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Automatically create a pull request after the first iteration without clicking the Open PR button.
                             </p>
                           </div>
                         </div>

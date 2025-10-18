@@ -85,6 +85,7 @@ export const tasks = pgTable('tasks', {
   installDependencies: boolean('install_dependencies').default(false),
   maxDuration: integer('max_duration').default(parseInt(process.env.MAX_SANDBOX_DURATION || '300', 10)),
   keepAlive: boolean('keep_alive').default(false),
+  autoCreatePR: boolean('auto_create_pr').default(false),
   status: text('status', {
     enum: ['pending', 'processing', 'completed', 'error', 'stopped'],
   })
@@ -122,6 +123,7 @@ export const insertTaskSchema = z.object({
   installDependencies: z.boolean().default(false),
   maxDuration: z.number().default(parseInt(process.env.MAX_SANDBOX_DURATION || '300', 10)),
   keepAlive: z.boolean().default(false),
+  autoCreatePR: z.boolean().default(false),
   status: z.enum(['pending', 'processing', 'completed', 'error', 'stopped']).default('pending'),
   progress: z.number().min(0).max(100).default(0),
   logs: z.array(logEntrySchema).optional(),
@@ -152,6 +154,7 @@ export const selectTaskSchema = z.object({
   installDependencies: z.boolean().nullable(),
   maxDuration: z.number().nullable(),
   keepAlive: z.boolean().nullable(),
+  autoCreatePR: z.boolean().nullable(),
   status: z.enum(['pending', 'processing', 'completed', 'error', 'stopped']),
   progress: z.number().nullable(),
   logs: z.array(logEntrySchema).nullable(),
