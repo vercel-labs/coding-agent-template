@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { GitPullRequest, Calendar, MessageSquare } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { GitPullRequest, Calendar, MessageSquare, MoreHorizontal, X } from 'lucide-react'
 
 function formatDistanceToNow(date: Date): string {
   const now = new Date()
@@ -43,6 +45,7 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [closingPR, setClosingPR] = useState<number | null>(null)
 
   useEffect(() => {
     async function fetchPullRequests() {
@@ -64,6 +67,33 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
 
     fetchPullRequests()
   }, [owner, repo])
+
+  const handleClosePR = async (prNumber: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!confirm(`Are you sure you want to close PR #${prNumber}?`)) {
+      return
+    }
+
+    try {
+      setClosingPR(prNumber)
+      const response = await fetch(`/api/repos/${owner}/${repo}/pull-requests/${prNumber}/close`, {
+        method: 'PATCH',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to close pull request')
+      }
+
+      // Remove the closed PR from the list
+      setPullRequests((prev) => prev.filter((pr) => pr.number !== prNumber))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to close pull request')
+    } finally {
+      setClosingPR(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -103,8 +133,13 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
     <div className="space-y-3 pb-6">
       {pullRequests.map((pr) => (
         <Card key={pr.number} className="p-4 hover:bg-muted/50 transition-colors">
-          <a href={pr.html_url} target="_blank" rel="noopener noreferrer" className="block">
-            <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3">
+            <a
+              href={pr.html_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-3 flex-1 min-w-0"
+            >
               <div className="flex-shrink-0 mt-1">
                 <GitPullRequest
                   className={`h-5 w-5 ${
@@ -164,8 +199,38 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
                   </span>
                 </div>
               </div>
-            </div>
-          </a>
+            </a>
+
+            {pr.state === 'open' && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 flex-shrink-0"
+                    disabled={closingPR === pr.number}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => handleClosePR(pr.number, e)}
+                    disabled={closingPR === pr.number}
+                    className="text-red-600 dark:text-red-400"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    {closingPR === pr.number ? 'Closing...' : 'Close PR'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </Card>
       ))}
     </div>
