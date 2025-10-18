@@ -6,11 +6,12 @@ import { Task } from '@/lib/db/schema'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, ListTodo, FolderGit2 } from 'lucide-react'
 import Link from 'next/link'
 import { getSidebarWidth, setSidebarWidth, getSidebarOpen, setSidebarOpen } from '@/lib/utils/cookies'
 import { nanoid } from 'nanoid'
 import { ConnectorsProvider } from '@/components/connectors-provider'
+import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -47,12 +48,21 @@ export const useTasks = () => {
 function SidebarLoader({ width }: { width: number }) {
   return (
     <div
-      className="h-full border-r bg-muted px-2 md:px-3 pb-3 pt-3 md:pt-5.5 overflow-y-auto"
+      className="h-full border-r bg-muted px-2 md:px-3 pb-3 pt-3 md:pt-5.5 overflow-y-auto flex flex-col"
       style={{ width: `${width}px` }}
     >
       <div className="mb-3 md:mb-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm md:text-base font-semibold pl-3">Tasks</h2>
+          <TabsList className="h-8 p-[2px]">
+            <TabsTrigger value="tasks" className="h-7 px-2 text-xs flex items-center gap-1.5">
+              <ListTodo className="h-3.5 w-3.5" />
+              Tasks
+            </TabsTrigger>
+            <TabsTrigger value="repos" className="h-7 px-2 text-xs flex items-center gap-1.5">
+              <FolderGit2 className="h-3.5 w-3.5" />
+              Repos
+            </TabsTrigger>
+          </TabsList>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={true} title="Delete Tasks">
               <Trash2 className="h-4 w-4" />
