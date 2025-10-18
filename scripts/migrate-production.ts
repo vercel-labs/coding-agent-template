@@ -17,7 +17,7 @@ import { execSync } from 'child_process'
 // Only run migrations in Vercel production environment
 if (process.env.VERCEL_ENV !== 'production') {
   console.log('✓ Skipping database migrations - not in production environment')
-  console.log(`  Current environment: ${process.env.VERCEL_ENV || 'local'}`)
+  console.log('  Current environment detected')
   process.exit(0)
 }
 

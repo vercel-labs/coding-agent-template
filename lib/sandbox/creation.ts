@@ -10,21 +10,16 @@ import { registerSandbox } from './sandbox-registry'
 
 // Helper function to run command and log it
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  const redactedCommand = redactSensitiveInfo(fullCommand)
-
-  await logger.command(redactedCommand)
+  await logger.command('Command executed')
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   if (result && result.output && result.output.trim()) {
-    const redactedOutput = redactSensitiveInfo(result.output.trim())
-    await logger.info(redactedOutput)
+    await logger.info('Command produced output')
   }
 
   if (result && !result.success && result.error) {
-    const redactedError = redactSensitiveInfo(result.error)
-    await logger.error(redactedError)
+    await logger.error('Command execution failed')
   }
 
   return result

@@ -345,11 +345,10 @@ EOF`
 
     const fullCommand = `${envPrefix} ${opencodeCmdToUse} run${modelFlag}${sessionFlags} "${instruction}"`
 
-    // Log the command we're about to execute (with redacted API keys)
-    const redactedCommand = fullCommand.replace(/API_KEY="[^"]*"/g, 'API_KEY="[REDACTED]"')
-    await logger.command(redactedCommand)
+    // Log that we're starting execution
+    await logger.command('OpenCode CLI execution started')
     if (logger) {
-      await logger.command(redactedCommand)
+      await logger.command('OpenCode CLI execution started')
     }
 
     // Execute OpenCode run command
@@ -360,15 +359,15 @@ EOF`
 
     // Log the output
     if (stdout && stdout.trim()) {
-      await logger.info(redactSensitiveInfo(stdout.trim()))
+      await logger.info('Agent produced output')
       if (logger) {
-        await logger.info(redactSensitiveInfo(stdout.trim()))
+        await logger.info('Agent produced output')
       }
     }
     if (stderr && stderr.trim()) {
-      await logger.error(redactSensitiveInfo(stderr.trim()))
+      await logger.error('Agent error occurred')
       if (logger) {
-        await logger.error(redactSensitiveInfo(stderr.trim()))
+        await logger.error('Agent error occurred')
       }
     }
 

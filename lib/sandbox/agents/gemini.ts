@@ -9,22 +9,17 @@ type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and log it
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  const redactedCommand = redactSensitiveInfo(fullCommand)
-
-  await logger.command(redactedCommand)
+  await logger.command('Command executed')
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
-    const redactedOutput = redactSensitiveInfo(result.output.trim())
-    await logger.info(redactedOutput)
+    await logger.info('Command produced output')
   }
 
   if (result && !result.success && result.error) {
-    const redactedError = redactSensitiveInfo(result.error)
-    await logger.error(redactedError)
+    await logger.error('Command execution failed')
   }
 
   // If result is null/undefined, create a fallback result
@@ -34,7 +29,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
       error: 'Command execution failed - no result returned',
       exitCode: -1,
       output: '',
-      command: redactedCommand,
+      command: '',
     }
     await logger.error('Command execution failed - no result returned')
     return errorResult
@@ -218,8 +213,7 @@ EOF`
 
     // Log what we're trying to do
     await logger.info('Executing Gemini CLI with authentication')
-    const redactedCommand = `gemini ${args.join(' ')} "${instruction.substring(0, 100)}..."`
-    await logger.command(redactedCommand)
+    await logger.command('Gemini CLI execution started')
 
     // Build environment variables string for shell command (like other agents)
     const envPrefix = Object.entries(authEnv)
@@ -277,13 +271,11 @@ EOF`
 
     // Log the output
     if (result.output && result.output.trim()) {
-      const redactedOutput = redactSensitiveInfo(result.output.trim())
-      await logger.info(redactedOutput)
+      await logger.info('Agent produced output')
     }
 
     if (!result.success && result.error) {
-      const redactedError = redactSensitiveInfo(result.error)
-      await logger.error(redactedError)
+      await logger.error('Agent error occurred')
     }
 
     // Log more details for debugging

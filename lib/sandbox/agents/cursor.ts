@@ -12,17 +12,16 @@ type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and collect
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  await logger.command(redactSensitiveInfo(fullCommand))
+  await logger.command('Command executed')
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
-    await logger.info(redactSensitiveInfo(result.output.trim()))
+    await logger.info('Command produced output')
   }
 
   if (!result.success && result.error) {
-    await logger.error(redactSensitiveInfo(result.error))
+    await logger.error('Command execution failed')
   }
 
   return result
@@ -265,13 +264,10 @@ EOF`
     // Try multiple approaches to find and execute cursor-agent
 
     // Log what we're about to execute
-    const modelFlag = selectedModel ? ` --model ${selectedModel}` : ''
-    const resumeFlag = isResumed && sessionId ? ` --resume ${sessionId}` : ''
-    const logCommand = `cursor-agent -p --force --output-format stream-json${modelFlag}${resumeFlag} "${instruction}"`
     if (logger) {
-      await logger.command(logCommand)
+      await logger.command('Executing cursor-agent')
       if (selectedModel) {
-        await logger.info('Executing cursor-agent with model')
+        await logger.info('Using custom model')
       }
       if (isResumed) {
         if (sessionId) {
@@ -280,7 +276,7 @@ EOF`
           await logger.info('Resuming previous conversation')
         }
       }
-      await logger.info('Executing cursor-agent directly without shell wrapper')
+      await logger.info('Starting cursor-agent execution')
     }
 
     // Execute cursor-agent using the proper Vercel Sandbox API with environment variables
@@ -472,19 +468,17 @@ EOF`
       success: true, // We'll determine actual success based on git changes
       output: capturedOutput,
       error: capturedError,
-      command: logCommand,
+      command: 'cursor-agent',
     }
 
     // Log the output and error results (similar to Claude)
     // Skip logging raw output when streaming to database (we've already built clean content there)
     if (result.output && result.output.trim() && !agentMessageId) {
-      const redactedOutput = redactSensitiveInfo(result.output.trim())
-      await logger.info(redactedOutput)
+      await logger.info('Agent produced output')
     }
 
     if (result.error && result.error.trim()) {
-      const redactedError = redactSensitiveInfo(result.error)
-      await logger.error(redactedError)
+      await logger.error('Agent error occurred')
     }
 
     // Cursor CLI execution completed

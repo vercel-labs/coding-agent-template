@@ -2,42 +2,35 @@ import { Sandbox } from '@vercel/sandbox'
 import { Writable } from 'stream'
 import { runCommandInSandbox } from '../commands'
 import { AgentExecutionResult } from '../types'
-import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 import { connectors, taskMessages } from '@/lib/db/schema'
 import { db } from '@/lib/db/client'
 import { eq } from 'drizzle-orm'
-import { generateId } from '@/lib/utils/id'
 
 type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and collect logs
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  const redactedCommand = redactSensitiveInfo(fullCommand)
-
   // Log to both local logs and database if logger is provided
-  await logger.command(redactedCommand)
+  await logger.command('Command executed')
   if (logger) {
-    await logger.command(redactedCommand)
+    await logger.command('Command executed')
   }
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
-    const redactedOutput = redactSensitiveInfo(result.output.trim())
-    await logger.info(redactedOutput)
+    await logger.info('Command produced output')
     if (logger) {
-      await logger.info(redactedOutput)
+      await logger.info('Command produced output')
     }
   }
 
   if (result && !result.success && result.error) {
-    const redactedError = redactSensitiveInfo(result.error)
-    await logger.error(redactedError)
+    await logger.error('Command execution failed')
     if (logger) {
-      await logger.error(redactedError)
+      await logger.error('Command execution failed')
     }
   }
 
@@ -48,7 +41,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
       error: 'Command execution failed - no result returned',
       exitCode: -1,
       output: '',
-      command: redactedCommand,
+      command: '',
     }
     await logger.error('Command execution failed - no result returned')
     if (logger) {
@@ -117,7 +110,6 @@ export async function installClaudeCLI(
             if (addResult.success) {
               await logger.info('Successfully added local MCP server')
             } else {
-              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
               await logger.info('Failed to add MCP server')
             }
           } else {
@@ -138,7 +130,6 @@ export async function installClaudeCLI(
             if (addResult.success) {
               await logger.info('Successfully added remote MCP server')
             } else {
-              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
               await logger.info('Failed to add MCP server')
             }
           }
@@ -244,11 +235,8 @@ export async function executeClaudeInSandbox(
     }
 
     // Log what we're trying to do
-    const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
     if (logger) {
-      await logger.info(
-        `Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`,
-      )
+      await logger.info('Attempting to execute Claude CLI')
     }
 
     // Check MCP configuration status
@@ -271,6 +259,7 @@ export async function executeClaudeInSandbox(
     }
 
     // Build command with stream-json output format for streaming
+    const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
     let fullCommand = `${envPrefix} claude --model "${modelToUse}" --dangerously-skip-permissions --output-format stream-json --verbose`
 
     // Add --resume flag for follow-up messages in kept-alive sandboxes
@@ -294,9 +283,8 @@ export async function executeClaudeInSandbox(
       await logger.info('Executing Claude CLI with --dangerously-skip-permissions for automated file changes...')
     }
 
-    // Log the command we're about to execute (with redacted API key)
-    const redactedCommand = fullCommand.replace(process.env.ANTHROPIC_API_KEY!, '[REDACTED]')
-    await logger.command(redactedCommand)
+    // Log that we're starting execution
+    await logger.command('Claude CLI execution started')
 
     // Set up streaming output capture if we have an agent message
     let capturedOutput = ''

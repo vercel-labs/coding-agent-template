@@ -12,17 +12,16 @@ type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and collect logs
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  await logger.command(redactSensitiveInfo(fullCommand))
+  await logger.command('Command executed')
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
-    await logger.info(redactSensitiveInfo(result.output.trim()))
+    await logger.info('Command produced output')
   }
 
   if (!result.success && result.error) {
-    await logger.error(redactSensitiveInfo(result.error))
+    await logger.error('Command execution failed')
   }
 
   return result
@@ -289,7 +288,7 @@ EOF`
       ...(mcpServers && mcpServers.length > 0 ? ['--additional-mcp-config', `@${mcpConfigPath}`] : []),
     ]
 
-    const logCommand = `copilot${modelFlag}${resumeFlag}${additionalMcpConfig} -p "${instruction}" --allow-all-tools --no-color`
+    const logCommand = 'GitHub Copilot CLI execution started'
     await logger.command(logCommand)
 
     if (logger) {
@@ -330,13 +329,11 @@ EOF`
 
     // Log the output and error results
     if (result.output && result.output.trim() && !agentMessageId) {
-      const redactedOutput = redactSensitiveInfo(result.output.trim())
-      await logger.info(redactedOutput)
+      await logger.info('Agent produced output')
     }
 
     if (result.error && result.error.trim()) {
-      const redactedError = redactSensitiveInfo(result.error)
-      await logger.error(redactedError)
+      await logger.error('Agent error occurred')
     }
 
     // Close the pre tag if streaming to database
