@@ -18,6 +18,7 @@ import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { ApiKeysDialog } from '@/components/api-keys-dialog'
 import { SandboxesDialog } from '@/components/sandboxes-dialog'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { Key, Server } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { getEnabledAuthProviders } from '@/lib/auth/providers'
@@ -113,6 +114,8 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
         </div>
 
         <DropdownMenuSeparator />
+
+        <ThemeToggle />
 
         <DropdownMenuItem onClick={() => setShowApiKeysDialog(true)} className="cursor-pointer">
           <Key className="h-4 w-4 mr-2" />
