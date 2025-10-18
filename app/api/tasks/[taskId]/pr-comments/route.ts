@@ -46,16 +46,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, error: 'GitHub authentication required' }, { status: 401 })
     }
 
-    // Fetch PR comments from GitHub
-    const { data: comments } = await octokit.rest.issues.listComments({
-      owner,
-      repo,
-      issue_number: task.prNumber,
-    })
+    // Fetch both issue comments and review comments from GitHub
+    const [issueCommentsResponse, reviewCommentsResponse] = await Promise.all([
+      octokit.rest.issues.listComments({
+        owner,
+        repo,
+        issue_number: task.prNumber,
+      }),
+      octokit.rest.pulls.listReviewComments({
+        owner,
+        repo,
+        pull_number: task.prNumber,
+      }),
+    ])
 
-    return NextResponse.json({
-      success: true,
-      comments: comments.map((comment) => ({
+    // Combine and format both types of comments
+    const allComments = [
+      ...issueCommentsResponse.data.map((comment) => ({
         id: comment.id,
         user: {
           login: comment.user?.login || 'unknown',
@@ -65,6 +72,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         created_at: comment.created_at,
         html_url: comment.html_url,
       })),
+      ...reviewCommentsResponse.data.map((comment) => ({
+        id: comment.id,
+        user: {
+          login: comment.user?.login || 'unknown',
+          avatar_url: comment.user?.avatar_url || '',
+        },
+        body: comment.body || '',
+        created_at: comment.created_at,
+        html_url: comment.html_url,
+      })),
+    ]
+
+    // Sort by created_at date (oldest first)
+    allComments.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+    return NextResponse.json({
+      success: true,
+      comments: allComments,
     })
   } catch (error) {
     console.error('Error fetching PR comments:', error)
