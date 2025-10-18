@@ -18,7 +18,9 @@ export async function decryptJWE<T extends string | object = string | object>(
       delete (decoded as Record<string, unknown>).exp
     }
     return decoded
-  } catch {
-    // Do nothing
+  } catch (error) {
+    // Log decryption failures for debugging (server-side only)
+    console.error('JWT decryption failed:', error instanceof Error ? error.message : 'Unknown error')
+    return undefined
   }
 }

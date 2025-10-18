@@ -1,44 +1,20 @@
 import type { NextRequest } from 'next/server'
-import type { Session, SessionUserInfo, Tokens } from '@/lib/session/types'
-import { createSession, saveSession } from '@/lib/session/create'
-import { saveSession as saveGitHubSession } from '@/lib/session/create-github'
+import type { Session, SessionUserInfo } from '@/lib/session/types'
 import { getSessionFromReq } from '@/lib/session/server'
-import { getOAuthToken } from '@/lib/session/get-oauth-token'
 
 export async function GET(req: NextRequest) {
   const existingSession = await getSessionFromReq(req)
 
-  // For GitHub users, just return the existing session without recreating it
-  // For Vercel users, recreate the session to refresh user data
-  let session: Session | undefined
-  if (existingSession && existingSession.authProvider === 'github') {
-    session = existingSession
-  } else if (existingSession) {
-    // Fetch Vercel token from database to recreate session
-    const tokenData = await getOAuthToken(existingSession.user.id, 'vercel')
-    if (tokenData) {
-      const tokens: Tokens = {
-        accessToken: tokenData.accessToken,
-        expiresAt: tokenData.expiresAt?.getTime(),
-      }
-      session = await createSession(tokens)
-    } else {
-      session = existingSession
-    }
-  } else {
-    session = undefined
-  }
+  // Return existing session without recreating it
+  // This prevents unnecessary session recreation and cookie rewrites
+  const session = existingSession
 
   const response = new Response(JSON.stringify(await getData(session)), {
     headers: { 'Content-Type': 'application/json' },
   })
 
-  // Use the appropriate saveSession function based on auth provider
-  if (session && session.authProvider === 'github') {
-    await saveGitHubSession(response, session)
-  } else {
-    await saveSession(response, session)
-  }
+  // Only save session if it was modified (never in this case now)
+  // This prevents frequent cookie rewrites that can cause session loss
 
   return response
 }

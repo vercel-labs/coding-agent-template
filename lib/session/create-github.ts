@@ -92,10 +92,9 @@ export async function saveSession(res: Response, session: Session | undefined): 
   }
 
   const value = await encryptJWE(session, '1y')
-  const expires = new Date(Date.now() + COOKIE_TTL).toUTCString()
   res.headers.append(
     'Set-Cookie',
-    `${SESSION_COOKIE_NAME}=${value}; Path=/; Max-Age=${COOKIE_TTL / 1000}; Expires=${expires}; HttpOnly; ${process.env.NODE_ENV === 'production' ? 'Secure; ' : ''}SameSite=Lax`,
+    `${SESSION_COOKIE_NAME}=${value}; Path=/; Max-Age=${COOKIE_TTL / 1000}; HttpOnly; ${process.env.NODE_ENV === 'production' ? 'Secure; ' : ''}SameSite=Lax`,
   )
   return value
 }
