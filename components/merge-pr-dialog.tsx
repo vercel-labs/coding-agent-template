@@ -191,7 +191,15 @@ export function MergePRDialog({
       </Dialog>
 
       {/* Merge Conflict Resolution Dialog */}
-      <Dialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+      <Dialog
+        open={open && showConflictDialog}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setShowConflictDialog(false)
+          }
+          onOpenChange(isOpen)
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
