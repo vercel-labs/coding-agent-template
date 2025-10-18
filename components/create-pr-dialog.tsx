@@ -37,7 +37,9 @@ export function CreatePRDialog({
   const [body, setBody] = useState(defaultBody)
   const [isCreating, setIsCreating] = useState(false)
 
-  const handleCreatePR = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
     if (!title.trim()) {
       toast.error('Please enter a PR title')
       return
@@ -79,11 +81,6 @@ export function CreatePRDialog({
     } finally {
       setIsCreating(false)
     }
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    handleCreatePR()
   }
 
   return (
