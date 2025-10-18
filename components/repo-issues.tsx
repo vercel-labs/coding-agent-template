@@ -1,9 +1,95 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CircleDot, Calendar, MessageSquare } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import { CircleDot, Calendar, MessageSquare, MoreVertical, ListTodo } from 'lucide-react'
+import { toast } from 'sonner'
+import Claude from '@/components/logos/claude'
+import Codex from '@/components/logos/codex'
+import Copilot from '@/components/logos/copilot'
+import Cursor from '@/components/logos/cursor'
+import Gemini from '@/components/logos/gemini'
+import OpenCode from '@/components/logos/opencode'
+
+const CODING_AGENTS = [
+  { value: 'claude', label: 'Claude', icon: Claude },
+  { value: 'codex', label: 'Codex', icon: Codex },
+  { value: 'copilot', label: 'Copilot', icon: Copilot },
+  { value: 'cursor', label: 'Cursor', icon: Cursor },
+  { value: 'gemini', label: 'Gemini', icon: Gemini },
+  { value: 'opencode', label: 'opencode', icon: OpenCode },
+] as const
+
+const AGENT_MODELS = {
+  claude: [
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+    { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
+    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+  ],
+  codex: [
+    { value: 'openai/gpt-5', label: 'GPT-5' },
+    { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
+    { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
+    { value: 'gpt-5-pro', label: 'GPT-5 pro' },
+    { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
+  ],
+  copilot: [
+    { value: 'claude-sonnet-4.5', label: 'Sonnet 4.5' },
+    { value: 'claude-sonnet-4', label: 'Sonnet 4' },
+    { value: 'claude-haiku-4.5', label: 'Haiku 4.5' },
+    { value: 'gpt-5', label: 'GPT-5' },
+  ],
+  cursor: [
+    { value: 'auto', label: 'Auto' },
+    { value: 'sonnet-4.5', label: 'Sonnet 4.5' },
+    { value: 'sonnet-4.5-thinking', label: 'Sonnet 4.5 Thinking' },
+    { value: 'gpt-5', label: 'GPT-5' },
+    { value: 'gpt-5-codex', label: 'GPT-5 Codex' },
+    { value: 'opus-4.1', label: 'Opus 4.1' },
+    { value: 'grok', label: 'Grok' },
+  ],
+  gemini: [
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  ],
+  opencode: [
+    { value: 'gpt-5', label: 'GPT-5' },
+    { value: 'gpt-5-mini', label: 'GPT-5 mini' },
+    { value: 'gpt-5-nano', label: 'GPT-5 nano' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+  ],
+} as const
+
+const DEFAULT_MODELS = {
+  claude: 'claude-sonnet-4-5-20250929',
+  codex: 'openai/gpt-5',
+  copilot: 'claude-sonnet-4.5',
+  cursor: 'auto',
+  gemini: 'gemini-2.5-pro',
+  opencode: 'gpt-5',
+} as const
 
 function formatDistanceToNow(date: Date): string {
   const now = new Date()
@@ -30,6 +116,7 @@ interface Issue {
   updated_at: string
   html_url: string
   comments: number
+  body?: string
   labels: {
     name: string
     color: string
@@ -42,9 +129,18 @@ interface RepoIssuesProps {
 }
 
 export function RepoIssues({ owner, repo }: RepoIssuesProps) {
+  const router = useRouter()
   const [issues, setIssues] = useState<Issue[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false)
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState('claude')
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
+  const [installDeps, setInstallDeps] = useState(false)
+  const [maxDuration, setMaxDuration] = useState(300)
+  const [keepAlive, setKeepAlive] = useState(false)
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
 
   useEffect(() => {
     async function fetchIssues() {
@@ -66,6 +162,60 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
 
     fetchIssues()
   }, [owner, repo])
+
+  useEffect(() => {
+    const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
+    const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
+    if (agentModels && !agentModels.find((m) => m.value === selectedModel)) {
+      setSelectedModel(defaultModel)
+    }
+  }, [selectedAgent, selectedModel])
+
+  const handleCreateTaskFromIssue = (issue: Issue) => {
+    setSelectedIssue(issue)
+    setShowCreateTaskDialog(true)
+  }
+
+  const handleCreateTask = async () => {
+    if (!selectedIssue) return
+
+    setIsCreatingTask(true)
+    try {
+      const repoUrl = `https://github.com/${owner}/${repo}`
+      const prompt = `Fix issue #${selectedIssue.number}: ${selectedIssue.title}${selectedIssue.body ? `\n\n${selectedIssue.body}` : ''}`
+
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          repoUrl,
+          selectedAgent,
+          selectedModel,
+          installDependencies: installDeps,
+          maxDuration,
+          keepAlive,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success('Task created successfully!')
+        setShowCreateTaskDialog(false)
+        router.push(`/tasks/${result.task.id}`)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to create task')
+      }
+    } catch (error) {
+      console.error('Error creating task:', error)
+      toast.error('Failed to create task')
+    } finally {
+      setIsCreatingTask(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -102,10 +252,10 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
   }
 
   return (
-    <div className="space-y-3 pb-6">
-      {issues.map((issue) => (
-        <Card key={issue.number} className="p-4 hover:bg-muted/50 transition-colors">
-          <a href={issue.html_url} target="_blank" rel="noopener noreferrer" className="block">
+    <>
+      <div className="space-y-3 pb-6">
+        {issues.map((issue) => (
+          <Card key={issue.number} className="p-4 hover:bg-muted/50 transition-colors">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-1">
                 <CircleDot className={`h-5 w-5 ${issue.state === 'open' ? 'text-green-500' : 'text-purple-500'}`} />
@@ -113,7 +263,12 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex-1 min-w-0">
+                  <a
+                    href={issue.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 min-w-0 hover:underline"
+                  >
                     <p className="font-medium text-sm leading-tight mb-1">{issue.title}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>#{issue.number}</span>
@@ -122,7 +277,7 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
                         {issue.state === 'open' ? 'opened' : 'closed'} {formatDistanceToNow(new Date(issue.created_at))}
                       </span>
                     </div>
-                  </div>
+                  </a>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Badge
                       variant={issue.state === 'open' ? 'default' : 'secondary'}
@@ -130,6 +285,19 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
                     >
                       {issue.state === 'open' ? 'Open' : 'Closed'}
                     </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => handleCreateTaskFromIssue(issue)}>
+                          <ListTodo className="h-4 w-4 mr-2" />
+                          Create Task
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
@@ -169,9 +337,121 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
                 </div>
               </div>
             </div>
-          </a>
-        </Card>
-      ))}
-    </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Create Task Dialog */}
+      <AlertDialog open={showCreateTaskDialog} onOpenChange={setShowCreateTaskDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create Task from Issue</AlertDialogTitle>
+            <AlertDialogDescription>
+              Create a new task to fix issue #{selectedIssue?.number}: {selectedIssue?.title}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Agent</label>
+                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CODING_AGENTS.map((agent) => (
+                      <SelectItem key={agent.value} value={agent.value}>
+                        <div className="flex items-center gap-2">
+                          <agent.icon className="w-4 h-4" />
+                          <span>{agent.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Model</label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        {model.label}
+                      </SelectItem>
+                    )) || []}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Task Options */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Task Options</h3>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="install-deps"
+                    checked={installDeps}
+                    onCheckedChange={(checked) => setInstallDeps(!!checked)}
+                  />
+                  <Label
+                    htmlFor="install-deps"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Install Dependencies?
+                  </Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max-duration" className="text-sm font-medium">
+                    Maximum Duration
+                  </Label>
+                  <Select value={maxDuration.toString()} onValueChange={(value) => setMaxDuration(parseInt(value))}>
+                    <SelectTrigger id="max-duration" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 minutes</SelectItem>
+                      <SelectItem value="10">10 minutes</SelectItem>
+                      <SelectItem value="15">15 minutes</SelectItem>
+                      <SelectItem value="30">30 minutes</SelectItem>
+                      <SelectItem value="45">45 minutes</SelectItem>
+                      <SelectItem value="60">1 hour</SelectItem>
+                      <SelectItem value="120">2 hours</SelectItem>
+                      <SelectItem value="180">3 hours</SelectItem>
+                      <SelectItem value="240">4 hours</SelectItem>
+                      <SelectItem value="300">5 hours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="keep-alive"
+                    checked={keepAlive}
+                    onCheckedChange={(checked) => setKeepAlive(!!checked)}
+                  />
+                  <Label
+                    htmlFor="keep-alive"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Keep Alive (300 minutes max)
+                  </Label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreateTask} disabled={isCreatingTask}>
+              {isCreatingTask ? 'Creating...' : 'Create Task'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
