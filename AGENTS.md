@@ -151,6 +151,56 @@ Only these variables should be exposed to the client (via `NEXT_PUBLIC_` prefix)
 - `NEXT_PUBLIC_AUTH_PROVIDERS` - Available auth providers
 - `NEXT_PUBLIC_GITHUB_CLIENT_ID` - GitHub OAuth client ID (public)
 
+## Architecture Guidelines
+
+### Repository Page Structure
+
+The repository page uses a nested routing structure with separate pages for each tab:
+
+#### Route Structure
+```
+app/repos/[owner]/[repo]/
+├── layout.tsx           # Shared layout with navigation tabs
+├── page.tsx            # Redirects to /commits by default
+├── commits/
+│   └── page.tsx        # Commits page
+├── issues/
+│   └── page.tsx        # Issues page
+└── pull-requests/
+    └── page.tsx        # Pull Requests page
+```
+
+#### Components
+- `components/repo-layout.tsx` - Shared layout component with tab navigation
+- `components/repo-commits.tsx` - Commits list component
+- `components/repo-issues.tsx` - Issues list component
+- `components/repo-pull-requests.tsx` - Pull requests list component
+
+#### API Routes
+```
+app/api/repos/[owner]/[repo]/
+├── commits/route.ts         # GET - Fetch commits
+├── issues/route.ts          # GET - Fetch issues
+└── pull-requests/route.ts   # GET - Fetch pull requests
+```
+
+#### Key Features
+1. **Tab Navigation**: Uses Next.js Link components for client-side navigation between tabs
+2. **Separate Pages**: Each tab renders on its own route (commits, issues, pull-requests)
+3. **Default Route**: Visiting `/repos/[owner]/[repo]` redirects to `/repos/[owner]/[repo]/commits`
+4. **Active State**: The active tab is determined by matching the current pathname
+5. **GitHub Integration**: All data is fetched from GitHub API using Octokit client
+
+#### Adding New Tabs
+To add a new tab to the repository page:
+
+1. Create a new directory under `app/repos/[owner]/[repo]/[tab-name]/`
+2. Add a `page.tsx` file that renders your component
+3. Create the component in `components/repo-[tab-name].tsx`
+4. Add an API route in `app/api/repos/[owner]/[repo]/[tab-name]/route.ts`
+5. Update the `tabs` array in `components/repo-layout.tsx` to include the new tab
+6. Follow the existing patterns for data fetching and error handling
+
 ## Compliance Checklist
 
 Before submitting changes, verify:
@@ -162,8 +212,10 @@ Before submitting changes, verify:
 - [ ] Tested in UI to confirm no data leakage
 - [ ] Server-side debugging logs don't expose credentials
 - [ ] Ran `pnpm format` and code is properly formatted
+- [ ] Ran `pnpm format:check` to verify formatting
 - [ ] Ran `pnpm type-check` and all type errors are fixed
 - [ ] Ran `pnpm lint` and all linting errors are fixed
+- [ ] Ran `pnpm build` to verify production build succeeds
 
 ## Questions?
 

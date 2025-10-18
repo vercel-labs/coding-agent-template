@@ -155,7 +155,6 @@ export function FileDiffViewer({
     }
 
     fetchDiffData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, selectedFile, diffsCache, viewMode])
 
   // Call onFileLoaded when diffData is loaded
