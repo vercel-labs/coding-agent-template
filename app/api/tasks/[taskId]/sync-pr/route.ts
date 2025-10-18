@@ -47,14 +47,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update task with current PR status from GitHub
+    // Set completedAt when PR is merged
     const updateData: {
       prStatus: 'open' | 'closed' | 'merged'
       prMergeCommitSha: string | null
+      completedAt?: Date
       updatedAt: Date
     } = {
       prStatus: result.status,
       prMergeCommitSha: result.mergeCommitSha || null,
       updatedAt: new Date(),
+    }
+
+    // Set completedAt timestamp when PR is merged
+    if (result.status === 'merged') {
+      updateData.completedAt = new Date()
     }
 
     await db.update(tasks).set(updateData).where(eq(tasks.id, taskId))

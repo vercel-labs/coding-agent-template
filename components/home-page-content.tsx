@@ -63,40 +63,6 @@ export function HomePageContent({
     }
   }, [searchParams])
 
-  // Handle repoUrl and prompt from query parameters (from Open Repo URL dialog)
-  useEffect(() => {
-    const repoUrlParam = searchParams.get('repoUrl')
-    const promptParam = searchParams.get('prompt')
-
-    if (repoUrlParam && promptParam) {
-      // Set the prompt in the task form
-      setTaskPrompt(promptParam)
-
-      // Submit the task automatically if user is authenticated
-      if (user) {
-        handleTaskSubmit({
-          prompt: promptParam,
-          repoUrl: repoUrlParam,
-          selectedAgent: localStorage.getItem('last-selected-agent') || 'claude',
-          selectedModel: localStorage.getItem('last-selected-model-claude') || 'claude-sonnet-4-5-20250929',
-          installDependencies: initialInstallDependencies,
-          maxDuration: initialMaxDuration,
-          keepAlive: initialKeepAlive,
-        })
-      } else {
-        // Show sign-in dialog if not authenticated
-        setShowSignInDialog(true)
-      }
-
-      // Remove the query parameters from URL
-      const newUrl = new URL(window.location.href)
-      newUrl.searchParams.delete('repoUrl')
-      newUrl.searchParams.delete('prompt')
-      window.history.replaceState({}, '', newUrl.toString())
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, user])
-
   // Wrapper functions to update both state and cookies
   const handleOwnerChange = (owner: string) => {
     setSelectedOwnerState(owner)

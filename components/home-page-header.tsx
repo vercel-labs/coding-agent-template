@@ -11,13 +11,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus, ExternalLink } from 'lucide-react'
+import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus } from 'lucide-react'
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { User } from '@/components/auth/user'
 import type { Session } from '@/lib/session/types'
@@ -52,14 +47,6 @@ export function HomePageHeader({
   const githubConnectionInitialized = useAtomValue(githubConnectionInitializedAtom)
   const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showNewRepoDialog, setShowNewRepoDialog] = useState(false)
-  const [isCreatingRepo, setIsCreatingRepo] = useState(false)
-  const [newRepoName, setNewRepoName] = useState('')
-  const [newRepoDescription, setNewRepoDescription] = useState('')
-  const [newRepoPrivate, setNewRepoPrivate] = useState(true)
-  const [showOpenRepoUrlDialog, setShowOpenRepoUrlDialog] = useState(false)
-  const [repoUrl, setRepoUrl] = useState('')
-  const [taskPrompt, setTaskPrompt] = useState('')
 
   const handleRefreshOwners = async () => {
     setIsRefreshing(true)
@@ -144,81 +131,10 @@ export function HomePageHeader({
     }
   }
 
-  const handleCreateRepo = async () => {
-    if (!newRepoName.trim()) {
-      toast.error('Repository name is required')
-      return
-    }
-
-    setIsCreatingRepo(true)
-    try {
-      const response = await fetch('/api/github/repos/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newRepoName.trim(),
-          description: newRepoDescription.trim(),
-          private: newRepoPrivate,
-          owner: selectedOwner,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        toast.success('Repository created successfully')
-
-        // Clear repos cache for current owner
-        if (selectedOwner) {
-          localStorage.removeItem(`github-repos-${selectedOwner}`)
-        }
-
-        // Set the newly created repo as selected
-        onRepoChange(data.name)
-
-        // Reset form
-        setNewRepoName('')
-        setNewRepoDescription('')
-        setNewRepoPrivate(true)
-        setShowNewRepoDialog(false)
-
-        // Reload the page to refresh repos list
-        window.location.reload()
-      } else {
-        toast.error(data.error || 'Failed to create repository')
-      }
-    } catch (error) {
-      console.error('Error creating repository:', error)
-      toast.error('Failed to create repository')
-    } finally {
-      setIsCreatingRepo(false)
-    }
-  }
-
-  const handleOpenRepoUrl = () => {
-    if (!repoUrl.trim()) {
-      toast.error('Repository URL is required')
-      return
-    }
-
-    if (!taskPrompt.trim()) {
-      toast.error('Task description is required')
-      return
-    }
-
-    // Navigate to home page with repo URL and prompt as query parameters
-    const params = new URLSearchParams({
-      repoUrl: repoUrl.trim(),
-      prompt: taskPrompt.trim(),
-    })
-    router.push(`/?${params.toString()}`)
-
-    // Reset form and close dialog
-    setRepoUrl('')
-    setTaskPrompt('')
-    setShowOpenRepoUrlDialog(false)
+  const handleNewRepo = () => {
+    // Navigate to the new repo page with owner as query param
+    const url = selectedOwner ? `/repos/new?owner=${selectedOwner}` : '/repos/new'
+    router.push(url)
   }
 
   const actions = (
@@ -289,13 +205,9 @@ export function HomePageHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => setShowNewRepoDialog(true)}>
+              <DropdownMenuItem onClick={handleNewRepo}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Repo
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowOpenRepoUrlDialog(true)}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open Repo URL
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
@@ -337,144 +249,6 @@ export function HomePageHeader({
         actions={actions}
         leftActions={leftActions}
       />
-
-      {/* New Repository Dialog */}
-      <Dialog open={showNewRepoDialog} onOpenChange={setShowNewRepoDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Create New Repository</DialogTitle>
-            <DialogDescription>
-              Create a new GitHub repository{selectedOwner ? ` for ${selectedOwner}` : ''}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="repo-name">Repository Name *</Label>
-              <Input
-                id="repo-name"
-                placeholder="my-awesome-project"
-                value={newRepoName}
-                onChange={(e) => setNewRepoName(e.target.value)}
-                disabled={isCreatingRepo}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleCreateRepo()
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">Use lowercase letters, numbers, hyphens, and underscores.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="repo-description">Description (optional)</Label>
-              <Textarea
-                id="repo-description"
-                placeholder="A brief description of your project"
-                value={newRepoDescription}
-                onChange={(e) => setNewRepoDescription(e.target.value)}
-                disabled={isCreatingRepo}
-                rows={3}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="repo-private"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Private repository
-              </Label>
-              <Switch
-                id="repo-private"
-                checked={newRepoPrivate}
-                onCheckedChange={setNewRepoPrivate}
-                disabled={isCreatingRepo}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowNewRepoDialog(false)
-                setNewRepoName('')
-                setNewRepoDescription('')
-                setNewRepoPrivate(true)
-              }}
-              disabled={isCreatingRepo}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleCreateRepo} disabled={isCreatingRepo || !newRepoName.trim()}>
-              {isCreatingRepo ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create Repository'
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Open Repo URL Dialog */}
-      <Dialog open={showOpenRepoUrlDialog} onOpenChange={setShowOpenRepoUrlDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Open Repository URL</DialogTitle>
-            <DialogDescription>Enter a repository URL and task description to create a task.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="repo-url">Repository URL *</Label>
-              <Input
-                id="repo-url"
-                placeholder="https://github.com/owner/repo"
-                value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleOpenRepoUrl()
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">Enter the full GitHub repository URL.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="task-prompt">Task Description *</Label>
-              <Textarea
-                id="task-prompt"
-                placeholder="Describe what you want the AI agent to do..."
-                value={taskPrompt}
-                onChange={(e) => setTaskPrompt(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowOpenRepoUrlDialog(false)
-                setRepoUrl('')
-                setTaskPrompt('')
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleOpenRepoUrl} disabled={!repoUrl.trim() || !taskPrompt.trim()}>
-              Create Task
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

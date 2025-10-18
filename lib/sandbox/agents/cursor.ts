@@ -491,6 +491,7 @@ EOF`
 
     // Session ID is now extracted during streaming parse above
 
+<<<<<<< HEAD
     // Check if any files were modified - this is the real indicator of success
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
@@ -519,6 +520,23 @@ EOF`
         changesDetected: false,
         sessionId: extractedSessionId, // Include session_id even on failure
       }
+=======
+    // Check if any files were modified
+    const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
+    const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
+
+    // Success is determined by the CLI execution, not by code changes
+    // Sometimes users just ask questions and no code changes are expected
+    return {
+      success: true,
+      output: `Cursor CLI executed successfully${hasChanges ? ' (Changes detected)' : ' (No changes made)'}`,
+      // When streaming to DB, agentResponse is already in chat; omit it here
+      agentResponse: agentMessageId ? undefined : result.output || 'Cursor CLI completed the task',
+      cliName: 'cursor',
+      changesDetected: !!hasChanges,
+      error: undefined,
+      sessionId: extractedSessionId, // Include session_id for resumption
+>>>>>>> origin/main
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to execute Cursor CLI in sandbox'
