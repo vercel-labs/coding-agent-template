@@ -102,10 +102,7 @@ export class TaskLogger {
 
   /**
    * Update task status along with a log message
-<<<<<<< HEAD
-=======
    * Note: completedAt is only set when PR is merged, not when status changes to 'completed'
->>>>>>> origin/main
    */
   async updateStatus(status: 'pending' | 'processing' | 'completed' | 'error', message?: string): Promise<void> {
     try {
@@ -113,10 +110,6 @@ export class TaskLogger {
         status: 'pending' | 'processing' | 'completed' | 'error'
         updatedAt: Date
         logs?: LogEntry[]
-<<<<<<< HEAD
-        completedAt?: Date
-=======
->>>>>>> origin/main
       } = {
         status,
         updatedAt: new Date(),
@@ -129,13 +122,6 @@ export class TaskLogger {
         updates.logs = [...existingLogs, logEntry]
       }
 
-<<<<<<< HEAD
-      if (status === 'completed' || status === 'error') {
-        updates.completedAt = new Date()
-      }
-
-=======
->>>>>>> origin/main
       await db.update(tasks).set(updates).where(eq(tasks.id, this.taskId))
 
       // Task status: ${status}
