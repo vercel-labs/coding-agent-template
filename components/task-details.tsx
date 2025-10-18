@@ -1401,7 +1401,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground whitespace-nowrap"
               >
-                {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
+                {task.repoUrl.replace('https://github.com/', '').replace(/\.git$/, '')}
               </a>
             </div>
           )}
@@ -1412,7 +1412,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               <GitBranch className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground" />
               {task.repoUrl ? (
                 <a
-                  href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
+                  href={`${task.repoUrl.replace(/\.git$/, '')}/tree/${task.branchName}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground whitespace-nowrap"

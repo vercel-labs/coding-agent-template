@@ -117,7 +117,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
           const pathParts = url.pathname.split('/').filter(Boolean)
           if (pathParts.length >= 2) {
             const owner = pathParts[0]
-            const name = pathParts[1].replace('.git', '')
+            const name = pathParts[1].replace(/\.git$/, '')
             const repoKey = `${owner}/${name}`
 
             if (repoMap.has(repoKey)) {
@@ -392,7 +392,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                                     const url = new URL(task.repoUrl)
                                     const pathParts = url.pathname.split('/').filter(Boolean)
                                     if (pathParts.length >= 2) {
-                                      return `${pathParts[0]}/${pathParts[1].replace('.git', '')}`
+                                      return `${pathParts[0]}/${pathParts[1].replace(/\.git$/, '')}`
                                     } else {
                                       return 'Unknown repository'
                                     }

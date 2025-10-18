@@ -729,7 +729,7 @@ export function FileBrowser({
 
       try {
         // Parse repo URL to get owner/repo
-        const repoPath = repoUrl.replace('https://github.com/', '').replace('.git', '')
+        const repoPath = repoUrl.replace('https://github.com/', '').replace(/\.git$/, '')
         // Use 'tree' for folders and 'blob' for files
         const pathType = isFolder ? 'tree' : 'blob'
         const githubUrl = `https://github.com/${repoPath}/${pathType}/${branchName}/${path}`
