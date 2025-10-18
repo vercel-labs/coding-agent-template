@@ -30,6 +30,19 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
   const [isAutocompleting, setIsAutocompleting] = useState(false)
   const terminalRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.matchMedia('(max-width: 768px)').matches
+      setIsMobile(mobile)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -57,15 +70,19 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
     }
   }, [history])
 
-  // Focus input when terminal becomes active
+  // Focus input when terminal becomes active (but not on mobile)
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isMobile) {
       inputRef.current?.focus()
     }
-  }, [isActive])
+  }, [isActive, isMobile])
 
-  // Focus input when clicking anywhere in terminal (but not when selecting text)
+  // Focus input when clicking anywhere in terminal (but not when selecting text or on mobile)
   const handleTerminalClick = () => {
+    // Don't focus on mobile
+    if (isMobile) {
+      return
+    }
     // Don't focus if user is selecting text
     const selection = window.getSelection()
     if (selection && selection.toString().length > 0) {
@@ -354,7 +371,7 @@ export const Terminal = forwardRef<TerminalRef, TerminalProps>(function Terminal
           onKeyDown={handleKeyDown}
           className="flex-1 bg-transparent outline-none text-white text-base md:text-xs"
           placeholder="Type a command..."
-          autoFocus
+          autoFocus={!isMobile}
         />
       </div>
     </div>
