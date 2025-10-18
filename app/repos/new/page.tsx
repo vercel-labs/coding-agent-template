@@ -5,15 +5,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { RefreshCw, ArrowLeft } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { PageHeader } from '@/components/page-header'
+import { useTasks } from '@/components/app-layout'
+import { User } from '@/components/auth/user'
+import { GitHubStarsButton } from '@/components/github-stars-button'
+import { VERCEL_DEPLOY_URL } from '@/lib/constants'
+import { useAtomValue } from 'jotai'
+import { sessionAtom } from '@/lib/atoms/session'
 
 export default function NewRepoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const owner = searchParams.get('owner') || ''
+  const { toggleSidebar } = useTasks()
+  const session = useAtomValue(sessionAtom)
 
   const [isCreatingRepo, setIsCreatingRepo] = useState(false)
   const [newRepoName, setNewRepoName] = useState('')
@@ -66,80 +75,114 @@ export default function NewRepoPage() {
   }
 
   const handleCancel = () => {
-    router.back()
+    router.push('/')
   }
 
   return (
-    <div className="container max-w-2xl py-8">
-      <div className="mb-6">
-        <Button variant="ghost" size="sm" onClick={handleCancel} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Create New Repository</h1>
-        <p className="text-muted-foreground mt-2">Create a new GitHub repository{owner ? ` for ${owner}` : ''}.</p>
+    <div className="flex-1 bg-background">
+      <div className="p-3">
+        <PageHeader
+          showMobileMenu={true}
+          onToggleMobileMenu={toggleSidebar}
+          actions={
+            <div className="flex items-center gap-2 h-8">
+              <GitHubStarsButton initialStars={1056} />
+              {/* Deploy to Vercel Button */}
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 sm:px-3 px-0 sm:w-auto w-8 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
+              >
+                <a
+                  href={VERCEL_DEPLOY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5"
+                >
+                  <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
+                    <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                  </svg>
+                  <span className="hidden sm:inline">Deploy Your Own</span>
+                </a>
+              </Button>
+
+              {/* User Authentication */}
+              <User user={session.user} authProvider={session.authProvider} />
+            </div>
+          }
+        />
       </div>
 
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="repo-name">Repository Name *</Label>
-          <Input
-            id="repo-name"
-            placeholder="my-awesome-project"
-            value={newRepoName}
-            onChange={(e) => setNewRepoName(e.target.value)}
-            disabled={isCreatingRepo}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleCreateRepo()
-              }
-            }}
-          />
-          <p className="text-xs text-muted-foreground">Use lowercase letters, numbers, hyphens, and underscores.</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="repo-description">Description (optional)</Label>
-          <Textarea
-            id="repo-description"
-            placeholder="A brief description of your project"
-            value={newRepoDescription}
-            onChange={(e) => setNewRepoDescription(e.target.value)}
-            disabled={isCreatingRepo}
-            rows={3}
-          />
-        </div>
-
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="space-y-0.5">
-            <Label htmlFor="repo-private" className="text-sm font-medium">
-              Private repository
-            </Label>
-            <p className="text-xs text-muted-foreground">Choose who can see this repository</p>
+      <div className="px-3 pb-3">
+        <div className="container max-w-2xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold tracking-tight">Create New Repository</h1>
+            <p className="text-muted-foreground mt-2">Create a new GitHub repository{owner ? ` for ${owner}` : ''}.</p>
           </div>
-          <Switch
-            id="repo-private"
-            checked={newRepoPrivate}
-            onCheckedChange={setNewRepoPrivate}
-            disabled={isCreatingRepo}
-          />
-        </div>
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={handleCancel} disabled={isCreatingRepo}>
-            Cancel
-          </Button>
-          <Button onClick={handleCreateRepo} disabled={isCreatingRepo || !newRepoName.trim()}>
-            {isCreatingRepo ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              'Create Repository'
-            )}
-          </Button>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="repo-name">Repository Name *</Label>
+              <Input
+                id="repo-name"
+                placeholder="my-awesome-project"
+                value={newRepoName}
+                onChange={(e) => setNewRepoName(e.target.value)}
+                disabled={isCreatingRepo}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleCreateRepo()
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">Use lowercase letters, numbers, hyphens, and underscores.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="repo-description">Description (optional)</Label>
+              <Textarea
+                id="repo-description"
+                placeholder="A brief description of your project"
+                value={newRepoDescription}
+                onChange={(e) => setNewRepoDescription(e.target.value)}
+                disabled={isCreatingRepo}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="repo-private" className="text-sm font-medium">
+                  Private repository
+                </Label>
+                <p className="text-xs text-muted-foreground">Choose who can see this repository</p>
+              </div>
+              <Switch
+                id="repo-private"
+                checked={newRepoPrivate}
+                onCheckedChange={setNewRepoPrivate}
+                disabled={isCreatingRepo}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={handleCancel} disabled={isCreatingRepo}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateRepo} disabled={isCreatingRepo || !newRepoName.trim()}>
+                {isCreatingRepo ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Repository'
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
