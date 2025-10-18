@@ -165,16 +165,26 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                   {showKeys[provider.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </button>
               </div>
-              {savedKeys.has(provider.id) && !apiKeys[provider.id].trim() ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(provider.id)}
-                  disabled={loading}
-                  className="h-8 px-3 text-xs"
-                >
-                  Clear
-                </Button>
+              {savedKeys.has(provider.id) ? (
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    onClick={() => handleSave(provider.id)}
+                    disabled={loading || !apiKeys[provider.id].trim()}
+                    className="h-8 px-3 text-xs"
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(provider.id)}
+                    disabled={loading}
+                    className="h-8 px-3 text-xs"
+                  >
+                    Clear
+                  </Button>
+                </div>
               ) : (
                 <Button
                   size="sm"
