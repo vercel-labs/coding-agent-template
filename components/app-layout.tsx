@@ -240,6 +240,8 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       status: 'pending',
       progress: 0,
       logs: [],
+      clientLogs: [],
+      serverLogs: [],
       error: null,
       branchName: null,
       sandboxId: null,
