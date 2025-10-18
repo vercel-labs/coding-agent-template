@@ -1381,7 +1381,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
         <div className="flex items-center gap-2 md:gap-4 md:flex-wrap text-xs md:text-sm overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {/* Repo */}
           {task.repoUrl && (
-            <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
               <svg
                 className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground"
                 fill="currentColor"
@@ -1397,7 +1397,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 href={task.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground truncate max-w-[120px] md:max-w-none"
+                className="text-muted-foreground hover:text-foreground whitespace-nowrap"
               >
                 {task.repoUrl.replace('https://github.com/', '').replace('.git', '')}
               </a>
@@ -1406,26 +1406,26 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
           {/* Branch */}
           {task.branchName && (
-            <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
               <GitBranch className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground" />
               {task.repoUrl ? (
                 <a
                   href={`${task.repoUrl.replace('.git', '')}/tree/${task.branchName}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground truncate max-w-[120px] md:max-w-none"
+                  className="text-muted-foreground hover:text-foreground whitespace-nowrap"
                 >
                   {task.branchName}
                 </a>
               ) : (
-                <span className="text-muted-foreground truncate max-w-[120px] md:max-w-none">{task.branchName}</span>
+                <span className="text-muted-foreground whitespace-nowrap">{task.branchName}</span>
               )}
             </div>
           )}
 
           {/* Pull Request */}
           {prUrl && prNumber && (
-            <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
               {prStatus === 'merged' ? (
                 <svg
                   className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-purple-500"
@@ -1449,7 +1449,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 href={prUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground truncate"
+                className="text-muted-foreground hover:text-foreground whitespace-nowrap"
               >
                 #{prNumber}
               </a>
@@ -1458,14 +1458,14 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
           {/* Agent */}
           {(task.selectedAgent || task.selectedModel) && (
-            <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
               {task.selectedAgent &&
                 (() => {
                   const AgentLogo = getAgentLogo(task.selectedAgent)
                   return AgentLogo ? <AgentLogo className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" /> : null
                 })()}
               {task.selectedModel && (
-                <span className="text-muted-foreground truncate">
+                <span className="text-muted-foreground whitespace-nowrap">
                   {getModelName(task.selectedModel, task.selectedAgent)}
                 </span>
               )}
