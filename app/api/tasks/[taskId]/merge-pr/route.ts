@@ -51,12 +51,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: result.error || 'Failed to merge pull request' }, { status: 500 })
     }
 
-    // Update task to mark PR as merged and store merge commit SHA
+    // Update task to mark PR as merged, store merge commit SHA, and set completedAt
     await db
       .update(tasks)
       .set({
         prStatus: 'merged',
         prMergeCommitSha: result.sha || null,
+        completedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
