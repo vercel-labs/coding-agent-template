@@ -216,7 +216,9 @@ export async function POST(request: Request) {
             if (vercelProject) {
               console.log('Successfully created Vercel project')
             } else {
-              console.error('Failed to create Vercel project')
+              console.error(
+                'Failed to create Vercel project - user may need to reconnect Vercel account with updated permissions',
+              )
             }
           }
         } catch (error) {
