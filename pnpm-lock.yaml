@@ -74,6 +74,9 @@ importers:
       '@vercel/sandbox':
         specifier: ^0.0.21
         version: 0.0.21
+      '@vercel/sdk':
+        specifier: ^1.13.9
+        version: 1.13.9
       ai:
         specifier: 5.0.51
         version: 5.0.51(zod@4.1.12)
@@ -2001,6 +2004,15 @@ packages:
 
   '@vercel/sandbox@0.0.21':
     resolution: {integrity: sha512-j6nAUQyuw6znVaZGd7yI0nab1EWhEtIZPnTXvpDatJ2SObodYZOz5hGoLjCopAuhQBC7vOngbZ1bwP6HxtB5+g==}
+
+  '@vercel/sdk@1.13.9':
+    resolution: {integrity: sha512-kRIwYNYWSK+afhBR5SmVDgKogN9GcWVsmh7T+8GydyKWVDVXguREUbgna8LPJfOfb77ov0zvirFvKbxETjfsiQ==}
+    hasBin: true
+    peerDependencies:
+      '@modelcontextprotocol/sdk': '>=1.5.0 <1.10.0'
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
 
   '@vue/reactivity@3.5.22':
     resolution: {integrity: sha512-f2Wux4v/Z2pqc9+4SmgZC1p73Z53fyD90NFWXiX9AKVnVBEvLFOWCEgJD3GdGnlxPZt01PSlfmLqbLYzY/Fw4A==}
@@ -5987,6 +5999,10 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+
+  '@vercel/sdk@1.13.9':
+    dependencies:
+      zod: 3.24.4
 
   '@vue/reactivity@3.5.22':
     dependencies:
