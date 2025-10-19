@@ -48,7 +48,7 @@ export async function createProject(
           }
         : undefined,
     }
-    
+
     // Only add framework if it's provided
     if (params.framework) {
       requestBody.framework = params.framework
