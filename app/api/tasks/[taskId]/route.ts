@@ -83,17 +83,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           .where(eq(tasks.id, taskId))
           .returning()
 
-        // Kill the sandbox immediately and aggressively
-        try {
-          const killResult = await killSandbox(taskId)
-          if (killResult.success) {
-            await logger.success('Sandbox killed successfully')
-          } else {
-            await logger.error('Failed to kill sandbox')
+        // Only kill the sandbox if keepAlive is NOT enabled
+        if (!existingTask.keepAlive) {
+          try {
+            const killResult = await killSandbox(taskId)
+            if (killResult.success) {
+              await logger.success('Sandbox killed successfully')
+            } else {
+              await logger.error('Failed to kill sandbox')
+            }
+          } catch (killError) {
+            console.error('Failed to kill sandbox during stop:', killError)
+            await logger.error('Failed to kill sandbox during stop')
           }
-        } catch (killError) {
-          console.error('Failed to kill sandbox during stop:', killError)
-          await logger.error('Failed to kill sandbox during stop')
+        } else {
+          // Keep sandbox alive for future use
+          await logger.info('Sandbox kept alive - ready for follow-up messages')
         }
 
         await logger.error('Task execution stopped by user')

@@ -420,13 +420,15 @@ async function processTask(
     // Check if task was stopped during sandbox creation
     if (await isTaskStopped(taskId)) {
       await logger.info('Task was stopped during sandbox creation')
-      // Clean up sandbox if it was created
-      if (sandboxResult.sandbox) {
+      // Only clean up sandbox if keepAlive is NOT enabled
+      if (sandboxResult.sandbox && !keepAlive) {
         try {
           await shutdownSandbox(sandboxResult.sandbox)
         } catch (error) {
           console.error('Failed to cleanup sandbox after stop:', error)
         }
+      } else if (sandboxResult.sandbox && keepAlive) {
+        await logger.info('Sandbox kept alive - ready for follow-up messages')
       }
       return
     }
@@ -452,6 +454,11 @@ async function processTask(
     // Check if task was stopped before agent execution
     if (await isTaskStopped(taskId)) {
       await logger.info('Task was stopped before agent execution')
+      // Sandbox is already created and registered, no cleanup needed here
+      // The sandbox will be kept alive if keepAlive is enabled
+      if (keepAlive) {
+        await logger.info('Sandbox kept alive - ready for follow-up messages')
+      }
       return
     }
 
