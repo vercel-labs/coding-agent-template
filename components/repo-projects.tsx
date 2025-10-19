@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { FolderKanban, Calendar, User } from 'lucide-react'
+import { FolderKanban, Calendar, ExternalLink, Globe } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 function formatDistanceToNow(date: Date): string {
   const now = new Date()
@@ -19,17 +20,21 @@ function formatDistanceToNow(date: Date): string {
 
 interface Project {
   id: string
-  title: string
-  shortDescription: string | null
-  number: number
-  closed: boolean
-  url: string
-  createdAt: string
-  updatedAt: string
-  creator: {
-    login: string
-    avatarUrl: string
-  } | null
+  name: string
+  framework?: string | null
+  link?: {
+    type: string
+    repo: string
+    repoId: number
+  }
+  latestDeployments?: Array<{
+    url: string
+    state: string
+    ready: boolean
+    createdAt: number
+  }>
+  createdAt?: number
+  updatedAt?: number
 }
 
 interface RepoProjectsProps {
@@ -49,6 +54,9 @@ export function RepoProjects({ owner, repo }: RepoProjectsProps) {
         setError(null)
         const response = await fetch(`/api/repos/${owner}/${repo}/projects`)
         if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Vercel authentication required')
+          }
           throw new Error('Failed to fetch projects')
         }
         const data = await response.json()
@@ -68,7 +76,7 @@ export function RepoProjects({ owner, repo }: RepoProjectsProps) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-2 text-sm text-muted-foreground">Loading projects...</p>
+          <p className="mt-2 text-sm text-muted-foreground">Loading Vercel projects...</p>
         </div>
       </div>
     )
@@ -80,6 +88,11 @@ export function RepoProjects({ owner, repo }: RepoProjectsProps) {
         <div className="text-center">
           <h3 className="text-lg font-semibold mb-2">Error Loading Projects</h3>
           <p className="text-sm text-muted-foreground">{error}</p>
+          {error.includes('authentication') && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Please sign in with Vercel to view projects for this repository.
+            </p>
+          )}
         </div>
       </div>
     )
@@ -90,8 +103,8 @@ export function RepoProjects({ owner, repo }: RepoProjectsProps) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <FolderKanban className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">No Projects Found</h3>
-          <p className="text-sm text-muted-foreground">This repository has no projects yet.</p>
+          <h3 className="text-lg font-semibold mb-2">No Vercel Projects Found</h3>
+          <p className="text-sm text-muted-foreground">This repository has no Vercel projects linked to it yet.</p>
         </div>
       </div>
     )
@@ -99,48 +112,72 @@ export function RepoProjects({ owner, repo }: RepoProjectsProps) {
 
   return (
     <div className="space-y-3 pb-6">
-      {projects.map((project) => (
-        <Card key={project.id} className="p-4 hover:bg-muted/50 transition-colors">
-          <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <FolderKanban className="h-5 w-5 text-primary" />
-            </div>
+      {projects.map((project) => {
+        const latestDeployment = project.latestDeployments?.[0]
+        const productionUrl = latestDeployment?.url ? `https://${latestDeployment.url}` : null
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <a href={project.url} target="_blank" rel="noopener noreferrer" className="block">
-                    <p className="font-medium text-sm leading-tight mb-1 hover:underline">{project.title}</p>
-                  </a>
-                  {project.shortDescription && (
-                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{project.shortDescription}</p>
-                  )}
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    {project.creator && (
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {project.creator.login}
-                      </span>
+        return (
+          <Card key={project.id} className="p-4 hover:bg-muted/50 transition-colors">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-black dark:bg-white flex items-center justify-center flex-shrink-0">
+                <svg viewBox="0 0 76 65" className="h-4 w-4 text-white dark:text-black" fill="currentColor">
+                  <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                </svg>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-sm leading-tight">{project.name}</p>
+                      {project.framework && (
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{project.framework}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                      {project.updatedAt && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Updated {formatDistanceToNow(new Date(project.updatedAt))}
+                        </span>
+                      )}
+                      {latestDeployment && (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            latestDeployment.ready
+                              ? 'bg-green-500/10 text-green-500'
+                              : latestDeployment.state === 'ERROR'
+                                ? 'bg-red-500/10 text-red-500'
+                                : 'bg-yellow-500/10 text-yellow-500'
+                          }`}
+                        >
+                          {latestDeployment.state}
+                        </span>
+                      )}
+                    </div>
+                    {productionUrl && (
+                      <div className="flex items-center gap-2">
+                        <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                          <a href={productionUrl} target="_blank" rel="noopener noreferrer">
+                            <Globe className="h-3 w-3 mr-1" />
+                            Visit Site
+                          </a>
+                        </Button>
+                        <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+                          <a href={`https://vercel.com/${project.name}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Dashboard
+                          </a>
+                        </Button>
+                      </div>
                     )}
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Updated {formatDistanceToNow(new Date(project.updatedAt))}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        !project.closed ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'
-                      }`}
-                    >
-                      {project.closed ? 'closed' : 'open'}
-                    </span>
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground flex-shrink-0">#{project.number}</span>
               </div>
             </div>
-          </div>
-        </Card>
-      ))}
+          </Card>
+        )
+      })}
     </div>
   )
 }
