@@ -22,17 +22,24 @@ interface CreateProjectResponse {
 /**
  * Create a Vercel project
  * @param accessToken - Vercel OAuth access token
- * @param teamId - Team ID (or user ID for personal account)
+ * @param teamId - Team ID (optional - omit for personal account)
  * @param params - Project creation parameters
+ * @param isPersonalAccount - Whether this is a personal account (not a team)
  * @returns The created project data
  */
 export async function createProject(
   accessToken: string,
-  teamId: string,
+  teamId: string | null,
   params: CreateProjectParams,
+  isPersonalAccount = false,
 ): Promise<CreateProjectResponse | undefined> {
   try {
-    const url = `https://api.vercel.com/v9/projects?teamId=${encodeURIComponent(teamId)}`
+    // For personal accounts, omit the teamId parameter
+    // For team accounts, include the teamId parameter
+    const url =
+      isPersonalAccount || !teamId
+        ? 'https://api.vercel.com/v9/projects'
+        : `https://api.vercel.com/v9/projects?teamId=${encodeURIComponent(teamId)}`
 
     const response = await fetch(url, {
       method: 'POST',
