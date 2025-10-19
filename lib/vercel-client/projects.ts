@@ -1,6 +1,6 @@
 interface CreateProjectParams {
   name: string
-  gitSource?: {
+  gitRepository?: {
     type: 'github'
     repo: string // Format: "owner/repo"
   }
