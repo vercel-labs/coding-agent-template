@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
@@ -19,7 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { GitPullRequest, Calendar, MessageSquare, MoreHorizontal, X, ListTodo } from 'lucide-react'
+import { GitPullRequest, Calendar, MessageSquare, MoreHorizontal, X, ListTodo, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import Claude from '@/components/logos/claude'
 import Codex from '@/components/logos/codex'
@@ -141,6 +142,9 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
   const [keepAlive, setKeepAlive] = useState(false)
   const [isCreatingTask, setIsCreatingTask] = useState(false)
   const [prTaskStatus, setPrTaskStatus] = useState<Record<number, { hasTask: boolean; taskId: string | null }>>({})
+  const [commentText, setCommentText] = useState<Record<number, string>>({})
+  const [sendingComment, setSendingComment] = useState<number | null>(null)
+  const [showCommentInput, setShowCommentInput] = useState<Record<number, boolean>>({})
 
   useEffect(() => {
     async function fetchPullRequests() {
@@ -264,6 +268,44 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
     } finally {
       setClosingPR(null)
     }
+  }
+
+  const handleSendComment = async (prNumber: number) => {
+    const comment = commentText[prNumber]?.trim()
+    if (!comment) {
+      toast.error('Please enter a comment')
+      return
+    }
+
+    try {
+      setSendingComment(prNumber)
+      const response = await fetch(`/api/repos/${owner}/${repo}/pull-requests/${prNumber}/comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ body: comment }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send comment')
+      }
+
+      toast.success('Comment sent successfully!')
+      setCommentText((prev) => ({ ...prev, [prNumber]: '' }))
+      setShowCommentInput((prev) => ({ ...prev, [prNumber]: false }))
+
+      // Update comment count
+      setPullRequests((prev) => prev.map((pr) => (pr.number === prNumber ? { ...pr, comments: pr.comments + 1 } : pr)))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send comment')
+    } finally {
+      setSendingComment(null)
+    }
+  }
+
+  const toggleCommentInput = (prNumber: number) => {
+    setShowCommentInput((prev) => ({ ...prev, [prNumber]: !prev[prNumber] }))
   }
 
   if (loading) {
@@ -409,6 +451,73 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
                 </DropdownMenu>
               )}
             </div>
+
+            {/* Comment Input Section */}
+            {pr.state === 'open' && (
+              <div className="mt-3 border-t pt-3">
+                {!showCommentInput[pr.number] ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleCommentInput(pr.number)
+                    }}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Add Comment
+                  </Button>
+                ) : (
+                  <div
+                    className="space-y-2"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
+                  >
+                    <Textarea
+                      placeholder="Write your comment..."
+                      value={commentText[pr.number] || ''}
+                      onChange={(e) => setCommentText((prev) => ({ ...prev, [pr.number]: e.target.value }))}
+                      className="min-h-20"
+                      disabled={sendingComment === pr.number}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          toggleCommentInput(pr.number)
+                          setCommentText((prev) => ({ ...prev, [pr.number]: '' }))
+                        }}
+                        disabled={sendingComment === pr.number}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSendComment(pr.number)}
+                        disabled={sendingComment === pr.number || !commentText[pr.number]?.trim()}
+                      >
+                        {sendingComment === pr.number ? (
+                          <>
+                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="mr-2 h-4 w-4" />
+                            Send
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         ))}
       </div>
