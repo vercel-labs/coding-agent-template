@@ -157,6 +157,14 @@ export default function NewRepoPage() {
           private: newRepoPrivate,
           owner: selectedOwner,
           template: template && template.id !== 'none' ? template : undefined,
+          // Include Vercel project data if user is authenticated with Vercel
+          vercel:
+            session.authProvider === 'vercel' && selectedVercelScope && vercelProjectName
+              ? {
+                  teamId: selectedVercelScope,
+                  projectName: vercelProjectName.trim(),
+                }
+              : undefined,
         }),
       })
 

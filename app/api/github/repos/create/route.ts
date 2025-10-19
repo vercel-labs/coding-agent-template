@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getUserGitHubToken } from '@/lib/github/user-token'
+import { getOAuthToken } from '@/lib/session/get-oauth-token'
+import { createProject } from '@/lib/vercel-client/projects'
 import { Octokit } from '@octokit/rest'
 
 interface RepoTemplate {
@@ -120,7 +122,7 @@ export async function POST(request: Request) {
     }
 
     // Parse request body
-    const { name, description, private: isPrivate, owner, template } = await request.json()
+    const { name, description, private: isPrivate, owner, template, vercel } = await request.json()
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Repository name is required' }, { status: 400 })
@@ -195,6 +197,35 @@ export async function POST(request: Request) {
         }
       }
 
+      // Create Vercel project if requested
+      let vercelProject
+      if (vercel && vercel.teamId && vercel.projectName && session.authProvider === 'vercel') {
+        try {
+          // Get Vercel access token
+          const tokenData = await getOAuthToken(session.user.id, 'vercel')
+          if (tokenData) {
+            vercelProject = await createProject(tokenData.accessToken, vercel.teamId, {
+              name: vercel.projectName,
+              gitSource: {
+                type: 'github',
+                repo: repo.data.full_name, // Format: "owner/repo"
+              },
+              framework: null, // Let Vercel auto-detect
+            })
+
+            if (vercelProject) {
+              console.log('Successfully created Vercel project')
+            } else {
+              console.error('Failed to create Vercel project')
+            }
+          }
+        } catch (error) {
+          console.error('Error creating Vercel project:', error)
+          // Don't fail the entire operation if Vercel project creation fails
+          // The repository was created successfully
+        }
+      }
+
       return NextResponse.json({
         success: true,
         name: repo.data.name,
@@ -202,6 +233,12 @@ export async function POST(request: Request) {
         clone_url: repo.data.clone_url,
         html_url: repo.data.html_url,
         private: repo.data.private,
+        vercel_project: vercelProject
+          ? {
+              id: vercelProject.id,
+              name: vercelProject.name,
+            }
+          : undefined,
       })
     } catch (error: unknown) {
       console.error('GitHub API error:', error)
