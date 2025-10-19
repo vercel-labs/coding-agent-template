@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getUserGitHubToken } from '@/lib/github/user-token'
+import { getOAuthToken } from '@/lib/session/get-oauth-token'
 import { Octokit } from '@octokit/rest'
 
 interface RepoTemplate {
@@ -100,6 +101,46 @@ async function populateRepoFromTemplate(octokit: Octokit, repoOwner: string, rep
   }
 }
 
+// Helper function to create Vercel project and link it to GitHub repo
+async function createVercelProject(
+  accessToken: string,
+  teamId: string,
+  projectName: string,
+  githubRepoFullName: string,
+) {
+  try {
+    // Create the Vercel project
+    const createResponse = await fetch(`https://api.vercel.com/v9/projects?teamId=${teamId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: projectName,
+        framework: 'nextjs', // Default to Next.js
+        gitRepository: {
+          type: 'github',
+          repo: githubRepoFullName,
+        },
+      }),
+    })
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text()
+      console.error('Failed to create Vercel project:', createResponse.status, errorText)
+      throw new Error(`Failed to create Vercel project: ${createResponse.status} ${errorText}`)
+    }
+
+    const project = await createResponse.json()
+    console.log('Successfully created Vercel project')
+    return project
+  } catch (error) {
+    console.error('Error creating Vercel project:', error)
+    throw error
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // Get the authenticated user's session
@@ -120,7 +161,7 @@ export async function POST(request: Request) {
     }
 
     // Parse request body
-    const { name, description, private: isPrivate, owner, template } = await request.json()
+    const { name, description, private: isPrivate, owner, template, vercel } = await request.json()
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Repository name is required' }, { status: 400 })
@@ -195,6 +236,29 @@ export async function POST(request: Request) {
         }
       }
 
+      // If Vercel project info is provided, create the Vercel project
+      let vercelProject = null
+      if (vercel && vercel.teamId && vercel.projectName && session.authProvider === 'vercel') {
+        try {
+          // Get Vercel access token
+          const tokenData = await getOAuthToken(session.user.id, 'vercel')
+          if (tokenData?.accessToken) {
+            vercelProject = await createVercelProject(
+              tokenData.accessToken,
+              vercel.teamId,
+              vercel.projectName,
+              repo.data.full_name,
+            )
+          } else {
+            console.error('No Vercel token found for user')
+          }
+        } catch (error) {
+          console.error('Error creating Vercel project:', error)
+          // Don't fail the entire operation if Vercel project creation fails
+          // The GitHub repository was created successfully
+        }
+      }
+
       return NextResponse.json({
         success: true,
         name: repo.data.name,
@@ -202,6 +266,12 @@ export async function POST(request: Request) {
         clone_url: repo.data.clone_url,
         html_url: repo.data.html_url,
         private: repo.data.private,
+        vercel: vercelProject
+          ? {
+              id: vercelProject.id,
+              name: vercelProject.name,
+            }
+          : undefined,
       })
     } catch (error: unknown) {
       console.error('GitHub API error:', error)
