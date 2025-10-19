@@ -3,6 +3,68 @@ import { getServerSession } from '@/lib/session/get-server-session'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { Octokit } from '@octokit/rest'
 
+interface RepoTemplate {
+  id: string
+  name: string
+  description: string
+  sourceRepo?: string
+  sourceFolder?: string
+}
+
+// Helper function to copy files from template repository
+async function populateRepoFromTemplate(octokit: Octokit, repoOwner: string, repoName: string, template: RepoTemplate) {
+  if (!template.sourceRepo || !template.sourceFolder) {
+    return
+  }
+
+  // Parse source repository
+  const sourceMatch = template.sourceRepo.match(/github\.com\/([\w-]+)\/([\w-]+)/)
+  if (!sourceMatch) {
+    throw new Error('Invalid source repository URL')
+  }
+
+  const [, sourceOwner, sourceRepoName] = sourceMatch
+
+  try {
+    // Get the tree of the source folder
+    const { data: contents } = await octokit.repos.getContent({
+      owner: sourceOwner,
+      repo: sourceRepoName,
+      path: template.sourceFolder,
+    })
+
+    if (!Array.isArray(contents)) {
+      return
+    }
+
+    // Fetch and create each file
+    for (const item of contents) {
+      if (item.type === 'file' && item.download_url) {
+        try {
+          // Download file content
+          const response = await fetch(item.download_url)
+          const content = await response.text()
+
+          // Create file in new repository
+          await octokit.repos.createOrUpdateFileContents({
+            owner: repoOwner,
+            repo: repoName,
+            path: item.name,
+            message: `Add ${item.name} from template`,
+            content: Buffer.from(content).toString('base64'),
+          })
+        } catch (error) {
+          console.error('Error copying file:', error)
+          // Continue with other files even if one fails
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error populating repository from template:', error)
+    throw error
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // Get the authenticated user's session
@@ -23,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     // Parse request body
-    const { name, description, private: isPrivate, owner } = await request.json()
+    const { name, description, private: isPrivate, owner, template } = await request.json()
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Repository name is required' }, { status: 400 })
@@ -85,6 +147,17 @@ export async function POST(request: Request) {
           private: isPrivate || false,
           auto_init: true, // Initialize with README
         })
+      }
+
+      // If a template is selected, populate the repository
+      if (template && template.id !== 'none') {
+        try {
+          await populateRepoFromTemplate(octokit, repo.data.owner.login, repo.data.name, template as RepoTemplate)
+        } catch (error) {
+          console.error('Error populating repository from template:', error)
+          // Don't fail the entire operation if template population fails
+          // The repository was created successfully, just without template files
+        }
       }
 
       return NextResponse.json({
