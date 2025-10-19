@@ -2,12 +2,12 @@
 
 /**
  * Script to list Vercel scopes (personal account + teams) that the authenticated user has access to.
- * 
+ *
  * Requires SANDBOX_VERCEL_TOKEN environment variable to be set.
- * 
+ *
  * Usage:
  *   SANDBOX_VERCEL_TOKEN=your_token pnpm tsx scripts/list-vercel-scopes.ts
- *   
+ *
  * Or if you have a .env.local file with SANDBOX_VERCEL_TOKEN, you can use:
  *   pnpm tsx scripts/list-vercel-scopes.ts
  */
@@ -22,7 +22,7 @@ config({ path: resolve(process.cwd(), '.env.local') })
 
 async function main() {
   const accessToken = process.env.SANDBOX_VERCEL_TOKEN
-  
+
   if (!accessToken) {
     console.error('Error: SANDBOX_VERCEL_TOKEN environment variable is required')
     console.error('\nUsage:')
@@ -34,12 +34,9 @@ async function main() {
 
   try {
     console.log('Fetching Vercel user and teams...\n')
-    
+
     // Fetch user info and teams
-    const [user, teams] = await Promise.all([
-      fetchUser(accessToken),
-      fetchTeams(accessToken)
-    ])
+    const [user, teams] = await Promise.all([fetchUser(accessToken), fetchTeams(accessToken)])
 
     if (!user) {
       console.error('Failed to fetch user information')
@@ -69,7 +66,7 @@ async function main() {
 
     console.log('\n✓ Vercel Scopes:\n')
     console.log('─'.repeat(80))
-    
+
     scopes.forEach((scope, index) => {
       console.log(`${index + 1}. ${scope.name}`)
       console.log(`   Type: ${scope.type}`)
@@ -79,7 +76,7 @@ async function main() {
         console.log('─'.repeat(80))
       }
     })
-    
+
     console.log('─'.repeat(80))
     console.log(`\nTotal scopes: ${scopes.length}`)
     console.log(`  - Personal: ${scopes.filter((s) => s.type === 'personal').length}`)
