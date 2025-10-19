@@ -344,6 +344,10 @@ EOF`
                       statusMsg = `\n\nRunning command`
                     } else if (toolName === 'listDirectoryToolCall') {
                       statusMsg = `\n\nListing directory`
+                    } else if (toolName === 'shellToolCall') {
+                      // Extract command from shell tool call
+                      const command = parsed.tool_call?.shellToolCall?.args?.command || 'command'
+                      statusMsg = `\n\nRunning: ${command}`
                     } else {
                       statusMsg = `\n\nExecuting ${toolName}`
                     }
