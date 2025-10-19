@@ -31,6 +31,7 @@ export function RepoLayout({ owner, repo, user, authProvider, initialStars = 105
     { name: 'Commits', href: `/repos/${owner}/${repo}/commits` },
     { name: 'Issues', href: `/repos/${owner}/${repo}/issues` },
     { name: 'Pull Requests', href: `/repos/${owner}/${repo}/pull-requests` },
+    { name: 'Projects', href: `/repos/${owner}/${repo}/projects` },
   ]
 
   const handleNewTask = () => {
