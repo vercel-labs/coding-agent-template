@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,8 @@ import { User } from '@/components/auth/user'
 import type { Session } from '@/lib/session/types'
 import { GitHubStarsButton } from '@/components/github-stars-button'
 import { cn } from '@/lib/utils'
+import { setSelectedOwner, setSelectedRepo } from '@/lib/utils/cookies'
+import { Plus } from 'lucide-react'
 
 interface RepoLayoutProps {
   owner: string
@@ -23,12 +25,21 @@ interface RepoLayoutProps {
 export function RepoLayout({ owner, repo, user, authProvider, initialStars = 1056, children }: RepoLayoutProps) {
   const { toggleSidebar } = useTasks()
   const pathname = usePathname()
+  const router = useRouter()
 
   const tabs = [
     { name: 'Commits', href: `/repos/${owner}/${repo}/commits` },
     { name: 'Issues', href: `/repos/${owner}/${repo}/issues` },
     { name: 'Pull Requests', href: `/repos/${owner}/${repo}/pull-requests` },
   ]
+
+  const handleNewTask = () => {
+    // Set the owner/repo cookies so they're populated on the homepage
+    setSelectedOwner(owner)
+    setSelectedRepo(repo)
+    // Navigate to homepage
+    router.push('/')
+  }
 
   return (
     <div className="flex-1 bg-background relative flex flex-col h-full overflow-hidden">
@@ -76,7 +87,7 @@ export function RepoLayout({ owner, repo, user, authProvider, initialStars = 105
       {/* Main content with tabs */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-3">
         <div className="flex-shrink-0 border-b border-border mb-4">
-          <nav className="flex gap-6" aria-label="Repository navigation">
+          <nav className="flex items-center gap-6" aria-label="Repository navigation">
             {tabs.map((tab) => {
               const isActive = pathname === tab.href
               return (
@@ -94,6 +105,15 @@ export function RepoLayout({ owner, repo, user, authProvider, initialStars = 105
                 </Link>
               )
             })}
+            <Button
+              onClick={handleNewTask}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 -mb-[1px] text-muted-foreground hover:text-foreground"
+              title="Create new task with this repository"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </nav>
         </div>
 
