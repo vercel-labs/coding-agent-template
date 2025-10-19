@@ -17,9 +17,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     state,
     CodeChallengeMethod.S256,
     verifier,
-    // Request scopes needed for project creation and team access
-    // See: https://vercel.com/docs/rest-api/authentication#oauth2
-    ['user', 'team', 'project', 'deployment'],
+    [], // Vercel uses default scopes
   )
 
   const store = await cookies()
