@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -17,6 +18,22 @@ import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
 
+// Template configuration
+const REPO_TEMPLATES = [
+  {
+    id: 'none',
+    name: 'None',
+    description: 'Create an empty repository',
+  },
+  {
+    id: 'nextjs-boilerplate',
+    name: 'Next.js Boilerplate',
+    description: 'Next.js starter from Vercel',
+    sourceRepo: 'https://github.com/vercel/vercel',
+    sourceFolder: 'examples/nextjs',
+  },
+] as const
+
 export default function NewRepoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,6 +45,7 @@ export default function NewRepoPage() {
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoPrivate, setNewRepoPrivate] = useState(true)
+  const [selectedTemplate, setSelectedTemplate] = useState('nextjs-boilerplate')
 
   const handleCreateRepo = async () => {
     if (!newRepoName.trim()) {
@@ -37,6 +55,8 @@ export default function NewRepoPage() {
 
     setIsCreatingRepo(true)
     try {
+      const template = REPO_TEMPLATES.find((t) => t.id === selectedTemplate)
+
       const response = await fetch('/api/github/repos/create', {
         method: 'POST',
         headers: {
@@ -47,6 +67,7 @@ export default function NewRepoPage() {
           description: newRepoDescription.trim(),
           private: newRepoPrivate,
           owner: owner,
+          template: template && template.id !== 'none' ? template : undefined,
         }),
       })
 
@@ -150,6 +171,28 @@ export default function NewRepoPage() {
                 disabled={isCreatingRepo}
                 rows={3}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="repo-template">Template</Label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate} disabled={isCreatingRepo}>
+                <SelectTrigger id="repo-template" className="w-full">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPO_TEMPLATES.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{template.name}</span>
+                        <span className="text-xs text-muted-foreground">{template.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose a template to start with pre-configured code, or None for an empty repository.
+              </p>
             </div>
 
             <div className="flex items-center justify-between p-4 border rounded-lg">
