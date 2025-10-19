@@ -271,11 +271,11 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
 
       // Remove the closed PR from the list
       setPullRequests((prev) => prev.filter((pr) => pr.number !== prToClose))
-      setShowCloseDialog(false)
       toast.success('Pull request closed successfully')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to close pull request')
     } finally {
+      setShowCloseDialog(false)
       setClosingPR(null)
       setPrToClose(null)
     }
