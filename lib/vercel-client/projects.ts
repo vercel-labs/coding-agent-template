@@ -39,18 +39,25 @@ export async function createProject(
     })
 
     // Use the SDK as shown in the Vercel docs
+    const requestBody: Record<string, unknown> = {
+      name: params.name,
+      gitRepository: params.gitRepository
+        ? {
+            type: params.gitRepository.type,
+            repo: params.gitRepository.repo,
+          }
+        : undefined,
+    }
+    
+    // Only add framework if it's provided
+    if (params.framework) {
+      requestBody.framework = params.framework
+    }
+
     const response = await vercel.projects.createProject({
       teamId, // Pass teamId at the top level
-      requestBody: {
-        name: params.name,
-        framework: params.framework || undefined,
-        gitRepository: params.gitRepository
-          ? {
-              type: params.gitRepository.type as 'github',
-              repo: params.gitRepository.repo,
-            }
-          : undefined,
-      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      requestBody: requestBody as any,
     })
 
     console.log('Successfully created Vercel project')
