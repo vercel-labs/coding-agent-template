@@ -206,7 +206,7 @@ export async function POST(request: Request) {
           if (tokenData) {
             vercelProject = await createProject(tokenData.accessToken, vercel.teamId, {
               name: vercel.projectName,
-              gitSource: {
+              gitRepository: {
                 type: 'github',
                 repo: repo.data.full_name, // Format: "owner/repo"
               },
