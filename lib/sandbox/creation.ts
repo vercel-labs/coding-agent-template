@@ -333,6 +333,27 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     await runCommandInSandbox(sandbox, 'git', ['config', 'user.name', gitName])
     await runCommandInSandbox(sandbox, 'git', ['config', 'user.email', gitEmail])
 
+    // Create .gitignore file if it doesn't exist or append to it if it does
+    await logger.info('Configuring Git ignore rules')
+    const gitignoreCheck = await runCommandInSandbox(sandbox, 'test', ['-f', '.gitignore'])
+
+    if (gitignoreCheck.success) {
+      // .gitignore exists, check if our entries are already there
+      const checkPnpmStore = await runCommandInSandbox(sandbox, 'grep', ['-q', '.pnpm-store', '.gitignore'])
+      const checkNodeModules = await runCommandInSandbox(sandbox, 'grep', ['-q', 'node_modules', '.gitignore'])
+
+      if (!checkPnpmStore.success) {
+        await runCommandInSandbox(sandbox, 'sh', ['-c', 'echo ".pnpm-store" >> .gitignore'])
+      }
+      if (!checkNodeModules.success) {
+        await runCommandInSandbox(sandbox, 'sh', ['-c', 'echo "node_modules" >> .gitignore'])
+      }
+    } else {
+      // .gitignore doesn't exist, create it with both entries
+      await runCommandInSandbox(sandbox, 'sh', ['-c', 'echo -e ".pnpm-store\\nnode_modules" > .gitignore'])
+    }
+    await logger.info('Git ignore rules configured')
+
     // Verify we're in a Git repository
     const gitRepoCheck = await runCommandInSandbox(sandbox, 'git', ['rev-parse', '--git-dir'])
     if (!gitRepoCheck.success) {
