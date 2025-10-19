@@ -199,12 +199,15 @@ export async function POST(request: Request) {
 
       // Create Vercel project if requested
       let vercelProject
-      if (vercel && vercel.teamId && vercel.projectName && session.authProvider === 'vercel') {
+      if (vercel && vercel.projectName && session.authProvider === 'vercel') {
         try {
           // Get Vercel access token
           const tokenData = await getOAuthToken(session.user.id, 'vercel')
           if (tokenData) {
-            vercelProject = await createProject(tokenData.accessToken, vercel.teamId, {
+            // Use the provided teamId, or null to create under personal account
+            const teamId = vercel.teamId || null
+
+            vercelProject = await createProject(tokenData.accessToken, teamId, {
               name: vercel.projectName,
               gitRepository: {
                 type: 'github',
