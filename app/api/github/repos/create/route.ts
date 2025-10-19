@@ -201,31 +201,24 @@ export async function POST(request: Request) {
       let vercelProject
       if (vercel && vercel.teamId && vercel.projectName && session.authProvider === 'vercel') {
         try {
-          // Get Vercel access token and user info
+          // Get Vercel access token
           const tokenData = await getOAuthToken(session.user.id, 'vercel')
           if (tokenData) {
-            // Check if this is a personal account by comparing teamId format
-            // Personal account IDs don't start with 'team_'
-            const isPersonalAccount = !vercel.teamId.startsWith('team_')
-
-            vercelProject = await createProject(
-              tokenData.accessToken,
-              vercel.teamId,
-              {
-                name: vercel.projectName,
-                gitRepository: {
-                  type: 'github',
-                  repo: repo.data.full_name, // Format: "owner/repo"
-                },
-                framework: null, // Let Vercel auto-detect
+            vercelProject = await createProject(tokenData.accessToken, vercel.teamId, {
+              name: vercel.projectName,
+              gitRepository: {
+                type: 'github',
+                repo: repo.data.full_name, // Format: "owner/repo"
               },
-              isPersonalAccount,
-            )
+              framework: null, // Let Vercel auto-detect
+            })
 
             if (vercelProject) {
               console.log('Successfully created Vercel project')
             } else {
-              console.error('Failed to create Vercel project')
+              console.error(
+                'Failed to create Vercel project - user may need to reconnect Vercel account with updated permissions',
+              )
             }
           }
         } catch (error) {

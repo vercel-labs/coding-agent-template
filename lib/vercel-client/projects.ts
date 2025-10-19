@@ -22,24 +22,17 @@ interface CreateProjectResponse {
 /**
  * Create a Vercel project
  * @param accessToken - Vercel OAuth access token
- * @param teamId - Team ID (optional - omit for personal account)
+ * @param teamId - Team ID (for teams) or User ID (for personal accounts)
  * @param params - Project creation parameters
- * @param isPersonalAccount - Whether this is a personal account (not a team)
  * @returns The created project data
  */
 export async function createProject(
   accessToken: string,
-  teamId: string | null,
+  teamId: string,
   params: CreateProjectParams,
-  isPersonalAccount = false,
 ): Promise<CreateProjectResponse | undefined> {
   try {
-    // For personal accounts, omit the teamId parameter
-    // For team accounts, include the teamId parameter
-    const url =
-      isPersonalAccount || !teamId
-        ? 'https://api.vercel.com/v9/projects'
-        : `https://api.vercel.com/v9/projects?teamId=${encodeURIComponent(teamId)}`
+    const url = `https://api.vercel.com/v9/projects?teamId=${encodeURIComponent(teamId)}`
 
     const response = await fetch(url, {
       method: 'POST',
@@ -53,6 +46,14 @@ export async function createProject(
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Failed to create Vercel project', response.status, errorText)
+
+      // If 403, it's likely due to insufficient OAuth scopes
+      if (response.status === 403) {
+        console.error(
+          'Permission denied - this may indicate insufficient OAuth scopes. User may need to reconnect their Vercel account.',
+        )
+      }
+
       return undefined
     }
 
