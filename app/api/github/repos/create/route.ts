@@ -43,6 +43,9 @@ async function populateRepoFromTemplate(octokit: Octokit, repoOwner: string, rep
         try {
           // Download file content
           const response = await fetch(item.download_url)
+          if (!response.ok) {
+            throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`)
+          }
           const content = await response.text()
 
           // Create file in new repository
