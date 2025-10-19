@@ -45,7 +45,7 @@ export default function NewRepoPage() {
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoPrivate, setNewRepoPrivate] = useState(true)
-  const [selectedTemplate, setSelectedTemplate] = useState('none')
+  const [selectedTemplate, setSelectedTemplate] = useState('nextjs-boilerplate')
 
   const handleCreateRepo = async () => {
     if (!newRepoName.trim()) {
