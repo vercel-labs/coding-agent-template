@@ -85,6 +85,8 @@ export default function NewRepoPage() {
       setSelectedOwner(ownerParam)
     } else if (session.user?.username) {
       setSelectedOwner(session.user.username)
+    } else {
+      setSelectedOwner('')
     }
   }, [ownerParam, session.user])
 
