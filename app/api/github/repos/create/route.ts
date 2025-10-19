@@ -205,8 +205,8 @@ export async function POST(request: Request) {
           const tokenData = await getOAuthToken(session.user.id, 'vercel')
           if (tokenData) {
             const projectName = vercelConfig.projectName || repo.data.name
-            const teamId =
-              vercelConfig.teamId && vercelConfig.teamId !== session.user.id ? vercelConfig.teamId : undefined
+            // Use the scopeId as teamId only if it's a team scope, not personal
+            const teamId = vercelConfig.scopeType === 'team' ? vercelConfig.scopeId : undefined
 
             vercelProject = await createProject(tokenData.accessToken, teamId, {
               name: projectName,

@@ -66,6 +66,7 @@ export default function NewRepoPage() {
   // Vercel-specific state
   const [vercelScopes, setVercelScopes] = useState<VercelScope[]>([])
   const [selectedVercelScope, setSelectedVercelScope] = useState('')
+  const [selectedVercelScopeType, setSelectedVercelScopeType] = useState<'personal' | 'team' | ''>('')
   const [vercelProjectName, setVercelProjectName] = useState('')
   const [isLoadingVercelScopes, setIsLoadingVercelScopes] = useState(false)
 
@@ -104,6 +105,7 @@ export default function NewRepoPage() {
           // Set default scope to personal account
           if (data.scopes && data.scopes.length > 0) {
             setSelectedVercelScope(data.scopes[0].id)
+            setSelectedVercelScopeType(data.scopes[0].type)
           }
         }
       } catch (error) {
@@ -150,7 +152,8 @@ export default function NewRepoPage() {
       const vercelConfig =
         session.authProvider === 'vercel' && selectedVercelScope && vercelProjectName
           ? {
-              teamId: selectedVercelScope,
+              scopeId: selectedVercelScope,
+              scopeType: selectedVercelScopeType as 'personal' | 'team',
               projectName: vercelProjectName,
             }
           : undefined
@@ -360,7 +363,13 @@ export default function NewRepoPage() {
                   <Label htmlFor="vercel-scope">Vercel Scope</Label>
                   <Select
                     value={selectedVercelScope}
-                    onValueChange={setSelectedVercelScope}
+                    onValueChange={(scopeId) => {
+                      setSelectedVercelScope(scopeId)
+                      const scope = vercelScopes.find((s) => s.id === scopeId)
+                      if (scope) {
+                        setSelectedVercelScopeType(scope.type)
+                      }
+                    }}
                     disabled={isCreatingRepo || isLoadingVercelScopes}
                   >
                     <SelectTrigger id="vercel-scope" className="w-full">
