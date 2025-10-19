@@ -17,6 +17,24 @@ export interface VercelTeam {
   slug: string
 }
 
+export interface CreateProjectRequest {
+  name: string
+  framework?: string
+  gitRepository?: {
+    repo: string // format: "owner/repo"
+    type: 'github'
+  }
+}
+
+export interface VercelProject {
+  id: string
+  name: string
+  framework?: string
+  accountId: string
+  createdAt: number
+  updatedAt: number
+}
+
 export type BillingPlan = 'hobby' | 'pro' | 'enterprise'
 
 type BillingStatus = 'active' | 'trialing' | 'overdue' | 'canceled' | 'expired'

@@ -146,6 +146,15 @@ export default function NewRepoPage() {
     try {
       const template = REPO_TEMPLATES.find((t) => t.id === selectedTemplate)
 
+      // Prepare Vercel configuration if applicable
+      const vercelConfig =
+        session.authProvider === 'vercel' && selectedVercelScope && vercelProjectName
+          ? {
+              teamId: selectedVercelScope,
+              projectName: vercelProjectName,
+            }
+          : undefined
+
       const response = await fetch('/api/github/repos/create', {
         method: 'POST',
         headers: {
@@ -157,6 +166,7 @@ export default function NewRepoPage() {
           private: newRepoPrivate,
           owner: selectedOwner,
           template: template && template.id !== 'none' ? template : undefined,
+          vercelConfig,
         }),
       })
 
@@ -164,6 +174,11 @@ export default function NewRepoPage() {
 
       if (response.ok) {
         toast.success('Repository created successfully')
+
+        // Show additional success message if Vercel project was created
+        if (data.vercelProject) {
+          toast.success('Vercel project created successfully')
+        }
 
         // Clear repos cache for current owner
         if (selectedOwner) {
