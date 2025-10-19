@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/page-header'
@@ -34,10 +34,16 @@ const REPO_TEMPLATES = [
   },
 ] as const
 
+interface Organization {
+  login: string
+  name: string
+  avatar_url: string
+}
+
 export default function NewRepoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const owner = searchParams.get('owner') || ''
+  const ownerParam = searchParams.get('owner') || ''
   const { toggleSidebar } = useTasks()
   const session = useAtomValue(sessionAtom)
 
@@ -46,6 +52,41 @@ export default function NewRepoPage() {
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoPrivate, setNewRepoPrivate] = useState(true)
   const [selectedTemplate, setSelectedTemplate] = useState('nextjs-boilerplate')
+  const [selectedOwner, setSelectedOwner] = useState(ownerParam || session.user?.username || '')
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [isLoadingOrgs, setIsLoadingOrgs] = useState(true)
+
+  // Fetch organizations when component mounts
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await fetch('/api/github/orgs')
+        if (response.ok) {
+          const orgs = await response.json()
+          setOrganizations(orgs)
+        }
+      } catch (error) {
+        console.error('Error fetching organizations:', error)
+      } finally {
+        setIsLoadingOrgs(false)
+      }
+    }
+
+    if (session.user) {
+      fetchOrganizations()
+    } else {
+      setIsLoadingOrgs(false)
+    }
+  }, [session.user])
+
+  // Update selected owner when ownerParam or session changes
+  useEffect(() => {
+    if (ownerParam) {
+      setSelectedOwner(ownerParam)
+    } else if (session.user?.username) {
+      setSelectedOwner(session.user.username)
+    }
+  }, [ownerParam, session.user])
 
   const handleCreateRepo = async () => {
     if (!newRepoName.trim()) {
@@ -66,7 +107,7 @@ export default function NewRepoPage() {
           name: newRepoName.trim(),
           description: newRepoDescription.trim(),
           private: newRepoPrivate,
-          owner: owner,
+          owner: selectedOwner,
           template: template && template.id !== 'none' ? template : undefined,
         }),
       })
@@ -77,8 +118,8 @@ export default function NewRepoPage() {
         toast.success('Repository created successfully')
 
         // Clear repos cache for current owner
-        if (owner) {
-          localStorage.removeItem(`github-repos-${owner}`)
+        if (selectedOwner) {
+          localStorage.removeItem(`github-repos-${selectedOwner}`)
         }
 
         // Redirect to home page and reload to refresh repos list
@@ -139,10 +180,42 @@ export default function NewRepoPage() {
         <div className="container max-w-2xl mx-auto">
           <div className="mb-6">
             <h1 className="text-3xl font-bold tracking-tight">Create New Repository</h1>
-            <p className="text-muted-foreground mt-2">Create a new GitHub repository{owner ? ` for ${owner}` : ''}.</p>
+            <p className="text-muted-foreground mt-2">
+              Create a new GitHub repository{selectedOwner ? ` for ${selectedOwner}` : ''}.
+            </p>
           </div>
 
           <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="repo-owner">Owner *</Label>
+              <Select value={selectedOwner} onValueChange={setSelectedOwner} disabled={isCreatingRepo || isLoadingOrgs}>
+                <SelectTrigger id="repo-owner" className="w-full">
+                  <SelectValue placeholder={isLoadingOrgs ? 'Loading...' : 'Select owner'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {session.user && (
+                    <SelectItem value={session.user.username}>
+                      <div className="flex items-center gap-2">
+                        <img src={session.user.avatar} alt={session.user.username} className="w-5 h-5 rounded-full" />
+                        <span>{session.user.username}</span>
+                      </div>
+                    </SelectItem>
+                  )}
+                  {organizations.map((org) => (
+                    <SelectItem key={org.login} value={org.login}>
+                      <div className="flex items-center gap-2">
+                        <img src={org.avatar_url} alt={org.login} className="w-5 h-5 rounded-full" />
+                        <span>{org.login}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose which account or organization will own this repository.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="repo-name">Repository Name *</Label>
               <Input
