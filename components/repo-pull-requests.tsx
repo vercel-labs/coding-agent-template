@@ -16,6 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -133,7 +141,9 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
   const [error, setError] = useState<string | null>(null)
   const [closingPR, setClosingPR] = useState<number | null>(null)
   const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false)
+  const [showCloseDialog, setShowCloseDialog] = useState(false)
   const [selectedPR, setSelectedPR] = useState<PullRequest | null>(null)
+  const [prToClose, setPrToClose] = useState<number | null>(null)
   const [selectedAgent, setSelectedAgent] = useState('claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
   const [installDeps, setInstallDeps] = useState(false)
@@ -239,17 +249,19 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
     }
   }
 
-  const handleClosePR = async (prNumber: number, e: React.MouseEvent) => {
+  const handleClosePR = (prNumber: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    setPrToClose(prNumber)
+    setShowCloseDialog(true)
+  }
 
-    if (!confirm(`Are you sure you want to close PR #${prNumber}?`)) {
-      return
-    }
+  const confirmClosePR = async () => {
+    if (!prToClose) return
 
     try {
-      setClosingPR(prNumber)
-      const response = await fetch(`/api/repos/${owner}/${repo}/pull-requests/${prNumber}/close`, {
+      setClosingPR(prToClose)
+      const response = await fetch(`/api/repos/${owner}/${repo}/pull-requests/${prToClose}/close`, {
         method: 'PATCH',
       })
 
@@ -258,11 +270,14 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
       }
 
       // Remove the closed PR from the list
-      setPullRequests((prev) => prev.filter((pr) => pr.number !== prNumber))
+      setPullRequests((prev) => prev.filter((pr) => pr.number !== prToClose))
+      setShowCloseDialog(false)
+      toast.success('Pull request closed successfully')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to close pull request')
+      toast.error(err instanceof Error ? err.message : 'Failed to close pull request')
     } finally {
       setClosingPR(null)
+      setPrToClose(null)
     }
   }
 
@@ -524,6 +539,26 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Close PR Dialog */}
+      <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Close Pull Request</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to close PR #{prToClose}? This action can be reversed later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCloseDialog(false)} disabled={closingPR !== null}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmClosePR} disabled={closingPR !== null}>
+              {closingPR !== null ? 'Closing...' : 'Close PR'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
