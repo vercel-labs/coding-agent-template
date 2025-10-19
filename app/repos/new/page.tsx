@@ -40,6 +40,13 @@ interface Organization {
   avatar_url: string
 }
 
+interface VercelScope {
+  id: string
+  slug: string
+  name: string
+  type: 'personal' | 'team'
+}
+
 export default function NewRepoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -55,6 +62,12 @@ export default function NewRepoPage() {
   const [selectedOwner, setSelectedOwner] = useState(ownerParam || session.user?.username || '')
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true)
+
+  // Vercel-specific state
+  const [vercelScopes, setVercelScopes] = useState<VercelScope[]>([])
+  const [selectedVercelScope, setSelectedVercelScope] = useState('')
+  const [vercelProjectName, setVercelProjectName] = useState('')
+  const [isLoadingVercelScopes, setIsLoadingVercelScopes] = useState(false)
 
   // Fetch organizations when component mounts
   useEffect(() => {
@@ -79,6 +92,32 @@ export default function NewRepoPage() {
     }
   }, [session.user])
 
+  // Fetch Vercel scopes when user is logged in via Vercel
+  useEffect(() => {
+    const fetchVercelScopes = async () => {
+      setIsLoadingVercelScopes(true)
+      try {
+        const response = await fetch('/api/vercel/teams')
+        if (response.ok) {
+          const data = await response.json()
+          setVercelScopes(data.scopes || [])
+          // Set default scope to personal account
+          if (data.scopes && data.scopes.length > 0) {
+            setSelectedVercelScope(data.scopes[0].id)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching Vercel scopes:', error)
+      } finally {
+        setIsLoadingVercelScopes(false)
+      }
+    }
+
+    if (session.authProvider === 'vercel') {
+      fetchVercelScopes()
+    }
+  }, [session.authProvider])
+
   // Update selected owner when ownerParam or session changes
   useEffect(() => {
     if (ownerParam) {
@@ -89,6 +128,13 @@ export default function NewRepoPage() {
       setSelectedOwner('')
     }
   }, [ownerParam, session.user])
+
+  // Update Vercel project name to match repo name by default
+  useEffect(() => {
+    if (session.authProvider === 'vercel') {
+      setVercelProjectName(newRepoName)
+    }
+  }, [newRepoName, session.authProvider])
 
   const handleCreateRepo = async () => {
     if (!newRepoName.trim()) {
@@ -284,6 +330,61 @@ export default function NewRepoPage() {
                 disabled={isCreatingRepo}
               />
             </div>
+
+            {/* Vercel Project Section - Only shown for Vercel users */}
+            {session.authProvider === 'vercel' && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">Vercel Project</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Optionally configure a Vercel project for this repository.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vercel-scope">Vercel Scope</Label>
+                  <Select
+                    value={selectedVercelScope}
+                    onValueChange={setSelectedVercelScope}
+                    disabled={isCreatingRepo || isLoadingVercelScopes}
+                  >
+                    <SelectTrigger id="vercel-scope" className="w-full">
+                      <SelectValue placeholder={isLoadingVercelScopes ? 'Loading...' : 'Select scope'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vercelScopes.map((scope) => (
+                        <SelectItem key={scope.id} value={scope.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {scope.type === 'personal' ? '👤' : '👥'}
+                            </span>
+                            <span>{scope.name}</span>
+                            <span className="text-xs text-muted-foreground">({scope.slug})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Choose which Vercel account or team will own this project.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vercel-project-name">Vercel Project Name</Label>
+                  <Input
+                    id="vercel-project-name"
+                    placeholder="my-awesome-project"
+                    value={vercelProjectName}
+                    onChange={(e) => setVercelProjectName(e.target.value)}
+                    disabled={isCreatingRepo}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The name of your Vercel project. Defaults to the repository name.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={handleCancel} disabled={isCreatingRepo}>
