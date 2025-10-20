@@ -317,7 +317,7 @@ export function RepoSelector({
     if (repoDropdownOpen && filterInputRef.current && repos && repos.length > 0) {
       // Check if we're on a mobile device
       const isMobile = window.matchMedia('(max-width: 768px)').matches
-      
+
       // Only autofocus on non-mobile devices
       if (!isMobile) {
         // Small delay to ensure the dropdown is fully rendered
