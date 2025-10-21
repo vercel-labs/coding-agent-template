@@ -312,15 +312,21 @@ export function RepoSelector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOwner, setGitHubConnection])
 
-  // Focus filter input when dropdown opens
+  // Focus filter input when dropdown opens (but not on mobile to prevent keyboard popup)
   useEffect(() => {
     if (repoDropdownOpen && filterInputRef.current && repos && repos.length > 0) {
-      // Small delay to ensure the dropdown is fully rendered
-      setTimeout(() => {
-        if (filterInputRef.current) {
-          filterInputRef.current.focus()
-        }
-      }, 100)
+      // Check if we're on a mobile device
+      const isMobile = window.matchMedia('(max-width: 768px)').matches
+
+      // Only autofocus on non-mobile devices
+      if (!isMobile) {
+        // Small delay to ensure the dropdown is fully rendered
+        setTimeout(() => {
+          if (filterInputRef.current) {
+            filterInputRef.current.focus()
+          }
+        }, 100)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repoDropdownOpen, repos?.length])
