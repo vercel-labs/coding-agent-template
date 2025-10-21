@@ -62,7 +62,9 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
     // Use the specified timeout (maxDuration) for sandbox lifetime
     // keepAlive only controls whether we shutdown after task completion
-    const timeoutMs = config.timeout ? parseInt(config.timeout.replace(/\D/g, '')) * 60 * 1000 : 60 * 60 * 1000 // Default 1 hour
+    // NOTE: Vercel Sandbox API has a maximum timeout of 2700000ms (45 minutes)
+    const configTimeoutMinutes = config.timeout ? parseInt(config.timeout.replace(/\D/g, '')) : 40
+    const timeoutMs = Math.min(configTimeoutMinutes * 60 * 1000, 2700000) // Cap at 45 minutes
 
     // Create sandbox with proper source configuration
     const sandboxConfig = {
@@ -81,6 +83,24 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       resources: { vcpus: config.resources?.vcpus || 4 },
     }
 
+    await logger.info(
+      `Sandbox config: timeout=${timeoutMs}ms (${timeoutMs / 1000 / 60} minutes), runtime=${sandboxConfig.runtime}, vcpus=${sandboxConfig.resources.vcpus}`,
+    )
+
+    // Validate sandbox config values
+    if (!process.env.SANDBOX_VERCEL_TEAM_ID || process.env.SANDBOX_VERCEL_TEAM_ID.length === 0) {
+      throw new Error('Invalid or missing SANDBOX_VERCEL_TEAM_ID environment variable')
+    }
+    if (!process.env.SANDBOX_VERCEL_PROJECT_ID || process.env.SANDBOX_VERCEL_PROJECT_ID.length === 0) {
+      throw new Error('Invalid or missing SANDBOX_VERCEL_PROJECT_ID environment variable')
+    }
+    if (!process.env.SANDBOX_VERCEL_TOKEN || process.env.SANDBOX_VERCEL_TOKEN.length === 0) {
+      throw new Error('Invalid or missing SANDBOX_VERCEL_TOKEN environment variable')
+    }
+    if (timeoutMs <= 0 || timeoutMs > 2700000) {
+      throw new Error(`Invalid timeout value: ${timeoutMs}ms. Must be between 1 and 2700000ms (45 minutes).`)
+    }
+
     // Call progress callback before sandbox creation
     if (config.onProgress) {
       await config.onProgress(25, 'Validating configuration...')
@@ -88,7 +108,25 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
     let sandbox: Sandbox
     try {
-      sandbox = await Sandbox.create(sandboxConfig)
+      await logger.info('Initiating Vercel Sandbox creation...')
+      await logger.info(`Using team: ${process.env.SANDBOX_VERCEL_TEAM_ID?.substring(0, 8)}...`)
+      await logger.info(`Using project: ${process.env.SANDBOX_VERCEL_PROJECT_ID?.substring(0, 8)}...`)
+
+      // Add a timeout for sandbox creation (60 seconds to be reasonable but not infinite)
+      const sandboxPromise = Sandbox.create(sandboxConfig)
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                'Sandbox creation timed out after 60 seconds. Check Vercel API credentials and network connectivity.',
+              ),
+            ),
+          60000,
+        ),
+      )
+
+      sandbox = await Promise.race([sandboxPromise, timeoutPromise])
       await logger.info('Sandbox created successfully')
 
       // Register the sandbox immediately for potential killing
@@ -116,16 +154,42 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
       // Check if this is a timeout error
       if (errorMessage?.includes('timeout') || errorCode === 'ETIMEDOUT' || errorName === 'TimeoutError') {
-        await logger.error(`Sandbox creation timed out after 5 minutes`)
+        await logger.error(`Sandbox creation timed out`)
         await logger.error(`This usually happens when the repository is large or has many dependencies`)
         throw new Error('Sandbox creation timed out. Try with a smaller repository or fewer dependencies.')
       }
 
       await logger.error('Sandbox creation failed')
+
+      // Log detailed error information
       if (errorResponse) {
-        await logger.error('HTTP error occurred')
-        await logger.error('Error response received')
+        const status = errorResponse.status || 'unknown'
+        await logger.error(`HTTP error status: ${status}`)
+
+        // Try to extract error details from response
+        if (errorResponse.data) {
+          try {
+            const errorData =
+              typeof errorResponse.data === 'string' ? JSON.parse(errorResponse.data) : errorResponse.data
+            if (errorData.error?.message) {
+              await logger.error(`Vercel API error: ${errorData.error.message}`)
+            }
+            if (errorData.error?.code) {
+              await logger.error(`Error code: ${errorData.error.code}`)
+            }
+          } catch {
+            await logger.error(`Error details: ${JSON.stringify(errorResponse.data)}`)
+          }
+        }
       }
+
+      // For 500 errors, suggest checking Vercel status
+      if (errorResponse?.status === 500) {
+        await logger.error(
+          'Vercel API returned a 500 error. Please check https://status.vercel.com for service status.',
+        )
+      }
+
       throw error
     }
 

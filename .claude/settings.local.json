@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Task(*)",
+      "Read(//Users/jkneen/Documents/GitHub/flows/**)",
+      "Bash(git restore:*)",
+      "Bash(rm:*)",
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(PGPASSWORD=\"npg_2zcXUvGdrM1A\" /opt/homebrew/opt/libpq/bin/psql -h \"ep-bold-sky-agftkbbb-pooler.c-2.eu-central-1.aws.neon.tech\" -U \"neondb_owner\" -d \"neondb\" -c \"SELECT 1\")",
+      "Bash(npm run db:push:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm db:push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
