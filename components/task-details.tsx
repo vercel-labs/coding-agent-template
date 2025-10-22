@@ -2304,7 +2304,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       {/* Create PR Dialog */}
       <CreatePRDialog
         taskId={task.id}
-        defaultTitle={task.prompt}
+        defaultTitle={(task.title || task.prompt).slice(0, 255)}
         defaultBody=""
         open={showPRDialog}
         onOpenChange={setShowPRDialog}
