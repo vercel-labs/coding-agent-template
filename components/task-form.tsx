@@ -162,7 +162,9 @@ export function TaskForm({
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
-  const [selectedAgents, setSelectedAgents] = useState<AgentModelPair[]>([{ agent: 'claude', model: DEFAULT_MODELS.claude }])
+  const [selectedAgents, setSelectedAgents] = useState<AgentModelPair[]>([
+    { agent: 'claude', model: DEFAULT_MODELS.claude },
+  ])
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [, setLoadingRepos] = useState(false)
   const [showAgentSelector, setShowAgentSelector] = useState(false)
@@ -467,7 +469,8 @@ export function TaskForm({
                               {AGENT_MODELS[agent.value as keyof typeof AGENT_MODELS]?.map((model) => {
                                 const isSelected = selectedAgents.some(
                                   (pair) => pair.agent === agent.value && pair.model === model.value,
-                                )\n                                return (
+                                )
+                                return (
                                   <CommandItem
                                     key={`${agent.value}-${model.value}`}
                                     onSelect={() => {
@@ -481,14 +484,15 @@ export function TaskForm({
                                           )
                                         }
                                       } else {
-                                        setSelectedAgents([...selectedAgents, { agent: agent.value, model: model.value }])
+                                        setSelectedAgents([
+                                          ...selectedAgents,
+                                          { agent: agent.value, model: model.value },
+                                        ])
                                       }
                                     }}
                                     className="pl-8"
                                   >
-                                    <Check
-                                      className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
-                                    />
+                                    <Check className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')} />
                                     {model.label}
                                   </CommandItem>
                                 )
