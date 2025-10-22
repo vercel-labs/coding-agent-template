@@ -242,6 +242,11 @@ export function TaskForm({
   // Update model when agent changes
   useEffect(() => {
     if (selectedAgent) {
+      // Clear selectedModels when switching away from multi-agent
+      if (selectedAgent !== 'multi-agent') {
+        setSelectedModels([])
+      }
+
       // Load saved model for this agent or use default
       const savedModel = localStorage.getItem(`last-selected-model-${selectedAgent}`)
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
@@ -323,10 +328,10 @@ export function TaskForm({
     }
 
     // Check if API key is required and available for the selected agent and model
-    // Skip this check if we don't have repo data (likely not signed in)
+    // Skip this check if we don't have repo data (likely not signed in) or if multi-agent mode
     const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
 
-    if (selectedRepoData) {
+    if (selectedRepoData && selectedAgent !== 'multi-agent') {
       try {
         const response = await fetch(`/api/api-keys/check?agent=${selectedAgent}&model=${selectedModel}`)
         const data = await response.json()
