@@ -84,6 +84,7 @@ export function HomePageContent({
     repoUrl: string
     selectedAgent: string
     selectedModel: string
+    selectedModels?: string[]
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
@@ -107,39 +108,108 @@ export function HomePageContent({
 
     setIsSubmitting(true)
 
-    // Add task optimistically to sidebar immediately
-    const { id } = addTaskOptimistically(data)
+    // Check if this is multi-agent mode with multiple models selected
+    const isMultiAgent = data.selectedAgent === 'multi-agent' && data.selectedModels && data.selectedModels.length > 0
 
-    // Navigate to the new task page immediately
-    router.push(`/tasks/${id}`)
-
-    try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...data, id }), // Include the pre-generated ID
+    if (isMultiAgent) {
+      // Create multiple tasks, one for each selected model
+      const taskIds: string[] = []
+      const tasksData = data.selectedModels!.map((modelValue) => {
+        // Parse agent:model format
+        const [agent, model] = modelValue.split(':')
+        const { id } = addTaskOptimistically({
+          prompt: data.prompt,
+          repoUrl: data.repoUrl,
+          selectedAgent: agent,
+          selectedModel: model,
+          installDependencies: data.installDependencies,
+          maxDuration: data.maxDuration,
+        })
+        taskIds.push(id)
+        return {
+          id,
+          prompt: data.prompt,
+          repoUrl: data.repoUrl,
+          selectedAgent: agent,
+          selectedModel: model,
+          installDependencies: data.installDependencies,
+          maxDuration: data.maxDuration,
+          keepAlive: data.keepAlive,
+        }
       })
 
-      if (response.ok) {
-        toast.success('Task created successfully!')
+      // Navigate to the first task
+      router.push(`/tasks/${taskIds[0]}`)
+
+      try {
+        // Create all tasks in parallel
+        const responses = await Promise.all(
+          tasksData.map((taskData) =>
+            fetch('/api/tasks', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(taskData),
+            }),
+          ),
+        )
+
+        const successCount = responses.filter((r) => r.ok).length
+        const failCount = responses.length - successCount
+
+        if (successCount === responses.length) {
+          toast.success(`${successCount} tasks created successfully!`)
+        } else if (successCount > 0) {
+          toast.warning(`${successCount} tasks created, ${failCount} failed`)
+        } else {
+          toast.error('Failed to create tasks')
+        }
+
         // Refresh sidebar to get the real task data from server
         await refreshTasks()
-      } else {
-        const error = await response.json()
-        // Show detailed message for rate limits, or generic error message
-        toast.error(error.message || error.error || 'Failed to create task')
+      } catch (error) {
+        console.error('Error creating tasks:', error)
+        toast.error('Failed to create tasks')
+        await refreshTasks()
+      } finally {
+        setIsSubmitting(false)
+      }
+    } else {
+      // Single task creation (original behavior)
+      const { id } = addTaskOptimistically(data)
+
+      // Navigate to the new task page immediately
+      router.push(`/tasks/${id}`)
+
+      try {
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...data, id }), // Include the pre-generated ID
+        })
+
+        if (response.ok) {
+          toast.success('Task created successfully!')
+          // Refresh sidebar to get the real task data from server
+          await refreshTasks()
+        } else {
+          const error = await response.json()
+          // Show detailed message for rate limits, or generic error message
+          toast.error(error.message || error.error || 'Failed to create task')
+          // TODO: Remove the optimistic task on error
+          await refreshTasks() // For now, just refresh to remove the optimistic task
+        }
+      } catch (error) {
+        console.error('Error creating task:', error)
+        toast.error('Failed to create task')
         // TODO: Remove the optimistic task on error
         await refreshTasks() // For now, just refresh to remove the optimistic task
+      } finally {
+        setIsSubmitting(false)
       }
-    } catch (error) {
-      console.error('Error creating task:', error)
-      toast.error('Failed to create task')
-      // TODO: Remove the optimistic task on error
-      await refreshTasks() // For now, just refresh to remove the optimistic task
-    } finally {
-      setIsSubmitting(false)
     }
   }
 

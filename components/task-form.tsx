@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowUp, Settings, X, Cable } from 'lucide-react'
+import { Loader2, ArrowUp, Settings, X, Cable, Users } from 'lucide-react'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
@@ -40,6 +40,7 @@ interface TaskFormProps {
     repoUrl: string
     selectedAgent: string
     selectedModel: string
+    selectedModels?: string[]
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
@@ -54,12 +55,13 @@ interface TaskFormProps {
 }
 
 const CODING_AGENTS = [
-  { value: 'claude', label: 'Claude', icon: Claude },
-  { value: 'codex', label: 'Codex', icon: Codex },
-  { value: 'copilot', label: 'Copilot', icon: Copilot },
-  { value: 'cursor', label: 'Cursor', icon: Cursor },
-  { value: 'gemini', label: 'Gemini', icon: Gemini },
-  { value: 'opencode', label: 'opencode', icon: OpenCode },
+  { value: 'claude', label: 'Claude', icon: Claude, isLogo: true },
+  { value: 'codex', label: 'Codex', icon: Codex, isLogo: true },
+  { value: 'copilot', label: 'Copilot', icon: Copilot, isLogo: true },
+  { value: 'cursor', label: 'Cursor', icon: Cursor, isLogo: true },
+  { value: 'gemini', label: 'Gemini', icon: Gemini, isLogo: true },
+  { value: 'opencode', label: 'opencode', icon: OpenCode, isLogo: true },
+  { value: 'multi-agent', label: 'Multi-Agent', icon: Users, isLogo: false },
 ] as const
 
 // Model options for each agent
@@ -157,6 +159,7 @@ export function TaskForm({
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
   const [selectedAgent, setSelectedAgent] = useState('claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
+  const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [, setLoadingRepos] = useState(false)
 
@@ -239,6 +242,11 @@ export function TaskForm({
   // Update model when agent changes
   useEffect(() => {
     if (selectedAgent) {
+      // Clear selectedModels when switching away from multi-agent
+      if (selectedAgent !== 'multi-agent') {
+        setSelectedModels([])
+      }
+
       // Load saved model for this agent or use default
       const savedModel = localStorage.getItem(`last-selected-model-${selectedAgent}`)
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
@@ -303,6 +311,12 @@ export function TaskForm({
       return
     }
 
+    // Validate that multi-agent mode has at least one model selected
+    if (selectedAgent === 'multi-agent' && selectedModels.length === 0) {
+      toast.error('Please select at least one model for multi-agent mode')
+      return
+    }
+
     // If owner/repo not selected, let parent handle it (will show sign-in if needed)
     // Don't clear localStorage here - user might need to sign in and come back
     if (!selectedOwner || !selectedRepo) {
@@ -311,6 +325,7 @@ export function TaskForm({
         repoUrl: '',
         selectedAgent,
         selectedModel,
+        selectedModels: selectedAgent === 'multi-agent' ? selectedModels : undefined,
         installDependencies,
         maxDuration,
         keepAlive,
@@ -319,10 +334,10 @@ export function TaskForm({
     }
 
     // Check if API key is required and available for the selected agent and model
-    // Skip this check if we don't have repo data (likely not signed in)
+    // Skip this check if we don't have repo data (likely not signed in) or if multi-agent mode
     const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
 
-    if (selectedRepoData) {
+    if (selectedRepoData && selectedAgent !== 'multi-agent') {
       try {
         const response = await fetch(`/api/api-keys/check?agent=${selectedAgent}&model=${selectedModel}`)
         const data = await response.json()
@@ -354,6 +369,7 @@ export function TaskForm({
       repoUrl: selectedRepoData?.clone_url || '',
       selectedAgent,
       selectedModel,
+      selectedModels: selectedAgent === 'multi-agent' ? selectedModels : undefined,
       installDependencies,
       maxDuration,
       keepAlive,
@@ -446,26 +462,73 @@ export function TaskForm({
                 </Select>
 
                 {/* Model Selection - Fills available width on mobile */}
-                <Select
-                  value={selectedModel}
-                  onValueChange={(value) => {
-                    setSelectedModel(value)
-                    // Save to localStorage immediately
-                    localStorage.setItem(`last-selected-model-${selectedAgent}`, value)
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8 min-w-0">
-                    <SelectValue placeholder="Model" className="truncate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        {model.label}
-                      </SelectItem>
-                    )) || []}
-                  </SelectContent>
-                </Select>
+                {selectedAgent === 'multi-agent' ? (
+                  <Select value="multi-select" onValueChange={() => {}} disabled={isSubmitting}>
+                    <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8 min-w-0">
+                      <SelectValue>
+                        {selectedModels.length === 0 ? 'Select models' : `${selectedModels.length} Selected`}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CODING_AGENTS.filter((agent) => agent.value !== 'multi-agent').map((agent) => (
+                        <div key={agent.value}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{agent.label}</div>
+                          {AGENT_MODELS[agent.value as keyof typeof AGENT_MODELS]?.map((model) => {
+                            const fullValue = `${agent.value}:${model.value}`
+                            const isSelected = selectedModels.includes(fullValue)
+                            return (
+                              <div
+                                key={fullValue}
+                                className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setSelectedModels((prev) =>
+                                    isSelected ? prev.filter((m) => m !== fullValue) : [...prev, fullValue],
+                                  )
+                                }}
+                              >
+                                <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                  {isSelected && (
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                  )}
+                                </span>
+                                {model.label}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select
+                    value={selectedModel}
+                    onValueChange={(value) => {
+                      setSelectedModel(value)
+                      // Save to localStorage immediately
+                      localStorage.setItem(`last-selected-model-${selectedAgent}`, value)
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8 min-w-0">
+                      <SelectValue placeholder="Model" className="truncate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          {model.label}
+                        </SelectItem>
+                      )) || []}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 {/* Option Chips - Only visible on desktop */}
                 {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
@@ -678,6 +741,14 @@ export function TaskForm({
             </div>
           </div>
         </div>
+
+        {/* Multi-Agent Info */}
+        {selectedAgent === 'multi-agent' && selectedModels.length > 0 && (
+          <div className="mt-2 text-xs text-muted-foreground text-center">
+            This will create {selectedModels.length} separate task{selectedModels.length > 1 ? 's' : ''} (one for each
+            selected model)
+          </div>
+        )}
       </form>
 
       <ConnectorDialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog} />
