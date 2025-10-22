@@ -56,10 +56,6 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     const authenticatedRepoUrl = createAuthenticatedRepoUrl(config.repoUrl, config.githubToken)
     await logger.info('Added GitHub authentication to repository URL')
 
-    // For initial clone, only use existing branch names, not AI-generated ones
-    // AI-generated branch names will be created later inside the sandbox
-    const branchNameForEnv = config.existingBranchName
-
     // Use the specified timeout (maxDuration) for sandbox lifetime
     // keepAlive only controls whether we shutdown after task completion
     const timeoutMs = config.timeout ? parseInt(config.timeout.replace(/\D/g, '')) * 60 * 1000 : 60 * 60 * 1000 // Default 1 hour
@@ -72,7 +68,6 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       source: {
         type: 'git' as const,
         url: authenticatedRepoUrl,
-        revision: branchNameForEnv || 'main',
         depth: 1, // Shallow clone for faster setup
       },
       timeout: timeoutMs,
@@ -346,27 +341,56 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.info('Git repository detected')
     }
 
+    // Check if repository is empty (no commits)
+    const hasCommits = await runCommandInSandbox(sandbox, 'git', ['rev-parse', 'HEAD'])
+    if (!hasCommits.success) {
+      await logger.info('Empty repository detected, creating initial main branch')
+
+      // Extract repo name from repoUrl (e.g., https://github.com/owner/repo.git -> repo)
+      const repoNameMatch = config.repoUrl.match(/\/([^\/]+?)(\.git)?$/)
+      const repoName = repoNameMatch ? repoNameMatch[1] : 'repository'
+
+      // Create README.md with repo name
+      const readmeContent = `# ${repoName}\n`
+      const createReadme = await runCommandInSandbox(sandbox, 'sh', ['-c', `echo '${readmeContent}' > README.md`])
+
+      if (!createReadme.success) {
+        throw new Error('Failed to create initial README')
+      }
+
+      // Checkout to main branch (or create it if needed)
+      const checkoutMain = await runCommandInSandbox(sandbox, 'git', ['checkout', '-b', 'main'])
+      if (!checkoutMain.success) {
+        throw new Error('Failed to create main branch')
+      }
+
+      // Add README to git
+      const gitAdd = await runCommandInSandbox(sandbox, 'git', ['add', 'README.md'])
+      if (!gitAdd.success) {
+        throw new Error('Failed to add README to git')
+      }
+
+      // Commit README
+      const gitCommit = await runCommandInSandbox(sandbox, 'git', ['commit', '-m', 'Initial commit'])
+      if (!gitCommit.success) {
+        throw new Error('Failed to commit initial README')
+      }
+
+      await logger.info('Created initial commit on main branch')
+
+      // Push to origin
+      const gitPush = await runCommandInSandbox(sandbox, 'git', ['push', '-u', 'origin', 'main'])
+      if (!gitPush.success) {
+        await logger.info('Failed to push main branch to origin')
+        // Don't throw error here as local repo is still valid
+      } else {
+        await logger.info('Pushed main branch to origin')
+      }
+    }
+
     let branchName: string
 
-    if (config.existingBranchName) {
-      // Checkout existing branch for continuing work
-      await logger.info('Checking out existing branch')
-      const checkoutResult = await runAndLogCommand(sandbox, 'git', ['checkout', config.existingBranchName], logger)
-
-      if (!checkoutResult.success) {
-        throw new Error('Failed to checkout existing branch')
-      }
-
-      // Get the latest changes from remote
-      await logger.info('Pulling latest changes from remote')
-      const pullResult = await runAndLogCommand(sandbox, 'git', ['pull', 'origin', config.existingBranchName], logger)
-
-      if (pullResult.output) {
-        await logger.info('Git pull completed')
-      }
-
-      branchName = config.existingBranchName
-    } else if (config.preDeterminedBranchName) {
+    if (config.preDeterminedBranchName) {
       // Use the AI-generated branch name
       await logger.info('Using pre-determined branch name')
 

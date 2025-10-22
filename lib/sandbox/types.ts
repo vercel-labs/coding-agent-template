@@ -26,7 +26,6 @@ export interface SandboxConfig {
   installDependencies?: boolean
   keepAlive?: boolean
   preDeterminedBranchName?: string
-  existingBranchName?: string
   onProgress?: (progress: number, message: string) => Promise<void>
   onCancellationCheck?: () => Promise<boolean>
 }
