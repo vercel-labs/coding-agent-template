@@ -28,11 +28,11 @@ export function ThemeToggle() {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger className="cursor-pointer">
         {theme === 'light' ? (
-          <Sun className="h-4 w-4 mr-2" />
+          <Sun className="h-4 w-4 text-muted-foreground" />
         ) : theme === 'dark' ? (
-          <Moon className="h-4 w-4 mr-2" />
+          <Moon className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <Monitor className="h-4 w-4 mr-2" />
+          <Monitor className="h-4 w-4 text-muted-foreground" />
         )}
         Theme
       </DropdownMenuSubTrigger>
