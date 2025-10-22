@@ -231,6 +231,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       id,
       userId: 'temp', // Temporary value, will be replaced by server
       prompt: taskData.prompt,
+      title: null,
       repoUrl: taskData.repoUrl,
       selectedAgent: taskData.selectedAgent,
       selectedModel: taskData.selectedModel,
