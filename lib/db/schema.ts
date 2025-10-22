@@ -79,6 +79,7 @@ export const tasks = pgTable('tasks', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }), // Foreign key to users table
   prompt: text('prompt').notNull(),
+  title: text('title'),
   repoUrl: text('repo_url'),
   selectedAgent: text('selected_agent').default('claude'),
   selectedModel: text('selected_model'),
@@ -116,6 +117,7 @@ export const insertTaskSchema = z.object({
   id: z.string().optional(),
   userId: z.string().min(1, 'User ID is required'),
   prompt: z.string().min(1, 'Prompt is required'),
+  title: z.string().optional(),
   repoUrl: z.string().url('Must be a valid URL').optional(),
   selectedAgent: z.enum(['claude', 'codex', 'copilot', 'cursor', 'gemini', 'opencode']).default('claude'),
   selectedModel: z.string().optional(),
@@ -146,6 +148,7 @@ export const selectTaskSchema = z.object({
   id: z.string(),
   userId: z.string(),
   prompt: z.string(),
+  title: z.string().nullable(),
   repoUrl: z.string().nullable(),
   selectedAgent: z.string().nullable(),
   selectedModel: z.string().nullable(),

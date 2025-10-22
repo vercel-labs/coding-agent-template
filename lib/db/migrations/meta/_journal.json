@@ -141,6 +141,13 @@
       "when": 1760506644665,
       "tag": "0019_giant_anita_blake",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1761148233654,
+      "tag": "0020_gigantic_wallop",
+      "breakpoints": true
     }
   ]
 }

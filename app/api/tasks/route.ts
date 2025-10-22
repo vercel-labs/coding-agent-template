@@ -12,6 +12,7 @@ import { runCommandInSandbox } from '@/lib/sandbox/commands'
 import { eq, desc, or, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
+import { generateTaskTitle, createFallbackTitle } from '@/lib/utils/title-generator'
 import { decrypt } from '@/lib/crypto'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getUserGitHubToken } from '@/lib/github/user-token'
@@ -147,6 +148,62 @@ export async function POST(request: NextRequest) {
           await logger.info('Using fallback branch name')
         } catch (dbError) {
           console.error('Error updating task with fallback branch name:', dbError)
+        }
+      }
+    })
+
+    // Generate AI title after response is sent (non-blocking)
+    after(async () => {
+      try {
+        // Check if AI Gateway API key is available
+        if (!process.env.AI_GATEWAY_API_KEY) {
+          console.log('AI_GATEWAY_API_KEY not available, skipping AI title generation')
+          return
+        }
+
+        // Extract repository name from URL for context
+        let repoName: string | undefined
+        try {
+          const url = new URL(validatedData.repoUrl || '')
+          const pathParts = url.pathname.split('/')
+          if (pathParts.length >= 3) {
+            repoName = pathParts[pathParts.length - 1].replace(/\.git$/, '')
+          }
+        } catch {
+          // Ignore URL parsing errors
+        }
+
+        // Generate AI title
+        const aiTitle = await generateTaskTitle({
+          prompt: validatedData.prompt,
+          repoName,
+          context: `${validatedData.selectedAgent} agent task`,
+        })
+
+        // Update task with AI-generated title
+        await db
+          .update(tasks)
+          .set({
+            title: aiTitle,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskId))
+      } catch (error) {
+        console.error('Error generating AI title:', error)
+
+        // Fallback to truncated prompt
+        const fallbackTitle = createFallbackTitle(validatedData.prompt)
+
+        try {
+          await db
+            .update(tasks)
+            .set({
+              title: fallbackTitle,
+              updatedAt: new Date(),
+            })
+            .where(eq(tasks.id, taskId))
+        } catch (dbError) {
+          console.error('Error updating task with fallback title:', dbError)
         }
       }
     })
