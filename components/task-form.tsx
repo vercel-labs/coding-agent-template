@@ -730,6 +730,14 @@ export function TaskForm({
             </div>
           </div>
         </div>
+
+        {/* Multi-Agent Info */}
+        {selectedAgent === 'multi-agent' && selectedModels.length > 0 && (
+          <div className="mt-2 text-xs text-muted-foreground text-center">
+            This will create {selectedModels.length} separate task{selectedModels.length > 1 ? 's' : ''} (one for each
+            selected model)
+          </div>
+        )}
       </form>
 
       <ConnectorDialog open={showMcpServersDialog} onOpenChange={setShowMcpServersDialog} />
