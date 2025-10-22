@@ -82,8 +82,7 @@ export function HomePageContent({
   const handleTaskSubmit = async (data: {
     prompt: string
     repoUrl: string
-    selectedAgent: string
-    selectedModel: string
+    selectedAgents: Array<{ agent: string; model: string }>
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
@@ -107,37 +106,74 @@ export function HomePageContent({
 
     setIsSubmitting(true)
 
-    // Add task optimistically to sidebar immediately
-    const { id } = addTaskOptimistically(data)
-
-    // Navigate to the new task page immediately
-    router.push(`/tasks/${id}`)
-
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...data, id }), // Include the pre-generated ID
+      // Create a task for each selected agent/model pair
+      const taskIds: string[] = []
+      const creationPromises = data.selectedAgents.map(async ({ agent, model }) => {
+        const taskData = {
+          ...data,
+          selectedAgent: agent,
+          selectedModel: model,
+        }
+
+        // Add task optimistically to sidebar
+        const { id } = addTaskOptimistically(taskData)
+        taskIds.push(id)
+
+        // Create the task
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...taskData, id }), // Include the pre-generated ID
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.message || error.error || 'Failed to create task')
+        }
+
+        return { id, agent, model }
       })
 
-      if (response.ok) {
-        toast.success('Task created successfully!')
+      const results = await Promise.allSettled(creationPromises)
+
+      // Check if all tasks were created successfully
+      const successfulTasks = results.filter((r) => r.status === 'fulfilled')
+      const failedTasks = results.filter((r) => r.status === 'rejected')
+
+      if (successfulTasks.length > 0) {
+        const message =
+          data.selectedAgents.length === 1
+            ? 'Task created successfully!'
+            : `${successfulTasks.length} task${successfulTasks.length > 1 ? 's' : ''} created successfully!`
+
+        toast.success(message)
+
+        // Navigate to the first task
+        if (successfulTasks.length > 0 && successfulTasks[0].status === 'fulfilled') {
+          router.push(`/tasks/${successfulTasks[0].value.id}`)
+        }
+
         // Refresh sidebar to get the real task data from server
         await refreshTasks()
-      } else {
-        const error = await response.json()
-        // Show detailed message for rate limits, or generic error message
-        toast.error(error.message || error.error || 'Failed to create task')
-        // TODO: Remove the optimistic task on error
-        await refreshTasks() // For now, just refresh to remove the optimistic task
+      }
+
+      if (failedTasks.length > 0) {
+        const errorMessage =
+          failedTasks.length === 1
+            ? (failedTasks[0] as PromiseRejectedResult).reason.message || 'Failed to create task'
+            : `Failed to create ${failedTasks.length} task${failedTasks.length > 1 ? 's' : ''}`
+
+        toast.error(errorMessage)
+        // Refresh to remove failed optimistic tasks
+        await refreshTasks()
       }
     } catch (error) {
-      console.error('Error creating task:', error)
-      toast.error('Failed to create task')
-      // TODO: Remove the optimistic task on error
-      await refreshTasks() // For now, just refresh to remove the optimistic task
+      console.error('Error creating tasks:', error)
+      toast.error('Failed to create tasks')
+      await refreshTasks()
     } finally {
       setIsSubmitting(false)
     }

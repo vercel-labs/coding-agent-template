@@ -16,7 +16,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowUp, Settings, X, Cable } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { cn } from '@/lib/utils'
+import { Loader2, ArrowUp, Settings, X, Cable, Check, ChevronsUpDown } from 'lucide-react'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
@@ -34,12 +37,16 @@ interface GitHubRepo {
   language: string
 }
 
+interface AgentModelPair {
+  agent: string
+  model: string
+}
+
 interface TaskFormProps {
   onSubmit: (data: {
     prompt: string
     repoUrl: string
-    selectedAgent: string
-    selectedModel: string
+    selectedAgents: AgentModelPair[]
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
@@ -155,10 +162,10 @@ export function TaskForm({
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
-  const [selectedAgent, setSelectedAgent] = useState('claude')
-  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
+  const [selectedAgents, setSelectedAgents] = useState<AgentModelPair[]>([{ agent: 'claude', model: DEFAULT_MODELS.claude }])
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [, setLoadingRepos] = useState(false)
+  const [showAgentSelector, setShowAgentSelector] = useState(false)
 
   // Options state - initialize with server values
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
@@ -209,22 +216,17 @@ export function TaskForm({
     }
   }
 
-  // Load saved agent, model, and options on mount, and focus the prompt input
+  // Load saved agents and models on mount, and focus the prompt input
   useEffect(() => {
-    const savedAgent = localStorage.getItem('last-selected-agent')
-    if (savedAgent && CODING_AGENTS.some((agent) => agent.value === savedAgent)) {
-      setSelectedAgent(savedAgent)
-
-      // Load saved model for this agent
-      const savedModel = localStorage.getItem(`last-selected-model-${savedAgent}`)
-      const agentModels = AGENT_MODELS[savedAgent as keyof typeof AGENT_MODELS]
-      if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
-        setSelectedModel(savedModel)
-      } else {
-        const defaultModel = DEFAULT_MODELS[savedAgent as keyof typeof DEFAULT_MODELS]
-        if (defaultModel) {
-          setSelectedModel(defaultModel)
+    const savedAgentsJson = localStorage.getItem('last-selected-agents')
+    if (savedAgentsJson) {
+      try {
+        const savedAgents = JSON.parse(savedAgentsJson)
+        if (Array.isArray(savedAgents) && savedAgents.length > 0) {
+          setSelectedAgents(savedAgents)
         }
+      } catch (e) {
+        console.error('Failed to parse saved agents:', e)
       }
     }
 
@@ -236,22 +238,10 @@ export function TaskForm({
     }
   }, [])
 
-  // Update model when agent changes
+  // Save selected agents to localStorage whenever they change
   useEffect(() => {
-    if (selectedAgent) {
-      // Load saved model for this agent or use default
-      const savedModel = localStorage.getItem(`last-selected-model-${selectedAgent}`)
-      const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
-      if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
-        setSelectedModel(savedModel)
-      } else {
-        const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
-        if (defaultModel) {
-          setSelectedModel(defaultModel)
-        }
-      }
-    }
-  }, [selectedAgent])
+    localStorage.setItem('last-selected-agents', JSON.stringify(selectedAgents))
+  }, [selectedAgents])
 
   // Fetch repositories when owner changes
   useEffect(() => {
@@ -309,8 +299,7 @@ export function TaskForm({
       onSubmit({
         prompt: prompt.trim(),
         repoUrl: '',
-        selectedAgent,
-        selectedModel,
+        selectedAgents,
         installDependencies,
         maxDuration,
         keepAlive,
@@ -318,42 +307,44 @@ export function TaskForm({
       return
     }
 
-    // Check if API key is required and available for the selected agent and model
+    // Check if API keys are required and available for each selected agent/model
     // Skip this check if we don't have repo data (likely not signed in)
     const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
 
     if (selectedRepoData) {
-      try {
-        const response = await fetch(`/api/api-keys/check?agent=${selectedAgent}&model=${selectedModel}`)
-        const data = await response.json()
+      // Check API keys for all selected agents
+      for (const { agent, model } of selectedAgents) {
+        try {
+          const response = await fetch(`/api/api-keys/check?agent=${agent}&model=${model}`)
+          const data = await response.json()
 
-        if (!data.hasKey) {
-          // Show error message with provider name
-          const providerNames: Record<string, string> = {
-            anthropic: 'Anthropic',
-            openai: 'OpenAI',
-            cursor: 'Cursor',
-            gemini: 'Gemini',
-            aigateway: 'AI Gateway',
+          if (!data.hasKey) {
+            // Show error message with provider name
+            const providerNames: Record<string, string> = {
+              anthropic: 'Anthropic',
+              openai: 'OpenAI',
+              cursor: 'Cursor',
+              gemini: 'Gemini',
+              aigateway: 'AI Gateway',
+            }
+            const providerName = providerNames[data.provider] || data.provider
+
+            toast.error(`${providerName} API key required`, {
+              description: `Please add your ${providerName} API key in the user menu to use the ${data.agentName} agent with this model.`,
+            })
+            return
           }
-          const providerName = providerNames[data.provider] || data.provider
-
-          toast.error(`${providerName} API key required`, {
-            description: `Please add your ${providerName} API key in the user menu to use the ${data.agentName} agent with this model.`,
-          })
-          return
+        } catch (error) {
+          console.error('Error checking API key:', error)
+          // Don't show error toast - might just be not authenticated, let parent handle it
         }
-      } catch (error) {
-        console.error('Error checking API key:', error)
-        // Don't show error toast - might just be not authenticated, let parent handle it
       }
     }
 
     onSubmit({
       prompt: prompt.trim(),
       repoUrl: selectedRepoData?.clone_url || '',
-      selectedAgent,
-      selectedModel,
+      selectedAgents,
       installDependencies,
       maxDuration,
       keepAlive,
@@ -407,65 +398,108 @@ export function TaskForm({
           {/* Agent Selection */}
           <div className="p-4">
             <div className="flex items-center justify-between gap-2">
-              {/* Left side: Agent, Model, and Option Chips */}
+              {/* Left side: Agent/Model Selection and Option Chips */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                {/* Agent Selection - Icon only on mobile, minimal width */}
-                <Select
-                  value={selectedAgent}
-                  onValueChange={(value) => {
-                    setSelectedAgent(value)
-                    // Save to localStorage immediately
-                    localStorage.setItem('last-selected-agent', value)
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="w-auto sm:min-w-[120px] border-0 bg-transparent shadow-none focus:ring-0 h-8 shrink-0">
-                    <SelectValue placeholder="Agent">
-                      {selectedAgent &&
-                        (() => {
-                          const agent = CODING_AGENTS.find((a) => a.value === selectedAgent)
-                          return agent ? (
-                            <div className="flex items-center gap-2">
-                              <agent.icon className="w-4 h-4" />
-                              <span className="hidden sm:inline">{agent.label}</span>
+                {/* Multi-Agent/Model Selection */}
+                <Popover open={showAgentSelector} onOpenChange={setShowAgentSelector}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      role="combobox"
+                      aria-expanded={showAgentSelector}
+                      className="h-8 px-2 justify-between border-0 bg-transparent shadow-none focus:ring-0 hover:bg-muted/50"
+                      disabled={isSubmitting}
+                    >
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {selectedAgents.map((pair, index) => {
+                          const agent = CODING_AGENTS.find((a) => a.value === pair.agent)
+                          const model = AGENT_MODELS[pair.agent as keyof typeof AGENT_MODELS]?.find(
+                            (m) => m.value === pair.model,
+                          )
+                          return (
+                            agent && (
+                              <Badge
+                                key={`${pair.agent}-${pair.model}-${index}`}
+                                variant="secondary"
+                                className="text-xs h-6 px-2 gap-1.5 bg-muted hover:bg-muted/80"
+                              >
+                                <agent.icon className="w-3 h-3" />
+                                <span className="hidden sm:inline">{agent.label}</span>
+                                <span className="text-muted-foreground">{model?.label || pair.model}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-3 w-3 p-0 hover:bg-transparent ml-0.5"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (selectedAgents.length > 1) {
+                                      setSelectedAgents(selectedAgents.filter((_, i) => i !== index))
+                                    }
+                                  }}
+                                >
+                                  <X className="h-2 w-2" />
+                                </Button>
+                              </Badge>
+                            )
+                          )
+                        })}
+                        <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50" />
+                      </div>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search agents..." />
+                      <CommandList>
+                        <CommandEmpty>No agent found.</CommandEmpty>
+                        <CommandGroup heading="Select Agent/Model Combinations">
+                          {CODING_AGENTS.map((agent) => (
+                            <div key={agent.value}>
+                              <CommandItem
+                                className="font-medium py-1.5"
+                                onSelect={() => {
+                                  // This is just a header, don't do anything
+                                }}
+                              >
+                                <agent.icon className="w-4 h-4 mr-2" />
+                                {agent.label}
+                              </CommandItem>
+                              {AGENT_MODELS[agent.value as keyof typeof AGENT_MODELS]?.map((model) => {
+                                const isSelected = selectedAgents.some(
+                                  (pair) => pair.agent === agent.value && pair.model === model.value,
+                                )\n                                return (
+                                  <CommandItem
+                                    key={`${agent.value}-${model.value}`}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        // Only remove if not the last one
+                                        if (selectedAgents.length > 1) {
+                                          setSelectedAgents(
+                                            selectedAgents.filter(
+                                              (pair) => !(pair.agent === agent.value && pair.model === model.value),
+                                            ),
+                                          )
+                                        }
+                                      } else {
+                                        setSelectedAgents([...selectedAgents, { agent: agent.value, model: model.value }])
+                                      }
+                                    }}
+                                    className="pl-8"
+                                  >
+                                    <Check
+                                      className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
+                                    />
+                                    {model.label}
+                                  </CommandItem>
+                                )
+                              })}
                             </div>
-                          ) : null
-                        })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CODING_AGENTS.map((agent) => (
-                      <SelectItem key={agent.value} value={agent.value}>
-                        <div className="flex items-center gap-2">
-                          <agent.icon className="w-4 h-4" />
-                          <span>{agent.label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {/* Model Selection - Fills available width on mobile */}
-                <Select
-                  value={selectedModel}
-                  onValueChange={(value) => {
-                    setSelectedModel(value)
-                    // Save to localStorage immediately
-                    localStorage.setItem(`last-selected-model-${selectedAgent}`, value)
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="flex-1 sm:flex-none sm:w-auto sm:min-w-[140px] border-0 bg-transparent shadow-none focus:ring-0 h-8 min-w-0">
-                    <SelectValue placeholder="Model" className="truncate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]?.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        {model.label}
-                      </SelectItem>
-                    )) || []}
-                  </SelectContent>
-                </Select>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
 
                 {/* Option Chips - Only visible on desktop */}
                 {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
