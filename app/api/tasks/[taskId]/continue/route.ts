@@ -16,6 +16,7 @@ import { getGitHubUser } from '@/lib/github/client'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
+import { generateCommitMessage, createFallbackCommitMessage } from '@/lib/utils/commit-message-generator'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
@@ -357,8 +358,36 @@ async function continueTask(
         }
       }
 
+      // Generate AI-powered commit message
+      let commitMessage: string
+      try {
+        // Extract repository name from URL for context
+        let repoName: string | undefined
+        try {
+          const url = new URL(repoUrl)
+          const pathParts = url.pathname.split('/')
+          if (pathParts.length >= 3) {
+            repoName = pathParts[pathParts.length - 1].replace(/\.git$/, '')
+          }
+        } catch {
+          // Ignore URL parsing errors
+        }
+
+        if (process.env.AI_GATEWAY_API_KEY) {
+          commitMessage = await generateCommitMessage({
+            description: prompt,
+            repoName,
+            context: `${selectedAgent} agent follow-up`,
+          })
+        } else {
+          commitMessage = createFallbackCommitMessage(prompt)
+        }
+      } catch (error) {
+        console.error('Error generating commit message:', error)
+        commitMessage = createFallbackCommitMessage(prompt)
+      }
+
       // Push changes to branch
-      const commitMessage = `${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`
       const pushResult = await pushChangesToBranch(sandbox, branchName, commitMessage, logger)
 
       // Conditionally shutdown sandbox based on task's keepAlive setting
