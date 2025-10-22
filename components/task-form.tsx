@@ -457,7 +457,7 @@ export function TaskForm({
                         <CommandGroup heading="Select Agent/Model Combinations">
                           {CODING_AGENTS.map((agent) => (
                             <div key={agent.value}>
-                              <CommandItem disabled className="font-medium py-1.5">
+                              <CommandItem className="font-medium py-1.5 opacity-100 pointer-events-none" value="">
                                 <agent.icon className="w-4 h-4 mr-2" />
                                 {agent.label}
                               </CommandItem>
