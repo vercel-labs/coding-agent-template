@@ -311,6 +311,12 @@ export function TaskForm({
       return
     }
 
+    // Validate that multi-agent mode has at least one model selected
+    if (selectedAgent === 'multi-agent' && selectedModels.length === 0) {
+      toast.error('Please select at least one model for multi-agent mode')
+      return
+    }
+
     // If owner/repo not selected, let parent handle it (will show sign-in if needed)
     // Don't clear localStorage here - user might need to sign in and come back
     if (!selectedOwner || !selectedRepo) {
