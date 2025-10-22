@@ -4,6 +4,8 @@ import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { mergePullRequest } from '@/lib/github/client'
+import { Sandbox } from '@vercel/sandbox'
+import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
 
 interface RouteParams {
   params: Promise<{
@@ -51,12 +53,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: result.error || 'Failed to merge pull request' }, { status: 500 })
     }
 
-    // Update task to mark PR as merged, store merge commit SHA, and set completedAt
+    // Stop the sandbox if it exists
+    if (task.sandboxId) {
+      try {
+        const sandbox = await Sandbox.get({
+          sandboxId: task.sandboxId,
+          teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
+          projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
+          token: process.env.SANDBOX_VERCEL_TOKEN!,
+        })
+
+        await sandbox.stop()
+        unregisterSandbox(taskId)
+      } catch (sandboxError) {
+        // Log error but don't fail the merge
+        console.error('Error stopping sandbox after merge:', sandboxError)
+      }
+    }
+
+    // Update task to mark PR as merged, store merge commit SHA, clear sandbox info, and set completedAt
     await db
       .update(tasks)
       .set({
         prStatus: 'merged',
         prMergeCommitSha: result.sha || null,
+        sandboxId: null,
+        sandboxUrl: null,
         completedAt: new Date(),
         updatedAt: new Date(),
       })

@@ -344,8 +344,23 @@ EOF`
                       statusMsg = `\n\nRunning command`
                     } else if (toolName === 'listDirectoryToolCall') {
                       statusMsg = `\n\nListing directory`
+                    } else if (toolName === 'shellToolCall') {
+                      // Extract command from shell tool call
+                      const command = parsed.tool_call?.shellToolCall?.args?.command || 'command'
+                      statusMsg = `\n\nRunning: ${command}`
+                    } else if (toolName === 'grepToolCall') {
+                      const pattern = parsed.tool_call?.grepToolCall?.args?.pattern || 'pattern'
+                      statusMsg = `\n\nSearching for: ${pattern}`
+                    } else if (toolName === 'semSearchToolCall') {
+                      const query = parsed.tool_call?.semSearchToolCall?.args?.query || 'code'
+                      statusMsg = `\n\nSearching codebase: ${query}`
+                    } else if (toolName === 'globToolCall') {
+                      const pattern = parsed.tool_call?.globToolCall?.args?.glob_pattern || 'files'
+                      statusMsg = `\n\nFinding files: ${pattern}`
                     } else {
-                      statusMsg = `\n\nExecuting ${toolName}`
+                      // For any other tool calls, show a generic message without the "ToolCall" suffix
+                      const cleanToolName = toolName.replace(/ToolCall$/, '')
+                      statusMsg = `\n\nExecuting ${cleanToolName}`
                     }
 
                     if (statusMsg) {

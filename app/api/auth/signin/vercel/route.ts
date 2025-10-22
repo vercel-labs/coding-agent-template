@@ -17,7 +17,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     state,
     CodeChallengeMethod.S256,
     verifier,
-    [], // Vercel will use default scopes
+    [], // Vercel uses default scopes
   )
 
   const store = await cookies()

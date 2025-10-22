@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/page-header'
@@ -17,10 +18,39 @@ import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
 
+// Template configuration
+const REPO_TEMPLATES = [
+  {
+    id: 'none',
+    name: 'None',
+    description: 'Create an empty repository',
+  },
+  {
+    id: 'nextjs-boilerplate',
+    name: 'Next.js Boilerplate',
+    description: 'Next.js starter from Vercel',
+    sourceRepo: 'https://github.com/vercel/vercel',
+    sourceFolder: 'examples/nextjs',
+  },
+] as const
+
+interface Organization {
+  login: string
+  name: string
+  avatar_url: string
+}
+
+interface VercelScope {
+  id: string
+  slug: string
+  name: string
+  type: 'personal' | 'team'
+}
+
 export default function NewRepoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const owner = searchParams.get('owner') || ''
+  const ownerParam = searchParams.get('owner') || ''
   const { toggleSidebar } = useTasks()
   const session = useAtomValue(sessionAtom)
 
@@ -28,6 +58,83 @@ export default function NewRepoPage() {
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoPrivate, setNewRepoPrivate] = useState(true)
+  const [selectedTemplate, setSelectedTemplate] = useState('nextjs-boilerplate')
+  const [selectedOwner, setSelectedOwner] = useState(ownerParam || session.user?.username || '')
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [isLoadingOrgs, setIsLoadingOrgs] = useState(true)
+
+  // Vercel-specific state
+  const [vercelScopes, setVercelScopes] = useState<VercelScope[]>([])
+  const [selectedVercelScope, setSelectedVercelScope] = useState('')
+  const [vercelProjectName, setVercelProjectName] = useState('')
+  const [isLoadingVercelScopes, setIsLoadingVercelScopes] = useState(false)
+
+  // Fetch organizations when component mounts
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const response = await fetch('/api/github/orgs')
+        if (response.ok) {
+          const orgs = await response.json()
+          setOrganizations(orgs)
+        }
+      } catch (error) {
+        console.error('Error fetching organizations:', error)
+      } finally {
+        setIsLoadingOrgs(false)
+      }
+    }
+
+    if (session.user) {
+      fetchOrganizations()
+    } else {
+      setIsLoadingOrgs(false)
+    }
+  }, [session.user])
+
+  // Fetch Vercel scopes when user is logged in via Vercel
+  useEffect(() => {
+    const fetchVercelScopes = async () => {
+      setIsLoadingVercelScopes(true)
+      try {
+        const response = await fetch('/api/vercel/teams')
+        if (response.ok) {
+          const data = await response.json()
+          setVercelScopes(data.scopes || [])
+          // Set default scope to personal account
+          if (data.scopes && data.scopes.length > 0) {
+            setSelectedVercelScope(data.scopes[0].id)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching Vercel scopes:', error)
+      } finally {
+        setIsLoadingVercelScopes(false)
+      }
+    }
+
+    if (session.authProvider === 'vercel') {
+      fetchVercelScopes()
+    }
+  }, [session.authProvider])
+
+  // Update selected owner when ownerParam or session changes
+  useEffect(() => {
+    if (ownerParam) {
+      setSelectedOwner(ownerParam)
+    } else if (session.user?.username) {
+      setSelectedOwner(session.user.username)
+    } else {
+      setSelectedOwner('')
+    }
+  }, [ownerParam, session.user])
+
+  // Update Vercel project name to match repo name by default
+  useEffect(() => {
+    if (session.authProvider === 'vercel') {
+      setVercelProjectName(newRepoName)
+    }
+  }, [newRepoName, session.authProvider])
 
   const handleCreateRepo = async () => {
     if (!newRepoName.trim()) {
@@ -37,6 +144,8 @@ export default function NewRepoPage() {
 
     setIsCreatingRepo(true)
     try {
+      const template = REPO_TEMPLATES.find((t) => t.id === selectedTemplate)
+
       const response = await fetch('/api/github/repos/create', {
         method: 'POST',
         headers: {
@@ -46,7 +155,16 @@ export default function NewRepoPage() {
           name: newRepoName.trim(),
           description: newRepoDescription.trim(),
           private: newRepoPrivate,
-          owner: owner,
+          owner: selectedOwner,
+          template: template && template.id !== 'none' ? template : undefined,
+          // Include Vercel project data if user is authenticated with Vercel
+          vercel:
+            session.authProvider === 'vercel' && selectedVercelScope && vercelProjectName
+              ? {
+                  teamId: selectedVercelScope,
+                  projectName: vercelProjectName.trim(),
+                }
+              : undefined,
         }),
       })
 
@@ -56,8 +174,8 @@ export default function NewRepoPage() {
         toast.success('Repository created successfully')
 
         // Clear repos cache for current owner
-        if (owner) {
-          localStorage.removeItem(`github-repos-${owner}`)
+        if (selectedOwner) {
+          localStorage.removeItem(`github-repos-${selectedOwner}`)
         }
 
         // Redirect to home page and reload to refresh repos list
@@ -118,10 +236,42 @@ export default function NewRepoPage() {
         <div className="container max-w-2xl mx-auto">
           <div className="mb-6">
             <h1 className="text-3xl font-bold tracking-tight">Create New Repository</h1>
-            <p className="text-muted-foreground mt-2">Create a new GitHub repository{owner ? ` for ${owner}` : ''}.</p>
+            <p className="text-muted-foreground mt-2">
+              Create a new GitHub repository{selectedOwner ? ` for ${selectedOwner}` : ''}.
+            </p>
           </div>
 
           <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="repo-owner">Owner *</Label>
+              <Select value={selectedOwner} onValueChange={setSelectedOwner} disabled={isCreatingRepo || isLoadingOrgs}>
+                <SelectTrigger id="repo-owner" className="w-full">
+                  <SelectValue placeholder={isLoadingOrgs ? 'Loading...' : 'Select owner'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {session.user && (
+                    <SelectItem value={session.user.username}>
+                      <div className="flex items-center gap-2">
+                        <img src={session.user.avatar} alt={session.user.username} className="w-5 h-5 rounded-full" />
+                        <span>{session.user.username}</span>
+                      </div>
+                    </SelectItem>
+                  )}
+                  {organizations.map((org) => (
+                    <SelectItem key={org.login} value={org.login}>
+                      <div className="flex items-center gap-2">
+                        <img src={org.avatar_url} alt={org.login} className="w-5 h-5 rounded-full" />
+                        <span>{org.login}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose which account or organization will own this repository.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="repo-name">Repository Name *</Label>
               <Input
@@ -152,6 +302,28 @@ export default function NewRepoPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="repo-template">Template</Label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate} disabled={isCreatingRepo}>
+                <SelectTrigger id="repo-template" className="w-full">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPO_TEMPLATES.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{template.name}</span>
+                        <span className="text-xs text-muted-foreground">{template.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose a template to start with pre-configured code, or None for an empty repository.
+              </p>
+            </div>
+
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="space-y-0.5">
                 <Label htmlFor="repo-private" className="text-sm font-medium">
@@ -166,6 +338,61 @@ export default function NewRepoPage() {
                 disabled={isCreatingRepo}
               />
             </div>
+
+            {/* Vercel Project Section - Only shown for Vercel users */}
+            {session.authProvider === 'vercel' && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">Vercel Project</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Optionally configure a Vercel project for this repository.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vercel-scope">Vercel Scope</Label>
+                  <Select
+                    value={selectedVercelScope}
+                    onValueChange={setSelectedVercelScope}
+                    disabled={isCreatingRepo || isLoadingVercelScopes}
+                  >
+                    <SelectTrigger id="vercel-scope" className="w-full">
+                      <SelectValue placeholder={isLoadingVercelScopes ? 'Loading...' : 'Select scope'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vercelScopes.map((scope) => (
+                        <SelectItem key={scope.id} value={scope.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {scope.type === 'personal' ? '👤' : '👥'}
+                            </span>
+                            <span>{scope.name}</span>
+                            <span className="text-xs text-muted-foreground">({scope.slug})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Choose which Vercel account or team will own this project.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vercel-project-name">Vercel Project Name</Label>
+                  <Input
+                    id="vercel-project-name"
+                    placeholder="my-awesome-project"
+                    value={vercelProjectName}
+                    onChange={(e) => setVercelProjectName(e.target.value)}
+                    disabled={isCreatingRepo}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The name of your Vercel project. Defaults to the repository name.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={handleCancel} disabled={isCreatingRepo}>

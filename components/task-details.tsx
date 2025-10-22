@@ -1926,16 +1926,100 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 </div>
               ) : activeTab === 'preview' ? (
                 <div className="h-full pb-3">
-                  <div className="bg-card rounded-md border overflow-hidden h-full">
+                  <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
+                    {/* Preview Toolbar */}
+                    <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
+                      <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      {task.sandboxUrl ? (
+                        <a
+                          href={task.sandboxUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-muted-foreground hover:text-foreground truncate flex-1 transition-colors"
+                          title={task.sandboxUrl}
+                        >
+                          {task.sandboxUrl}
+                        </a>
+                      ) : (
+                        <span className="text-sm text-muted-foreground truncate flex-1">Sandbox not running</span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPreviewKey((prev) => prev + 1)}
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                        title="Refresh Preview"
+                        disabled={!task.sandboxUrl}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 flex-shrink-0"
+                            disabled={isRestartingDevServer || isStoppingSandbox || isStartingSandbox}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {task.keepAlive && (
+                            <>
+                              {task.sandboxUrl ? (
+                                <DropdownMenuItem onClick={handleStopSandbox} disabled={isStoppingSandbox}>
+                                  {isStoppingSandbox ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Stopping...
+                                    </>
+                                  ) : (
+                                    'Stop Sandbox'
+                                  )}
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={handleStartSandbox} disabled={isStartingSandbox}>
+                                  {isStartingSandbox ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Starting...
+                                    </>
+                                  ) : (
+                                    'Start Sandbox'
+                                  )}
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
+                          <DropdownMenuItem
+                            onClick={handleRestartDevServer}
+                            disabled={isRestartingDevServer || !task.sandboxUrl}
+                          >
+                            {isRestartingDevServer ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Restarting...
+                              </>
+                            ) : (
+                              'Restart Dev Server'
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                     {task.sandboxUrl ? (
-                      <iframe
-                        src={task.sandboxUrl}
-                        className="w-full h-full border-0"
-                        title="Preview"
-                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-                      />
+                      <div className="overflow-y-auto flex-1">
+                        <iframe
+                          key={previewKey}
+                          src={task.sandboxUrl}
+                          className="w-full h-full border-0"
+                          title="Preview"
+                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                        />
+                      </div>
                     ) : (
-                      <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-6 text-center">
+                      <div className="flex items-center justify-center flex-1 text-muted-foreground text-sm p-6 text-center">
                         <div>
                           <p className="mb-1">Sandbox not running</p>
                           <p className="text-xs mb-4">
