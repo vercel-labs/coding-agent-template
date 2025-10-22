@@ -55,13 +55,14 @@ interface TaskFormProps {
 }
 
 const CODING_AGENTS = [
+  { value: 'multi-agent', label: 'Compare', icon: Users, isLogo: false },
+  { value: 'divider', label: '', icon: () => null, isLogo: false, isDivider: true },
   { value: 'claude', label: 'Claude', icon: Claude, isLogo: true },
   { value: 'codex', label: 'Codex', icon: Codex, isLogo: true },
   { value: 'copilot', label: 'Copilot', icon: Copilot, isLogo: true },
   { value: 'cursor', label: 'Cursor', icon: Cursor, isLogo: true },
   { value: 'gemini', label: 'Gemini', icon: Gemini, isLogo: true },
   { value: 'opencode', label: 'opencode', icon: OpenCode, isLogo: true },
-  { value: 'multi-agent', label: 'Multi-Agent', icon: Users, isLogo: false },
 ] as const
 
 // Model options for each agent
@@ -215,7 +216,10 @@ export function TaskForm({
   // Load saved agent, model, and options on mount, and focus the prompt input
   useEffect(() => {
     const savedAgent = localStorage.getItem('last-selected-agent')
-    if (savedAgent && CODING_AGENTS.some((agent) => agent.value === savedAgent)) {
+    if (
+      savedAgent &&
+      CODING_AGENTS.some((agent) => agent.value === savedAgent && !('isDivider' in agent && agent.isDivider))
+    ) {
       setSelectedAgent(savedAgent)
 
       // Load saved model for this agent
@@ -450,14 +454,19 @@ export function TaskForm({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {CODING_AGENTS.map((agent) => (
-                      <SelectItem key={agent.value} value={agent.value}>
-                        <div className="flex items-center gap-2">
-                          <agent.icon className="w-4 h-4" />
-                          <span>{agent.label}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {CODING_AGENTS.map((agent) => {
+                      if ('isDivider' in agent && agent.isDivider) {
+                        return <div key={agent.value} className="h-px bg-border my-1" />
+                      }
+                      return (
+                        <SelectItem key={agent.value} value={agent.value}>
+                          <div className="flex items-center gap-2">
+                            <agent.icon className="w-4 h-4" />
+                            <span>{agent.label}</span>
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
 
