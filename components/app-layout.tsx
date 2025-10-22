@@ -223,6 +223,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
     repoUrl: string
     selectedAgent: string
     selectedModel: string
+    selectedModels?: string[]
     installDependencies: boolean
     maxDuration: number
   }) => {
@@ -234,6 +235,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       repoUrl: taskData.repoUrl,
       selectedAgent: taskData.selectedAgent,
       selectedModel: taskData.selectedModel,
+      selectedModels: taskData.selectedModels ?? null,
       installDependencies: taskData.installDependencies,
       maxDuration: taskData.maxDuration,
       keepAlive: false,

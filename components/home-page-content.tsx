@@ -84,6 +84,7 @@ export function HomePageContent({
     repoUrl: string
     selectedAgent: string
     selectedModel: string
+    selectedModels?: string[]
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean

@@ -40,6 +40,7 @@ interface TaskFormProps {
     repoUrl: string
     selectedAgent: string
     selectedModel: string
+    selectedModels?: string[]
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
@@ -313,6 +314,7 @@ export function TaskForm({
         repoUrl: '',
         selectedAgent,
         selectedModel,
+        selectedModels: selectedAgent === 'multi-agent' ? selectedModels : undefined,
         installDependencies,
         maxDuration,
         keepAlive,
@@ -356,6 +358,7 @@ export function TaskForm({
       repoUrl: selectedRepoData?.clone_url || '',
       selectedAgent,
       selectedModel,
+      selectedModels: selectedAgent === 'multi-agent' ? selectedModels : undefined,
       installDependencies,
       maxDuration,
       keepAlive,

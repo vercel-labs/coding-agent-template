@@ -82,6 +82,7 @@ export const tasks = pgTable('tasks', {
   repoUrl: text('repo_url'),
   selectedAgent: text('selected_agent').default('claude'),
   selectedModel: text('selected_model'),
+  selectedModels: jsonb('selected_models').$type<string[]>(),
   installDependencies: boolean('install_dependencies').default(false),
   maxDuration: integer('max_duration').default(parseInt(process.env.MAX_SANDBOX_DURATION || '300', 10)),
   keepAlive: boolean('keep_alive').default(false),
@@ -117,8 +118,11 @@ export const insertTaskSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   prompt: z.string().min(1, 'Prompt is required'),
   repoUrl: z.string().url('Must be a valid URL').optional(),
-  selectedAgent: z.enum(['claude', 'codex', 'copilot', 'cursor', 'gemini', 'opencode']).default('claude'),
+  selectedAgent: z
+    .enum(['claude', 'codex', 'copilot', 'cursor', 'gemini', 'opencode', 'multi-agent'])
+    .default('claude'),
   selectedModel: z.string().optional(),
+  selectedModels: z.array(z.string()).optional(),
   installDependencies: z.boolean().default(false),
   maxDuration: z.number().default(parseInt(process.env.MAX_SANDBOX_DURATION || '300', 10)),
   keepAlive: z.boolean().default(false),
@@ -149,6 +153,7 @@ export const selectTaskSchema = z.object({
   repoUrl: z.string().nullable(),
   selectedAgent: z.string().nullable(),
   selectedModel: z.string().nullable(),
+  selectedModels: z.array(z.string()).nullable(),
   installDependencies: z.boolean().nullable(),
   maxDuration: z.number().nullable(),
   keepAlive: z.boolean().nullable(),
