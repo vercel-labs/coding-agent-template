@@ -382,7 +382,10 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                                   'bg-gradient-to-r from-muted-foreground from-20% via-white via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]',
                               )}
                             >
-                              {task.prompt.slice(0, 50) + (task.prompt.length > 50 ? '...' : '')}
+                              {(() => {
+                                const displayText = task.title || task.prompt
+                                return displayText.slice(0, 50) + (displayText.length > 50 ? '...' : '')
+                              })()}
                             </h3>
                             {task.status === 'error' && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
                             {task.status === 'stopped' && (
