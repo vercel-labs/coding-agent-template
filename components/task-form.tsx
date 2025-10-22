@@ -468,20 +468,25 @@ export function TaskForm({
                                 return (
                                   <CommandItem
                                     key={`${agent.value}-${model.value}`}
-                                    onSelect={() => {
-                                      if (isSelected) {
+                                    value={`${agent.value}-${model.value}`}
+                                    onSelect={(value) => {
+                                      const [selectedAgent, selectedModel] = value.split('-', 2)
+                                      const isCurrentlySelected = selectedAgents.some(
+                                        (pair) => pair.agent === selectedAgent && pair.model === selectedModel,
+                                      )
+                                      if (isCurrentlySelected) {
                                         // Only remove if not the last one
                                         if (selectedAgents.length > 1) {
                                           setSelectedAgents(
                                             selectedAgents.filter(
-                                              (pair) => !(pair.agent === agent.value && pair.model === model.value),
+                                              (pair) => !(pair.agent === selectedAgent && pair.model === selectedModel),
                                             ),
                                           )
                                         }
                                       } else {
                                         setSelectedAgents([
                                           ...selectedAgents,
-                                          { agent: agent.value, model: model.value },
+                                          { agent: selectedAgent, model: selectedModel },
                                         ])
                                       }
                                     }}
