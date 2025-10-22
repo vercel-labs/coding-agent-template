@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, startTransition } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -137,7 +137,10 @@ export function RevertCommitDialog({
       // Check if current model exists for the new agent, otherwise use default
       const modelExists = agentModels?.some((m) => m.value === selectedModel)
       if (!modelExists) {
-        setSelectedModel(defaultModel)
+        // Use startTransition to defer state update
+        startTransition(() => {
+          setSelectedModel(defaultModel)
+        })
       }
     }
   }, [selectedAgent, selectedModel])
