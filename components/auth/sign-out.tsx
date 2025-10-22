@@ -82,12 +82,12 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
     }
   }
 
-  useEffect(() => {
-    fetchRateLimit()
-  }, [])
-
   return (
-    <DropdownMenu onOpenChange={(open) => open && fetchRateLimit()}>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open) void fetchRateLimit()
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <button
           type="button"

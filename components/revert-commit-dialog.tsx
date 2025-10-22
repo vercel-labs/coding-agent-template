@@ -129,18 +129,11 @@ export function RevertCommitDialog({
   const [keepAlive, setKeepAlive] = useState(false)
   const [isReverting, setIsReverting] = useState(false)
 
-  // Update model when agent changes
-  useEffect(() => {
-    if (selectedAgent) {
-      const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
-      const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
-      // Check if current model exists for the new agent, otherwise use default
-      const modelExists = agentModels?.some((m) => m.value === selectedModel)
-      if (!modelExists) {
-        setSelectedModel(defaultModel)
-      }
-    }
-  }, [selectedAgent, selectedModel])
+  // Derive the actual model to use based on agent compatibility
+  const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
+  const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
+  const modelExists = agentModels?.some((m) => m.value === selectedModel)
+  const actualModel = modelExists ? selectedModel : defaultModel
 
   const handleRevert = () => {
     if (!commit) return
@@ -149,7 +142,7 @@ export function RevertCommitDialog({
     onRevert({
       commit,
       selectedAgent,
-      selectedModel,
+      selectedModel: actualModel,
       installDependencies,
       maxDuration,
       keepAlive,
@@ -195,7 +188,7 @@ export function RevertCommitDialog({
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">Model</label>
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <Select value={actualModel} onValueChange={setSelectedModel}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a model" />
                 </SelectTrigger>

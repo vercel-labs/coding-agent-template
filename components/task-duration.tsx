@@ -9,7 +9,7 @@ interface TaskDurationProps {
 }
 
 export function TaskDuration({ task, hideTitle = false }: TaskDurationProps) {
-  const [currentTime, setCurrentTime] = useState(Date.now())
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
 
   useEffect(() => {
     // Only set up interval if task is still running
