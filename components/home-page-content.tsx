@@ -63,6 +63,29 @@ export function HomePageContent({
     }
   }, [searchParams])
 
+  // Check for newly created repo and select it
+  useEffect(() => {
+    const newlyCreatedRepo = localStorage.getItem('newly-created-repo')
+    if (newlyCreatedRepo) {
+      try {
+        const { owner, repo } = JSON.parse(newlyCreatedRepo)
+        if (owner && repo) {
+          // Set owner and repo directly without triggering the clear logic
+          setSelectedOwnerState(owner)
+          setSelectedOwner(owner)
+          setSelectedRepoState(repo)
+          setSelectedRepo(repo)
+        }
+      } catch (error) {
+        console.error('Error parsing newly created repo:', error)
+      } finally {
+        // Clear the localStorage item after using it
+        localStorage.removeItem('newly-created-repo')
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run only on mount
+
   // Wrapper functions to update both state and cookies
   const handleOwnerChange = (owner: string) => {
     setSelectedOwnerState(owner)

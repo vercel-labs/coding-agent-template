@@ -17,20 +17,49 @@ import { GitHubStarsButton } from '@/components/github-stars-button'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
+import { File } from 'lucide-react'
 
 // Template configuration
 const REPO_TEMPLATES = [
   {
-    id: 'none',
-    name: 'None',
-    description: 'Create an empty repository',
+    id: 'nextjs',
+    name: 'Next.js',
+    description: 'React framework for production',
+    cloneUrl: 'https://github.com/ctate/next-template.git',
+    imageLight: '/templates/nextjs-light.svg',
+    imageDark: '/templates/nextjs-dark.svg',
   },
   {
-    id: 'nextjs-boilerplate',
-    name: 'Next.js Boilerplate',
-    description: 'Next.js starter from Vercel',
-    sourceRepo: 'https://github.com/vercel/vercel',
-    sourceFolder: 'examples/nextjs',
+    id: 'svelte',
+    name: 'Svelte',
+    description: 'Cybernetically enhanced web apps',
+    cloneUrl: 'https://github.com/ctate/svelte-template.git',
+    imageLight: '/templates/svelte.svg',
+    imageDark: '/templates/svelte.svg',
+  },
+  {
+    id: 'nuxt',
+    name: 'Nuxt',
+    description: 'The Intuitive Vue Framework',
+    cloneUrl: 'https://github.com/ctate/nuxt-template.git',
+    imageLight: '/templates/nuxt.svg',
+    imageDark: '/templates/nuxt.svg',
+  },
+  {
+    id: 'hono',
+    name: 'Hono',
+    description: 'Fast, lightweight web framework',
+    cloneUrl: 'https://github.com/ctate/hono-template.git',
+    imageLight: '/templates/hono.svg',
+    imageDark: '/templates/hono.svg',
+  },
+  {
+    id: 'empty',
+    name: 'Empty',
+    description: 'Start with an empty repository',
+    cloneUrl: undefined,
+    imageLight: '/templates/empty.svg',
+    imageDark: '/templates/empty.svg',
   },
 ] as const
 
@@ -51,7 +80,7 @@ export default function NewRepoPage() {
   const [newRepoName, setNewRepoName] = useState('')
   const [newRepoDescription, setNewRepoDescription] = useState('')
   const [newRepoPrivate, setNewRepoPrivate] = useState(true)
-  const [selectedTemplate, setSelectedTemplate] = useState('nextjs-boilerplate')
+  const [selectedTemplate, setSelectedTemplate] = useState('nextjs')
   const [selectedOwner, setSelectedOwner] = useState(ownerParam || session.user?.username || '')
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true)
@@ -110,7 +139,7 @@ export default function NewRepoPage() {
           description: newRepoDescription.trim(),
           private: newRepoPrivate,
           owner: selectedOwner,
-          template: template && template.id !== 'none' ? template : undefined,
+          template: template ? template : undefined,
         }),
       })
 
@@ -119,14 +148,17 @@ export default function NewRepoPage() {
       if (response.ok) {
         toast.success('Repository created successfully')
 
-        // Clear repos cache for current owner
+        // Store the newly created repo info for selection after redirect
+        const [owner, repo] = data.full_name.split('/')
+        localStorage.setItem('newly-created-repo', JSON.stringify({ owner, repo }))
+
+        // Clear repos cache for current owner to force refresh
         if (selectedOwner) {
           localStorage.removeItem(`github-repos-${selectedOwner}`)
         }
 
-        // Redirect to home page and reload to refresh repos list
+        // Redirect to home page
         router.push('/')
-        window.location.reload()
       } else {
         toast.error(data.error || 'Failed to create repository')
       }
@@ -188,38 +220,36 @@ export default function NewRepoPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="repo-owner">Owner *</Label>
-              <Select value={selectedOwner} onValueChange={setSelectedOwner} disabled={isCreatingRepo || isLoadingOrgs}>
-                <SelectTrigger id="repo-owner" className="w-full">
-                  <SelectValue placeholder={isLoadingOrgs ? 'Loading...' : 'Select owner'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {session.user && (
-                    <SelectItem value={session.user.username}>
-                      <div className="flex items-center gap-2">
-                        <img src={session.user.avatar} alt={session.user.username} className="w-5 h-5 rounded-full" />
-                        <span>{session.user.username}</span>
-                      </div>
-                    </SelectItem>
-                  )}
-                  {organizations.map((org) => (
-                    <SelectItem key={org.login} value={org.login}>
-                      <div className="flex items-center gap-2">
-                        <img src={org.avatar_url} alt={org.login} className="w-5 h-5 rounded-full" />
-                        <span>{org.login}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="repo-owner">Owner</Label>
+                <Select value={selectedOwner} onValueChange={setSelectedOwner} disabled={isCreatingRepo || isLoadingOrgs}>
+                  <SelectTrigger id="repo-owner" className="w-full">
+                    <SelectValue placeholder={isLoadingOrgs ? 'Loading...' : 'Select owner'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {session.user && (
+                      <SelectItem value={session.user.username}>
+                        <div className="flex items-center gap-2">
+                          <img src={session.user.avatar} alt={session.user.username} className="w-5 h-5 rounded-full" />
+                          <span>{session.user.username}</span>
+                        </div>
+                      </SelectItem>
+                    )}
+                    {organizations.map((org) => (
+                      <SelectItem key={org.login} value={org.login}>
+                        <div className="flex items-center gap-2">
+                          <img src={org.avatar_url} alt={org.login} className="w-5 h-5 rounded-full" />
+                          <span>{org.login}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Choose which account or organization will own this repository.
-              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="repo-name">Repository Name *</Label>
+              <Label htmlFor="repo-name">Repository Name</Label>
               <Input
                 id="repo-name"
                 placeholder="my-awesome-project"
@@ -233,7 +263,7 @@ export default function NewRepoPage() {
                   }
                 }}
               />
-              <p className="text-xs text-muted-foreground">Use lowercase letters, numbers, hyphens, and underscores.</p>
+            </div>
             </div>
 
             <div className="space-y-2">
@@ -249,34 +279,120 @@ export default function NewRepoPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="repo-template">Template</Label>
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate} disabled={isCreatingRepo}>
-                <SelectTrigger id="repo-template" className="w-full">
-                  <SelectValue placeholder="Select a template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {REPO_TEMPLATES.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">{template.name}</span>
-                        <span className="text-xs text-muted-foreground">{template.description}</span>
+              <Label>Template</Label>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                {REPO_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => setSelectedTemplate(template.id)}
+                    disabled={isCreatingRepo}
+                    className={`relative group transition-all ${
+                      isCreatingRepo ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    }`}
+                  >
+                    {/* Mobile List View */}
+                    <div
+                      className={`md:hidden flex items-center gap-3 p-3 rounded-md border-2 transition-all ${
+                        selectedTemplate === template.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="w-12 h-12 flex items-center justify-center flex-shrink-0 text-foreground">
+                        {template.id === 'empty' ? (
+                          <File className="w-7 h-7" strokeWidth={1} />
+                        ) : (
+                          <>
+                            <img
+                              src={template.imageLight}
+                              alt={template.name}
+                              className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain dark:hidden"
+                            />
+                            <img
+                              src={template.imageDark}
+                              alt={template.name}
+                              className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain hidden dark:block"
+                            />
+                          </>
+                        )}
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Choose a template to start with pre-configured code, or None for an empty repository.
-              </p>
+                      <div className="text-left flex-1">
+                        <div className="font-medium text-sm">{template.name}</div>
+                      </div>
+                      {selectedTemplate === template.id && (
+                        <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="w-3 h-3"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Desktop Card View */}
+                    <div className="hidden md:block">
+                      <div
+                        className={`aspect-video rounded-md overflow-hidden bg-muted mb-2 border-2 transition-all flex items-center justify-center text-foreground ${
+                          selectedTemplate === template.id
+                            ? 'border-primary'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        {template.id === 'empty' ? (
+                          <File className="w-12 h-12" strokeWidth={1} />
+                        ) : (
+                          <>
+                            <img
+                              src={template.imageLight}
+                              alt={template.name}
+                              className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain dark:hidden"
+                            />
+                            <img
+                              src={template.imageDark}
+                              alt={template.name}
+                              className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain hidden dark:block"
+                            />
+                          </>
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <div className="font-medium text-xs text-muted-foreground">{template.name}</div>
+                      </div>
+                      {selectedTemplate === template.id && (
+                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="w-3 h-3"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="space-y-0.5">
-                <Label htmlFor="repo-private" className="text-sm font-medium">
-                  Private repository
-                </Label>
-                <p className="text-xs text-muted-foreground">Choose who can see this repository</p>
-              </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="repo-private" className="text-sm font-medium">
+                Private repository
+              </Label>
               <Switch
                 id="repo-private"
                 checked={newRepoPrivate}
