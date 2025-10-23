@@ -84,6 +84,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
   const [userMessageHeights, setUserMessageHeights] = useState<Record<string, number>>({})
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const [overflowingMessages, setOverflowingMessages] = useState<Set<string>>(new Set())
+  const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   // Track if each tab has been loaded to avoid refetching on tab switch
   const commentsLoadedRef = useRef(false)
@@ -363,15 +365,24 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     const measureHeights = () => {
       const newHeights: Record<string, number> = {}
+      const newOverflowing = new Set<string>()
 
       userMessages.forEach((message) => {
         const el = messageRefs.current[message.id]
+        const contentEl = contentRefs.current[message.id]
+        
         if (el) {
           newHeights[message.id] = el.offsetHeight
+        }
+        
+        // Check if content is overflowing the max-height (72px ~ 4 lines)
+        if (contentEl && contentEl.scrollHeight > 72) {
+          newOverflowing.add(message.id)
         }
       })
 
       setUserMessageHeights(newHeights)
+      setOverflowingMessages(newOverflowing)
     }
 
     // Measure after render
@@ -891,8 +902,13 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                 }}
                 className={`${groupIndex > 0 ? 'mt-4' : ''} sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10`}
               >
-                <Card className="p-2 bg-card rounded-md relative z-10">
-                  <div className="relative max-h-[80px] overflow-hidden">
+                <Card className="px-2 py-2 bg-card rounded-md relative z-10 gap-0.5">
+                  <div
+                    ref={(el) => {
+                      contentRefs.current[group.userMessage.id] = el
+                    }}
+                    className="relative max-h-[72px] overflow-hidden"
+                  >
                     <div className="text-xs">
                       <Streamdown
                         components={{
@@ -931,7 +947,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                         {group.userMessage.content}
                       </Streamdown>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                    {overflowingMessages.has(group.userMessage.id) && (
+                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                    )}
                   </div>
                   <div className="flex items-center gap-0.5 justify-end">
                     <button
