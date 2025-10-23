@@ -435,7 +435,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                   </Link>
                 )
               })}
-              {tasks.length > 10 && (
+              {tasks.length >= 1 && (
                 <div className="pt-1">
                   <Link href="/tasks" onClick={handleNewTaskClick}>
                     <Button variant="ghost" size="sm" className="w-full justify-start h-7 px-2 text-xs">
