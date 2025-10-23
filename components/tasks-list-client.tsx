@@ -391,7 +391,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                 <Card
                   key={task.id}
                   className={cn(
-                    'transition-colors hover:bg-accent cursor-pointer',
+                    'transition-colors hover:bg-accent cursor-pointer p-0',
                     selectedTasks.has(task.id) && 'ring-2 ring-primary',
                   )}
                   onClick={(e) => {
