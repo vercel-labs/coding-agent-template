@@ -20,7 +20,7 @@ import { ApiKeysDialog } from '@/components/api-keys-dialog'
 import { SandboxesDialog } from '@/components/sandboxes-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Key, Server } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getEnabledAuthProviders } from '@/lib/auth/providers'
 
 interface RateLimitInfo {
@@ -65,8 +65,30 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
     }
   }
 
-  // Fetch rate limit info
-  const fetchRateLimit = async () => {
+  // Fetch rate limit info on mount
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const response = await fetch('/api/auth/rate-limit')
+        if (response.ok && mounted) {
+          const data = await response.json()
+          setRateLimit({
+            used: data.used,
+            total: data.total,
+            remaining: data.remaining,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch rate limit:', error)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const fetchRateLimit = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/rate-limit')
       if (response.ok) {
@@ -80,10 +102,6 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
     } catch (error) {
       console.error('Failed to fetch rate limit:', error)
     }
-  }
-
-  useEffect(() => {
-    fetchRateLimit()
   }, [])
 
   return (
