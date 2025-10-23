@@ -17,6 +17,7 @@ import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
 import { generateCommitMessage, createFallbackCommitMessage } from '@/lib/utils/commit-message-generator'
+import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
@@ -193,6 +194,10 @@ async function continueTask(
       await logger.updateProgress(15, 'Creating sandbox environment')
       console.log('Creating sandbox for continuation')
 
+      // Detect the appropriate port for the project
+      const port = await detectPortFromRepo(repoUrl, githubToken)
+      console.log(`Detected port ${port} for project`)
+
       // Create sandbox and checkout the existing branch
       const sandboxResult = await createSandbox(
         {
@@ -205,7 +210,7 @@ async function continueTask(
             : 'agent@example.com',
           apiKeys,
           timeout: `${maxDuration}m`,
-          ports: [3000],
+          ports: [port],
           runtime: 'node22',
           resources: { vcpus: 4 },
           taskPrompt: prompt,
