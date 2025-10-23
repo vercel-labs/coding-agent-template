@@ -848,17 +848,14 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     const displayMessages = messages.slice(-10)
     const hiddenMessagesCount = messages.length - displayMessages.length
 
-    // Group messages by user message boundaries
+    // Group messages by user message boundaries and calculate min-heights
     const messageGroups: { userMessage: TaskMessage; agentMessages: TaskMessage[]; minHeight: number }[] = []
 
     displayMessages.forEach((message) => {
       if (message.role === 'user') {
         messageGroups.push({ userMessage: message, agentMessages: [], minHeight: 0 })
-      } else {
-        // Add agent message to the last group (if exists)
-        if (messageGroups.length > 0) {
-          messageGroups[messageGroups.length - 1].agentMessages.push(message)
-        }
+      } else if (messageGroups.length > 0) {
+        messageGroups[messageGroups.length - 1].agentMessages.push(message)
       }
     })
 
@@ -866,8 +863,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     messageGroups.forEach((group, groupIndex) => {
       let minHeight = 0
       for (let i = groupIndex + 1; i < messageGroups.length; i++) {
-        const laterGroup = messageGroups[i]
-        const height = userMessageHeights[laterGroup.userMessage.id]
+        const height = userMessageHeights[messageGroups[i].userMessage.id]
         if (height !== undefined) {
           minHeight += height + 16 // 16px for mt-4 margin
         }
