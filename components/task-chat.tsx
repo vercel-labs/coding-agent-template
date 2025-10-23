@@ -82,6 +82,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [deployment, setDeployment] = useState<DeploymentInfo | null>(null)
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
+  const [userMessageHeights, setUserMessageHeights] = useState<Record<string, number>>({})
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   // Track if each tab has been loaded to avoid refetching on tab switch
   const commentsLoadedRef = useRef(false)
@@ -351,6 +353,34 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     container.addEventListener('scroll', handleScroll)
     return () => container.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Calculate heights for user messages to create proper sticky stacking
+  useEffect(() => {
+    const displayMessages = messages.slice(-10)
+    const userMessages = displayMessages.filter((m) => m.role === 'user')
+
+    if (userMessages.length === 0) return
+
+    const measureHeights = () => {
+      const newHeights: Record<string, number> = {}
+
+      userMessages.forEach((message) => {
+        const el = messageRefs.current[message.id]
+        if (el) {
+          newHeights[message.id] = el.offsetHeight
+        }
+      })
+
+      setUserMessageHeights(newHeights)
+    }
+
+    // Measure after render
+    setTimeout(measureHeights, 0)
+
+    // Remeasure on window resize
+    window.addEventListener('resize', measureHeights)
+    return () => window.removeEventListener('resize', measureHeights)
+  }, [messages])
 
   // Auto-scroll when messages change if user was at bottom
   useEffect(() => {
@@ -818,6 +848,33 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     const displayMessages = messages.slice(-10)
     const hiddenMessagesCount = messages.length - displayMessages.length
 
+    // Group messages by user message boundaries
+    const messageGroups: { userMessage: TaskMessage; agentMessages: TaskMessage[]; minHeight: number }[] = []
+    
+    displayMessages.forEach((message) => {
+      if (message.role === 'user') {
+        messageGroups.push({ userMessage: message, agentMessages: [], minHeight: 0 })
+      } else {
+        // Add agent message to the last group (if exists)
+        if (messageGroups.length > 0) {
+          messageGroups[messageGroups.length - 1].agentMessages.push(message)
+        }
+      }
+    })
+
+    // Calculate min-height for each group based on subsequent user messages
+    messageGroups.forEach((group, groupIndex) => {
+      let minHeight = 0
+      for (let i = groupIndex + 1; i < messageGroups.length; i++) {
+        const laterGroup = messageGroups[i]
+        const height = userMessageHeights[laterGroup.userMessage.id]
+        if (height !== undefined) {
+          minHeight += height + 16 // 16px for mt-4 margin
+        }
+      }
+      group.minHeight = minHeight
+    })
+
     return (
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
         {hiddenMessagesCount > 0 && (
@@ -825,224 +882,233 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             {hiddenMessagesCount} older message{hiddenMessagesCount !== 1 ? 's' : ''} hidden
           </div>
         )}
-        {displayMessages.map((message, index) => (
-          <div
-            key={message.id}
-            className={`${index > 0 ? 'mt-4' : ''} ${message.role === 'user' ? 'sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10' : ''}`}
-          >
-            {message.role === 'user' ? (
-              <Card className="p-2 bg-card rounded-md relative z-10">
-                <div className="relative max-h-[80px] overflow-hidden">
-                  <div className="text-xs">
-                    <Streamdown
-                      components={{
-                        code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                          <code className={`${className} !text-xs`} {...props}>
-                            {children}
-                          </code>
-                        ),
-                        pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                          <pre className="!text-xs" {...props}>
-                            {children}
-                          </pre>
-                        ),
-                        p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
-                          <p className="text-xs" {...props}>
-                            {children}
-                          </p>
-                        ),
-                        ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-                          <ul className="text-xs list-disc ml-4" {...props}>
-                            {children}
-                          </ul>
-                        ),
-                        ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-                          <ol className="text-xs list-decimal ml-4" {...props}>
-                            {children}
-                          </ol>
-                        ),
-                        li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-                          <li className="text-xs mb-2" {...props}>
-                            {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
-                          </li>
-                        ),
-                      }}
-                    >
-                      {message.content}
-                    </Streamdown>
+        {messageGroups.map((group, groupIndex) => {
+          return (
+            <div
+              key={group.userMessage.id}
+              className="flex flex-col"
+              style={group.minHeight > 0 ? { minHeight: `${group.minHeight}px` } : undefined}
+            >
+              <div
+                ref={(el) => {
+                  messageRefs.current[group.userMessage.id] = el
+                }}
+                className={`${groupIndex > 0 ? 'mt-4' : ''} sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10`}
+              >
+                <Card className="p-2 bg-card rounded-md relative z-10">
+                  <div className="relative max-h-[80px] overflow-hidden">
+                    <div className="text-xs">
+                      <Streamdown
+                        components={{
+                          code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                            <code className={`${className} !text-xs`} {...props}>
+                              {children}
+                            </code>
+                          ),
+                          pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                            <pre className="!text-xs" {...props}>
+                              {children}
+                            </pre>
+                          ),
+                          p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                            <p className="text-xs" {...props}>
+                              {children}
+                            </p>
+                          ),
+                          ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                            <ul className="text-xs list-disc ml-4" {...props}>
+                              {children}
+                            </ul>
+                          ),
+                          ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                            <ol className="text-xs list-decimal ml-4" {...props}>
+                              {children}
+                            </ol>
+                          ),
+                          li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                            <li className="text-xs mb-2" {...props}>
+                              {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                            </li>
+                          ),
+                        }}
+                      >
+                        {group.userMessage.content}
+                      </Streamdown>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-                </div>
-                <div className="flex items-center gap-0.5 justify-end">
-                  <button
-                    onClick={() => handleRetryMessage(message.content)}
-                    disabled={isSending}
-                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => handleCopyMessage(message.id, message.content)}
-                    className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
-                  >
-                    {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  </button>
-                </div>
-              </Card>
-            ) : (
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground px-2">
-                  {!message.content.trim() && (task.status === 'processing' || task.status === 'pending')
-                    ? (() => {
-                        // Find the previous user message to get its createdAt for duration
-                        const messageIndex = displayMessages.findIndex((m) => m.id === message.id)
-                        const previousMessages = displayMessages.slice(0, messageIndex).reverse()
-                        const previousUserMessage = previousMessages.find((m) => m.role === 'user')
-
-                        return (
-                          <div className="opacity-50">
-                            <div className="italic">Generating response...</div>
-                            {previousUserMessage && (
-                              <div className="text-right font-mono opacity-70 mt-1">
-                                {formatDuration(previousUserMessage.createdAt)}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })()
-                    : (() => {
-                        // Determine if this is the last agent message
-                        const agentMessages = displayMessages.filter((m) => m.role === 'agent')
-                        const isLastAgentMessage =
-                          agentMessages.length > 0 && agentMessages[agentMessages.length - 1].id === message.id
-
-                        const isAgentWorking = task.status === 'processing' || task.status === 'pending'
-                        const content = parseAgentMessage(message.content)
-
-                        // Pre-process content to mark the last tool call with a special marker
-                        let processedContent = content
-                        if (isAgentWorking && isLastAgentMessage) {
-                          // Find all tool calls
-                          const toolCallRegex = /\n\n((?:Editing|Reading|Running|Listing|Executing)[^\n]*)/g
-                          const matches = Array.from(content.matchAll(toolCallRegex))
-
-                          if (matches.length > 0) {
-                            // Get the last match
-                            const lastMatch = matches[matches.length - 1]
-                            const lastToolCall = lastMatch[1]
-                            const lastIndex = lastMatch.index! + 2 // +2 for \n\n
-                            const endOfToolCall = lastIndex + lastToolCall.length
-
-                            // Check if there's any non-whitespace content after the last tool call
-                            const contentAfter = content.substring(endOfToolCall).trim()
-
-                            // Only add the shimmer marker if there's no content after it
-                            if (!contentAfter) {
-                              processedContent =
-                                content.substring(0, lastIndex) +
-                                '🔄SHIMMER🔄' +
-                                lastToolCall +
-                                content.substring(endOfToolCall)
-                            }
-                          }
-                        }
-
-                        return (
-                          <Streamdown
-                            components={{
-                              code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                                <code className={`${className} !text-xs`} {...props}>
-                                  {children}
-                                </code>
-                              ),
-                              pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                                <pre className="!text-xs" {...props}>
-                                  {children}
-                                </pre>
-                              ),
-                              p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => {
-                                // Extract text from complex children structures
-                                const childrenArray = Children.toArray(children)
-                                const textParts: string[] = []
-
-                                childrenArray.forEach((child) => {
-                                  if (typeof child === 'string') {
-                                    textParts.push(child)
-                                  } else if (isValidElement(child)) {
-                                    // It's a React element - keep it as-is, don't stringify
-                                    // This will be handled by React
-                                  }
-                                  // Skip plain objects entirely
-                                })
-
-                                const text = textParts.join('')
-                                const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
-                                const isToolCall = /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(
-                                  text,
-                                )
-
-                                // Remove the marker from display
-                                const displayText = text.replace('🔄SHIMMER🔄', '')
-
-                                // If we have React elements, render them; otherwise render the text
-                                const hasReactElements = childrenArray.some((child) => isValidElement(child))
-
-                                return (
-                                  <p
-                                    className={
-                                      isToolCall
-                                        ? hasShimmerMarker
-                                          ? 'bg-gradient-to-r from-muted-foreground from-20% via-foreground/40 via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]'
-                                          : 'text-muted-foreground/60'
-                                        : ''
-                                    }
-                                    {...props}
-                                  >
-                                    {hasReactElements
-                                      ? childrenArray.filter(
-                                          (child) => typeof child === 'string' || isValidElement(child),
-                                        )
-                                      : displayText}
-                                  </p>
-                                )
-                              },
-                              ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-                                <ul className="text-xs list-disc ml-4" {...props}>
-                                  {children}
-                                </ul>
-                              ),
-                              ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-                                <ol className="text-xs list-decimal ml-4" {...props}>
-                                  {children}
-                                </ol>
-                              ),
-                              li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-                                <li className="text-xs mb-2" {...props}>
-                                  {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
-                                </li>
-                              ),
-                            }}
-                          >
-                            {processedContent}
-                          </Streamdown>
-                        )
-                      })()}
-                </div>
-                <div className="flex items-center gap-0.5 justify-end">
-                  {/* Show copy button only when task is complete */}
-                  {task.status !== 'processing' && task.status !== 'pending' && (
+                  <div className="flex items-center gap-0.5 justify-end">
                     <button
-                      onClick={() => handleCopyMessage(message.id, parseAgentMessage(message.content))}
+                      onClick={() => handleRetryMessage(group.userMessage.content)}
+                      disabled={isSending}
+                      className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => handleCopyMessage(group.userMessage.id, group.userMessage.content)}
                       className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
                     >
-                      {copiedMessageId === message.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      {copiedMessageId === group.userMessage.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                     </button>
-                  )}
-                </div>
+                  </div>
+                </Card>
               </div>
-            )}
-          </div>
-        ))}
+
+              {/* Render agent messages in this group */}
+              {group.agentMessages.map((agentMessage) => (
+                <div key={agentMessage.id} className="mt-4">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground px-2">
+                      {!agentMessage.content.trim() && (task.status === 'processing' || task.status === 'pending')
+                        ? (() => {
+                            return (
+                              <div className="opacity-50">
+                                <div className="italic">Generating response...</div>
+                                <div className="text-right font-mono opacity-70 mt-1">
+                                  {formatDuration(group.userMessage.createdAt)}
+                                </div>
+                              </div>
+                            )
+                          })()
+                        : (() => {
+                            // Determine if this is the last agent message
+                            const allAgentMessages = displayMessages.filter((m) => m.role === 'agent')
+                            const isLastAgentMessage =
+                              allAgentMessages.length > 0 &&
+                              allAgentMessages[allAgentMessages.length - 1].id === agentMessage.id
+
+                            const isAgentWorking = task.status === 'processing' || task.status === 'pending'
+                            const content = parseAgentMessage(agentMessage.content)
+
+                            // Pre-process content to mark the last tool call with a special marker
+                            let processedContent = content
+                            if (isAgentWorking && isLastAgentMessage) {
+                              // Find all tool calls
+                              const toolCallRegex = /\n\n((?:Editing|Reading|Running|Listing|Executing)[^\n]*)/g
+                              const matches = Array.from(content.matchAll(toolCallRegex))
+
+                              if (matches.length > 0) {
+                                // Get the last match
+                                const lastMatch = matches[matches.length - 1]
+                                const lastToolCall = lastMatch[1]
+                                const lastIndex = lastMatch.index! + 2 // +2 for \n\n
+                                const endOfToolCall = lastIndex + lastToolCall.length
+
+                                // Check if there's any non-whitespace content after the last tool call
+                                const contentAfter = content.substring(endOfToolCall).trim()
+
+                                // Only add the shimmer marker if there's no content after it
+                                if (!contentAfter) {
+                                  processedContent =
+                                    content.substring(0, lastIndex) +
+                                    '🔄SHIMMER🔄' +
+                                    lastToolCall +
+                                    content.substring(endOfToolCall)
+                                }
+                              }
+                            }
+
+                            return (
+                              <Streamdown
+                                components={{
+                                  code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                                    <code className={`${className} !text-xs`} {...props}>
+                                      {children}
+                                    </code>
+                                  ),
+                                  pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                                    <pre className="!text-xs" {...props}>
+                                      {children}
+                                    </pre>
+                                  ),
+                                  p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => {
+                                    // Extract text from complex children structures
+                                    const childrenArray = Children.toArray(children)
+                                    const textParts: string[] = []
+
+                                    childrenArray.forEach((child) => {
+                                      if (typeof child === 'string') {
+                                        textParts.push(child)
+                                      } else if (isValidElement(child)) {
+                                        // It's a React element - keep it as-is, don't stringify
+                                        // This will be handled by React
+                                      }
+                                      // Skip plain objects entirely
+                                    })
+
+                                    const text = textParts.join('')
+                                    const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
+                                    const isToolCall = /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(
+                                      text,
+                                    )
+
+                                    // Remove the marker from display
+                                    const displayText = text.replace('🔄SHIMMER🔄', '')
+
+                                    // If we have React elements, render them; otherwise render the text
+                                    const hasReactElements = childrenArray.some((child) => isValidElement(child))
+
+                                    return (
+                                      <p
+                                        className={
+                                          isToolCall
+                                            ? hasShimmerMarker
+                                              ? 'bg-gradient-to-r from-muted-foreground from-20% via-foreground/40 via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]'
+                                              : 'text-muted-foreground/60'
+                                            : ''
+                                        }
+                                        {...props}
+                                      >
+                                        {hasReactElements
+                                          ? childrenArray.filter(
+                                              (child) => typeof child === 'string' || isValidElement(child),
+                                            )
+                                          : displayText}
+                                      </p>
+                                    )
+                                  },
+                                  ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                                    <ul className="text-xs list-disc ml-4" {...props}>
+                                      {children}
+                                    </ul>
+                                  ),
+                                  ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                                    <ol className="text-xs list-decimal ml-4" {...props}>
+                                      {children}
+                                    </ol>
+                                  ),
+                                  li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                                    <li className="text-xs mb-2" {...props}>
+                                      {Children.toArray(children).filter(
+                                        (c) => typeof c === 'string' || isValidElement(c),
+                                      )}
+                                    </li>
+                                  ),
+                                }}
+                              >
+                                {processedContent}
+                              </Streamdown>
+                            )
+                          })()}
+                    </div>
+                    <div className="flex items-center gap-0.5 justify-end">
+                      {/* Show copy button only when task is complete */}
+                      {task.status !== 'processing' && task.status !== 'pending' && (
+                        <button
+                          onClick={() => handleCopyMessage(agentMessage.id, parseAgentMessage(agentMessage.content))}
+                          className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
+                        >
+                          {copiedMessageId === agentMessage.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })}
 
         {/* Show "Awaiting response..." or "Awaiting response..." if task is processing and latest message is from user without response */}
         {(task.status === 'processing' || task.status === 'pending') &&
