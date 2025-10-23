@@ -342,15 +342,6 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
             </Link>
           </div>
         </div>
-        {activeTab === 'tasks' && tasks.length > 0 && (
-          <div className="px-1">
-            <Link href="/tasks" onClick={handleNewTaskClick}>
-              <Button variant="ghost" size="sm" className="w-full justify-start h-7 px-2 text-xs">
-                View All Tasks
-              </Button>
-            </Link>
-          </div>
-        )}
       </div>
 
       {/* Tasks Tab Content */}
@@ -363,84 +354,97 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
               </CardContent>
             </Card>
           ) : (
-            tasks.map((task) => {
-              const isActive = pathname === `/tasks/${task.id}`
+            <>
+              {tasks.slice(0, 10).map((task) => {
+                const isActive = pathname === `/tasks/${task.id}`
 
-              return (
-                <Link
-                  key={task.id}
-                  href={`/tasks/${task.id}`}
-                  onClick={() => onTaskSelect(task)}
-                  className={cn('block rounded-lg', isActive && 'ring-1 ring-primary/50 ring-offset-0')}
-                >
-                  <Card
-                    className={cn(
-                      'cursor-pointer transition-colors hover:bg-accent p-0 rounded-lg',
-                      isActive && 'bg-accent',
-                    )}
+                return (
+                  <Link
+                    key={task.id}
+                    href={`/tasks/${task.id}`}
+                    onClick={() => onTaskSelect(task)}
+                    className={cn('block rounded-lg', isActive && 'ring-1 ring-primary/50 ring-offset-0')}
                   >
-                    <CardContent className="px-3 py-2">
-                      <div className="flex gap-2">
-                        {/* Text content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1">
-                            <h3
-                              className={cn(
-                                'text-xs font-medium truncate mb-0.5',
-                                task.status === 'processing' &&
-                                  'bg-gradient-to-r from-muted-foreground from-20% via-white via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]',
+                    <Card
+                      className={cn(
+                        'cursor-pointer transition-colors hover:bg-accent p-0 rounded-lg',
+                        isActive && 'bg-accent',
+                      )}
+                    >
+                      <CardContent className="px-3 py-2">
+                        <div className="flex gap-2">
+                          {/* Text content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <h3
+                                className={cn(
+                                  'text-xs font-medium truncate mb-0.5',
+                                  task.status === 'processing' &&
+                                    'bg-gradient-to-r from-muted-foreground from-20% via-white via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]',
+                                )}
+                              >
+                                {(() => {
+                                  const displayText = task.title || task.prompt
+                                  return displayText.slice(0, 50) + (displayText.length > 50 ? '...' : '')
+                                })()}
+                              </h3>
+                              {task.status === 'error' && (
+                                <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
                               )}
-                            >
-                              {(() => {
-                                const displayText = task.title || task.prompt
-                                return displayText.slice(0, 50) + (displayText.length > 50 ? '...' : '')
-                              })()}
-                            </h3>
-                            {task.status === 'error' && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
-                            {task.status === 'stopped' && (
-                              <AlertCircle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                              {task.status === 'stopped' && (
+                                <AlertCircle className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                              )}
+                            </div>
+                            {task.repoUrl && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+                                {task.prStatus && <PRStatusIcon status={task.prStatus} />}
+                                <span className="truncate">
+                                  {(() => {
+                                    try {
+                                      const url = new URL(task.repoUrl)
+                                      const pathParts = url.pathname.split('/').filter(Boolean)
+                                      if (pathParts.length >= 2) {
+                                        return `${pathParts[0]}/${pathParts[1].replace(/\.git$/, '')}`
+                                      } else {
+                                        return 'Unknown repository'
+                                      }
+                                    } catch {
+                                      return 'Invalid repository URL'
+                                    }
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                            {task.selectedAgent && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                {(() => {
+                                  const AgentLogo = getAgentLogo(task.selectedAgent)
+                                  return AgentLogo ? <AgentLogo className="w-3 h-3" /> : null
+                                })()}
+                                {task.selectedModel && (
+                                  <span className="truncate">
+                                    {getHumanFriendlyModelName(task.selectedAgent, task.selectedModel)}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
-                          {task.repoUrl && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
-                              {task.prStatus && <PRStatusIcon status={task.prStatus} />}
-                              <span className="truncate">
-                                {(() => {
-                                  try {
-                                    const url = new URL(task.repoUrl)
-                                    const pathParts = url.pathname.split('/').filter(Boolean)
-                                    if (pathParts.length >= 2) {
-                                      return `${pathParts[0]}/${pathParts[1].replace(/\.git$/, '')}`
-                                    } else {
-                                      return 'Unknown repository'
-                                    }
-                                  } catch {
-                                    return 'Invalid repository URL'
-                                  }
-                                })()}
-                              </span>
-                            </div>
-                          )}
-                          {task.selectedAgent && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              {(() => {
-                                const AgentLogo = getAgentLogo(task.selectedAgent)
-                                return AgentLogo ? <AgentLogo className="w-3 h-3" /> : null
-                              })()}
-                              {task.selectedModel && (
-                                <span className="truncate">
-                                  {getHumanFriendlyModelName(task.selectedAgent, task.selectedModel)}
-                                </span>
-                              )}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
+              {tasks.length > 10 && (
+                <div className="pt-1">
+                  <Link href="/tasks" onClick={handleNewTaskClick}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-7 px-2 text-xs">
+                      View All Tasks
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

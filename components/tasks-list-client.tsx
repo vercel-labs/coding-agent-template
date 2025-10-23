@@ -7,7 +7,6 @@ import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +18,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, Trash2, Square, StopCircle, CheckSquare, X } from 'lucide-react'
+import { AlertCircle, Trash2, Square, StopCircle, CheckSquare, X, Clock } from 'lucide-react'
 import { GitHubStarsButton } from '@/components/github-stars-button'
 import { User } from '@/components/auth/user'
 import { toast } from 'sonner'
@@ -81,6 +80,23 @@ const AGENT_MODELS = {
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
   ],
 } as const
+
+function getTimeAgo(date: Date): string {
+  const now = new Date()
+  const diffInMs = now.getTime() - new Date(date).getTime()
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+
+  if (diffInMinutes < 1) return 'just now'
+  if (diffInMinutes === 1) return '1 minute ago'
+  if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`
+  if (diffInHours === 1) return '1 hour ago'
+  if (diffInHours < 24) return `${diffInHours} hours ago`
+  if (diffInDays === 1) return 'yesterday'
+  if (diffInDays < 7) return `${diffInDays} days ago`
+  return new Date(date).toLocaleDateString()
+}
 
 export function TasksListClient({ user, authProvider, initialStars = 1056 }: TasksListClientProps) {
   const { toggleSidebar, refreshTasks } = useTasks()
@@ -245,31 +261,6 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
     return modelInfo ? modelInfo.label : model
   }
 
-  const getStatusBadge = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>
-      case 'processing':
-        return <Badge variant="default">Processing</Badge>
-      case 'completed':
-        return (
-          <Badge variant="outline" className="border-green-500 text-green-500">
-            Completed
-          </Badge>
-        )
-      case 'error':
-        return <Badge variant="destructive">Failed</Badge>
-      case 'stopped':
-        return (
-          <Badge variant="outline" className="border-orange-500 text-orange-500">
-            Stopped
-          </Badge>
-        )
-      default:
-        return <Badge variant="secondary">{status}</Badge>
-    }
-  }
-
   const selectedProcessingTasks = Array.from(selectedTasks).filter((taskId) => {
     const task = tasks.find((t) => t.id === taskId)
     return task?.status === 'processing'
@@ -357,14 +348,24 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
               {selectedTasks.size > 0 && (
                 <>
                   {selectedProcessingTasks.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={() => setShowStopDialog(true)} disabled={isStopping}>
-                      <StopCircle className="h-4 w-4 mr-2" />
-                      Stop ({selectedProcessingTasks.length})
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowStopDialog(true)}
+                      disabled={isStopping}
+                      title={`Stop ${selectedProcessingTasks.length} task${selectedProcessingTasks.length > 1 ? 's' : ''}`}
+                    >
+                      <StopCircle className="h-4 w-4" />
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} disabled={isDeleting}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete ({selectedTasks.size})
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                    disabled={isDeleting}
+                    title={`Delete ${selectedTasks.size} task${selectedTasks.size > 1 ? 's' : ''}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </>
               )}
@@ -400,7 +401,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                     router.push(`/tasks/${task.id}`)
                   }}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={selectedTasks.has(task.id)}
@@ -409,42 +410,34 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                         className="mt-1"
                       />
 
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-medium truncate">{task.title || task.prompt}</h3>
-                              {task.status === 'error' && (
-                                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                              )}
-                              {task.status === 'stopped' && (
-                                <AlertCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
-                              )}
-                            </div>
-                            {task.repoUrl && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                {task.prStatus && <PRStatusIcon status={task.prStatus} />}
-                                <span className="truncate">
-                                  {(() => {
-                                    try {
-                                      const url = new URL(task.repoUrl)
-                                      const pathParts = url.pathname.split('/').filter(Boolean)
-                                      if (pathParts.length >= 2) {
-                                        return `${pathParts[0]}/${pathParts[1].replace(/\.git$/, '')}`
-                                      }
-                                      return 'Unknown repository'
-                                    } catch {
-                                      return 'Invalid repository URL'
-                                    }
-                                  })()}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          {getStatusBadge(task.status)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-sm font-medium truncate flex-1">{task.title || task.prompt}</h3>
+                          {task.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
+                          {task.status === 'stopped' && (
+                            <AlertCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                          )}
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        {task.repoUrl && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                            {task.prStatus && <PRStatusIcon status={task.prStatus} />}
+                            <span className="truncate">
+                              {(() => {
+                                try {
+                                  const url = new URL(task.repoUrl)
+                                  const pathParts = url.pathname.split('/').filter(Boolean)
+                                  if (pathParts.length >= 2) {
+                                    return `${pathParts[0]}/${pathParts[1].replace(/\.git$/, '')}`
+                                  }
+                                  return 'Unknown repository'
+                                } catch {
+                                  return 'Invalid repository URL'
+                                }
+                              })()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           {task.selectedAgent && (
                             <div className="flex items-center gap-1">
                               {(() => {
@@ -456,16 +449,11 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                               )}
                             </div>
                           )}
-                          <span>
-                            Created {new Date(task.createdAt).toLocaleDateString()} at{' '}
-                            {new Date(task.createdAt).toLocaleTimeString()}
-                          </span>
-                          {task.completedAt && (
-                            <span>
-                              Completed {new Date(task.completedAt).toLocaleDateString()} at{' '}
-                              {new Date(task.completedAt).toLocaleTimeString()}
-                            </span>
-                          )}
+                          {task.selectedAgent && <span>•</span>}
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{getTimeAgo(task.createdAt)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
