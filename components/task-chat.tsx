@@ -842,10 +842,16 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     const displayMessages = messages.slice(-10)
     const hiddenMessagesCount = messages.length - displayMessages.length
 
-    // Get all user messages and their indices in displayMessages
-    const userMessageIndices = displayMessages
-      .map((msg, idx) => ({ msg, idx }))
-      .filter(({ msg }) => msg.role === 'user')
+    // Get all user messages and calculate cumulative heights for sticky positioning
+    const userMessages = displayMessages.filter((msg) => msg.role === 'user')
+    const userMessageTops = new Map<string, number>()
+    let cumulativeHeight = 0
+    
+    userMessages.forEach((msg) => {
+      userMessageTops.set(msg.id, cumulativeHeight)
+      const height = messageHeights.get(msg.id) || 0
+      cumulativeHeight += height
+    })
 
     return (
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
@@ -858,10 +864,10 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           // Calculate sticky top position for user messages
           let stickyStyles = {}
           if (message.role === 'user') {
-            // All user messages stick at top: 0
+            const topValue = userMessageTops.get(message.id) || 0
             stickyStyles = {
               position: 'sticky' as const,
-              top: 0,
+              top: `${topValue}px`,
               zIndex: 20,
             }
           }
