@@ -365,28 +365,21 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             // Calculate how much to push this element up
             let pushUp = 0
 
-            // Check each subsequent user message
-            for (let i = index + 1; i < userMsgArray.length; i++) {
-              const [, nextElement] = userMsgArray[i]
+            // Check if there's a next user message
+            if (index < userMsgArray.length - 1) {
+              const [nextMsgId, nextElement] = userMsgArray[index + 1]
               const nextTop = nextElement.offsetTop
-              const nextHeight = messageHeights.get(userMsgArray[i][0]) || nextElement.offsetHeight
+              const nextHeight = messageHeights.get(nextMsgId) || nextElement.offsetHeight
 
-              // When scrolling up, check if next message reaches top (position 0 relative to scroll)
-              const nextPositionFromTop = nextTop - scrollTop
+              // Calculate where the next message appears relative to the viewport top
+              const nextPositionFromViewportTop = nextTop - scrollTop
 
-              // If the next message is at or above the top, it should push this message
-              if (nextPositionFromTop <= 0) {
-                // The next message is past the top
-                // Push this message by the amount needed to keep it above the next message
-                const amountPastTop = Math.abs(nextPositionFromTop)
-                pushUp = Math.min(elementHeight, amountPastTop + nextHeight)
-              } else if (nextPositionFromTop < elementHeight) {
-                // The next message is approaching/touching this message at the top
-                pushUp = elementHeight - nextPositionFromTop
+              // If the next message has reached or passed the top (0px)
+              if (nextPositionFromViewportTop <= 0) {
+                // The next message is at or above the top
+                // We need to push this message up by how far the next message has gone past top
+                pushUp = Math.min(elementHeight, Math.abs(nextPositionFromViewportTop))
               }
-
-              // Only consider the immediate next message for pushing
-              if (pushUp > 0) break
             }
 
             newPositions.set(msgId, pushUp)
