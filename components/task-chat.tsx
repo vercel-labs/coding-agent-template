@@ -84,6 +84,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
   const userMessageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [messageHeights, setMessageHeights] = useState<Map<string, number>>(new Map())
+  const [userMessagePositions, setUserMessagePositions] = useState<Map<string, number>>(new Map())
 
   // Track if each tab has been loaded to avoid refetching on tab switch
   const commentsLoadedRef = useRef(false)
@@ -348,11 +349,58 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     const handleScroll = () => {
       wasAtBottomRef.current = isNearBottom()
+
+      // Calculate positions for user messages based on scroll
+      if (activeTab === 'chat') {
+        requestAnimationFrame(() => {
+          const newPositions = new Map<string, number>()
+          const scrollTop = container.scrollTop
+          const userMsgArray = Array.from(userMessageRefs.current.entries())
+
+          userMsgArray.forEach(([msgId, element], index) => {
+            // Get element's position in the document
+            const elementTop = element.offsetTop
+            const elementHeight = messageHeights.get(msgId) || element.offsetHeight
+
+            // Calculate how much to push this element up
+            let pushUp = 0
+
+            // Check each subsequent user message
+            for (let i = index + 1; i < userMsgArray.length; i++) {
+              const [, nextElement] = userMsgArray[i]
+              const nextTop = nextElement.offsetTop
+              const nextHeight = messageHeights.get(userMsgArray[i][0]) || nextElement.offsetHeight
+
+              // When scrolling up, check if next message reaches top (position 0 relative to scroll)
+              const nextPositionFromTop = nextTop - scrollTop
+
+              // If the next message is at or above the top, it should push this message
+              if (nextPositionFromTop <= 0) {
+                // The next message is past the top
+                // Push this message by the amount needed to keep it above the next message
+                const amountPastTop = Math.abs(nextPositionFromTop)
+                pushUp = Math.min(elementHeight, amountPastTop + nextHeight)
+              } else if (nextPositionFromTop < elementHeight) {
+                // The next message is approaching/touching this message at the top
+                pushUp = elementHeight - nextPositionFromTop
+              }
+
+              // Only consider the immediate next message for pushing
+              if (pushUp > 0) break
+            }
+
+            newPositions.set(msgId, pushUp)
+          })
+
+          setUserMessagePositions(newPositions)
+        })
+      }
     }
 
-    container.addEventListener('scroll', handleScroll)
+    handleScroll() // Initial calculation
+    container.addEventListener('scroll', handleScroll, { passive: true })
     return () => container.removeEventListener('scroll', handleScroll)
-  }, [activeTab])
+  }, [activeTab, messageHeights, messages])
 
   // Update message heights when messages change
   useEffect(() => {
@@ -842,17 +890,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     const displayMessages = messages.slice(-10)
     const hiddenMessagesCount = messages.length - displayMessages.length
 
-    // Get all user messages and calculate cumulative heights for sticky positioning
-    const userMessages = displayMessages.filter((msg) => msg.role === 'user')
-    const userMessageTops = new Map<string, number>()
-    let cumulativeHeight = 0
-    
-    userMessages.forEach((msg) => {
-      userMessageTops.set(msg.id, cumulativeHeight)
-      const height = messageHeights.get(msg.id) || 0
-      cumulativeHeight += height
-    })
-
     return (
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
         {hiddenMessagesCount > 0 && (
@@ -861,14 +898,14 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           </div>
         )}
         {displayMessages.map((message, index) => {
-          // Calculate sticky top position for user messages
-          let stickyStyles = {}
+          // Apply transform for user messages: stick to top, but push up when next message arrives
+          let messageStyles = {}
           if (message.role === 'user') {
-            const topValue = userMessageTops.get(message.id) || 0
-            stickyStyles = {
+            const pushAmount = userMessagePositions.get(message.id) || 0
+            messageStyles = {
               position: 'sticky' as const,
-              top: `${topValue}px`,
-              zIndex: 20,
+              top: `${-pushAmount}px`,
+              zIndex: 20 - index, // Earlier messages have lower z-index so they go behind
             }
           }
 
@@ -882,7 +919,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                   userMessageRefs.current.delete(message.id)
                 }
               }}
-              style={stickyStyles}
+              style={messageStyles}
               className={`${index > 0 ? 'mt-4' : ''}`}
             >
               {message.role === 'user' ? (
