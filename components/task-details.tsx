@@ -1246,7 +1246,11 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       <div className="space-y-2 md:space-y-3 pb-3 md:pb-6 border-b pl-3 md:pl-6 pr-3 flex-shrink-0">
         {/* Prompt */}
         <div className="flex items-center gap-2">
-          {prStatus && <PRStatusIcon status={prStatus} className="h-4 w-4 md:h-5 md:w-5" />}
+          {currentStatus === 'processing' ? (
+            <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin text-muted-foreground" />
+          ) : (
+            prStatus && <PRStatusIcon status={prStatus} className="h-4 w-4 md:h-5 md:w-5" />
+          )}
           <p className="text-lg md:text-2xl flex-1 truncate">{task.title || task.prompt}</p>
           {currentStatus === 'completed' && task.repoUrl && task.branchName && (
             <>
