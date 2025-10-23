@@ -850,20 +850,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           </div>
         )}
         {displayMessages.map((message, index) => {
-          // Calculate cumulative top offset for stacking sticky user messages
-          let stickyTop = 0
-          let zIndex = 10
-          if (message.role === 'user') {
-            // Get all previous user messages
-            const previousUserMessages = displayMessages.slice(0, index).filter((m) => m.role === 'user')
-            // Sum up their heights to stack them
-            stickyTop = previousUserMessages.reduce((sum, msg) => {
-              return sum + (messageHeights.get(msg.id) ?? 0)
-            }, 0)
-            // Later messages should have higher z-index so they appear on top and push earlier ones out
-            zIndex = 10 + previousUserMessages.length
-          }
-
           return (
             <div
               key={message.id}
@@ -874,8 +860,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                   userMessageRefs.current.delete(message.id)
                 }
               }}
-              className={`${index > 0 ? 'mt-4' : ''} ${message.role === 'user' ? 'sticky before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10' : ''}`}
-              style={message.role === 'user' ? { top: `${stickyTop}px`, zIndex } : undefined}
+              className={`${index > 0 ? 'mt-4' : ''}`}
             >
               {message.role === 'user' ? (
                 <Card className="p-2 bg-card rounded-md relative z-10">
