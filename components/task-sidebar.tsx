@@ -227,7 +227,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
         style={{ width: `${width}px` }}
       >
         <div className="mb-3 md:mb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             {/* Tabs */}
             <div className="flex items-center gap-1">
               <button
@@ -298,7 +298,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
       style={{ width: `${width}px` }}
     >
       <div className="mb-3 md:mb-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           {/* Tabs */}
           <div className="flex items-center gap-1">
             <button
@@ -342,6 +342,15 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
             </Link>
           </div>
         </div>
+        {activeTab === 'tasks' && tasks.length > 0 && (
+          <div className="px-1">
+            <Link href="/tasks" onClick={handleNewTaskClick}>
+              <Button variant="ghost" size="sm" className="w-full justify-start h-7 px-2 text-xs">
+                View All Tasks
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Tasks Tab Content */}
