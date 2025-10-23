@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Star } from 'lucide-react'
+import { GitHubIcon } from '@/components/icons/github-icon'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 
 const GITHUB_REPO_URL = 'https://github.com/vercel-labs/coding-agent-template'
@@ -22,7 +22,7 @@ export function HomePageMobileFooter({ initialStars = 1056 }: HomePageMobileFoot
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2"
           >
-            <Star className="h-4 w-4" />
+            <GitHubIcon className="h-4 w-4" />
             <span className="text-sm font-medium">{initialStars.toLocaleString()}</span>
           </a>
         </Button>
