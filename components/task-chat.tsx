@@ -629,7 +629,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const renderTabContent = () => {
     if (activeTab === 'deployments') {
       return (
-        <div className="flex-1 overflow-y-auto pb-4">
+        <div className="flex-1 overflow-y-auto pb-4 px-2">
           {loadingDeployment ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -645,7 +645,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               <div className="text-sm md:text-base">{deployment?.message || 'No deployment found'}</div>
             </div>
           ) : (
-            <div className="space-y-2 px-2">
+            <div className="space-y-2">
               <a
                 href={deployment.previewUrl}
                 target="_blank"
@@ -687,7 +687,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       }
 
       return (
-        <div className="flex-1 overflow-y-auto pb-4">
+        <div className="flex-1 overflow-y-auto pb-4 px-2">
           {!task.branchName ? (
             <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
               <div className="text-sm md:text-base">
@@ -709,7 +709,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               <div className="text-sm md:text-base">No checks running</div>
             </div>
           ) : (
-            <div className="space-y-2 px-2">
+            <div className="space-y-2">
               {checkRuns.map((check) => (
                 <a
                   key={check.id}
@@ -739,7 +739,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     if (activeTab === 'comments') {
       return (
-        <div className="flex-1 overflow-y-auto pb-4">
+        <div className="flex-1 overflow-y-auto pb-4 px-2">
           {!task.prNumber ? (
             <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
               <div className="text-sm md:text-base">No pull request yet. Create a PR to see comments here.</div>
@@ -761,7 +761,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           ) : (
             <div className="space-y-4">
               {prComments.map((comment) => (
-                <div key={comment.id} className="px-2">
+                <div key={comment.id}>
                   <div className="flex items-start gap-2 mb-2">
                     <img
                       src={comment.user.avatar_url}
@@ -883,7 +883,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     })
 
     return (
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4 px-2">
         {hiddenMessagesCount > 0 && (
           <div className="text-xs text-center text-muted-foreground opacity-50 mb-4 italic">
             {hiddenMessagesCount} older message{hiddenMessagesCount !== 1 ? 's' : ''} hidden
@@ -977,7 +977,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               {group.agentMessages.map((agentMessage) => (
                 <div key={agentMessage.id} className="mt-4">
                   <div className="space-y-1">
-                    <div className="text-xs text-muted-foreground px-2">
+                    <div className="text-xs text-muted-foreground">
                       {!agentMessage.content.trim() && (task.status === 'processing' || task.status === 'pending')
                         ? (() => {
                             return (
