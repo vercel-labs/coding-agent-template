@@ -191,24 +191,24 @@ export function HomePageHeader({
 
   const actions = (
     <div className="flex items-center gap-2 flex-shrink-0">
-      {/* GitHub Stars Button - Hidden on mobile */}
-      <div className="hidden md:block">
+      {/* GitHub Stars Button - Show on mobile only when logged out, always show on desktop */}
+      <div className={user ? 'hidden md:block' : 'block'}>
         <GitHubStarsButton initialStars={initialStars} />
       </div>
 
-      {/* Deploy to Vercel Button - Hidden on mobile */}
-      <div className="hidden md:block">
+      {/* Deploy to Vercel Button - Show on mobile only when logged out, always show on desktop */}
+      <div className={user ? 'hidden md:block' : 'block'}>
         <Button
           asChild
           variant="outline"
           size="sm"
-          className="h-8 sm:px-3 px-0 sm:w-auto w-8 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
+          className="h-8 px-3 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
         >
           <a href={VERCEL_DEPLOY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
             <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
               <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
             </svg>
-            <span className="hidden sm:inline">Deploy Your Own</span>
+            <span>Deploy Your Own</span>
           </a>
         </Button>
       </div>
