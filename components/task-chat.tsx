@@ -850,7 +850,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     // Group messages by user message boundaries
     const messageGroups: { userMessage: TaskMessage; agentMessages: TaskMessage[]; minHeight: number }[] = []
-    
+
     displayMessages.forEach((message) => {
       if (message.role === 'user') {
         messageGroups.push({ userMessage: message, agentMessages: [], minHeight: 0 })
@@ -949,7 +949,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                       onClick={() => handleCopyMessage(group.userMessage.id, group.userMessage.content)}
                       className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
                     >
-                      {copiedMessageId === group.userMessage.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      {copiedMessageId === group.userMessage.id ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
                     </button>
                   </div>
                 </Card>
@@ -1039,9 +1043,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
                                     const text = textParts.join('')
                                     const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
-                                    const isToolCall = /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(
-                                      text,
-                                    )
+                                    const isToolCall =
+                                      /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(text)
 
                                     // Remove the marker from display
                                     const displayText = text.replace('🔄SHIMMER🔄', '')
@@ -1099,7 +1102,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                           onClick={() => handleCopyMessage(agentMessage.id, parseAgentMessage(agentMessage.content))}
                           className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
                         >
-                          {copiedMessageId === agentMessage.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {copiedMessageId === agentMessage.id ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
                         </button>
                       )}
                     </div>
