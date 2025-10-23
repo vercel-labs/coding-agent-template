@@ -83,8 +83,22 @@ export function HomePageContent({
         localStorage.removeItem('newly-created-repo')
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Run only on mount
+
+  // Check for URL query parameters for owner and repo
+  useEffect(() => {
+    const urlOwner = searchParams.get('owner')
+    const urlRepo = searchParams.get('repo')
+
+    if (urlOwner && urlOwner !== selectedOwner) {
+      setSelectedOwnerState(urlOwner)
+      setSelectedOwner(urlOwner)
+    }
+    if (urlRepo && urlRepo !== selectedRepo) {
+      setSelectedRepoState(urlRepo)
+      setSelectedRepo(urlRepo)
+    }
+  }, [searchParams, selectedOwner, selectedRepo])
 
   // Wrapper functions to update both state and cookies
   const handleOwnerChange = (owner: string) => {
