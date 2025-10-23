@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -36,6 +36,19 @@ export function CreatePRDialog({
   const [title, setTitle] = useState(defaultTitle)
   const [body, setBody] = useState(defaultBody)
   const [isCreating, setIsCreating] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    // Check if the device is mobile
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,6 +116,7 @@ export function CreatePRDialog({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={isCreating}
+                autoFocus={!isMobile}
               />
             </div>
             <div className="grid gap-2">
