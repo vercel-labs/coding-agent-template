@@ -19,7 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { CircleDot, Calendar, MessageSquare, MoreVertical, ListTodo } from 'lucide-react'
+import { User, Calendar, MessageSquare, MoreVertical, ListTodo } from 'lucide-react'
 import { toast } from 'sonner'
 import Claude from '@/components/logos/claude'
 import Codex from '@/components/logos/codex'
@@ -102,6 +102,19 @@ function formatDistanceToNow(date: Date): string {
   if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)} weeks ago`
   if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`
   return `${Math.floor(diffInSeconds / 31536000)} years ago`
+}
+
+function getContrastColor(hexColor: string): string {
+  // Convert hex to RGB
+  const r = parseInt(hexColor.slice(0, 2), 16)
+  const g = parseInt(hexColor.slice(2, 4), 16)
+  const b = parseInt(hexColor.slice(4, 6), 16)
+
+  // Calculate luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+  // Return black for light colors, white for dark colors
+  return luminance > 0.5 ? '#000' : '#fff'
 }
 
 interface Issue {
@@ -243,7 +256,7 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <CircleDot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-2">No Issues Found</h3>
           <p className="text-sm text-muted-foreground">This repository has no open issues.</p>
         </div>
@@ -257,41 +270,62 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
         {issues.map((issue) => (
           <Card key={issue.number} className="p-4 hover:bg-muted/50 transition-colors">
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-1">
-                <CircleDot className={`h-5 w-5 ${issue.state === 'open' ? 'text-green-500' : 'text-purple-500'}`} />
-              </div>
+              <img
+                src={issue.user.avatar_url}
+                alt={issue.user.login}
+                className="h-10 w-10 rounded-full flex-shrink-0"
+              />
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <a
-                    href={issue.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 min-w-0 hover:underline"
-                  >
-                    <p className="font-medium text-sm leading-tight mb-1">{issue.title}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>#{issue.number}</span>
-                      <span>•</span>
-                      <span>
-                        {issue.state === 'open' ? 'opened' : 'closed'} {formatDistanceToNow(new Date(issue.created_at))}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <a href={issue.html_url} target="_blank" rel="noopener noreferrer" className="block">
+                      <p className="font-medium text-sm leading-tight mb-1">
+                        {issue.title} <span className="text-muted-foreground">#{issue.number}</span>
+                      </p>
+                    </a>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {issue.user.login}
                       </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(issue.created_at))}
+                      </span>
+                      {issue.comments > 0 && (
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="h-3 w-3" />
+                          {issue.comments}
+                        </span>
+                      )}
+                      {issue.labels.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          {issue.labels.map((label) => (
+                            <Badge
+                              key={label.name}
+                              className="text-[10px] border-0 px-1.5 py-0"
+                              style={{
+                                backgroundColor: `#${label.color}`,
+                                color: getContrastColor(label.color),
+                              }}
+                            >
+                              {label.name}
+                            </Badge>
+                          ))}
+                        </span>
+                      )}
                     </div>
-                  </a>
+                  </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <Badge
-                      variant={issue.state === 'open' ? 'default' : 'secondary'}
-                      className={`text-xs ${issue.state === 'open' ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                    >
-                      {issue.state === 'open' ? 'Open' : 'Closed'}
-                    </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleCreateTaskFromIssue(issue)}>
                           <ListTodo className="h-4 w-4 mr-2" />
                           Create Task
@@ -299,41 +333,6 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                </div>
-
-                {issue.labels.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {issue.labels.map((label) => (
-                      <Badge
-                        key={label.name}
-                        variant="outline"
-                        className="text-xs"
-                        style={{
-                          borderColor: `#${label.color}`,
-                          backgroundColor: `#${label.color}20`,
-                        }}
-                      >
-                        {label.name}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <img src={issue.user.avatar_url} alt={issue.user.login} className="h-4 w-4 rounded-full" />
-                    {issue.user.login}
-                  </span>
-                  {issue.comments > 0 && (
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" />
-                      {issue.comments}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Updated {formatDistanceToNow(new Date(issue.updated_at))}
-                  </span>
                 </div>
               </div>
             </div>
