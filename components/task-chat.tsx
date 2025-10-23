@@ -370,11 +370,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       userMessages.forEach((message) => {
         const el = messageRefs.current[message.id]
         const contentEl = contentRefs.current[message.id]
-        
+
         if (el) {
           newHeights[message.id] = el.offsetHeight
         }
-        
+
         // Check if content is overflowing the max-height (72px ~ 4 lines)
         if (contentEl && contentEl.scrollHeight > 72) {
           newOverflowing.add(message.id)
