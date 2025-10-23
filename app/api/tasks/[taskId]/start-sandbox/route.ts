@@ -8,7 +8,7 @@ import { getGitHubUser } from '@/lib/github/client'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { registerSandbox, unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
 import { runCommandInSandbox } from '@/lib/sandbox/commands'
-import { detectPackageManager, installDependencies } from '@/lib/sandbox/package-manager'
+import { detectPackageManager, installDependencies, getDevCommandArgs } from '@/lib/sandbox/package-manager'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
 import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
@@ -181,7 +181,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
           const packageManager = await detectPackageManager(sandbox, logger)
           const devCommand = packageManager === 'npm' ? 'npm' : packageManager
-          const devArgs = packageManager === 'npm' ? ['run', 'dev'] : ['dev']
+          const devArgs = await getDevCommandArgs(sandbox, packageManager)
 
           // Start dev server in detached mode (runs in background)
           await sandbox.runCommand({
