@@ -629,43 +629,45 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const renderTabContent = () => {
     if (activeTab === 'deployments') {
       return (
-        <div className="flex-1 overflow-y-auto pb-4 px-2">
-          {loadingDeployment ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : deploymentError ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-destructive mb-2 text-xs md:text-sm">{deploymentError}</p>
+        <div className="flex-1 overflow-y-auto pb-4">
+          <div className="px-2">
+            {loadingDeployment ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            </div>
-          ) : !deployment?.hasDeployment ? (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
-              <div className="text-sm md:text-base">{deployment?.message || 'No deployment found'}</div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <a
-                href={deployment.previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-              >
-                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
-                  <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-                </svg>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">Vercel Preview</div>
-                  <div className="text-xs text-muted-foreground">
-                    {deployment.createdAt
-                      ? `Deployed ${new Date(deployment.createdAt).toLocaleString()}`
-                      : 'Preview deployment'}
-                  </div>
+            ) : deploymentError ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-destructive mb-2 text-xs md:text-sm">{deploymentError}</p>
                 </div>
-              </a>
-            </div>
-          )}
+              </div>
+            ) : !deployment?.hasDeployment ? (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
+                <div className="text-sm md:text-base">{deployment?.message || 'No deployment found'}</div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <a
+                  href={deployment.previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                >
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
+                    <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">Vercel Preview</div>
+                    <div className="text-xs text-muted-foreground">
+                      {deployment.createdAt
+                        ? `Deployed ${new Date(deployment.createdAt).toLocaleString()}`
+                        : 'Preview deployment'}
+                    </div>
+                  </div>
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       )
     }
@@ -687,162 +689,166 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       }
 
       return (
-        <div className="flex-1 overflow-y-auto pb-4 px-2">
-          {!task.branchName ? (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
-              <div className="text-sm md:text-base">
-                No branch yet. GitHub Checks will appear here once a branch is created.
+        <div className="flex-1 overflow-y-auto pb-4">
+          <div className="px-2">
+            {!task.branchName ? (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
+                <div className="text-sm md:text-base">
+                  No branch yet. GitHub Checks will appear here once a branch is created.
+                </div>
               </div>
-            </div>
-          ) : loadingActions ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : actionsError ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-destructive mb-2 text-xs md:text-sm">{actionsError}</p>
+            ) : loadingActions ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            </div>
-          ) : checkRuns.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-              <div className="text-sm md:text-base">No checks running</div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {checkRuns.map((check) => (
-                <a
-                  key={check.id}
-                  href={check.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-                >
-                  {getStatusIcon(check.status, check.conclusion)}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium truncate">{check.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {check.status === 'completed' && check.completed_at
-                        ? `Completed ${new Date(check.completed_at).toLocaleString()}`
-                        : check.status === 'in_progress'
-                          ? 'In progress...'
-                          : 'Queued'}
+            ) : actionsError ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-destructive mb-2 text-xs md:text-sm">{actionsError}</p>
+                </div>
+              </div>
+            ) : checkRuns.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                <div className="text-sm md:text-base">No checks running</div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {checkRuns.map((check) => (
+                  <a
+                    key={check.id}
+                    href={check.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                  >
+                    {getStatusIcon(check.status, check.conclusion)}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate">{check.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {check.status === 'completed' && check.completed_at
+                          ? `Completed ${new Date(check.completed_at).toLocaleString()}`
+                          : check.status === 'in_progress'
+                            ? 'In progress...'
+                            : 'Queued'}
+                      </div>
                     </div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          )}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )
     }
 
     if (activeTab === 'comments') {
       return (
-        <div className="flex-1 overflow-y-auto pb-4 px-2">
-          {!task.prNumber ? (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
-              <div className="text-sm md:text-base">No pull request yet. Create a PR to see comments here.</div>
-            </div>
-          ) : loadingComments ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : commentsError ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-destructive mb-2 text-xs md:text-sm">{commentsError}</p>
+        <div className="flex-1 overflow-y-auto pb-4">
+          <div className="px-2">
+            {!task.prNumber ? (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
+                <div className="text-sm md:text-base">No pull request yet. Create a PR to see comments here.</div>
               </div>
-            </div>
-          ) : prComments.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-              <div className="text-sm md:text-base">No comments yet</div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {prComments.map((comment) => (
-                <div key={comment.id}>
-                  <div className="flex items-start gap-2 mb-2">
-                    <img
-                      src={comment.user.avatar_url}
-                      alt={comment.user.login}
-                      className="w-6 h-6 rounded-full flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold">{comment.user.login}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(comment.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="text-xs text-foreground">
-                        <Streamdown
-                          components={{
-                            code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                              <code className={`${className} !text-xs`} {...props}>
-                                {children}
-                              </code>
-                            ),
-                            pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                              <pre className="!text-xs" {...props}>
-                                {children}
-                              </pre>
-                            ),
-                            p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
-                              <p className="text-xs" {...props}>
-                                {children}
-                              </p>
-                            ),
-                            a: ({ children, href, ...props }: React.ComponentPropsWithoutRef<'a'>) => (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                                {...props}
-                              >
-                                {children}
-                              </a>
-                            ),
-                            ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-                              <ul className="text-xs list-disc ml-4" {...props}>
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-                              <ol className="text-xs list-decimal ml-4" {...props}>
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-                              <li className="text-xs mb-2" {...props}>
-                                {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
-                              </li>
-                            ),
-                          }}
-                        >
-                          {comment.body}
-                        </Streamdown>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
-                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleSendCommentAsFollowUp(comment)}>
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Send as Follow-Up
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+            ) : loadingComments ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : commentsError ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-destructive mb-2 text-xs md:text-sm">{commentsError}</p>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ) : prComments.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                <div className="text-sm md:text-base">No comments yet</div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {prComments.map((comment) => (
+                  <div key={comment.id}>
+                    <div className="flex items-start gap-2 mb-2">
+                      <img
+                        src={comment.user.avatar_url}
+                        alt={comment.user.login}
+                        className="w-6 h-6 rounded-full flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold">{comment.user.login}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(comment.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="text-xs text-foreground">
+                          <Streamdown
+                            components={{
+                              code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                                <code className={`${className} !text-xs`} {...props}>
+                                  {children}
+                                </code>
+                              ),
+                              pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                                <pre className="!text-xs" {...props}>
+                                  {children}
+                                </pre>
+                              ),
+                              p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                                <p className="text-xs" {...props}>
+                                  {children}
+                                </p>
+                              ),
+                              a: ({ children, href, ...props }: React.ComponentPropsWithoutRef<'a'>) => (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                  {...props}
+                                >
+                                  {children}
+                                </a>
+                              ),
+                              ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                                <ul className="text-xs list-disc ml-4" {...props}>
+                                  {children}
+                                </ul>
+                              ),
+                              ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                                <ol className="text-xs list-decimal ml-4" {...props}>
+                                  {children}
+                                </ol>
+                              ),
+                              li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                                <li className="text-xs mb-2" {...props}>
+                                  {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                                </li>
+                              ),
+                            }}
+                          >
+                            {comment.body}
+                          </Streamdown>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
+                            <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleSendCommentAsFollowUp(comment)}>
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Send as Follow-Up
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )
     }
@@ -883,283 +889,289 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     })
 
     return (
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4 px-2">
-        {hiddenMessagesCount > 0 && (
-          <div className="text-xs text-center text-muted-foreground opacity-50 mb-4 italic">
-            {hiddenMessagesCount} older message{hiddenMessagesCount !== 1 ? 's' : ''} hidden
-          </div>
-        )}
-        {messageGroups.map((group, groupIndex) => {
-          return (
-            <div
-              key={group.userMessage.id}
-              className="flex flex-col"
-              style={group.minHeight > 0 ? { minHeight: `${group.minHeight}px` } : undefined}
-            >
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
+        <div className="px-2">
+          {hiddenMessagesCount > 0 && (
+            <div className="text-xs text-center text-muted-foreground opacity-50 mb-4 italic">
+              {hiddenMessagesCount} older message{hiddenMessagesCount !== 1 ? 's' : ''} hidden
+            </div>
+          )}
+          {messageGroups.map((group, groupIndex) => {
+            return (
               <div
-                ref={(el) => {
-                  messageRefs.current[group.userMessage.id] = el
-                }}
-                className={`${groupIndex > 0 ? 'mt-4' : ''} sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10`}
+                key={group.userMessage.id}
+                className="flex flex-col"
+                style={group.minHeight > 0 ? { minHeight: `${group.minHeight}px` } : undefined}
               >
-                <Card className="px-2 py-2 bg-card rounded-md relative z-10 gap-0.5">
-                  <div
-                    ref={(el) => {
-                      contentRefs.current[group.userMessage.id] = el
-                    }}
-                    className="relative max-h-[72px] overflow-hidden"
-                  >
-                    <div className="text-xs">
-                      <Streamdown
-                        components={{
-                          code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                            <code className={`${className} !text-xs`} {...props}>
-                              {children}
-                            </code>
-                          ),
-                          pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                            <pre className="!text-xs" {...props}>
-                              {children}
-                            </pre>
-                          ),
-                          p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
-                            <p className="text-xs" {...props}>
-                              {children}
-                            </p>
-                          ),
-                          ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-                            <ul className="text-xs list-disc ml-4" {...props}>
-                              {children}
-                            </ul>
-                          ),
-                          ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-                            <ol className="text-xs list-decimal ml-4" {...props}>
-                              {children}
-                            </ol>
-                          ),
-                          li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-                            <li className="text-xs mb-2" {...props}>
-                              {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
-                            </li>
-                          ),
-                        }}
-                      >
-                        {group.userMessage.content}
-                      </Streamdown>
-                    </div>
-                    {overflowingMessages.has(group.userMessage.id) && (
-                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-0.5 justify-end">
-                    <button
-                      onClick={() => handleRetryMessage(group.userMessage.content)}
-                      disabled={isSending}
-                      className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
+                <div
+                  ref={(el) => {
+                    messageRefs.current[group.userMessage.id] = el
+                  }}
+                  className={`${groupIndex > 0 ? 'mt-4' : ''} sticky top-0 z-10 before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10`}
+                >
+                  <Card className="px-2 py-2 bg-card rounded-md relative z-10 gap-0.5">
+                    <div
+                      ref={(el) => {
+                        contentRefs.current[group.userMessage.id] = el
+                      }}
+                      className="relative max-h-[72px] overflow-hidden"
                     >
-                      <RotateCcw className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => handleCopyMessage(group.userMessage.id, group.userMessage.content)}
-                      className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
-                    >
-                      {copiedMessageId === group.userMessage.id ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
+                      <div className="text-xs">
+                        <Streamdown
+                          components={{
+                            code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                              <code className={`${className} !text-xs`} {...props}>
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                              <pre className="!text-xs" {...props}>
+                                {children}
+                              </pre>
+                            ),
+                            p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                              <p className="text-xs" {...props}>
+                                {children}
+                              </p>
+                            ),
+                            ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                              <ul className="text-xs list-disc ml-4" {...props}>
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                              <ol className="text-xs list-decimal ml-4" {...props}>
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                              <li className="text-xs mb-2" {...props}>
+                                {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                              </li>
+                            ),
+                          }}
+                        >
+                          {group.userMessage.content}
+                        </Streamdown>
+                      </div>
+                      {overflowingMessages.has(group.userMessage.id) && (
+                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none" />
                       )}
-                    </button>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Render agent messages in this group */}
-              {group.agentMessages.map((agentMessage) => (
-                <div key={agentMessage.id} className="mt-4">
-                  <div className="space-y-1">
-                    <div className="text-xs text-muted-foreground">
-                      {!agentMessage.content.trim() && (task.status === 'processing' || task.status === 'pending')
-                        ? (() => {
-                            return (
-                              <div className="opacity-50">
-                                <div className="italic">Generating response...</div>
-                                <div className="text-right font-mono opacity-70 mt-1">
-                                  {formatDuration(group.userMessage.createdAt)}
-                                </div>
-                              </div>
-                            )
-                          })()
-                        : (() => {
-                            // Determine if this is the last agent message
-                            const allAgentMessages = displayMessages.filter((m) => m.role === 'agent')
-                            const isLastAgentMessage =
-                              allAgentMessages.length > 0 &&
-                              allAgentMessages[allAgentMessages.length - 1].id === agentMessage.id
-
-                            const isAgentWorking = task.status === 'processing' || task.status === 'pending'
-                            const content = parseAgentMessage(agentMessage.content)
-
-                            // Pre-process content to mark the last tool call with a special marker
-                            let processedContent = content
-                            if (isAgentWorking && isLastAgentMessage) {
-                              // Find all tool calls
-                              const toolCallRegex = /\n\n((?:Editing|Reading|Running|Listing|Executing)[^\n]*)/g
-                              const matches = Array.from(content.matchAll(toolCallRegex))
-
-                              if (matches.length > 0) {
-                                // Get the last match
-                                const lastMatch = matches[matches.length - 1]
-                                const lastToolCall = lastMatch[1]
-                                const lastIndex = lastMatch.index! + 2 // +2 for \n\n
-                                const endOfToolCall = lastIndex + lastToolCall.length
-
-                                // Check if there's any non-whitespace content after the last tool call
-                                const contentAfter = content.substring(endOfToolCall).trim()
-
-                                // Only add the shimmer marker if there's no content after it
-                                if (!contentAfter) {
-                                  processedContent =
-                                    content.substring(0, lastIndex) +
-                                    '🔄SHIMMER🔄' +
-                                    lastToolCall +
-                                    content.substring(endOfToolCall)
-                                }
-                              }
-                            }
-
-                            return (
-                              <Streamdown
-                                components={{
-                                  code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                                    <code className={`${className} !text-xs`} {...props}>
-                                      {children}
-                                    </code>
-                                  ),
-                                  pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                                    <pre className="!text-xs" {...props}>
-                                      {children}
-                                    </pre>
-                                  ),
-                                  p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => {
-                                    // Extract text from complex children structures
-                                    const childrenArray = Children.toArray(children)
-                                    const textParts: string[] = []
-
-                                    childrenArray.forEach((child) => {
-                                      if (typeof child === 'string') {
-                                        textParts.push(child)
-                                      } else if (isValidElement(child)) {
-                                        // It's a React element - keep it as-is, don't stringify
-                                        // This will be handled by React
-                                      }
-                                      // Skip plain objects entirely
-                                    })
-
-                                    const text = textParts.join('')
-                                    const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
-                                    const isToolCall =
-                                      /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(text)
-
-                                    // Remove the marker from display
-                                    const displayText = text.replace('🔄SHIMMER🔄', '')
-
-                                    // If we have React elements, render them; otherwise render the text
-                                    const hasReactElements = childrenArray.some((child) => isValidElement(child))
-
-                                    return (
-                                      <p
-                                        className={
-                                          isToolCall
-                                            ? hasShimmerMarker
-                                              ? 'bg-gradient-to-r from-muted-foreground from-20% via-foreground/40 via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]'
-                                              : 'text-muted-foreground/60'
-                                            : ''
-                                        }
-                                        {...props}
-                                      >
-                                        {hasReactElements
-                                          ? childrenArray.filter(
-                                              (child) => typeof child === 'string' || isValidElement(child),
-                                            )
-                                          : displayText}
-                                      </p>
-                                    )
-                                  },
-                                  ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-                                    <ul className="text-xs list-disc ml-4" {...props}>
-                                      {children}
-                                    </ul>
-                                  ),
-                                  ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-                                    <ol className="text-xs list-decimal ml-4" {...props}>
-                                      {children}
-                                    </ol>
-                                  ),
-                                  li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-                                    <li className="text-xs mb-2" {...props}>
-                                      {Children.toArray(children).filter(
-                                        (c) => typeof c === 'string' || isValidElement(c),
-                                      )}
-                                    </li>
-                                  ),
-                                }}
-                              >
-                                {processedContent}
-                              </Streamdown>
-                            )
-                          })()}
                     </div>
                     <div className="flex items-center gap-0.5 justify-end">
-                      {/* Show copy button only when task is complete */}
-                      {task.status !== 'processing' && task.status !== 'pending' && (
-                        <button
-                          onClick={() => handleCopyMessage(agentMessage.id, parseAgentMessage(agentMessage.content))}
-                          className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
-                        >
-                          {copiedMessageId === agentMessage.id ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleRetryMessage(group.userMessage.content)}
+                        disabled={isSending}
+                        className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => handleCopyMessage(group.userMessage.id, group.userMessage.content)}
+                        className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
+                      >
+                        {copiedMessageId === group.userMessage.id ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </button>
                     </div>
-                  </div>
+                  </Card>
                 </div>
-              ))}
-            </div>
-          )
-        })}
 
-        {/* Show "Awaiting response..." or "Awaiting response..." if task is processing and latest message is from user without response */}
-        {(task.status === 'processing' || task.status === 'pending') &&
-          displayMessages.length > 0 &&
-          (() => {
-            const lastMessage = displayMessages[displayMessages.length - 1]
-            // Show placeholder if last message is a user message (no agent response yet)
-            if (lastMessage.role === 'user') {
-              // Check if this is the first user message (sandbox initialization)
-              const userMessages = displayMessages.filter((m) => m.role === 'user')
-              const isFirstMessage = userMessages.length === 1
-              const placeholderText = isFirstMessage ? 'Awaiting response...' : 'Awaiting response...'
+                {/* Render agent messages in this group */}
+                {group.agentMessages.map((agentMessage) => (
+                  <div key={agentMessage.id} className="mt-4">
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted-foreground">
+                        {!agentMessage.content.trim() && (task.status === 'processing' || task.status === 'pending')
+                          ? (() => {
+                              return (
+                                <div className="opacity-50">
+                                  <div className="italic">Generating response...</div>
+                                  <div className="text-right font-mono opacity-70 mt-1">
+                                    {formatDuration(group.userMessage.createdAt)}
+                                  </div>
+                                </div>
+                              )
+                            })()
+                          : (() => {
+                              // Determine if this is the last agent message
+                              const allAgentMessages = displayMessages.filter((m) => m.role === 'agent')
+                              const isLastAgentMessage =
+                                allAgentMessages.length > 0 &&
+                                allAgentMessages[allAgentMessages.length - 1].id === agentMessage.id
 
-              return (
-                <div className="mt-4">
-                  <div className="text-xs text-muted-foreground px-2">
-                    <div className="opacity-50">
-                      <div className="italic">{placeholderText}</div>
-                      <div className="text-right font-mono opacity-70 mt-1">
-                        {formatDuration(lastMessage.createdAt)}
+                              const isAgentWorking = task.status === 'processing' || task.status === 'pending'
+                              const content = parseAgentMessage(agentMessage.content)
+
+                              // Pre-process content to mark the last tool call with a special marker
+                              let processedContent = content
+                              if (isAgentWorking && isLastAgentMessage) {
+                                // Find all tool calls
+                                const toolCallRegex = /\n\n((?:Editing|Reading|Running|Listing|Executing)[^\n]*)/g
+                                const matches = Array.from(content.matchAll(toolCallRegex))
+
+                                if (matches.length > 0) {
+                                  // Get the last match
+                                  const lastMatch = matches[matches.length - 1]
+                                  const lastToolCall = lastMatch[1]
+                                  const lastIndex = lastMatch.index! + 2 // +2 for \n\n
+                                  const endOfToolCall = lastIndex + lastToolCall.length
+
+                                  // Check if there's any non-whitespace content after the last tool call
+                                  const contentAfter = content.substring(endOfToolCall).trim()
+
+                                  // Only add the shimmer marker if there's no content after it
+                                  if (!contentAfter) {
+                                    processedContent =
+                                      content.substring(0, lastIndex) +
+                                      '🔄SHIMMER🔄' +
+                                      lastToolCall +
+                                      content.substring(endOfToolCall)
+                                  }
+                                }
+                              }
+
+                              return (
+                                <Streamdown
+                                  components={{
+                                    code: ({
+                                      className,
+                                      children,
+                                      ...props
+                                    }: React.ComponentPropsWithoutRef<'code'>) => (
+                                      <code className={`${className} !text-xs`} {...props}>
+                                        {children}
+                                      </code>
+                                    ),
+                                    pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                                      <pre className="!text-xs" {...props}>
+                                        {children}
+                                      </pre>
+                                    ),
+                                    p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => {
+                                      // Extract text from complex children structures
+                                      const childrenArray = Children.toArray(children)
+                                      const textParts: string[] = []
+
+                                      childrenArray.forEach((child) => {
+                                        if (typeof child === 'string') {
+                                          textParts.push(child)
+                                        } else if (isValidElement(child)) {
+                                          // It's a React element - keep it as-is, don't stringify
+                                          // This will be handled by React
+                                        }
+                                        // Skip plain objects entirely
+                                      })
+
+                                      const text = textParts.join('')
+                                      const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
+                                      const isToolCall =
+                                        /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(text)
+
+                                      // Remove the marker from display
+                                      const displayText = text.replace('🔄SHIMMER🔄', '')
+
+                                      // If we have React elements, render them; otherwise render the text
+                                      const hasReactElements = childrenArray.some((child) => isValidElement(child))
+
+                                      return (
+                                        <p
+                                          className={
+                                            isToolCall
+                                              ? hasShimmerMarker
+                                                ? 'bg-gradient-to-r from-muted-foreground from-20% via-foreground/40 via-50% to-muted-foreground to-80% bg-clip-text text-transparent bg-[length:300%_100%] animate-[shimmer_1.5s_linear_infinite]'
+                                                : 'text-muted-foreground/60'
+                                              : ''
+                                          }
+                                          {...props}
+                                        >
+                                          {hasReactElements
+                                            ? childrenArray.filter(
+                                                (child) => typeof child === 'string' || isValidElement(child),
+                                              )
+                                            : displayText}
+                                        </p>
+                                      )
+                                    },
+                                    ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                                      <ul className="text-xs list-disc ml-4" {...props}>
+                                        {children}
+                                      </ul>
+                                    ),
+                                    ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                                      <ol className="text-xs list-decimal ml-4" {...props}>
+                                        {children}
+                                      </ol>
+                                    ),
+                                    li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                                      <li className="text-xs mb-2" {...props}>
+                                        {Children.toArray(children).filter(
+                                          (c) => typeof c === 'string' || isValidElement(c),
+                                        )}
+                                      </li>
+                                    ),
+                                  }}
+                                >
+                                  {processedContent}
+                                </Streamdown>
+                              )
+                            })()}
+                      </div>
+                      <div className="flex items-center gap-0.5 justify-end">
+                        {/* Show copy button only when task is complete */}
+                        {task.status !== 'processing' && task.status !== 'pending' && (
+                          <button
+                            onClick={() => handleCopyMessage(agentMessage.id, parseAgentMessage(agentMessage.content))}
+                            className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
+                          >
+                            {copiedMessageId === agentMessage.id ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            }
-            return null
-          })()}
+                ))}
+              </div>
+            )
+          })}
 
-        <div ref={messagesEndRef} />
+          {/* Show "Awaiting response..." or "Awaiting response..." if task is processing and latest message is from user without response */}
+          {(task.status === 'processing' || task.status === 'pending') &&
+            displayMessages.length > 0 &&
+            (() => {
+              const lastMessage = displayMessages[displayMessages.length - 1]
+              // Show placeholder if last message is a user message (no agent response yet)
+              if (lastMessage.role === 'user') {
+                // Check if this is the first user message (sandbox initialization)
+                const userMessages = displayMessages.filter((m) => m.role === 'user')
+                const isFirstMessage = userMessages.length === 1
+                const placeholderText = isFirstMessage ? 'Awaiting response...' : 'Awaiting response...'
+
+                return (
+                  <div className="mt-4">
+                    <div className="text-xs text-muted-foreground">
+                      <div className="opacity-50">
+                        <div className="italic">{placeholderText}</div>
+                        <div className="text-right font-mono opacity-70 mt-1">
+                          {formatDuration(lastMessage.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+              return null
+            })()}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
     )
   }
