@@ -193,7 +193,7 @@ export function RepoCommits({ owner, repo }: RepoCommitsProps) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <a href={commit.html_url} target="_blank" rel="noopener noreferrer" className="block">
-                      <p className="font-medium text-sm leading-tight mb-1 hover:underline">
+                      <p className="font-medium text-sm leading-tight mb-1">
                         {commit.commit.message.split('\n')[0]}
                       </p>
                     </a>
