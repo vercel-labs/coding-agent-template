@@ -7,7 +7,7 @@ import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
-import { detectPackageManager } from '@/lib/sandbox/package-manager'
+import { detectPackageManager, getDevCommandArgs } from '@/lib/sandbox/package-manager'
 import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
 import { runCommandInSandbox } from '@/lib/sandbox/commands'
 import { eq, desc, or, and, isNull } from 'drizzle-orm'
@@ -681,7 +681,7 @@ async function processTask(
                 // Detect package manager and start dev server
                 const packageManager = await detectPackageManager(sandbox!, logger)
                 const devCommand = packageManager === 'npm' ? 'npm' : packageManager
-                const devArgs = packageManager === 'npm' ? ['run', 'dev'] : ['dev']
+                const devArgs = await getDevCommandArgs(sandbox!, packageManager)
 
                 // Start dev server in detached mode (runs in background)
                 await sandbox!.runCommand({

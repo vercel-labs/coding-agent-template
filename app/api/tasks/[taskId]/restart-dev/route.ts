@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { Sandbox } from '@vercel/sandbox'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { runCommandInSandbox } from '@/lib/sandbox/commands'
-import { detectPackageManager } from '@/lib/sandbox/package-manager'
+import { detectPackageManager, getDevCommandArgs } from '@/lib/sandbox/package-manager'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
@@ -72,7 +72,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     // Start the dev server again
     const packageManager = await detectPackageManager(sandbox, logger)
     const devCommand = packageManager === 'npm' ? 'npm' : packageManager
-    const devArgs = packageManager === 'npm' ? ['run', 'dev'] : ['dev']
+    const devArgs = await getDevCommandArgs(sandbox, packageManager)
 
     // Start dev server in detached mode
     await sandbox.runCommand({
