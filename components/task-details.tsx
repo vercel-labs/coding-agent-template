@@ -904,16 +904,16 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
         return
       }
 
-      // Tab management shortcuts (Cmd/Ctrl + W to close, Cmd/Ctrl + 1-9 to switch)
-      if (event.metaKey || event.ctrlKey) {
-        // Close current tab with Cmd/Ctrl + W
+      // Tab management shortcuts (Ctrl + W to close, Ctrl + 1-9 to switch)
+      if (event.ctrlKey && !event.metaKey) {
+        // Close current tab
         if (event.key === 'w' && openTabs.length > 0) {
           event.preventDefault()
           attemptCloseTab(activeTabIndex)
           return
         }
 
-        // Switch to tab 1-9 with Cmd/Ctrl + 1-9
+        // Switch to tab 1-9
         const digit = parseInt(event.key)
         if (digit >= 1 && digit <= 9 && openTabs.length >= digit) {
           event.preventDefault()
