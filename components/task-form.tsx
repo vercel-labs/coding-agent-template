@@ -24,6 +24,7 @@ import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 import { toast } from 'sonner'
 import { useAtom } from 'jotai'
 import { taskPromptAtom } from '@/lib/atoms/task'
+import { useSearchParams } from 'next/navigation'
 
 interface GitHubRepo {
   name: string
@@ -213,24 +214,45 @@ export function TaskForm({
     }
   }
 
+  // Get URL search params
+  const searchParams = useSearchParams()
+
   // Load saved agent, model, and options on mount, and focus the prompt input
   useEffect(() => {
-    const savedAgent = localStorage.getItem('last-selected-agent')
-    if (
-      savedAgent &&
-      CODING_AGENTS.some((agent) => agent.value === savedAgent && !('isDivider' in agent && agent.isDivider))
-    ) {
-      setSelectedAgent(savedAgent)
+    // Check URL params first
+    const urlAgent = searchParams?.get('agent')
+    const urlModel = searchParams?.get('model')
 
-      // Load saved model for this agent
-      const savedModel = localStorage.getItem(`last-selected-model-${savedAgent}`)
-      const agentModels = AGENT_MODELS[savedAgent as keyof typeof AGENT_MODELS]
-      if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
-        setSelectedModel(savedModel)
-      } else {
-        const defaultModel = DEFAULT_MODELS[savedAgent as keyof typeof DEFAULT_MODELS]
-        if (defaultModel) {
-          setSelectedModel(defaultModel)
+    if (
+      urlAgent &&
+      CODING_AGENTS.some((agent) => agent.value === urlAgent && !('isDivider' in agent && agent.isDivider))
+    ) {
+      setSelectedAgent(urlAgent)
+      if (urlModel) {
+        const agentModels = AGENT_MODELS[urlAgent as keyof typeof AGENT_MODELS]
+        if (agentModels?.some((model) => model.value === urlModel)) {
+          setSelectedModel(urlModel)
+        }
+      }
+    } else {
+      // Fall back to localStorage
+      const savedAgent = localStorage.getItem('last-selected-agent')
+      if (
+        savedAgent &&
+        CODING_AGENTS.some((agent) => agent.value === savedAgent && !('isDivider' in agent && agent.isDivider))
+      ) {
+        setSelectedAgent(savedAgent)
+
+        // Load saved model for this agent
+        const savedModel = localStorage.getItem(`last-selected-model-${savedAgent}`)
+        const agentModels = AGENT_MODELS[savedAgent as keyof typeof AGENT_MODELS]
+        if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
+          setSelectedModel(savedModel)
+        } else {
+          const defaultModel = DEFAULT_MODELS[savedAgent as keyof typeof DEFAULT_MODELS]
+          if (defaultModel) {
+            setSelectedModel(defaultModel)
+          }
         }
       }
     }
@@ -241,6 +263,7 @@ export function TaskForm({
     if (textareaRef.current) {
       textareaRef.current.focus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Update model when agent changes

@@ -27,6 +27,7 @@ import {
   StopCircle,
   MoreVertical,
   X,
+  Plus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -64,6 +65,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
 import ConvexIcon from '@/components/icons/convex-icon'
@@ -1367,6 +1369,27 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  // Extract owner and repo from repoUrl
+                  const repoUrl = task.repoUrl || ''
+                  const match = repoUrl.match(/github\.com\/([^/]+)\/([^/]+?)(\.git)?$/)
+                  const owner = match?.[1] || ''
+                  const repo = match?.[2] || ''
+
+                  // Build the URL with query parameters
+                  const params = new URLSearchParams()
+                  if (owner) params.set('owner', owner)
+                  if (repo) params.set('repo', repo)
+                  if (task.selectedAgent) params.set('agent', task.selectedAgent)
+                  if (task.selectedModel) params.set('model', task.selectedModel)
+
+                  router.push(`/?${params.toString()}`)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Task
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Try Again
