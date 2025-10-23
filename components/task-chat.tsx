@@ -83,7 +83,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
   const userMessageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-  const [stickyOffsets, setStickyOffsets] = useState<Map<string, number>>(new Map())
+  const [messageHeights, setMessageHeights] = useState<Map<string, number>>(new Map())
 
   // Track if each tab has been loaded to avoid refetching on tab switch
   const commentsLoadedRef = useRef(false)
@@ -348,63 +348,31 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     const handleScroll = () => {
       wasAtBottomRef.current = isNearBottom()
-
-      // Calculate sticky offsets for stacking user messages
-      if (activeTab !== 'chat') return
-
-      const newOffsets = new Map<string, number>()
-      let accumulatedOffset = 0
-      const userMessageElements = Array.from(userMessageRefs.current.entries())
-
-      userMessageElements.forEach(([msgId, element]) => {
-        const rect = element.getBoundingClientRect()
-        const containerRect = container.getBoundingClientRect()
-        const elementTop = rect.top - containerRect.top + container.scrollTop
-
-        // Check if this message should be sticky
-        if (elementTop <= container.scrollTop + accumulatedOffset) {
-          newOffsets.set(msgId, accumulatedOffset)
-          accumulatedOffset += rect.height
-        } else {
-          newOffsets.set(msgId, 0)
-        }
-      })
-
-      setStickyOffsets(newOffsets)
     }
 
     container.addEventListener('scroll', handleScroll)
     return () => container.removeEventListener('scroll', handleScroll)
   }, [activeTab])
 
-  // Update sticky offsets when messages change
+  // Update message heights when messages change
   useEffect(() => {
     if (activeTab === 'chat') {
-      // Delay to ensure DOM is updated
-      setTimeout(() => {
-        const container = scrollContainerRef.current
-        if (!container) return
-
-        const newOffsets = new Map<string, number>()
-        let accumulatedOffset = 0
-        const userMessageElements = Array.from(userMessageRefs.current.entries())
-
-        userMessageElements.forEach(([msgId, element]) => {
-          const rect = element.getBoundingClientRect()
-          const containerRect = container.getBoundingClientRect()
-          const elementTop = rect.top - containerRect.top + container.scrollTop
-
-          // Check if this message should be sticky
-          if (elementTop <= container.scrollTop + accumulatedOffset) {
-            newOffsets.set(msgId, accumulatedOffset)
-            accumulatedOffset += rect.height
-          } else {
-            newOffsets.set(msgId, 0)
-          }
+      // Use ResizeObserver to track height changes
+      const resizeObserver = new ResizeObserver(() => {
+        const newHeights = new Map<string, number>()
+        userMessageRefs.current.forEach((element, msgId) => {
+          newHeights.set(msgId, element.getBoundingClientRect().height)
         })
+        setMessageHeights(newHeights)
+      })
 
-        setStickyOffsets(newOffsets)
-      }, 50)
+      userMessageRefs.current.forEach((element) => {
+        resizeObserver.observe(element)
+      })
+
+      return () => {
+        resizeObserver.disconnect()
+      }
     }
   }, [messages, activeTab])
 
@@ -882,7 +850,16 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           </div>
         )}
         {displayMessages.map((message, index) => {
-          const stickyTop = message.role === 'user' ? (stickyOffsets.get(message.id) ?? 0) : undefined
+          // Calculate cumulative top offset for stacking sticky user messages
+          let stickyTop = 0
+          if (message.role === 'user') {
+            // Get all previous user messages
+            const previousUserMessages = displayMessages.slice(0, index).filter((m) => m.role === 'user')
+            // Sum up their heights
+            stickyTop = previousUserMessages.reduce((sum, msg) => {
+              return sum + (messageHeights.get(msg.id) ?? 0)
+            }, 0)
+          }
 
           return (
             <div
@@ -895,7 +872,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                 }
               }}
               className={`${index > 0 ? 'mt-4' : ''} ${message.role === 'user' ? 'sticky z-10 before:content-[""] before:absolute before:inset-0 before:bg-background before:-z-10' : ''}`}
-              style={message.role === 'user' && stickyTop !== undefined ? { top: `${stickyTop}px` } : undefined}
+              style={message.role === 'user' ? { top: `${stickyTop}px` } : undefined}
             >
               {message.role === 'user' ? (
                 <Card className="p-2 bg-card rounded-md relative z-10">
