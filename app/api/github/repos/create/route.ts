@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getUserGitHubToken } from '@/lib/github/user-token'
-import { getOAuthToken } from '@/lib/session/get-oauth-token'
-import { createProject } from '@/lib/vercel-client/projects'
 import { Octokit } from '@octokit/rest'
 
 interface RepoTemplate {
   id: string
   name: string
   description: string
-  sourceRepo?: string
-  sourceFolder?: string
+  cloneUrl?: string
+  image?: string
 }
 
 // Helper function to recursively copy files from a directory
@@ -45,9 +43,11 @@ async function copyFilesRecursively(
           const content = await response.text()
 
           // Calculate relative path by removing the base path prefix
-          const relativePath = item.path.startsWith(basePath + '/')
-            ? item.path.substring(basePath.length + 1)
-            : item.name
+          const relativePath = basePath
+            ? item.path.startsWith(basePath + '/')
+              ? item.path.substring(basePath.length + 1)
+              : item.name
+            : item.path
 
           // Create file in new repository
           await octokit.repos.createOrUpdateFileContents({
@@ -74,27 +74,28 @@ async function copyFilesRecursively(
 
 // Helper function to copy files from template repository
 async function populateRepoFromTemplate(octokit: Octokit, repoOwner: string, repoName: string, template: RepoTemplate) {
-  if (!template.sourceRepo || !template.sourceFolder) {
+  if (!template.cloneUrl) {
     return
   }
 
-  // Parse source repository
-  const sourceMatch = template.sourceRepo.match(/github\.com\/([\w-]+)\/([\w-]+)/)
-  if (!sourceMatch) {
-    throw new Error('Invalid source repository URL')
+  // Parse clone URL to get owner and repo name
+  const cloneMatch = template.cloneUrl.match(/github\.com\/([\w-]+)\/([\w-]+?)(?:\.git)?$/)
+  if (!cloneMatch) {
+    throw new Error('Invalid clone URL')
   }
 
-  const [, sourceOwner, sourceRepoName] = sourceMatch
+  const [, sourceOwner, sourceRepoName] = cloneMatch
 
   try {
+    // Get all files from the root of the template repository
     await copyFilesRecursively(
       octokit,
       sourceOwner,
       sourceRepoName,
-      template.sourceFolder,
+      '', // Root path
       repoOwner,
       repoName,
-      template.sourceFolder,
+      '', // Root path
     )
   } catch (error) {
     console.error('Error populating repository from template:', error)
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
     }
 
     // Parse request body
-    const { name, description, private: isPrivate, owner, template, vercel } = await request.json()
+    const { name, description, private: isPrivate, owner, template } = await request.json()
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Repository name is required' }, { status: 400 })
@@ -187,44 +188,13 @@ export async function POST(request: Request) {
       }
 
       // If a template is selected, populate the repository
-      if (template && template.id !== 'none') {
+      if (template) {
         try {
           await populateRepoFromTemplate(octokit, repo.data.owner.login, repo.data.name, template as RepoTemplate)
         } catch (error) {
           console.error('Error populating repository from template:', error)
           // Don't fail the entire operation if template population fails
           // The repository was created successfully, just without template files
-        }
-      }
-
-      // Create Vercel project if requested
-      let vercelProject
-      if (vercel && vercel.teamId && vercel.projectName && session.authProvider === 'vercel') {
-        try {
-          // Get Vercel access token
-          const tokenData = await getOAuthToken(session.user.id, 'vercel')
-          if (tokenData) {
-            vercelProject = await createProject(tokenData.accessToken, vercel.teamId, {
-              name: vercel.projectName,
-              gitRepository: {
-                type: 'github',
-                repo: repo.data.full_name, // Format: "owner/repo"
-              },
-              framework: null, // Let Vercel auto-detect
-            })
-
-            if (vercelProject) {
-              console.log('Successfully created Vercel project')
-            } else {
-              console.error(
-                'Failed to create Vercel project - user may need to reconnect Vercel account with updated permissions',
-              )
-            }
-          }
-        } catch (error) {
-          console.error('Error creating Vercel project:', error)
-          // Don't fail the entire operation if Vercel project creation fails
-          // The repository was created successfully
         }
       }
 
@@ -235,12 +205,6 @@ export async function POST(request: Request) {
         clone_url: repo.data.clone_url,
         html_url: repo.data.html_url,
         private: repo.data.private,
-        vercel_project: vercelProject
-          ? {
-              id: vercelProject.id,
-              name: vercelProject.name,
-            }
-          : undefined,
       })
     } catch (error: unknown) {
       console.error('GitHub API error:', error)
