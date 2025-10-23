@@ -82,6 +82,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [deployment, setDeployment] = useState<DeploymentInfo | null>(null)
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
+  const [commentInput, setCommentInput] = useState('')
+  const [isSendingComment, setIsSendingComment] = useState(false)
 
   // Track if each tab has been loaded to avoid refetching on tab switch
   const commentsLoadedRef = useRef(false)
@@ -563,6 +565,53 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     toast.success('Comment added to chat input')
   }
 
+  const handleSendComment = async () => {
+    if (!commentInput.trim() || isSendingComment) return
+
+    setIsSendingComment(true)
+    const commentToSend = commentInput.trim()
+
+    // Clear the input immediately (optimistic)
+    setCommentInput('')
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/pr-comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          comment: commentToSend,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Comment added successfully!')
+        // Refresh comments to show the new one
+        commentsLoadedRef.current = false
+        await fetchPRComments(false)
+      } else {
+        toast.error(data.error || 'Failed to add comment')
+        setCommentInput(commentToSend) // Restore the comment on error
+      }
+    } catch (err) {
+      console.error('Error sending comment:', err)
+      toast.error('Failed to add comment')
+      setCommentInput(commentToSend) // Restore the comment on error
+    } finally {
+      setIsSendingComment(false)
+    }
+  }
+
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendComment()
+    }
+  }
+
   // Use a non-narrowed variable for tab button comparisons
   const currentTab = activeTab as string
 
@@ -698,111 +747,134 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     if (activeTab === 'comments') {
       return (
-        <div className="flex-1 overflow-y-auto pb-4">
-          {!task.prNumber ? (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
-              <div className="text-sm md:text-base">No pull request yet. Create a PR to see comments here.</div>
-            </div>
-          ) : loadingComments ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : commentsError ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-destructive mb-2 text-xs md:text-sm">{commentsError}</p>
+        <>
+          <div className="flex-1 overflow-y-auto pb-4">
+            {!task.prNumber ? (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground px-4">
+                <div className="text-sm md:text-base">No pull request yet. Create a PR to see comments here.</div>
               </div>
-            </div>
-          ) : prComments.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-              <div className="text-sm md:text-base">No comments yet</div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {prComments.map((comment) => (
-                <div key={comment.id} className="px-2">
-                  <div className="flex items-start gap-2 mb-2">
-                    <img
-                      src={comment.user.avatar_url}
-                      alt={comment.user.login}
-                      className="w-6 h-6 rounded-full flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold">{comment.user.login}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(comment.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="text-xs text-foreground">
-                        <Streamdown
-                          components={{
-                            code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
-                              <code className={`${className} !text-xs`} {...props}>
-                                {children}
-                              </code>
-                            ),
-                            pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
-                              <pre className="!text-xs" {...props}>
-                                {children}
-                              </pre>
-                            ),
-                            p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
-                              <p className="text-xs" {...props}>
-                                {children}
-                              </p>
-                            ),
-                            a: ({ children, href, ...props }: React.ComponentPropsWithoutRef<'a'>) => (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                                {...props}
-                              >
-                                {children}
-                              </a>
-                            ),
-                            ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-                              <ul className="text-xs list-disc ml-4" {...props}>
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-                              <ol className="text-xs list-decimal ml-4" {...props}>
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-                              <li className="text-xs mb-2" {...props}>
-                                {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
-                              </li>
-                            ),
-                          }}
-                        >
-                          {comment.body}
-                        </Streamdown>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
-                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleSendCommentAsFollowUp(comment)}>
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Send as Follow-Up
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+            ) : loadingComments ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : commentsError ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-destructive mb-2 text-xs md:text-sm">{commentsError}</p>
                 </div>
-              ))}
+              </div>
+            ) : prComments.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                <div className="text-sm md:text-base">No comments yet</div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {prComments.map((comment) => (
+                  <div key={comment.id} className="px-2">
+                    <div className="flex items-start gap-2 mb-2">
+                      <img
+                        src={comment.user.avatar_url}
+                        alt={comment.user.login}
+                        className="w-6 h-6 rounded-full flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold">{comment.user.login}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(comment.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="text-xs text-foreground">
+                          <Streamdown
+                            components={{
+                              code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'>) => (
+                                <code className={`${className} !text-xs`} {...props}>
+                                  {children}
+                                </code>
+                              ),
+                              pre: ({ children, ...props }: React.ComponentPropsWithoutRef<'pre'>) => (
+                                <pre className="!text-xs" {...props}>
+                                  {children}
+                                </pre>
+                              ),
+                              p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+                                <p className="text-xs" {...props}>
+                                  {children}
+                                </p>
+                              ),
+                              a: ({ children, href, ...props }: React.ComponentPropsWithoutRef<'a'>) => (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                  {...props}
+                                >
+                                  {children}
+                                </a>
+                              ),
+                              ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+                                <ul className="text-xs list-disc ml-4" {...props}>
+                                  {children}
+                                </ul>
+                              ),
+                              ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+                                <ol className="text-xs list-decimal ml-4" {...props}>
+                                  {children}
+                                </ol>
+                              ),
+                              li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+                                <li className="text-xs mb-2" {...props}>
+                                  {Children.toArray(children).filter((c) => typeof c === 'string' || isValidElement(c))}
+                                </li>
+                              ),
+                            }}
+                          >
+                            {comment.body}
+                          </Streamdown>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
+                            <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleSendCommentAsFollowUp(comment)}>
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Send as Follow-Up
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Comment Input - Only show if PR exists */}
+          {task.prNumber && (
+            <div className="flex-shrink-0 relative">
+              <Textarea
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                onKeyDown={handleCommentKeyDown}
+                placeholder="Add a comment to the PR..."
+                className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-base md:text-xs"
+                disabled={isSendingComment}
+              />
+              <button
+                onClick={handleSendComment}
+                disabled={!commentInput.trim() || isSendingComment}
+                className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSendingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
+              </button>
             </div>
           )}
-        </div>
+        </>
       )
     }
 

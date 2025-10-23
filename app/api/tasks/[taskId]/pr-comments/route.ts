@@ -96,3 +96,75 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: false, error: 'Failed to fetch PR comments' }, { status: 500 })
   }
 }
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
+  try {
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { taskId } = await params
+    const body = await request.json()
+    const { comment } = body
+
+    if (!comment || typeof comment !== 'string' || !comment.trim()) {
+      return NextResponse.json({ success: false, error: 'Comment is required' }, { status: 400 })
+    }
+
+    // Get the task and verify it belongs to the user
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .limit(1)
+
+    if (!task) {
+      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 })
+    }
+
+    // Check if task has a PR
+    if (!task.prNumber || !task.repoUrl) {
+      return NextResponse.json({ success: false, error: 'Task does not have a PR' }, { status: 400 })
+    }
+
+    // Extract owner and repo from repoUrl
+    const repoMatch = task.repoUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/)
+    if (!repoMatch) {
+      return NextResponse.json({ success: false, error: 'Invalid repository URL' }, { status: 400 })
+    }
+
+    const [, owner, repo] = repoMatch
+
+    // Get GitHub client
+    const octokit = await getOctokit()
+    if (!octokit.auth) {
+      return NextResponse.json({ success: false, error: 'GitHub authentication required' }, { status: 401 })
+    }
+
+    // Add comment to PR (as an issue comment)
+    const response = await octokit.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: task.prNumber,
+      body: comment.trim(),
+    })
+
+    return NextResponse.json({
+      success: true,
+      comment: {
+        id: response.data.id,
+        user: {
+          login: response.data.user?.login || 'unknown',
+          avatar_url: response.data.user?.avatar_url || '',
+        },
+        body: response.data.body || '',
+        created_at: response.data.created_at,
+        html_url: response.data.html_url,
+      },
+    })
+  } catch (error) {
+    console.error('Error adding PR comment:', error)
+    return NextResponse.json({ success: false, error: 'Failed to add comment' }, { status: 500 })
+  }
+}
