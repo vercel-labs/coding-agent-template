@@ -223,7 +223,11 @@ export default function NewRepoPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="repo-owner">Owner</Label>
-                <Select value={selectedOwner} onValueChange={setSelectedOwner} disabled={isCreatingRepo || isLoadingOrgs}>
+                <Select
+                  value={selectedOwner}
+                  onValueChange={setSelectedOwner}
+                  disabled={isCreatingRepo || isLoadingOrgs}
+                >
                   <SelectTrigger id="repo-owner" className="w-full">
                     <SelectValue placeholder={isLoadingOrgs ? 'Loading...' : 'Select owner'} />
                   </SelectTrigger>
@@ -244,26 +248,26 @@ export default function NewRepoPage() {
                         </div>
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="repo-name">Repository Name</Label>
-              <Input
-                id="repo-name"
-                placeholder="my-awesome-project"
-                value={newRepoName}
-                onChange={(e) => setNewRepoName(e.target.value)}
-                disabled={isCreatingRepo}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleCreateRepo()
-                  }
-                }}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="repo-name">Repository Name</Label>
+                <Input
+                  id="repo-name"
+                  placeholder="my-awesome-project"
+                  value={newRepoName}
+                  onChange={(e) => setNewRepoName(e.target.value)}
+                  disabled={isCreatingRepo}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleCreateRepo()
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -342,9 +346,7 @@ export default function NewRepoPage() {
                     <div className="hidden md:block">
                       <div
                         className={`aspect-video rounded-md overflow-hidden bg-muted mb-2 border-2 transition-all flex items-center justify-center text-foreground ${
-                          selectedTemplate === template.id
-                            ? 'border-primary'
-                            : 'border-border hover:border-primary/50'
+                          selectedTemplate === template.id ? 'border-primary' : 'border-border hover:border-primary/50'
                         }`}
                       >
                         {template.id === 'empty' ? (
