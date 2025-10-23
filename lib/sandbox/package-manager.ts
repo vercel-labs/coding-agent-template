@@ -2,7 +2,6 @@ import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox } from './commands'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
-
 // Helper function to detect package manager based on lock files
 export async function detectPackageManager(sandbox: Sandbox, logger: TaskLogger): Promise<'pnpm' | 'yarn' | 'npm'> {
   // Check for lock files in order of preference
