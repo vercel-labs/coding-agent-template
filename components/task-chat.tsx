@@ -842,6 +842,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     const displayMessages = messages.slice(-10)
     const hiddenMessagesCount = messages.length - displayMessages.length
 
+    // Get all user messages and their indices in displayMessages
+    const userMessageIndices = displayMessages
+      .map((msg, idx) => ({ msg, idx }))
+      .filter(({ msg }) => msg.role === 'user')
+
     return (
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
         {hiddenMessagesCount > 0 && (
@@ -850,6 +855,17 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           </div>
         )}
         {displayMessages.map((message, index) => {
+          // Calculate sticky top position for user messages
+          let stickyStyles = {}
+          if (message.role === 'user') {
+            // All user messages stick at top: 0
+            stickyStyles = {
+              position: 'sticky' as const,
+              top: 0,
+              zIndex: 20,
+            }
+          }
+
           return (
             <div
               key={message.id}
@@ -860,10 +876,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                   userMessageRefs.current.delete(message.id)
                 }
               }}
+              style={stickyStyles}
               className={`${index > 0 ? 'mt-4' : ''}`}
             >
               {message.role === 'user' ? (
-                <Card className="p-2 bg-card rounded-md relative z-10">
+                <Card className="p-2 bg-card rounded-md relative">
                   <div className="relative max-h-[80px] overflow-hidden">
                     <div className="text-xs">
                       <Streamdown
