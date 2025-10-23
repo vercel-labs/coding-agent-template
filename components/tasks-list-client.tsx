@@ -401,7 +401,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                     router.push(`/tasks/${task.id}`)
                   }}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="px-3 py-2">
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={selectedTasks.has(task.id)}
