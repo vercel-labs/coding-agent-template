@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { Sandbox } from '@vercel/sandbox'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getGitHubUser } from '@/lib/github/client'
+import { getUserGitHubToken } from '@/lib/github/user-token'
 import { registerSandbox, unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
 import { runCommandInSandbox } from '@/lib/sandbox/commands'
 import { detectPackageManager, installDependencies } from '@/lib/sandbox/package-manager'
@@ -79,8 +80,11 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
     const maxDurationMinutes = task.maxDuration || maxSandboxDuration
 
+    // Get GitHub token for authenticated API access
+    const githubToken = await getUserGitHubToken()
+
     // Detect the appropriate port for the project
-    const port = task.repoUrl ? await detectPortFromRepo(task.repoUrl) : 3000
+    const port = task.repoUrl ? await detectPortFromRepo(task.repoUrl, githubToken) : 3000
     console.log(`Detected port ${port} for project`)
 
     // Create a new sandbox by cloning the repo
