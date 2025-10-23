@@ -191,13 +191,13 @@ export function HomePageHeader({
 
   const actions = (
     <div className="flex items-center gap-2 flex-shrink-0">
-      {/* GitHub Stars Button - Hidden on mobile */}
-      <div className="hidden md:block">
+      {/* GitHub Stars Button - Show on mobile only when logged out, always show on desktop */}
+      <div className={user ? 'hidden md:block' : 'block'}>
         <GitHubStarsButton initialStars={initialStars} />
       </div>
 
-      {/* Deploy to Vercel Button - Hidden on mobile */}
-      <div className="hidden md:block">
+      {/* Deploy to Vercel Button - Show on mobile only when logged out, always show on desktop */}
+      <div className={user ? 'hidden md:block' : 'block'}>
         <Button
           asChild
           variant="outline"
