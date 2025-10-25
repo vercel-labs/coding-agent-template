@@ -2044,7 +2044,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   </div>
 
                   {/* Diff Viewer */}
-                  <div className="bg-card rounded-md border overflow-hidden h-[calc(100%-3rem)]">
+                  <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-3rem)]">
                     <div className="overflow-y-auto h-full">
                       <FileDiffViewer
                         selectedFile={selectedItemIsFolder ? undefined : selectedFile}
@@ -2069,12 +2069,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   </div>
                 </div>
               ) : activeTab === 'chat' ? (
-                <div className="h-full pb-3">
+                <div className="h-full">
                   <TaskChat taskId={task.id} task={task} />
                 </div>
               ) : activeTab === 'preview' ? (
-                <div className="h-full pb-3">
-                  <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
+                <div className="h-full">
+                  <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
                     {/* Preview Toolbar */}
                     <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
                       <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
