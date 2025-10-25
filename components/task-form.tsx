@@ -22,8 +22,10 @@ import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/util
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 import { toast } from 'sonner'
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { taskPromptAtom } from '@/lib/atoms/task'
+import { lastSelectedAgentAtom, lastSelectedModelAtomFamily } from '@/lib/atoms/agent-selection'
+import { githubReposAtomFamily } from '@/lib/atoms/github-cache'
 import { useSearchParams } from 'next/navigation'
 
 interface GitHubRepo {
@@ -159,10 +161,11 @@ export function TaskForm({
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
-  const [selectedAgent, setSelectedAgent] = useState('claude')
+  const [savedAgent, setSavedAgent] = useAtom(lastSelectedAgentAtom)
+  const [selectedAgent, setSelectedAgent] = useState(savedAgent || 'claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
   const [selectedModels, setSelectedModels] = useState<string[]>([])
-  const [repos, setRepos] = useState<GitHubRepo[]>([])
+  const [repos, setRepos] = useAtom(githubReposAtomFamily(selectedOwner))
   const [, setLoadingRepos] = useState(false)
 
   // Options state - initialize with server values
@@ -234,26 +237,12 @@ export function TaskForm({
           setSelectedModel(urlModel)
         }
       }
-    } else {
-      // Fall back to localStorage
-      const savedAgent = localStorage.getItem('last-selected-agent')
+    } else if (savedAgent) {
+      // Fall back to saved agent from Jotai atom
       if (
-        savedAgent &&
         CODING_AGENTS.some((agent) => agent.value === savedAgent && !('isDivider' in agent && agent.isDivider))
       ) {
         setSelectedAgent(savedAgent)
-
-        // Load saved model for this agent
-        const savedModel = localStorage.getItem(`last-selected-model-${savedAgent}`)
-        const agentModels = AGENT_MODELS[savedAgent as keyof typeof AGENT_MODELS]
-        if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
-          setSelectedModel(savedModel)
-        } else {
-          const defaultModel = DEFAULT_MODELS[savedAgent as keyof typeof DEFAULT_MODELS]
-          if (defaultModel) {
-            setSelectedModel(defaultModel)
-          }
-        }
       }
     }
 
@@ -266,6 +255,11 @@ export function TaskForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Get saved model atom for current agent
+  const savedModelAtom = lastSelectedModelAtomFamily(selectedAgent)
+  const savedModel = useAtomValue(savedModelAtom)
+  const setSavedModel = useSetAtom(savedModelAtom)
+
   // Update model when agent changes
   useEffect(() => {
     if (selectedAgent) {
@@ -275,7 +269,6 @@ export function TaskForm({
       }
 
       // Load saved model for this agent or use default
-      const savedModel = localStorage.getItem(`last-selected-model-${selectedAgent}`)
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
       if (savedModel && agentModels?.some((model) => model.value === savedModel)) {
         setSelectedModel(savedModel)
@@ -286,41 +279,28 @@ export function TaskForm({
         }
       }
     }
-  }, [selectedAgent])
+  }, [selectedAgent, savedModel])
 
   // Fetch repositories when owner changes
   useEffect(() => {
     if (!selectedOwner) {
-      setRepos([])
+      setRepos(null)
       return
     }
 
     const fetchRepos = async () => {
       setLoadingRepos(true)
       try {
-        // Check cache first
-        const cacheKey = `github-repos-${selectedOwner}`
-        const cachedRepos = localStorage.getItem(cacheKey)
-
-        if (cachedRepos) {
-          try {
-            const parsedRepos = JSON.parse(cachedRepos)
-            setRepos(parsedRepos)
-            setLoadingRepos(false)
-            return
-          } catch {
-            console.warn('Failed to parse cached repos, fetching fresh data')
-            localStorage.removeItem(cacheKey)
-          }
+        // Check cache first (repos is from the atom)
+        if (repos && repos.length > 0) {
+          setLoadingRepos(false)
+          return
         }
 
         const response = await fetch(`/api/github/repos?owner=${selectedOwner}`)
         if (response.ok) {
           const reposList = await response.json()
           setRepos(reposList)
-
-          // Cache the results
-          localStorage.setItem(cacheKey, JSON.stringify(reposList))
         }
       } catch (error) {
         console.error('Error fetching repositories:', error)
@@ -330,7 +310,7 @@ export function TaskForm({
     }
 
     fetchRepos()
-  }, [selectedOwner])
+  }, [selectedOwner, repos, setRepos])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -362,7 +342,7 @@ export function TaskForm({
 
     // Check if API key is required and available for the selected agent and model
     // Skip this check if we don't have repo data (likely not signed in) or if multi-agent mode
-    const selectedRepoData = repos.find((repo) => repo.name === selectedRepo)
+    const selectedRepoData = repos?.find((repo) => repo.name === selectedRepo)
 
     if (selectedRepoData && selectedAgent !== 'multi-agent') {
       try {
@@ -457,8 +437,8 @@ export function TaskForm({
                   value={selectedAgent}
                   onValueChange={(value) => {
                     setSelectedAgent(value)
-                    // Save to localStorage immediately
-                    localStorage.setItem('last-selected-agent', value)
+                    // Save to Jotai atom immediately
+                    setSavedAgent(value)
                   }}
                   disabled={isSubmitting}
                 >
@@ -544,8 +524,8 @@ export function TaskForm({
                     value={selectedModel}
                     onValueChange={(value) => {
                       setSelectedModel(value)
-                      // Save to localStorage immediately
-                      localStorage.setItem(`last-selected-model-${selectedAgent}`, value)
+                      // Save to Jotai atom immediately
+                      setSavedModel(value)
                     }}
                     disabled={isSubmitting}
                   >

@@ -5,8 +5,9 @@ import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Lock, Loader2 } from 'lucide-react'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom, useAtom } from 'jotai'
 import { githubConnectionAtom } from '@/lib/atoms/github-connection'
+import { githubOwnersAtom, githubReposAtomFamily } from '@/lib/atoms/github-cache'
 
 interface GitHubOwner {
   login: string
@@ -42,19 +43,8 @@ export function RepoSelector({
 }: RepoSelectorProps) {
   const [repoFilter, setRepoFilter] = useState('')
   // Initialize with selected owner to prevent flash
-  const [owners, setOwners] = useState<GitHubOwner[]>(() => {
-    if (selectedOwner) {
-      return [
-        {
-          login: selectedOwner,
-          name: selectedOwner,
-          avatar_url: `https://github.com/${selectedOwner}.png`,
-        },
-      ]
-    }
-    return []
-  })
-  const [repos, setRepos] = useState<GitHubRepo[]>([])
+  const [owners, setOwners] = useAtom(githubOwnersAtom)
+  const [repos, setRepos] = useAtom(githubReposAtomFamily(selectedOwner))
   const [loadingOwners, setLoadingOwners] = useState(true)
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [repoDropdownOpen, setRepoDropdownOpen] = useState(false)
@@ -72,17 +62,13 @@ export function RepoSelector({
   useEffect(() => {
     // If GitHub was disconnected, clear data and cache
     if (githubConnectionRef.current && !githubConnection.connected) {
-      // Clear cache
-      localStorage.removeItem('github-owners')
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('github-repos-')) {
-          localStorage.removeItem(key)
-        }
-      })
+      // Clear cache using atoms
+      setOwners(null)
+      // Clear all repos - we need to iterate through all possible owners
+      // Since we can't clear all atomFamily members easily, we'll just clear the current one
+      setRepos(null)
 
       // Clear state
-      setOwners([])
-      setRepos([])
       onOwnerChange('')
       onRepoChange('')
     }
@@ -90,12 +76,12 @@ export function RepoSelector({
     // If GitHub was reconnected, reload owners
     if (!githubConnectionRef.current && githubConnection.connected) {
       setLoadingOwners(true)
-      setOwners([])
-      setRepos([])
+      setOwners(null)
+      setRepos(null)
     }
 
     githubConnectionRef.current = githubConnection.connected
-  }, [githubConnection.connected, onOwnerChange, onRepoChange])
+  }, [githubConnection.connected, onOwnerChange, onRepoChange, setOwners, setRepos])
 
   // Load owners on component mount and when GitHub is connected
   useEffect(() => {
@@ -107,17 +93,14 @@ export function RepoSelector({
     const loadOwners = async () => {
       try {
         // Only show loading state if we don't have owners yet
-        if (owners.length === 0) {
+        if (!owners || owners.length === 0) {
           setLoadingOwners(true)
         } else {
           setIsRefreshing(true)
         }
 
         // Check cache first - but only use it if we're not forcing a refresh
-        const cachedOwners = localStorage.getItem('github-owners')
-        if (cachedOwners && owners.length === 0) {
-          const parsedOwners = JSON.parse(cachedOwners)
-          setOwners(parsedOwners)
+        if (owners && owners.length > 0) {
           setLoadingOwners(false)
           // Continue fetching in background to update
         }
@@ -128,13 +111,8 @@ export function RepoSelector({
         // Check for authentication errors - disconnect GitHub if auth fails
         if (!userResponse.ok) {
           if (userResponse.status === 401 || userResponse.status === 403) {
-            // Clear cache
-            localStorage.removeItem('github-owners')
-            Object.keys(localStorage).forEach((key) => {
-              if (key.startsWith('github-repos-')) {
-                localStorage.removeItem(key)
-              }
-            })
+            // Clear cache using atoms
+            setOwners(null)
 
             // Call backend to disconnect GitHub
             try {
@@ -183,8 +161,7 @@ export function RepoSelector({
         sortedOwners.push(...organizations)
 
         setOwners(sortedOwners)
-        // Cache the owners
-        localStorage.setItem('github-owners', JSON.stringify(sortedOwners))
+        // Cache is automatic with atomWithStorage
       } catch (error) {
         console.error('Error loading owners:', error)
 
@@ -208,15 +185,15 @@ export function RepoSelector({
 
     loadOwners()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [githubConnection.connected, setGitHubConnection])
+  }, [githubConnection.connected, setGitHubConnection, setOwners])
 
   // Auto-select user's personal account if no owner is selected and no saved owner exists
   useEffect(() => {
-    if (owners.length > 0 && !selectedOwner) {
+    if (owners && owners.length > 0 && !selectedOwner) {
       // Only auto-select if we have owners loaded and no owner is currently selected
       // This allows the parent component to set a saved owner from cookies first
       const timer = setTimeout(() => {
-        if (!selectedOwner && owners.length > 0) {
+        if (!selectedOwner && owners && owners.length > 0) {
           // Auto-select the first owner (user's personal account)
           // Since we add the user first in the loadOwners function, owners[0] will be the personal account
           onOwnerChange(owners[0].login)
@@ -231,34 +208,22 @@ export function RepoSelector({
   useEffect(() => {
     if (selectedOwner) {
       const loadRepos = async () => {
-        try {
-          // Check cache first - show cached data immediately if available
-          const cacheKey = `github-repos-${selectedOwner}`
-          const cachedRepos = localStorage.getItem(cacheKey)
-          if (cachedRepos && repos.length === 0) {
-            const parsedRepos = JSON.parse(cachedRepos)
-            setRepos(parsedRepos)
-            setLoadingRepos(false)
-            // Continue fetching in background to update
-          } else if (!cachedRepos && repos.length === 0) {
-            // Only show loading if we don't have cached data or existing repos
-            setLoadingRepos(true)
-          } else if (repos.length > 0) {
-            // If we have repos, just refresh in background
-            setIsRefreshing(true)
-          }
+      try {
+        // Check cache first - show cached data immediately if available
+        if (repos && repos.length > 0) {
+          setLoadingRepos(false)
+          // Continue fetching in background to update
+        } else {
+          // Only show loading if we don't have cached data or existing repos
+          setLoadingRepos(true)
+        }
 
           const response = await fetch(`/api/github/repos?owner=${selectedOwner}`)
 
-          if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-              // Clear cache
-              localStorage.removeItem('github-owners')
-              Object.keys(localStorage).forEach((key) => {
-                if (key.startsWith('github-repos-')) {
-                  localStorage.removeItem(key)
-                }
-              })
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            // Clear cache using atoms
+            setOwners(null)
 
               // Call backend to disconnect GitHub
               try {
@@ -279,11 +244,10 @@ export function RepoSelector({
             throw new Error('Failed to load repositories')
           }
 
-          const reposList = await response.json()
-          setRepos(reposList)
-          // Cache the repos
-          localStorage.setItem(cacheKey, JSON.stringify(reposList))
-        } catch (error) {
+        const reposList = await response.json()
+        setRepos(reposList)
+        // Cache is automatic with atomWithStorage
+      } catch (error) {
           console.error('Error loading repos:', error)
 
           // Call backend to disconnect GitHub
@@ -306,11 +270,11 @@ export function RepoSelector({
 
       loadRepos()
     } else {
-      setRepos([])
+      setRepos(null)
       setLoadingRepos(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOwner, setGitHubConnection])
+  }, [selectedOwner, setGitHubConnection, setOwners, setRepos])
 
   // Focus filter input when dropdown opens (but not on mobile to prevent keyboard popup)
   useEffect(() => {
@@ -343,7 +307,7 @@ export function RepoSelector({
   const hasMoreRepos = filteredRepos.length > 50
 
   // Ensure selected repo is in the displayed list (if it matches current filter)
-  if (selectedRepo && repos.length > 0) {
+  if (selectedRepo && repos && repos.length > 0) {
     const isInFilteredRepos = filteredRepos.find((repo) => repo.name === selectedRepo)
     const isInDisplayedRepos = displayedRepos.find((repo) => repo.name === selectedRepo)
 
@@ -357,7 +321,7 @@ export function RepoSelector({
     onOwnerChange(value)
     onRepoChange('') // Reset repo when owner changes
     setRepoFilter('') // Reset filter when owner changes
-    setRepos([]) // Clear repos to trigger loading state for new owner
+    setRepos(null) // Clear repos to trigger loading state for new owner
   }
 
   const handleRepoChange = (value: string) => {
@@ -375,11 +339,11 @@ export function RepoSelector({
       : 'w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
 
   // Find the selected owner for avatar display
-  const selectedOwnerData = owners.find((owner) => owner.login === selectedOwner)
+  const selectedOwnerData = owners?.find((owner) => owner.login === selectedOwner)
 
   // Determine if we should show loading indicators
-  const showOwnersLoading = loadingOwners && owners.length === 0
-  const showReposLoading = loadingRepos && repos.length === 0
+  const showOwnersLoading = loadingOwners && (!owners || owners.length === 0)
+  const showReposLoading = loadingRepos && (!repos || repos.length === 0)
 
   return (
     <div className="flex items-center gap-1 sm:gap-2 h-8">
@@ -409,7 +373,7 @@ export function RepoSelector({
           )}
         </SelectTrigger>
         <SelectContent>
-          {owners.map((owner) => (
+          {owners && owners.map((owner) => (
             <SelectItem key={owner.login} value={owner.login}>
               <div className="flex items-center gap-2">
                 <Image
