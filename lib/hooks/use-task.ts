@@ -35,11 +35,11 @@ export function useTask(taskId: string) {
       setError('Failed to fetch task')
     } finally {
       // Only stop loading after we've either found the task or exceeded attempt threshold
-      if (hasFoundTaskRef.current || attemptCountRef.current >= 3 || error) {
+      if (hasFoundTaskRef.current || attemptCountRef.current >= 3) {
         setIsLoading(false)
       }
     }
-  }, [taskId, error])
+  }, [taskId])
 
   // Initial fetch with retry logic
   useEffect(() => {
