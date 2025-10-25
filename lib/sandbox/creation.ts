@@ -15,10 +15,8 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
     // Escape single quotes by replacing ' with '\''
     return `'${arg.replace(/'/g, "'\\''")}'`
   }
-  
-  const fullCommand = args.length > 0 
-    ? `${command} ${args.map(escapeArg).join(' ')}` 
-    : command
+
+  const fullCommand = args.length > 0 ? `${command} ${args.map(escapeArg).join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
   await logger.command(redactedCommand)
@@ -111,7 +109,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
       // Clone repository to /vercel/sandbox/project
       await logger.info('Cloning repository to project directory...')
-      
+
       // Create project directory
       const mkdirResult = await runCommandInSandbox(sandbox, 'mkdir', ['-p', PROJECT_DIR])
       if (!mkdirResult.success) {
@@ -126,12 +124,12 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         authenticatedRepoUrl,
         PROJECT_DIR,
       ])
-      
+
       if (!cloneResult.success) {
         await logger.error('Failed to clone repository')
         throw new Error('Failed to clone repository to project directory')
       }
-      
+
       await logger.info('Repository cloned successfully')
 
       // Call progress callback after sandbox creation
@@ -305,13 +303,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         }
 
         // Install dependencies from requirements.txt
-        const pipInstall = await runInProject(sandbox, 'python3', [
-          '-m',
-          'pip',
-          'install',
-          '-r',
-          'requirements.txt',
-        ])
+        const pipInstall = await runInProject(sandbox, 'python3', ['-m', 'pip', 'install', '-r', 'requirements.txt'])
 
         if (!pipInstall.success) {
           await logger.info('pip install failed')
@@ -333,7 +325,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     // Auto-start dev server if package.json has a dev script
     let domain: string | undefined
     let devPort = 3000 // Default port
-    
+
     if (packageJsonCheck.success && config.installDependencies) {
       // Check if package.json has a dev script
       const packageJsonRead = await runInProject(sandbox, 'cat', ['package.json'])
@@ -341,7 +333,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         try {
           const packageJson = JSON.parse(packageJsonRead.output)
           const hasDevScript = packageJson?.scripts?.dev
-          
+
           // Detect Vite projects (use port 5173)
           const hasVite = packageJson?.dependencies?.vite || packageJson?.devDependencies?.vite
           if (hasVite) {
@@ -355,28 +347,33 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
             const packageManager = await detectPackageManager(sandbox, logger)
             let devCommand = packageManager === 'npm' ? 'npm' : packageManager
             let devArgs = packageManager === 'npm' ? ['run', 'dev'] : ['dev']
-            
+
             // Check if Vite project and configure to allow all hosts
             if (hasVite) {
               await logger.info('Configuring Vite for sandbox environment')
-              
+
               // Add vite.config.js to global gitignore FIRST so any modifications won't be committed
-              await runCommandInSandbox(sandbox, 'sh', ['-c', 'mkdir -p ~/.config/git && grep -q "^vite\\.config\\." ~/.gitignore_global 2>/dev/null || echo "vite.config.*" >> ~/.gitignore_global'])
+              await runCommandInSandbox(sandbox, 'sh', [
+                '-c',
+                'mkdir -p ~/.config/git && grep -q "^vite\\.config\\." ~/.gitignore_global 2>/dev/null || echo "vite.config.*" >> ~/.gitignore_global',
+              ])
               await runInProject(sandbox, 'git', ['config', 'core.excludesfile', '~/.gitignore_global'])
               await logger.info('Added vite.config to global gitignore')
-              
+
               // Now modify vite.config.js to set host: true (disables host checking)
               const hasViteConfigJs = await runInProject(sandbox, 'test', ['-f', 'vite.config.js'])
-              
+
               if (hasViteConfigJs.success) {
                 // Read and modify the config
                 const configRead = await runInProject(sandbox, 'cat', ['vite.config.js'])
                 if (configRead.success) {
                   let config = configRead.output || ''
-                  
+
                   // Simple sed replacement to set host: true in server config
                   // This disables Vite's host checking
-                  await runInProject(sandbox, 'sh', ['-c', `
+                  await runInProject(sandbox, 'sh', [
+                    '-c',
+                    `
 # Backup original
 cp vite.config.js vite.config.js.backup
 
@@ -388,11 +385,12 @@ else
   # No server section, add it
   sed -i "/export default defineConfig/a\\  server: { host: true }," vite.config.js  
 fi
-`])
+`,
+                  ])
                   await logger.info('Modified vite.config.js to disable host checking (globally ignored)')
                 }
               }
-              
+
               // Use standard dev command with --host flag
               if (packageManager === 'npm') {
                 devArgs = ['run', 'dev', '--', '--host']
@@ -400,11 +398,12 @@ fi
                 devArgs = ['dev', '--host']
               }
             }
-            
+
             // Check if Next.js 16 and add --webpack flag
             const nextVersion = packageJson?.dependencies?.next || packageJson?.devDependencies?.next || ''
-            const isNext16 = nextVersion.startsWith('16.') || nextVersion.startsWith('^16.') || nextVersion.startsWith('~16.')
-            
+            const isNext16 =
+              nextVersion.startsWith('16.') || nextVersion.startsWith('^16.') || nextVersion.startsWith('~16.')
+
             if (isNext16) {
               await logger.info('Next.js 16 detected, adding --webpack flag')
               if (packageManager === 'npm') {
@@ -416,30 +415,36 @@ fi
 
             // Start dev server in detached mode (runs in background) with log capture
             const fullDevCommand = devArgs.length > 0 ? `${devCommand} ${devArgs.join(' ')}` : devCommand
-            
+
             // Import Writable for stream capture
             const { Writable } = await import('stream')
-            
+
             const captureServerStdout = new Writable({
               write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-                const lines = chunk.toString().split('\n').filter((line) => line.trim())
+                const lines = chunk
+                  .toString()
+                  .split('\n')
+                  .filter((line) => line.trim())
                 for (const line of lines) {
                   logger.info(`[SERVER] ${line}`).catch(() => {})
                 }
                 callback()
               },
             })
-            
+
             const captureServerStderr = new Writable({
               write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-                const lines = chunk.toString().split('\n').filter((line) => line.trim())
+                const lines = chunk
+                  .toString()
+                  .split('\n')
+                  .filter((line) => line.trim())
                 for (const line of lines) {
                   logger.info(`[SERVER] ${line}`).catch(() => {})
                 }
                 callback()
               },
             })
-            
+
             await sandbox.runCommand({
               cmd: 'sh',
               args: ['-c', `cd ${PROJECT_DIR} && ${fullDevCommand}`],

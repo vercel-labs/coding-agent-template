@@ -1005,11 +1005,13 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                               // Find all tool calls (more comprehensive pattern)
                               const toolCallRegex = /\n\n([A-Z][a-z]+(?:\s+[a-z]+)*:?\s+[^\n]+)/g
                               const matches = Array.from(content.matchAll(toolCallRegex))
-                              
+
                               // Filter to only actual tool calls
-                              const toolCallMatches = matches.filter(match => {
+                              const toolCallMatches = matches.filter((match) => {
                                 const text = match[1]
-                                return /^(?:Editing|Reading|Running|Listing|Executing|Searching|Finding|Grep)/i.test(text)
+                                return /^(?:Editing|Reading|Running|Listing|Executing|Searching|Finding|Grep)/i.test(
+                                  text,
+                                )
                               })
 
                               if (toolCallMatches.length > 0) {
@@ -1064,17 +1066,21 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                     const text = textParts.join('')
                                     const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
                                     const isToolCall =
-                                      /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing|Searching|Finding|Grep)/i.test(text)
+                                      /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing|Searching|Finding|Grep)/i.test(
+                                        text,
+                                      )
 
                                     // Always remove the marker from display (global replace to catch all instances)
                                     const displayText = text.replace(/🔄SHIMMER🔄/g, '')
 
                                     // If we have React elements, also remove marker from string children
                                     const hasReactElements = childrenArray.some((child) => isValidElement(child))
-                                    const cleanedChildren = hasReactElements 
-                                      ? childrenArray.map(child => 
-                                          typeof child === 'string' ? child.replace(/🔄SHIMMER🔄/g, '') : child
-                                        ).filter((child) => typeof child === 'string' || isValidElement(child))
+                                    const cleanedChildren = hasReactElements
+                                      ? childrenArray
+                                          .map((child) =>
+                                            typeof child === 'string' ? child.replace(/🔄SHIMMER🔄/g, '') : child,
+                                          )
+                                          .filter((child) => typeof child === 'string' || isValidElement(child))
                                       : displayText
 
                                     return (

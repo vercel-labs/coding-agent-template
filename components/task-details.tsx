@@ -198,7 +198,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [isRestartingDevServer, setIsRestartingDevServer] = useState(false)
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false)
   const [isStartingSandbox, setIsStartingSandbox] = useState(false)
-  const [sandboxHealth, setSandboxHealth] = useState<'running' | 'starting' | 'error' | 'stopped' | 'not_available'>('starting')
+  const [sandboxHealth, setSandboxHealth] = useState<'running' | 'starting' | 'error' | 'stopped' | 'not_available'>(
+    'starting',
+  )
   const healthyCountRef = useRef<number>(0)
   const lastHealthStatusRef = useRef<string | null>(null)
 
@@ -592,7 +594,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
         if (response.ok) {
           const data = await response.json()
           const currentStatus = data.status
-          
+
           // If status is 'running', require it to be stable for 2 checks (4 seconds)
           if (currentStatus === 'running') {
             if (lastHealthStatusRef.current === 'running') {
@@ -1840,7 +1842,11 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                       </a>
                     ) : (
                       <span className="text-sm text-muted-foreground truncate flex-1">
-                        {sandboxHealth === 'stopped' ? 'Sandbox stopped' : currentStatus === 'pending' || currentStatus === 'processing' ? 'Creating sandbox...' : 'Sandbox not running'}
+                        {sandboxHealth === 'stopped'
+                          ? 'Sandbox stopped'
+                          : currentStatus === 'pending' || currentStatus === 'processing'
+                            ? 'Creating sandbox...'
+                            : 'Sandbox not running'}
                       </span>
                     )}
                     <Button
@@ -1893,10 +1899,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           </>
                         )}
                         {sandboxHealth === 'running' && (
-                          <DropdownMenuItem
-                            onClick={handleRestartDevServer}
-                            disabled={isRestartingDevServer}
-                          >
+                          <DropdownMenuItem onClick={handleRestartDevServer} disabled={isRestartingDevServer}>
                             {isRestartingDevServer ? (
                               <>
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -2052,7 +2055,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         </a>
                       ) : (
                         <span className="text-sm text-muted-foreground truncate flex-1">
-                          {currentStatus === 'pending' || currentStatus === 'processing' ? 'Creating sandbox...' : 'Sandbox not running'}
+                          {currentStatus === 'pending' || currentStatus === 'processing'
+                            ? 'Creating sandbox...'
+                            : 'Sandbox not running'}
                         </span>
                       )}
                       <Button
@@ -2073,11 +2078,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         title="Open in New Tab"
                         disabled={!task.sandboxUrl}
                       >
-                        <a
-                          href={`/api/tasks/${task.id}/sandbox-proxy`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                        <a href={`/api/tasks/${task.id}/sandbox-proxy`} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
                       </Button>

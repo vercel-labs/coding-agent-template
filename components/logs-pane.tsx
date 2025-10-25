@@ -334,7 +334,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
           {(task.logs || []).map((log, index) => {
             const isServerLog = log.message.startsWith('[SERVER]')
             const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
-            
+
             const getLogColor = (logType: LogEntry['type']) => {
               switch (logType) {
                 case 'command':

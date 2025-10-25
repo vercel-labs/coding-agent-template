@@ -80,11 +80,11 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     const packageManager = await detectPackageManager(sandbox, logger)
     const devCommand = packageManager === 'npm' ? 'npm' : packageManager
     let devArgs = packageManager === 'npm' ? ['run', 'dev'] : ['dev']
-    
+
     // Check if Vite project and configure to allow all hosts
     if (hasVite) {
       const { runInProject } = await import('@/lib/sandbox/commands')
-      
+
       // Always create vite.sandbox.config.js that extends user's config
       const sandboxViteConfig = `import { defineConfig, mergeConfig } from 'vite'
 
@@ -105,16 +105,22 @@ export default mergeConfig(userConfig, defineConfig({
     allowedHosts: undefined,
   }
 }))`
-      
-      await runInProject(sandbox, 'sh', ['-c', `cat > vite.sandbox.config.js << 'VITEEOF'\n${sandboxViteConfig}\nVITEEOF`])
-      
+
+      await runInProject(sandbox, 'sh', [
+        '-c',
+        `cat > vite.sandbox.config.js << 'VITEEOF'\n${sandboxViteConfig}\nVITEEOF`,
+      ])
+
       // Add vite.sandbox.config.js to global .gitignore
       const { runCommandInSandbox } = await import('@/lib/sandbox/commands')
-      await runCommandInSandbox(sandbox, 'sh', ['-c', 'grep -q "vite.sandbox.config.js" ~/.gitignore_global 2>/dev/null || echo "vite.sandbox.config.js" >> ~/.gitignore_global'])
-      
+      await runCommandInSandbox(sandbox, 'sh', [
+        '-c',
+        'grep -q "vite.sandbox.config.js" ~/.gitignore_global 2>/dev/null || echo "vite.sandbox.config.js" >> ~/.gitignore_global',
+      ])
+
       // Configure git to use the global gitignore
       await runInProject(sandbox, 'git', ['config', 'core.excludesfile', '~/.gitignore_global'])
-      
+
       // Use sandbox config
       if (packageManager === 'npm') {
         devArgs = ['run', 'dev', '--', '--config', 'vite.sandbox.config.js', '--host', '0.0.0.0']
@@ -122,11 +128,11 @@ export default mergeConfig(userConfig, defineConfig({
         devArgs = ['dev', '--config', 'vite.sandbox.config.js', '--host', '0.0.0.0']
       }
     }
-    
+
     // Check if Next.js 16 and add --webpack flag
     const nextVersion = packageJson?.dependencies?.next || packageJson?.devDependencies?.next || ''
     const isNext16 = nextVersion.startsWith('16.') || nextVersion.startsWith('^16.') || nextVersion.startsWith('~16.')
-    
+
     if (isNext16) {
       if (packageManager === 'npm') {
         devArgs = ['run', 'dev', '--', '--webpack']
@@ -137,30 +143,36 @@ export default mergeConfig(userConfig, defineConfig({
 
     // Start dev server in detached mode with log capture
     const fullDevCommand = devArgs.length > 0 ? `${devCommand} ${devArgs.join(' ')}` : devCommand
-    
+
     // Import Writable for stream capture
     const { Writable } = await import('stream')
-    
+
     const captureServerStdout = new Writable({
       write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-        const lines = chunk.toString().split('\n').filter((line) => line.trim())
+        const lines = chunk
+          .toString()
+          .split('\n')
+          .filter((line) => line.trim())
         for (const line of lines) {
           logger.info(`[SERVER] ${line}`).catch(() => {})
         }
         callback()
       },
     })
-    
+
     const captureServerStderr = new Writable({
       write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-        const lines = chunk.toString().split('\n').filter((line) => line.trim())
+        const lines = chunk
+          .toString()
+          .split('\n')
+          .filter((line) => line.trim())
         for (const line of lines) {
           logger.info(`[SERVER] ${line}`).catch(() => {})
         }
         callback()
       },
     })
-    
+
     await sandbox.runCommand({
       cmd: 'sh',
       args: ['-c', `cd ${PROJECT_DIR} && ${fullDevCommand}`],

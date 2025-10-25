@@ -69,10 +69,8 @@ export async function runInProject(sandbox: Sandbox, command: string, args: stri
     // Escape single quotes by replacing ' with '\''
     return `'${arg.replace(/'/g, "'\\''")}'`
   }
-  
-  const fullCommand = args.length > 0 
-    ? `${command} ${args.map(escapeArg).join(' ')}` 
-    : command
+
+  const fullCommand = args.length > 0 ? `${command} ${args.map(escapeArg).join(' ')}` : command
   const cdCommand = `cd ${PROJECT_DIR} && ${fullCommand}`
   return await runCommandInSandbox(sandbox, 'sh', ['-c', cdCommand])
 }
