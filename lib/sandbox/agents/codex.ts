@@ -283,9 +283,8 @@ url = "${server.baseUrl}"
 
     if (isResumed) {
       // Use resume command instead of exec
-      // Note: codex resume doesn't take session ID as an argument, it uses a picker or --last
-      // For now, we'll use --last to continue the most recent session
-      codexCommand = 'codex resume --last'
+      // Note: codex resume takes the prompt directly without --last flag when continuing
+      codexCommand = 'codex resume'
       if (logger) {
         await logger.info('Resuming previous Codex conversation')
       }
