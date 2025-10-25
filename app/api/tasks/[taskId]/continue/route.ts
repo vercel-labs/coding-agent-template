@@ -205,7 +205,7 @@ async function continueTask(
             : 'agent@example.com',
           apiKeys,
           timeout: `${maxDuration}m`,
-          ports: [3000],
+          ports: [3000, 5173], // Support both Next.js (3000) and Vite (5173)
           runtime: 'node22',
           resources: { vcpus: 4 },
           taskPrompt: prompt,

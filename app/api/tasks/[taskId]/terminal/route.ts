@@ -5,6 +5,7 @@ import { eq, and, isNull } from 'drizzle-orm'
 import { Sandbox } from '@vercel/sandbox'
 import { getSandbox } from '@/lib/sandbox/sandbox-registry'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 const { tasks } = schema
 
@@ -68,9 +69,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, error: 'Sandbox not available' }, { status: 400 })
     }
 
-    // Execute command in sandbox
+    // Execute command in sandbox project directory
     try {
-      const result = await sandbox.runCommand('sh', ['-c', command])
+      const result = await sandbox.runCommand({
+        cmd: 'sh',
+        args: ['-c', command],
+        cwd: PROJECT_DIR,
+      })
 
       let stdout = ''
       let stderr = ''

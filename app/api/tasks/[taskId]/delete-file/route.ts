@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -61,7 +62,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Delete the file using rm
-    const rmResult = await sandbox.runCommand('rm', [filename])
+    const rmResult = await sandbox.runCommand({
+      cmd: 'rm',
+      args: [filename],
+      cwd: PROJECT_DIR,
+    })
 
     if (rmResult.exitCode !== 0) {
       const stderr = await rmResult.stderr()

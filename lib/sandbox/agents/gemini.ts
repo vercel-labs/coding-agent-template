@@ -1,5 +1,5 @@
 import { Sandbox } from '@vercel/sandbox'
-import { runCommandInSandbox } from '../commands'
+import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
@@ -7,14 +7,14 @@ import { connectors } from '@/lib/db/schema'
 
 type Connector = typeof connectors.$inferSelect
 
-// Helper function to run command and log it
+// Helper function to run command and log it in project directory
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
   await logger.command(redactedCommand)
 
-  const result = await runCommandInSandbox(sandbox, command, args)
+  const result = await runInProject(sandbox, command, args)
 
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {

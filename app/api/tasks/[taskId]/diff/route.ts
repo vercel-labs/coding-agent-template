@@ -4,6 +4,7 @@ import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getOctokit } from '@/lib/github/client'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 import type { Octokit } from '@octokit/rest'
 
 function getLanguageFromFilename(filename: string): string {
@@ -204,18 +205,30 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         // Fetch latest from remote to ensure we have up-to-date remote refs
-        const fetchResult = await sandbox.runCommand('git', ['fetch', 'origin', task.branchName])
+        const fetchResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['fetch', 'origin', task.branchName],
+          cwd: PROJECT_DIR,
+        })
 
         // Check if remote branch actually exists (even if fetch succeeds, the branch might not exist)
         const remoteBranchRef = `origin/${task.branchName}`
-        const checkRemoteResult = await sandbox.runCommand('git', ['rev-parse', '--verify', remoteBranchRef])
+        const checkRemoteResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['rev-parse', '--verify', remoteBranchRef],
+          cwd: PROJECT_DIR,
+        })
         const remoteBranchExists = checkRemoteResult.exitCode === 0
 
         if (!remoteBranchExists) {
           // Remote branch doesn't exist yet, compare against HEAD (local changes only)
 
           // Get old content (HEAD version)
-          const oldContentResult = await sandbox.runCommand('git', ['show', `HEAD:${filename}`])
+          const oldContentResult = await sandbox.runCommand({
+            cmd: 'git',
+            args: ['show', `HEAD:${filename}`],
+            cwd: PROJECT_DIR,
+          })
           let oldContent = ''
           if (oldContentResult.exitCode === 0) {
             oldContent = await oldContentResult.stdout()
@@ -223,7 +236,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           // File might not exist in HEAD (new file)
 
           // Get new content (working directory version)
-          const newContentResult = await sandbox.runCommand('cat', [filename])
+          const newContentResult = await sandbox.runCommand({
+            cmd: 'cat',
+            args: [filename],
+            cwd: PROJECT_DIR,
+          })
           const newContent = newContentResult.exitCode === 0 ? await newContentResult.stdout() : ''
 
           return NextResponse.json({
@@ -241,7 +258,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         // Compare working directory against remote branch
         // This shows all uncommitted AND unpushed changes
-        const diffResult = await sandbox.runCommand('git', ['diff', remoteBranchRef, filename])
+        const diffResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['diff', remoteBranchRef, filename],
+          cwd: PROJECT_DIR,
+        })
 
         if (diffResult.exitCode !== 0) {
           const diffError = await diffResult.stderr()
@@ -252,7 +273,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const diffOutput = await diffResult.stdout()
 
         // Get old content (remote branch version)
-        const oldContentResult = await sandbox.runCommand('git', ['show', `${remoteBranchRef}:${filename}`])
+        const oldContentResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['show', `${remoteBranchRef}:${filename}`],
+          cwd: PROJECT_DIR,
+        })
         let oldContent = ''
         if (oldContentResult.exitCode === 0) {
           oldContent = await oldContentResult.stdout()
@@ -260,7 +285,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // File might not exist on remote (new file)
 
         // Get new content (working directory version)
-        const newContentResult = await sandbox.runCommand('cat', [filename])
+        const newContentResult = await sandbox.runCommand({
+          cmd: 'cat',
+          args: [filename],
+          cwd: PROJECT_DIR,
+        })
         const newContent = newContentResult.exitCode === 0 ? await newContentResult.stdout() : ''
 
         return NextResponse.json({

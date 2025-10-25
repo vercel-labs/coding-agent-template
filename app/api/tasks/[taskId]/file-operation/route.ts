@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -67,7 +68,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (operation === 'copy') {
       // Copy file
-      const copyResult = await sandbox.runCommand('cp', ['-r', sourceFile, targetFile])
+      const copyResult = await sandbox.runCommand({
+        cmd: 'cp',
+        args: ['-r', sourceFile, targetFile],
+        cwd: PROJECT_DIR,
+      })
 
       if (copyResult.exitCode !== 0) {
         const stderr = await copyResult.stderr()
@@ -78,7 +83,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: true, message: 'File copied successfully' })
     } else if (operation === 'cut') {
       // Move file
-      const mvResult = await sandbox.runCommand('mv', [sourceFile, targetFile])
+      const mvResult = await sandbox.runCommand({
+        cmd: 'mv',
+        args: [sourceFile, targetFile],
+        cwd: PROJECT_DIR,
+      })
 
       if (mvResult.exitCode !== 0) {
         const stderr = await mvResult.stderr()

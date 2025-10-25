@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -61,7 +62,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Step 1: Check if there are local changes
-    const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
+    const statusResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['status', '--porcelain'],
+      cwd: PROJECT_DIR,
+    })
 
     if (statusResult.exitCode !== 0) {
       const stderr = await statusResult.stderr()
@@ -75,7 +80,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Step 2: If there are changes, commit them first (before resetting)
     if (hasChanges) {
       // Add all changes
-      const addResult = await sandbox.runCommand('git', ['add', '.'])
+      const addResult = await sandbox.runCommand({
+        cmd: 'git',
+        args: ['add', '.'],
+        cwd: PROJECT_DIR,
+      })
       if (addResult.exitCode !== 0) {
         const stderr = await addResult.stderr()
         console.error('Failed to add changes:', stderr)
@@ -84,7 +93,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       // Commit changes
       const message = commitMessage || 'Checkpoint before reset'
-      const commitResult = await sandbox.runCommand('git', ['commit', '-m', message])
+      const commitResult = await sandbox.runCommand({
+        cmd: 'git',
+        args: ['commit', '-m', message],
+        cwd: PROJECT_DIR,
+      })
       if (commitResult.exitCode !== 0) {
         const stderr = await commitResult.stderr()
         console.error('Failed to commit changes:', stderr)
@@ -93,7 +106,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Step 3: Check if remote branch exists
-    const lsRemoteResult = await sandbox.runCommand('git', ['ls-remote', '--heads', 'origin', task.branchName])
+    const lsRemoteResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['ls-remote', '--heads', 'origin', task.branchName],
+      cwd: PROJECT_DIR,
+    })
 
     let resetTarget: string
     if (lsRemoteResult.exitCode === 0) {
@@ -102,7 +119,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (remoteBranchExists) {
         // Remote branch exists, fetch and reset to it
-        const fetchResult = await sandbox.runCommand('git', ['fetch', 'origin', task.branchName])
+        const fetchResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['fetch', 'origin', task.branchName],
+          cwd: PROJECT_DIR,
+        })
 
         if (fetchResult.exitCode !== 0) {
           const stderr = await fetchResult.stderr()
@@ -122,7 +143,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Step 4: Reset to determined target (hard reset)
-    const resetResult = await sandbox.runCommand('git', ['reset', '--hard', resetTarget])
+    const resetResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['reset', '--hard', resetTarget],
+      cwd: PROJECT_DIR,
+    })
 
     if (resetResult.exitCode !== 0) {
       const stderr = await resetResult.stderr()
@@ -131,7 +156,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Step 5: Clean untracked files
-    const cleanResult = await sandbox.runCommand('git', ['clean', '-fd'])
+    const cleanResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['clean', '-fd'],
+      cwd: PROJECT_DIR,
+    })
 
     if (cleanResult.exitCode !== 0) {
       const stderr = await cleanResult.stderr()

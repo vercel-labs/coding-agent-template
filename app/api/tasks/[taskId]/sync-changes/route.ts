@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function POST(request: Request, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -61,7 +62,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
     }
 
     // Step 1: Add all changes
-    const addResult = await sandbox.runCommand('git', ['add', '.'])
+    const addResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['add', '.'],
+      cwd: PROJECT_DIR,
+    })
 
     if (addResult.exitCode !== 0) {
       const stderr = await addResult.stderr()
@@ -70,7 +75,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
     }
 
     // Step 2: Check if there are changes to commit
-    const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
+    const statusResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['status', '--porcelain'],
+      cwd: PROJECT_DIR,
+    })
 
     if (statusResult.exitCode !== 0) {
       const stderr = await statusResult.stderr()
@@ -92,7 +101,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
 
     // Step 3: Commit changes
     const message = commitMessage || 'Sync local changes'
-    const commitResult = await sandbox.runCommand('git', ['commit', '-m', message])
+    const commitResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['commit', '-m', message],
+      cwd: PROJECT_DIR,
+    })
 
     if (commitResult.exitCode !== 0) {
       const stderr = await commitResult.stderr()
@@ -101,7 +114,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
     }
 
     // Step 4: Push changes
-    const pushResult = await sandbox.runCommand('git', ['push', 'origin', task.branchName])
+    const pushResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['push', 'origin', task.branchName],
+      cwd: PROJECT_DIR,
+    })
 
     if (pushResult.exitCode !== 0) {
       const stderr = await pushResult.stderr()

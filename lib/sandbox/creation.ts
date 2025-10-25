@@ -1,6 +1,6 @@
 import { Sandbox } from '@vercel/sandbox'
 import { validateEnvironmentVariables, createAuthenticatedRepoUrl } from './config'
-import { runCommandInSandbox } from './commands'
+import { runCommandInSandbox, runInProject, PROJECT_DIR } from './commands'
 import { generateId } from '@/lib/utils/id'
 import { SandboxConfig, SandboxResult } from './types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
@@ -9,13 +9,28 @@ import { detectPackageManager, installDependencies } from './package-manager'
 import { registerSandbox } from './sandbox-registry'
 
 // Helper function to run command and log it
-async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger, cwd?: string) {
+  // Properly escape arguments for shell execution
+  const escapeArg = (arg: string) => {
+    // Escape single quotes by replacing ' with '\''
+    return `'${arg.replace(/'/g, "'\\''")}'`
+  }
+  
+  const fullCommand = args.length > 0 
+    ? `${command} ${args.map(escapeArg).join(' ')}` 
+    : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
   await logger.command(redactedCommand)
 
-  const result = await runCommandInSandbox(sandbox, command, args)
+  let result
+  if (cwd) {
+    // Run command in specific directory
+    const cdCommand = `cd ${cwd} && ${fullCommand}`
+    result = await runCommandInSandbox(sandbox, 'sh', ['-c', cdCommand])
+  } else {
+    result = await runCommandInSandbox(sandbox, command, args)
+  }
 
   if (result && result.output && result.output.trim()) {
     const redactedOutput = redactSensitiveInfo(result.output.trim())
@@ -60,18 +75,17 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     // keepAlive only controls whether we shutdown after task completion
     const timeoutMs = config.timeout ? parseInt(config.timeout.replace(/\D/g, '')) * 60 * 1000 : 60 * 60 * 1000 // Default 1 hour
 
-    // Create sandbox with proper source configuration
+    // Determine ports based on project type (will be detected after cloning)
+    // Default to both 3000 (Next.js) and 5173 (Vite) for now
+    const defaultPorts = config.ports || [3000, 5173]
+
+    // Create sandbox without source - we'll clone manually to /vercel/sandbox/project
     const sandboxConfig = {
       teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
       projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
       token: process.env.SANDBOX_VERCEL_TOKEN!,
-      source: {
-        type: 'git' as const,
-        url: authenticatedRepoUrl,
-        depth: 1, // Shallow clone for faster setup
-      },
       timeout: timeoutMs,
-      ports: config.ports || [3000],
+      ports: defaultPorts,
       runtime: config.runtime || 'node22',
       resources: { vcpus: config.resources?.vcpus || 4 },
     }
@@ -95,9 +109,34 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         return { success: false, cancelled: true }
       }
 
+      // Clone repository to /vercel/sandbox/project
+      await logger.info('Cloning repository to project directory...')
+      
+      // Create project directory
+      const mkdirResult = await runCommandInSandbox(sandbox, 'mkdir', ['-p', PROJECT_DIR])
+      if (!mkdirResult.success) {
+        throw new Error('Failed to create project directory')
+      }
+
+      // Clone the repository with shallow clone
+      const cloneResult = await runCommandInSandbox(sandbox, 'git', [
+        'clone',
+        '--depth',
+        '1',
+        authenticatedRepoUrl,
+        PROJECT_DIR,
+      ])
+      
+      if (!cloneResult.success) {
+        await logger.error('Failed to clone repository')
+        throw new Error('Failed to clone repository to project directory')
+      }
+      
+      await logger.info('Repository cloned successfully')
+
       // Call progress callback after sandbox creation
       if (config.onProgress) {
-        await config.onProgress(30, 'Sandbox created, installing dependencies...')
+        await config.onProgress(30, 'Repository cloned, installing dependencies...')
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
@@ -132,8 +171,8 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     }
 
     // Check for project type and install dependencies accordingly
-    const packageJsonCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'package.json'])
-    const requirementsTxtCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'requirements.txt'])
+    const packageJsonCheck = await runInProject(sandbox, 'test', ['-f', 'package.json'])
+    const requirementsTxtCheck = await runInProject(sandbox, 'test', ['-f', 'requirements.txt'])
 
     if (config.installDependencies !== false) {
       if (packageJsonCheck.success) {
@@ -146,10 +185,10 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         // Install required package manager globally if needed
         if (packageManager === 'pnpm') {
           // Check if pnpm is already installed
-          const pnpmCheck = await runCommandInSandbox(sandbox, 'which', ['pnpm'])
+          const pnpmCheck = await runInProject(sandbox, 'which', ['pnpm'])
           if (!pnpmCheck.success) {
             await logger.info('Installing pnpm globally...')
-            const pnpmGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'pnpm'])
+            const pnpmGlobalInstall = await runInProject(sandbox, 'npm', ['install', '-g', 'pnpm'])
             if (!pnpmGlobalInstall.success) {
               await logger.error('Failed to install pnpm globally, falling back to npm')
               // Fall back to npm if pnpm installation fails
@@ -163,10 +202,10 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
           }
         } else if (packageManager === 'yarn') {
           // Check if yarn is already installed
-          const yarnCheck = await runCommandInSandbox(sandbox, 'which', ['yarn'])
+          const yarnCheck = await runInProject(sandbox, 'which', ['yarn'])
           if (!yarnCheck.success) {
             await logger.info('Installing yarn globally...')
-            const yarnGlobalInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'yarn'])
+            const yarnGlobalInstall = await runInProject(sandbox, 'npm', ['install', '-g', 'yarn'])
             if (!yarnGlobalInstall.success) {
               await logger.error('Failed to install yarn globally, falling back to npm')
               // Fall back to npm if yarn installation fails
@@ -219,7 +258,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         }
 
         // First install pip if it's not available
-        const pipCheck = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', '--version'])
+        const pipCheck = await runInProject(sandbox, 'python3', ['-m', 'pip', '--version'])
 
         if (!pipCheck.success) {
           await logger.info('pip not found, installing pip...')
@@ -256,7 +295,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
           await logger.info('pip is available')
 
           // Upgrade pip to latest version
-          const pipUpgrade = await runCommandInSandbox(sandbox, 'python3', ['-m', 'pip', 'install', '--upgrade', 'pip'])
+          const pipUpgrade = await runInProject(sandbox, 'python3', ['-m', 'pip', 'install', '--upgrade', 'pip'])
 
           if (!pipUpgrade.success) {
             await logger.info('Warning: Failed to upgrade pip, continuing anyway')
@@ -266,7 +305,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         }
 
         // Install dependencies from requirements.txt
-        const pipInstall = await runCommandInSandbox(sandbox, 'python3', [
+        const pipInstall = await runInProject(sandbox, 'python3', [
           '-m',
           'pip',
           'install',
@@ -291,8 +330,142 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       }
     } // End of installDependencies check
 
-    // Get the domain for the sandbox
-    const domain = sandbox.domain(config.ports?.[0] || 3000)
+    // Auto-start dev server if package.json has a dev script
+    let domain: string | undefined
+    let devPort = 3000 // Default port
+    
+    if (packageJsonCheck.success && config.installDependencies) {
+      // Check if package.json has a dev script
+      const packageJsonRead = await runInProject(sandbox, 'cat', ['package.json'])
+      if (packageJsonRead.success && packageJsonRead.output) {
+        try {
+          const packageJson = JSON.parse(packageJsonRead.output)
+          const hasDevScript = packageJson?.scripts?.dev
+          
+          // Detect Vite projects (use port 5173)
+          const hasVite = packageJson?.dependencies?.vite || packageJson?.devDependencies?.vite
+          if (hasVite) {
+            devPort = 5173
+            await logger.info('Vite project detected, using port 5173')
+          }
+
+          if (hasDevScript) {
+            await logger.info('Dev script detected, starting development server...')
+
+            const packageManager = await detectPackageManager(sandbox, logger)
+            let devCommand = packageManager === 'npm' ? 'npm' : packageManager
+            let devArgs = packageManager === 'npm' ? ['run', 'dev'] : ['dev']
+            
+            // Check if Vite project and configure to allow all hosts
+            if (hasVite) {
+              await logger.info('Configuring Vite for sandbox environment')
+              
+              // Add vite.config.js to global gitignore FIRST so any modifications won't be committed
+              await runCommandInSandbox(sandbox, 'sh', ['-c', 'mkdir -p ~/.config/git && grep -q "^vite\\.config\\." ~/.gitignore_global 2>/dev/null || echo "vite.config.*" >> ~/.gitignore_global'])
+              await runInProject(sandbox, 'git', ['config', 'core.excludesfile', '~/.gitignore_global'])
+              await logger.info('Added vite.config to global gitignore')
+              
+              // Now modify vite.config.js to set host: true (disables host checking)
+              const hasViteConfigJs = await runInProject(sandbox, 'test', ['-f', 'vite.config.js'])
+              
+              if (hasViteConfigJs.success) {
+                // Read and modify the config
+                const configRead = await runInProject(sandbox, 'cat', ['vite.config.js'])
+                if (configRead.success) {
+                  let config = configRead.output || ''
+                  
+                  // Simple sed replacement to set host: true in server config
+                  // This disables Vite's host checking
+                  await runInProject(sandbox, 'sh', ['-c', `
+# Backup original
+cp vite.config.js vite.config.js.backup
+
+# Add host: true to server config using sed
+if grep -q "server:" vite.config.js; then
+  # Server section exists, add host: true
+  sed -i "/server:[[:space:]]*{/a\\    host: true," vite.config.js
+else
+  # No server section, add it
+  sed -i "/export default defineConfig/a\\  server: { host: true }," vite.config.js  
+fi
+`])
+                  await logger.info('Modified vite.config.js to disable host checking (globally ignored)')
+                }
+              }
+              
+              // Use standard dev command with --host flag
+              if (packageManager === 'npm') {
+                devArgs = ['run', 'dev', '--', '--host']
+              } else {
+                devArgs = ['dev', '--host']
+              }
+            }
+            
+            // Check if Next.js 16 and add --webpack flag
+            const nextVersion = packageJson?.dependencies?.next || packageJson?.devDependencies?.next || ''
+            const isNext16 = nextVersion.startsWith('16.') || nextVersion.startsWith('^16.') || nextVersion.startsWith('~16.')
+            
+            if (isNext16) {
+              await logger.info('Next.js 16 detected, adding --webpack flag')
+              if (packageManager === 'npm') {
+                devArgs = ['run', 'dev', '--', '--webpack']
+              } else {
+                devArgs = ['dev', '--webpack']
+              }
+            }
+
+            // Start dev server in detached mode (runs in background) with log capture
+            const fullDevCommand = devArgs.length > 0 ? `${devCommand} ${devArgs.join(' ')}` : devCommand
+            
+            // Import Writable for stream capture
+            const { Writable } = await import('stream')
+            
+            const captureServerStdout = new Writable({
+              write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+                const lines = chunk.toString().split('\n').filter((line) => line.trim())
+                for (const line of lines) {
+                  logger.info(`[SERVER] ${line}`).catch(() => {})
+                }
+                callback()
+              },
+            })
+            
+            const captureServerStderr = new Writable({
+              write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+                const lines = chunk.toString().split('\n').filter((line) => line.trim())
+                for (const line of lines) {
+                  logger.info(`[SERVER] ${line}`).catch(() => {})
+                }
+                callback()
+              },
+            })
+            
+            await sandbox.runCommand({
+              cmd: 'sh',
+              args: ['-c', `cd ${PROJECT_DIR} && ${fullDevCommand}`],
+              detached: true,
+              stdout: captureServerStdout,
+              stderr: captureServerStderr,
+            })
+
+            await logger.info('Development server started')
+
+            // Wait a bit for server to start, then get URL
+            await new Promise((resolve) => setTimeout(resolve, 3000))
+            domain = sandbox.domain(devPort)
+            await logger.info('Development server is running')
+          }
+        } catch (parseError) {
+          // If package.json parsing fails, just continue without starting dev server
+          await logger.info('Could not parse package.json, skipping auto-start of dev server')
+        }
+      }
+    }
+
+    // If domain wasn't set by dev server, get it now
+    if (!domain) {
+      domain = sandbox.domain(devPort)
+    }
 
     // Log sandbox readiness based on project type
     if (packageJsonCheck.success) {
@@ -303,8 +476,8 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.info('Sandbox available')
 
       // Check if there's a common Python web framework entry point
-      const flaskAppCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'app.py'])
-      const djangoManageCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'manage.py'])
+      const flaskAppCheck = await runInProject(sandbox, 'test', ['-f', 'app.py'])
+      const djangoManageCheck = await runInProject(sandbox, 'test', ['-f', 'manage.py'])
 
       if (flaskAppCheck.success) {
         await logger.info('Flask app.py detected, you can run: python3 app.py')
@@ -325,35 +498,14 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     // Configure Git user
     const gitName = config.gitAuthorName || 'Coding Agent'
     const gitEmail = config.gitAuthorEmail || 'agent@example.com'
-    await runCommandInSandbox(sandbox, 'git', ['config', 'user.name', gitName])
-    await runCommandInSandbox(sandbox, 'git', ['config', 'user.email', gitEmail])
-
-    // Create .gitignore file if it doesn't exist or append to it if it does
-    await logger.info('Configuring Git ignore rules')
-    const gitignoreCheck = await runCommandInSandbox(sandbox, 'test', ['-f', '.gitignore'])
-
-    if (gitignoreCheck.success) {
-      // .gitignore exists, check if our entries are already there
-      const checkPnpmStore = await runCommandInSandbox(sandbox, 'grep', ['-q', '.pnpm-store', '.gitignore'])
-      const checkNodeModules = await runCommandInSandbox(sandbox, 'grep', ['-q', 'node_modules', '.gitignore'])
-
-      if (!checkPnpmStore.success) {
-        await runCommandInSandbox(sandbox, 'sh', ['-c', 'echo ".pnpm-store" >> .gitignore'])
-      }
-      if (!checkNodeModules.success) {
-        await runCommandInSandbox(sandbox, 'sh', ['-c', 'echo "node_modules" >> .gitignore'])
-      }
-    } else {
-      // .gitignore doesn't exist, create it with both entries
-      await runCommandInSandbox(sandbox, 'sh', ['-c', 'echo -e ".pnpm-store\\nnode_modules" > .gitignore'])
-    }
-    await logger.info('Git ignore rules configured')
+    await runInProject(sandbox, 'git', ['config', 'user.name', gitName])
+    await runInProject(sandbox, 'git', ['config', 'user.email', gitEmail])
 
     // Verify we're in a Git repository
-    const gitRepoCheck = await runCommandInSandbox(sandbox, 'git', ['rev-parse', '--git-dir'])
+    const gitRepoCheck = await runInProject(sandbox, 'git', ['rev-parse', '--git-dir'])
     if (!gitRepoCheck.success) {
       await logger.info('Not in a Git repository, initializing...')
-      const gitInit = await runCommandInSandbox(sandbox, 'git', ['init'])
+      const gitInit = await runInProject(sandbox, 'git', ['init'])
       if (!gitInit.success) {
         throw new Error('Failed to initialize Git repository')
       }
@@ -363,7 +515,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
     }
 
     // Check if repository is empty (no commits)
-    const hasCommits = await runCommandInSandbox(sandbox, 'git', ['rev-parse', 'HEAD'])
+    const hasCommits = await runInProject(sandbox, 'git', ['rev-parse', 'HEAD'])
     if (!hasCommits.success) {
       await logger.info('Empty repository detected, creating initial main branch')
 
@@ -373,26 +525,26 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
       // Create README.md with repo name
       const readmeContent = `# ${repoName}\n`
-      const createReadme = await runCommandInSandbox(sandbox, 'sh', ['-c', `echo '${readmeContent}' > README.md`])
+      const createReadme = await runInProject(sandbox, 'sh', ['-c', `echo '${readmeContent}' > README.md`])
 
       if (!createReadme.success) {
         throw new Error('Failed to create initial README')
       }
 
       // Checkout to main branch (or create it if needed)
-      const checkoutMain = await runCommandInSandbox(sandbox, 'git', ['checkout', '-b', 'main'])
+      const checkoutMain = await runInProject(sandbox, 'git', ['checkout', '-b', 'main'])
       if (!checkoutMain.success) {
         throw new Error('Failed to create main branch')
       }
 
       // Add README to git
-      const gitAdd = await runCommandInSandbox(sandbox, 'git', ['add', 'README.md'])
+      const gitAdd = await runInProject(sandbox, 'git', ['add', 'README.md'])
       if (!gitAdd.success) {
         throw new Error('Failed to add README to git')
       }
 
       // Commit README
-      const gitCommit = await runCommandInSandbox(sandbox, 'git', ['commit', '-m', 'Initial commit'])
+      const gitCommit = await runInProject(sandbox, 'git', ['commit', '-m', 'Initial commit'])
       if (!gitCommit.success) {
         throw new Error('Failed to commit initial README')
       }
@@ -400,7 +552,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.info('Created initial commit on main branch')
 
       // Push to origin
-      const gitPush = await runCommandInSandbox(sandbox, 'git', ['push', '-u', 'origin', 'main'])
+      const gitPush = await runInProject(sandbox, 'git', ['push', '-u', 'origin', 'main'])
       if (!gitPush.success) {
         await logger.info('Failed to push main branch to origin')
         // Don't throw error here as local repo is still valid
@@ -416,7 +568,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.info('Using pre-determined branch name')
 
       // First check if the branch already exists locally
-      const branchExistsLocal = await runCommandInSandbox(sandbox, 'git', [
+      const branchExistsLocal = await runInProject(sandbox, 'git', [
         'show-ref',
         '--verify',
         '--quiet',
@@ -431,6 +583,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
           'git',
           ['checkout', config.preDeterminedBranchName],
           logger,
+          PROJECT_DIR,
         )
 
         if (!checkoutBranch.success) {
@@ -441,7 +594,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
         branchName = config.preDeterminedBranchName
       } else {
         // Check if branch exists on remote
-        const branchExistsRemote = await runCommandInSandbox(sandbox, 'git', [
+        const branchExistsRemote = await runInProject(sandbox, 'git', [
           'ls-remote',
           '--heads',
           'origin',
@@ -453,7 +606,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
           await logger.info('Branch exists on remote, fetching and checking it out')
 
           // Fetch the remote branch with refspec to create local tracking branch
-          const fetchBranch = await runCommandInSandbox(sandbox, 'git', [
+          const fetchBranch = await runInProject(sandbox, 'git', [
             'fetch',
             'origin',
             `${config.preDeterminedBranchName}:${config.preDeterminedBranchName}`,
@@ -463,7 +616,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
             await logger.info('Failed to fetch remote branch, trying alternative method')
 
             // Alternative: fetch all and then checkout
-            const fetchAll = await runCommandInSandbox(sandbox, 'git', ['fetch', 'origin'])
+            const fetchAll = await runInProject(sandbox, 'git', ['fetch', 'origin'])
             if (!fetchAll.success) {
               await logger.info('Failed to fetch from origin')
               throw new Error('Failed to fetch from remote Git repository')
@@ -475,6 +628,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
               'git',
               ['checkout', '-b', config.preDeterminedBranchName, '--track', `origin/${config.preDeterminedBranchName}`],
               logger,
+              PROJECT_DIR,
             )
 
             if (!checkoutTracking.success) {
@@ -488,6 +642,7 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
               'git',
               ['checkout', config.preDeterminedBranchName],
               logger,
+              PROJECT_DIR,
             )
 
             if (!checkoutRemoteBranch.success) {
@@ -505,14 +660,15 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
             'git',
             ['checkout', '-b', config.preDeterminedBranchName],
             logger,
+            PROJECT_DIR,
           )
 
           if (!createBranch.success) {
             await logger.info('Failed to create branch')
             // Add debugging information
-            const gitStatus = await runCommandInSandbox(sandbox, 'git', ['status'])
+            const gitStatus = await runInProject(sandbox, 'git', ['status'])
             await logger.info('Git status retrieved')
-            const gitBranch = await runCommandInSandbox(sandbox, 'git', ['branch', '-a'])
+            const gitBranch = await runInProject(sandbox, 'git', ['branch', '-a'])
             await logger.info('Git branches retrieved')
             throw new Error('Failed to create Git branch')
           }
@@ -528,16 +684,16 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       branchName = `agent/${timestamp}-${suffix}`
 
       await logger.info('No predetermined branch name, using timestamp-based branch')
-      const createBranch = await runAndLogCommand(sandbox, 'git', ['checkout', '-b', branchName], logger)
+      const createBranch = await runAndLogCommand(sandbox, 'git', ['checkout', '-b', branchName], logger, PROJECT_DIR)
 
       if (!createBranch.success) {
         await logger.info('Failed to create branch')
         // Add debugging information for fallback branch creation too
-        const gitStatus = await runCommandInSandbox(sandbox, 'git', ['status'])
+        const gitStatus = await runInProject(sandbox, 'git', ['status'])
         await logger.info('Git status retrieved')
-        const gitBranch = await runCommandInSandbox(sandbox, 'git', ['branch', '-a'])
+        const gitBranch = await runInProject(sandbox, 'git', ['branch', '-a'])
         await logger.info('Git branches retrieved')
-        const gitLog = await runCommandInSandbox(sandbox, 'git', ['log', '--oneline', '-5'])
+        const gitLog = await runInProject(sandbox, 'git', ['log', '--oneline', '-5'])
         await logger.info('Recent commits retrieved')
         throw new Error('Failed to create Git branch')
       }

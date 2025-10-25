@@ -1,6 +1,6 @@
 import { Sandbox } from '@vercel/sandbox'
 import { Writable } from 'stream'
-import { runCommandInSandbox } from '../commands'
+import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
@@ -11,7 +11,7 @@ import { generateId } from '@/lib/utils/id'
 
 type Connector = typeof connectors.$inferSelect
 
-// Helper function to run command and collect logs
+// Helper function to run command and collect logs in project directory
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
@@ -22,7 +22,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
     await logger.command(redactedCommand)
   }
 
-  const result = await runCommandInSandbox(sandbox, command, args)
+  const result = await runInProject(sandbox, command, args)
 
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
@@ -343,29 +343,44 @@ export async function executeClaudeInSandbox(
                   else if (contentBlock.type === 'tool_use') {
                     let statusMsg = ''
                     const toolName = contentBlock.name
+                    const input = contentBlock.input || {}
 
                     if (toolName === 'Write' || toolName === 'Edit') {
-                      statusMsg = `Editing ${contentBlock.input?.path || 'file'}`
+                      const path = input.path || input.file_path || input.filepath || 'file'
+                      statusMsg = `Editing ${path}`
                     } else if (toolName === 'Read') {
-                      statusMsg = `Reading ${contentBlock.input?.path || 'file'}`
+                      const path = input.path || input.file_path || input.filepath || 'file'
+                      statusMsg = `Reading ${path}`
                     } else if (toolName === 'Glob') {
-                      statusMsg = `Searching files`
+                      const pattern = input.pattern || input.glob_pattern || input.glob || '*'
+                      statusMsg = `Searching files: ${pattern}`
                     } else if (toolName === 'Bash') {
-                      statusMsg = `Running command`
+                      const command = input.command || input.cmd || input.script || 'command'
+                      // Truncate long commands
+                      const displayCmd = command.length > 50 ? command.substring(0, 50) + '...' : command
+                      statusMsg = `Running: ${displayCmd}`
+                    } else if (toolName === 'Grep') {
+                      const pattern = input.pattern || input.regex || input.search || 'pattern'
+                      statusMsg = `Grep: ${pattern}`
                     } else {
-                      statusMsg = `Using ${toolName}`
+                      // For debugging, log the tool name and input to console
+                      console.log('Unknown Claude tool:', toolName, 'Input:', JSON.stringify(input))
+                      // Skip logging generic tool uses to reduce noise
+                      statusMsg = ''
                     }
 
-                    accumulatedContent += `\n\n${statusMsg}\n\n`
+                    if (statusMsg) {
+                      accumulatedContent += `\n\n${statusMsg}\n\n`
 
-                    // Update database
-                    db.update(taskMessages)
-                      .set({
-                        content: accumulatedContent,
-                      })
-                      .where(eq(taskMessages.id, agentMessageId))
-                      .then(() => {})
-                      .catch((err) => console.error('Failed to update message:', err))
+                      // Update database
+                      db.update(taskMessages)
+                        .set({
+                          content: accumulatedContent,
+                        })
+                        .where(eq(taskMessages.id, agentMessageId))
+                        .then(() => {})
+                        .catch((err) => console.error('Failed to update message:', err))
+                    }
                   }
                 }
               }
@@ -404,6 +419,7 @@ export async function executeClaudeInSandbox(
       args: ['-c', fullCommand],
       sudo: false,
       detached: true,
+      cwd: PROJECT_DIR,
       stdout: captureStdout,
       stderr: captureStderr,
     })

@@ -31,6 +31,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const terminalRef = useRef<TerminalRef>(null)
   const prevLogsLengthRef = useRef<number>(0)
   const hasInitialScrolled = useRef<boolean>(false)
+  const wasAtBottomRef = useRef<boolean>(true)
   const { isSidebarOpen, isSidebarResizing, refreshTasks } = useTasks()
 
   // Check if we're on desktop
@@ -110,6 +111,22 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
     }
   }, [isResizing])
 
+  // Track if user is at the bottom of logs
+  useEffect(() => {
+    const logsContainer = logsContainerRef.current
+    if (!logsContainer) return
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = logsContainer
+      // Consider "at bottom" if within 50px of the bottom
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50
+      wasAtBottomRef.current = isAtBottom
+    }
+
+    logsContainer.addEventListener('scroll', handleScroll)
+    return () => logsContainer.removeEventListener('scroll', handleScroll)
+  }, [])
+
   // Scroll to bottom on initial load
   useEffect(() => {
     if (task.logs && task.logs.length > 0 && !hasInitialScrolled.current && logsContainerRef.current) {
@@ -117,17 +134,19 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
         if (logsContainerRef.current) {
           logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
           hasInitialScrolled.current = true
+          wasAtBottomRef.current = true
         }
       }, 100)
     }
   }, [task.logs])
 
-  // Auto-scroll to bottom when new logs are added
+  // Auto-scroll to bottom when new logs are added (only if user was already at bottom)
   useEffect(() => {
     const currentLogsLength = task.logs?.length || 0
 
     if (currentLogsLength > prevLogsLengthRef.current && prevLogsLengthRef.current > 0) {
-      if (logsContainerRef.current) {
+      // Only auto-scroll if user was at the bottom
+      if (logsContainerRef.current && wasAtBottomRef.current) {
         logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
       }
     }
@@ -313,6 +332,9 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
           )}
         >
           {(task.logs || []).map((log, index) => {
+            const isServerLog = log.message.startsWith('[SERVER]')
+            const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
+            
             const getLogColor = (logType: LogEntry['type']) => {
               switch (logType) {
                 case 'command':
@@ -338,9 +360,13 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             }
 
             return (
-              <div key={index} className={cn('flex gap-1.5 leading-tight', getLogColor(log.type))}>
+              <div key={index} className={cn('flex gap-1.5 leading-tight')}>
                 <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
-                <span className="flex-1">{log.message}</span>
+                <span className={cn('flex-1', getLogColor(log.type))}>
+                  {isServerLog && <span className="text-purple-400">[SERVER]</span>}
+                  {isServerLog && ' '}
+                  {messageContent}
+                </span>
               </div>
             )
           })}
