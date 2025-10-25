@@ -66,18 +66,19 @@ export function PRCheckStatus({ taskId, prStatus, isActive = false, className = 
   const bgColor = isActive ? 'bg-accent' : 'bg-card'
 
   // Render the appropriate indicator
-  if (hasInProgress) {
-    return (
-      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
-        <div className="w-1 h-1 rounded-full bg-yellow-500 animate-pulse" />
-      </div>
-    )
-  }
-
+  // Note: Check failed first to ensure failures are always visible, even if other checks are in progress
   if (hasFailed) {
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
         <div className="w-1 h-1 rounded-full bg-red-500" />
+      </div>
+    )
+  }
+
+  if (hasInProgress) {
+    return (
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
+        <div className="w-1 h-1 rounded-full bg-yellow-500 animate-pulse" />
       </div>
     )
   }
