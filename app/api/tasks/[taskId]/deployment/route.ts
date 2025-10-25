@@ -50,6 +50,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         data: {
           hasDeployment: true,
           previewUrl,
+          deploymentUrl: task.previewUrl.includes('vercel.live/open-feedback/')
+            ? task.previewUrl
+            : `https://vercel.com/${previewUrl.split('://')[1]}`,
           cached: true,
         },
       })
@@ -187,11 +190,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             // Store the preview URL in the database
             await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
 
+            // Get the deployment page URL from details_url if available
+            const deploymentUrl = vercelDeploymentCheck?.details_url || vercelPreviewCheck?.details_url || undefined
+
             return NextResponse.json({
               success: true,
               data: {
                 hasDeployment: true,
                 previewUrl,
+                deploymentUrl,
                 checkId: vercelDeploymentCheck?.id || vercelPreviewCheck?.id,
                 createdAt: vercelDeploymentCheck?.completed_at || vercelPreviewCheck?.completed_at,
               },
@@ -234,6 +241,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 if (status.state === 'success') {
                   let previewUrl = status.environment_url || status.target_url
                   if (previewUrl) {
+                    // Store original URL for deployment page link
+                    const deploymentUrl = previewUrl
                     // Convert feedback URL to actual deployment URL if needed
                     previewUrl = convertFeedbackUrlToDeploymentUrl(previewUrl)
                     // Store the preview URL in the database
@@ -244,6 +253,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       data: {
                         hasDeployment: true,
                         previewUrl,
+                        deploymentUrl,
                         deploymentId: deployment.id,
                         createdAt: deployment.created_at,
                       },
@@ -275,6 +285,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           )
 
           if (vercelStatus && vercelStatus.target_url) {
+            // Store original URL for deployment page link
+            const deploymentUrl = vercelStatus.target_url
             // Convert feedback URL to actual deployment URL if needed
             const previewUrl = convertFeedbackUrlToDeploymentUrl(vercelStatus.target_url)
             // Store the preview URL in the database
@@ -285,6 +297,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               data: {
                 hasDeployment: true,
                 previewUrl,
+                deploymentUrl,
                 createdAt: vercelStatus.created_at,
               },
             })
