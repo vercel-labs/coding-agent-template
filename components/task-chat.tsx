@@ -1178,7 +1178,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-full md:bg-card md:rounded-lg md:border md:p-3">
+    <div className="flex flex-col h-full">
       {/* Header Tabs */}
       <div className="py-2 flex items-center justify-between gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="flex items-center gap-1">
