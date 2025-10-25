@@ -187,11 +187,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             // Store the preview URL in the database
             await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
 
+            // Get the inspector URL (details_url from check run)
+            const inspectorUrl = vercelDeploymentCheck?.details_url || vercelPreviewCheck?.details_url
+
             return NextResponse.json({
               success: true,
               data: {
                 hasDeployment: true,
                 previewUrl,
+                inspectorUrl,
                 checkId: vercelDeploymentCheck?.id || vercelPreviewCheck?.id,
                 createdAt: vercelDeploymentCheck?.completed_at || vercelPreviewCheck?.completed_at,
               },
@@ -244,6 +248,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       data: {
                         hasDeployment: true,
                         previewUrl,
+                        inspectorUrl: status.target_url,
                         deploymentId: deployment.id,
                         createdAt: deployment.created_at,
                       },
@@ -285,6 +290,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               data: {
                 hasDeployment: true,
                 previewUrl,
+                inspectorUrl: vercelStatus.target_url,
                 createdAt: vercelStatus.created_at,
               },
             })

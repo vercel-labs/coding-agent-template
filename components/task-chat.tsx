@@ -54,6 +54,7 @@ interface CheckRun {
 interface DeploymentInfo {
   hasDeployment: boolean
   previewUrl?: string
+  inspectorUrl?: string
   message?: string
   createdAt?: string
 }
@@ -646,24 +647,47 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             </div>
           ) : (
             <div className="space-y-2 px-2">
-              <a
-                href={deployment.previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-              >
-                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
-                  <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-                </svg>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">Vercel Preview</div>
-                  <div className="text-xs text-muted-foreground">
-                    {deployment.createdAt
-                      ? `Deployed ${new Date(deployment.createdAt).toLocaleString()}`
-                      : 'Preview deployment'}
+              <div className="flex items-center gap-2">
+                <a
+                  href={deployment.previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors flex-1"
+                >
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
+                    <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">Vercel Preview</div>
+                    <div className="text-xs text-muted-foreground">
+                      {deployment.createdAt
+                        ? `Deployed ${new Date(deployment.createdAt).toLocaleString()}`
+                        : 'Preview deployment'}
+                    </div>
                   </div>
-                </div>
-              </a>
+                </a>
+                {deployment.inspectorUrl && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <a
+                          href={deployment.inspectorUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="cursor-pointer"
+                        >
+                          View Deployment
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
           )}
         </div>
