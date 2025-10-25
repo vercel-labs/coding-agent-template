@@ -389,8 +389,11 @@ if (content.includes('defineConfig')) {
 fs.writeFileSync(configPath, content);
 `
                   // Write the script to a temporary file
-                  await runCommandInSandbox(sandbox, 'sh', ['-c', `echo "${script.replace(/"/g, '\\"')}" > /tmp/modify_vite_config.js`])
-                  
+                  await runCommandInSandbox(sandbox, 'sh', [
+                    '-c',
+                    `echo "${script.replace(/"/g, '\\"')}" > /tmp/modify_vite_config.js`,
+                  ])
+
                   // Run the script
                   await runCommandInSandbox(sandbox, 'node', ['/tmp/modify_vite_config.js'])
                   await logger.info('Modified vite.config.js to allow remote hosts (globally ignored)')
