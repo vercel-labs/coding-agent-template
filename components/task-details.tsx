@@ -2069,7 +2069,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   </div>
                 </div>
               ) : activeTab === 'chat' ? (
-                <div className="h-full">
+                <div className="h-full px-3 pb-3">
                   <TaskChat taskId={task.id} task={task} />
                 </div>
               ) : activeTab === 'preview' ? (
@@ -2104,18 +2104,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         disabled={!task.sandboxUrl}
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                        title="Open in New Tab"
-                        disabled={!task.sandboxUrl}
-                      >
-                        <a href={`/api/tasks/${task.id}/sandbox-proxy`} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
