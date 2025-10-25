@@ -161,6 +161,7 @@ export function TaskForm({
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
   const [selectedAgent, setSelectedAgent] = useAtom(lastSelectedAgentAtom)
+  const [isAgentInitialized, setIsAgentInitialized] = useState(false)
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
   const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [repos, setRepos] = useAtom(githubReposAtomFamily(selectedOwner))
@@ -234,9 +235,18 @@ export function TaskForm({
           setSelectedModel(urlModel)
         }
       }
-    } else if (selectedAgent === null) {
-      // Initialize with default agent only if explicitly null (never set before)
-      setSelectedAgent('claude')
+      setIsAgentInitialized(true)
+    } else {
+      // Wait a tick for localStorage to be read by Jotai
+      const timeoutId = setTimeout(() => {
+        if (!selectedAgent) {
+          // Only set default if still no agent after localStorage load
+          setSelectedAgent('claude')
+        }
+        setIsAgentInitialized(true)
+      }, 0)
+
+      return () => clearTimeout(timeoutId)
     }
 
     // Options are now initialized from server props, no need to load from cookies
