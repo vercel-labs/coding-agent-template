@@ -60,6 +60,7 @@ export function PRCheckStatus({ taskId, prStatus, isActive = false, className = 
   // Determine overall status
   const hasInProgress = checkRuns.some((run) => run.status === 'in_progress' || run.status === 'queued')
   const hasFailed = checkRuns.some((run) => run.conclusion === 'failure' || run.conclusion === 'cancelled')
+  const hasNeutral = checkRuns.some((run) => run.conclusion === 'neutral')
   const allPassed = checkRuns.every((run) => run.status === 'completed' && run.conclusion === 'success')
 
   // Determine background color based on active state
@@ -79,6 +80,14 @@ export function PRCheckStatus({ taskId, prStatus, isActive = false, className = 
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
         <div className="w-1 h-1 rounded-full bg-yellow-500 animate-pulse" />
+      </div>
+    )
+  }
+
+  if (hasNeutral) {
+    return (
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
+        <div className="w-1 h-1 rounded-full bg-blue-500" />
       </div>
     )
   }
