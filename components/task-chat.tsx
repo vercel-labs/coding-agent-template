@@ -1181,7 +1181,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* Header Tabs */}
       <div className="py-2 flex items-center justify-between gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="flex items-center gap-1">
@@ -1226,19 +1226,20 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       {/* Tab Content */}
       {renderTabContent()}
 
+      {/* Scroll to bottom button - positioned relative to entire component */}
+      {activeTab === 'chat' && showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-[68px] left-1/2 -translate-x-1/2 rounded-full h-8 w-8 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg flex items-center justify-center z-20 transition-all"
+          aria-label="Scroll to bottom"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      )}
+
       {/* Input Area (only for chat tab) */}
       {activeTab === 'chat' && (
         <div className="flex-shrink-0 relative">
-          {/* Scroll to bottom button */}
-          {showScrollButton && (
-            <button
-              onClick={scrollToBottom}
-              className="absolute -top-12 left-1/2 -translate-x-1/2 rounded-full h-8 w-8 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md flex items-center justify-center z-10 transition-opacity"
-              aria-label="Scroll to bottom"
-            >
-              <ArrowDown className="h-4 w-4" />
-            </button>
-          )}
           <Textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
