@@ -59,7 +59,7 @@ export function PRCheckStatus({ taskId, className = '' }: PRCheckStatusProps) {
   if (hasInProgress) {
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 ${className}`}>
-        <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
       </div>
     )
   }
@@ -67,7 +67,7 @@ export function PRCheckStatus({ taskId, className = '' }: PRCheckStatusProps) {
   if (hasFailed) {
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 ${className}`}>
-        <div className="w-2 h-2 rounded-full bg-red-500" />
+        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
       </div>
     )
   }
@@ -75,7 +75,7 @@ export function PRCheckStatus({ taskId, className = '' }: PRCheckStatusProps) {
   if (allPassed) {
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 ${className}`}>
-        <Check className="w-2.5 h-2.5 text-green-500" strokeWidth={3} />
+        <Check className="w-2 h-2 text-green-500" strokeWidth={3} />
       </div>
     )
   }
