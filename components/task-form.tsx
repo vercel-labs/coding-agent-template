@@ -440,8 +440,6 @@ export function TaskForm({
                   value={selectedAgent || 'claude'}
                   onValueChange={(value) => {
                     setSelectedAgent(value)
-                    // Save to Jotai atom immediately
-                    setSavedAgent(value)
                   }}
                   disabled={isSubmitting}
                 >
@@ -527,7 +525,6 @@ export function TaskForm({
                     value={selectedModel}
                     onValueChange={(value) => {
                       setSelectedModel(value)
-                      // Save to Jotai atom immediately
                       setSavedModel(value)
                     }}
                     disabled={isSubmitting}
