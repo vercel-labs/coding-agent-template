@@ -48,7 +48,6 @@ export function RepoSelector({
   const [loadingOwners, setLoadingOwners] = useState(true)
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [repoDropdownOpen, setRepoDropdownOpen] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Ref for the filter input to focus it when dropdown opens
   const filterInputRef = useRef<HTMLInputElement>(null)
@@ -95,15 +94,8 @@ export function RepoSelector({
         // Only show loading state if we don't have owners yet
         if (!owners || owners.length === 0) {
           setLoadingOwners(true)
-        } else {
-          setIsRefreshing(true)
         }
-
-        // Check cache first - but only use it if we're not forcing a refresh
-        if (owners && owners.length > 0) {
-          setLoadingOwners(false)
-          // Continue fetching in background to update
-        }
+        // If we have cached data, keep loadingOwners false and reload in background
 
         // Fetch both user and organizations
         const [userResponse, orgsResponse] = await Promise.all([fetch('/api/github/user'), fetch('/api/github/orgs')])
@@ -127,7 +119,6 @@ export function RepoSelector({
             // Update connection state to trigger "Connect GitHub" button
             setGitHubConnection({ connected: false })
             setLoadingOwners(false)
-            setIsRefreshing(false)
             return
           }
           throw new Error('Failed to load GitHub user')
@@ -179,7 +170,6 @@ export function RepoSelector({
         setGitHubConnection({ connected: false })
       } finally {
         setLoadingOwners(false)
-        setIsRefreshing(false)
       }
     }
 
@@ -238,7 +228,6 @@ export function RepoSelector({
               // Update connection state to trigger "Connect GitHub" button
               setGitHubConnection({ connected: false })
               setLoadingRepos(false)
-              setIsRefreshing(false)
               return
             }
             throw new Error('Failed to load repositories')
@@ -264,7 +253,6 @@ export function RepoSelector({
           setGitHubConnection({ connected: false })
         } finally {
           setLoadingRepos(false)
-          setIsRefreshing(false)
         }
       }
 
