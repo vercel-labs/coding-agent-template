@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
   ArrowUp,
+  ArrowDown,
   Loader2,
   Copy,
   Check,
@@ -86,6 +87,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [overflowingMessages, setOverflowingMessages] = useState<Set<string>>(new Set())
   const contentRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const [showScrollButton, setShowScrollButton] = useState(false)
 
   // Track if each tab has been loaded to avoid refetching on tab switch
   const commentsLoadedRef = useRef(false)
@@ -350,6 +352,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
     const handleScroll = () => {
       wasAtBottomRef.current = isNearBottom()
+      setShowScrollButton(!isNearBottom())
     }
 
     container.addEventListener('scroll', handleScroll)
@@ -1226,6 +1229,16 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       {/* Input Area (only for chat tab) */}
       {activeTab === 'chat' && (
         <div className="flex-shrink-0 relative">
+          {/* Scroll to bottom button */}
+          {showScrollButton && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute -top-12 left-1/2 -translate-x-1/2 rounded-full h-8 w-8 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md flex items-center justify-center z-10 transition-opacity"
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </button>
+          )}
           <Textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
