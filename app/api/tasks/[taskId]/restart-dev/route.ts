@@ -4,7 +4,7 @@ import { tasks } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Sandbox } from '@vercel/sandbox'
 import { getServerSession } from '@/lib/session/get-server-session'
-import { runCommandInSandbox, PROJECT_DIR } from '@/lib/sandbox/commands'
+import { runCommandInSandbox, runInProject, PROJECT_DIR } from '@/lib/sandbox/commands'
 import { detectPackageManager } from '@/lib/sandbox/package-manager'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 
@@ -45,7 +45,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     const logger = createTaskLogger(taskId)
 
     // Check if package.json exists and has a dev script
-    const packageJsonCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'package.json'])
+    const packageJsonCheck = await runInProject(sandbox, 'test', ['-f', 'package.json'])
     if (!packageJsonCheck.success) {
       return NextResponse.json({ error: 'No package.json found in sandbox' }, { status: 400 })
     }
