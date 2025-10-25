@@ -11,6 +11,7 @@ export function useTask(taskId: string) {
   const hasFoundTaskRef = useRef(false)
 
   const fetchTask = useCallback(async () => {
+    let errorOccurred = false
     try {
       const response = await fetch(`/api/tasks/${taskId}`)
       if (response.ok) {
@@ -25,17 +26,20 @@ export function useTask(taskId: string) {
         if (attemptCountRef.current >= 3 || hasFoundTaskRef.current) {
           setError('Task not found')
           setTask(null)
+          errorOccurred = true
         }
         // If we haven't hit the attempt threshold yet, keep loading state
       } else {
         setError('Failed to fetch task')
+        errorOccurred = true
       }
     } catch (err) {
       console.error('Error fetching task:', err)
       setError('Failed to fetch task')
+      errorOccurred = true
     } finally {
       // Only stop loading after we've either found the task or exceeded attempt threshold
-      if (hasFoundTaskRef.current || attemptCountRef.current >= 3) {
+      if (hasFoundTaskRef.current || attemptCountRef.current >= 3 || errorOccurred) {
         setIsLoading(false)
       }
     }
