@@ -2089,7 +2089,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   <TaskChat taskId={task.id} task={task} />
                 </div>
               ) : activeTab === 'preview' ? (
-                <div className="h-full">
+                <div className={cn('h-full', isPreviewFullscreen && 'fixed inset-0 z-50 bg-background')}>
                   <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
                     {/* Preview Toolbar */}
                     <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
@@ -2120,6 +2120,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         disabled={!task.sandboxUrl}
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsPreviewFullscreen(!isPreviewFullscreen)}
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                        title={isPreviewFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                      >
+                        {isPreviewFullscreen ? (
+                          <Minimize className="h-3.5 w-3.5" />
+                        ) : (
+                          <Maximize className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
