@@ -2086,7 +2086,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </div>
 
               {/* Chat Tab */}
-              <div className={cn('h-full px-3 pb-3', activeTab !== 'chat' && 'hidden')}>
+              <div className={cn('h-full px-3 pb-3 relative', activeTab !== 'chat' && 'hidden')}>
                 <TaskChat taskId={task.id} task={task} />
               </div>
 

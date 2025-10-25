@@ -355,9 +355,26 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       setShowScrollButton(!isNearBottom())
     }
 
+    // Check initial scroll position
+    handleScroll()
+
     container.addEventListener('scroll', handleScroll)
     return () => container.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Check scroll position when messages change or active tab changes
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        const container = scrollContainerRef.current
+        if (container) {
+          const nearBottom = isNearBottom()
+          setShowScrollButton(!nearBottom)
+        }
+      }, 100)
+    }
+  }, [messages, activeTab])
 
   // Calculate heights for user messages to create proper sticky stacking
   useEffect(() => {
@@ -1181,9 +1198,9 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full">
       {/* Header Tabs */}
-      <div className="py-2 flex items-center justify-between gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="py-2 flex items-center justify-between gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setActiveTab('chat')}
@@ -1224,18 +1241,22 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       </div>
 
       {/* Tab Content */}
-      {renderTabContent()}
+      <div className="flex-1 min-h-0 relative">
+        {renderTabContent()}
 
-      {/* Scroll to bottom button - positioned relative to entire component */}
-      {activeTab === 'chat' && showScrollButton && (
-        <button
-          onClick={scrollToBottom}
-          className="absolute bottom-[68px] left-1/2 -translate-x-1/2 rounded-full h-8 w-8 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg flex items-center justify-center z-20 transition-all"
-          aria-label="Scroll to bottom"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </button>
-      )}
+        {/* Scroll to bottom button - positioned within content area */}
+        {activeTab === 'chat' && showScrollButton && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none z-20">
+            <button
+              onClick={scrollToBottom}
+              className="rounded-full h-10 w-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg flex items-center justify-center transition-all pointer-events-auto"
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown className="h-5 w-5" />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Input Area (only for chat tab) */}
       {activeTab === 'chat' && (
