@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
 import { getLogsPaneHeight, setLogsPaneHeight, getLogsPaneCollapsed, setLogsPaneCollapsed } from '@/lib/utils/cookies'
 import { Terminal, TerminalRef } from '@/components/terminal'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface LogsPaneProps {
   task: Task
@@ -16,6 +17,7 @@ interface LogsPaneProps {
 }
 
 type TabType = 'logs' | 'terminal'
+type LogFilterType = 'all' | 'platform' | 'server'
 
 export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
@@ -27,6 +29,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [hasMounted, setHasMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('logs')
   const [isClearingLogs, setIsClearingLogs] = useState(false)
+  const [logFilter, setLogFilter] = useState<LogFilterType>('all')
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<TerminalRef>(null)
   const prevLogsLengthRef = useRef<number>(0)
@@ -154,9 +157,20 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
     prevLogsLengthRef.current = currentLogsLength
   }, [task.logs])
 
+  // Helper function to filter logs based on current filter
+  const getFilteredLogs = (filter: LogFilterType) => {
+    return (task.logs || []).filter((log) => {
+      const isServerLog = log.message.startsWith('[SERVER]')
+      if (filter === 'server') return isServerLog
+      if (filter === 'platform') return !isServerLog
+      return true
+    })
+  }
+
   const copyLogsToClipboard = async () => {
     try {
-      const logsText = (task.logs || []).map((log) => log.message).join('\n')
+      const filteredLogs = getFilteredLogs(logFilter)
+      const logsText = filteredLogs.map((log) => log.message).join('\n')
 
       await navigator.clipboard.writeText(logsText)
       setCopiedLogs(true)
@@ -279,7 +293,17 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             </div>
           </div>
           {activeTab === 'logs' && (
-            <div className="flex items-center gap-1 mr-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5 mr-3" onClick={(e) => e.stopPropagation()}>
+              <Select value={logFilter} onValueChange={(value) => setLogFilter(value as LogFilterType)}>
+                <SelectTrigger size="sm" className="h-6 text-xs px-2 py-0 min-w-[90px] border-0 shadow-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="platform">Platform</SelectItem>
+                  <SelectItem value="server">Server</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="ghost"
                 size="sm"
@@ -331,7 +355,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             (isCollapsed || activeTab !== 'logs') && 'hidden',
           )}
         >
-          {(task.logs || []).map((log, index) => {
+          {getFilteredLogs(logFilter).map((log, index) => {
             const isServerLog = log.message.startsWith('[SERVER]')
             const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
 
