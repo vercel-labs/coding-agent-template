@@ -157,9 +157,20 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
     prevLogsLengthRef.current = currentLogsLength
   }, [task.logs])
 
+  // Helper function to filter logs based on current filter
+  const getFilteredLogs = (filter: LogFilterType) => {
+    return (task.logs || []).filter((log) => {
+      const isServerLog = log.message.startsWith('[SERVER]')
+      if (filter === 'server') return isServerLog
+      if (filter === 'platform') return !isServerLog
+      return true
+    })
+  }
+
   const copyLogsToClipboard = async () => {
     try {
-      const logsText = (task.logs || []).map((log) => log.message).join('\n')
+      const filteredLogs = getFilteredLogs(logFilter)
+      const logsText = filteredLogs.map((log) => log.message).join('\n')
 
       await navigator.clipboard.writeText(logsText)
       setCopiedLogs(true)
@@ -344,54 +355,45 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             (isCollapsed || activeTab !== 'logs') && 'hidden',
           )}
         >
-          {(task.logs || [])
-            .filter((log) => {
-              const isServerLog = log.message.startsWith('[SERVER]')
-              if (logFilter === 'server') return isServerLog
-              if (logFilter === 'platform') return !isServerLog
-              return true
-            })
-            .map((log, index) => {
-              const isServerLog = log.message.startsWith('[SERVER]')
-              const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
+          {getFilteredLogs(logFilter).map((log, index) => {
+            const isServerLog = log.message.startsWith('[SERVER]')
+            const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
 
-              const getLogColor = (logType: LogEntry['type']) => {
-                switch (logType) {
-                  case 'command':
-                    return 'text-cyan-400'
-                  case 'error':
-                    return 'text-red-400'
-                  case 'success':
-                    return 'text-green-400'
-                  case 'info':
-                  default:
-                    return 'text-white'
-                }
+            const getLogColor = (logType: LogEntry['type']) => {
+              switch (logType) {
+                case 'command':
+                  return 'text-cyan-400'
+                case 'error':
+                  return 'text-red-400'
+                case 'success':
+                  return 'text-green-400'
+                case 'info':
+                default:
+                  return 'text-white'
               }
+            }
 
-              const formatTime = (timestamp: Date) => {
-                return new Date(timestamp).toLocaleTimeString('en-US', {
-                  hour12: false,
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  fractionalSecondDigits: 3,
-                })
-              }
+            const formatTime = (timestamp: Date) => {
+              return new Date(timestamp).toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+              })
+            }
 
-              return (
-                <div key={index} className={cn('flex gap-1.5 leading-tight')}>
-                  <span className="text-white/40 text-[10px] shrink-0">
-                    [{formatTime(log.timestamp || new Date())}]
-                  </span>
-                  <span className={cn('flex-1', getLogColor(log.type))}>
-                    {isServerLog && <span className="text-purple-400">[SERVER]</span>}
-                    {isServerLog && ' '}
-                    {messageContent}
-                  </span>
-                </div>
-              )
-            })}
+            return (
+              <div key={index} className={cn('flex gap-1.5 leading-tight')}>
+                <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
+                <span className={cn('flex-1', getLogColor(log.type))}>
+                  {isServerLog && <span className="text-purple-400">[SERVER]</span>}
+                  {isServerLog && ' '}
+                  {messageContent}
+                </span>
+              </div>
+            )
+          })}
         </div>
         <div className={cn('flex-1 overflow-hidden', (isCollapsed || activeTab !== 'terminal') && 'hidden')}>
           <Terminal
