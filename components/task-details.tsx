@@ -27,6 +27,7 @@ import {
   StopCircle,
   MoreVertical,
   X,
+  ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
