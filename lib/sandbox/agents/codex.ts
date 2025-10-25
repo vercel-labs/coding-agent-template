@@ -1,9 +1,13 @@
 import { Sandbox } from '@vercel/sandbox'
+import { Writable } from 'stream'
 import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
-import { connectors } from '@/lib/db/schema'
+import { connectors, taskMessages } from '@/lib/db/schema'
+import { db } from '@/lib/db/client'
+import { eq } from 'drizzle-orm'
+import { generateId } from '@/lib/utils/id'
 
 type Connector = typeof connectors.$inferSelect
 
@@ -33,6 +37,8 @@ export async function executeCodexInSandbox(
   mcpServers?: Connector[],
   isResumed?: boolean,
   sessionId?: string,
+  taskId?: string,
+  agentMessageId?: string,
 ): Promise<AgentExecutionResult> {
   try {
     // Executing Codex CLI with instruction
@@ -275,17 +281,28 @@ url = "${server.baseUrl}"
       await logger.info('Current working directory retrieved')
     }
 
+    // Create initial empty agent message in database if streaming
+    if (taskId && agentMessageId) {
+      await db.insert(taskMessages).values({
+        id: agentMessageId,
+        taskId,
+        role: 'agent',
+        content: '',
+        createdAt: new Date(),
+      })
+    }
+
     // Use exec command with Vercel AI Gateway configuration
     // The model is now configured in config.toml, so we can use it directly
-    // Use --dangerously-bypass-approvals-and-sandbox (no --cd flag like other agents)
+    // Use --dangerously-bypass-approvals-and-sandbox with --json for streaming output
     // If resuming, use 'codex resume' instead of 'codex exec'
-    let codexCommand = 'codex exec --dangerously-bypass-approvals-and-sandbox'
+    let codexCommand = 'codex exec --dangerously-bypass-approvals-and-sandbox --json'
 
     if (isResumed) {
       // Use resume command instead of exec
       // Note: codex resume doesn't take session ID as an argument, it uses a picker or --last
       // For now, we'll use --last to continue the most recent session
-      codexCommand = 'codex resume --last'
+      codexCommand = 'codex resume --last --json'
       if (logger) {
         await logger.info('Resuming previous Codex conversation')
       }
@@ -295,76 +312,189 @@ url = "${server.baseUrl}"
 
     await logger.command(logCommand)
     if (logger) {
-      await logger.command(logCommand)
       const providerName = isVercelKey ? 'Vercel AI Gateway' : 'OpenAI API'
       await logger.info(
         `Executing Codex with model ${modelToUse} via ${providerName} and bypassed sandbox restrictions`,
       )
     }
 
-    // Use the same pattern as other working agents (Claude, etc.)
-    // Execute with environment variables using sh -c like Claude does
-    const envPrefix = `AI_GATEWAY_API_KEY="${process.env.AI_GATEWAY_API_KEY}" HOME="/home/vercel-sandbox" CI="true"`
-    const fullCommand = `${envPrefix} ${codexCommand} "${instruction}"`
-
-    // Use the standard runInProject helper like other agents
-    const result = await runInProject(sandbox, 'sh', ['-c', fullCommand])
-
-    // Log the output and error results (similar to Claude and Cursor)
-    if (result.output && result.output.trim()) {
-      const redactedOutput = redactSensitiveInfo(result.output.trim())
-      await logger.info(redactedOutput)
-      if (logger) {
-        await logger.info(redactedOutput)
-      }
-    }
-
-    if (!result.success && result.error && result.error.trim()) {
-      const redactedError = redactSensitiveInfo(result.error.trim())
-      await logger.error(redactedError)
-      if (logger) {
-        await logger.error(redactedError)
-      }
-    }
-
-    // Codex CLI execution completed
-
-    // Extract session ID from output if present (for resumption)
-    // Note: Codex uses --last to resume, so we may not need explicit session IDs
-    // But we'll extract it if available
+    // Set up streaming output capture
+    let capturedOutput = ''
+    let capturedError = ''
+    let accumulatedContent = ''
+    let isCompleted = false
     let extractedSessionId: string | undefined
-    try {
-      const sessionMatch = result.output?.match(/(?:session[_\s-]?id|Session)[:\s]+([a-f0-9-]+)/i)
-      if (sessionMatch) {
-        extractedSessionId = sessionMatch[1]
+
+    interface WriteCallback {
+      (error?: Error | null): void
+    }
+
+    const captureStdout = new Writable({
+      write(chunk: Buffer | string, encoding: BufferEncoding, callback: WriteCallback) {
+        const data = chunk.toString()
+
+        // Only capture raw output if we're NOT streaming to database
+        if (!agentMessageId || !taskId) {
+          capturedOutput += data
+        }
+
+        // Parse streaming JSONL chunks
+        const lines = data.split('\n')
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const parsed = JSON.parse(line)
+
+              // Extract session_id from any event that has it
+              if (parsed.session_id) {
+                extractedSessionId = parsed.session_id
+              }
+
+              // Only update database if streaming to taskId
+              if (agentMessageId && taskId) {
+                // Handle different event types from Codex's JSONL stream
+                if (parsed.type === 'item.started' || parsed.type === 'item.updated') {
+                  // Show tool execution status
+                  if (parsed.item?.type === 'tool_call') {
+                    const toolName = parsed.item.name
+                    let statusMsg = ''
+
+                    if (toolName === 'Edit' || toolName === 'Write') {
+                      const path = parsed.item.input?.path || 'file'
+                      statusMsg = `\n\nEditing ${path}`
+                    } else if (toolName === 'Read') {
+                      const path = parsed.item.input?.path || 'file'
+                      statusMsg = `\n\nReading ${path}`
+                    } else if (toolName === 'Bash' || toolName === 'Shell') {
+                      const command = parsed.item.input?.command || 'command'
+                      statusMsg = `\n\nRunning: ${command}`
+                    } else if (toolName === 'Glob') {
+                      const pattern = parsed.item.input?.pattern || 'files'
+                      statusMsg = `\n\nFinding files: ${pattern}`
+                    } else if (toolName === 'Grep') {
+                      const pattern = parsed.item.input?.pattern || 'pattern'
+                      statusMsg = `\n\nSearching for: ${pattern}`
+                    } else if (toolName === 'SemanticSearch') {
+                      const query = parsed.item.input?.query || 'code'
+                      statusMsg = `\n\nSearching codebase: ${query}`
+                    } else if (toolName) {
+                      statusMsg = `\n\nExecuting ${toolName}`
+                    }
+
+                    if (statusMsg) {
+                      accumulatedContent += statusMsg
+                      db.update(taskMessages)
+                        .set({ content: accumulatedContent })
+                        .where(eq(taskMessages.id, agentMessageId))
+                        .catch((err: Error) => console.error('Failed to update message:', err))
+                    }
+                  }
+                  // Handle text content from assistant messages
+                  else if (parsed.item?.type === 'text' && parsed.item.text) {
+                    accumulatedContent += parsed.item.text
+                    db.update(taskMessages)
+                      .set({ content: accumulatedContent })
+                      .where(eq(taskMessages.id, agentMessageId))
+                      .catch((err: Error) => console.error('Failed to update message:', err))
+                  }
+                } else if (parsed.type === 'turn.completed') {
+                  // Mark as completed when turn is done
+                  isCompleted = true
+                  if (logger) {
+                    logger.info('Detected completion in Codex output')
+                  }
+                }
+              }
+            } catch {
+              // Ignore JSON parse errors for non-JSON lines
+            }
+          }
+        }
+
+        callback()
+      },
+    })
+
+    const captureStderr = new Writable({
+      write(chunk: Buffer | string, encoding: BufferEncoding, callback: WriteCallback) {
+        capturedError += chunk.toString()
+        callback()
+      },
+    })
+
+    // Execute with environment variables using sandbox.runCommand for streaming
+    await sandbox.runCommand({
+      cmd: 'codex',
+      args: isResumed
+        ? ['resume', '--last', '--json', instruction]
+        : ['exec', '--dangerously-bypass-approvals-and-sandbox', '--json', instruction],
+      env: {
+        AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY!,
+        HOME: '/home/vercel-sandbox',
+        CI: 'true',
+      },
+      sudo: false,
+      detached: true,
+      cwd: PROJECT_DIR,
+      stdout: captureStdout,
+      stderr: captureStderr,
+    })
+
+    if (logger) {
+      await logger.info('Codex command started with output capture, monitoring for completion...')
+    }
+
+    // Wait for completion - let sandbox timeout handle the hard limit
+    let attempts = 0
+    while (!isCompleted) {
+      await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait 1 second
+      attempts++
+
+      // Safety check: if we've been waiting over 4 minutes, break and check git status
+      // (sandbox timeout is 5 minutes, so we leave a buffer)
+      if (attempts > 240) {
+        if (logger) {
+          await logger.info('Approaching sandbox timeout, checking for changes...')
+        }
+        break
       }
-    } catch {
-      // Ignore parsing errors
+    }
+
+    if (isCompleted) {
+      if (logger) {
+        await logger.info('Codex completed successfully')
+      }
+    } else {
+      if (logger) {
+        await logger.info('Codex execution ended, checking for changes')
+      }
+    }
+
+    // Skip logging raw output when streaming to database (we've already built clean content there)
+    if (capturedOutput && capturedOutput.trim() && !agentMessageId) {
+      const redactedOutput = redactSensitiveInfo(capturedOutput.trim())
+      await logger.info(redactedOutput)
+    }
+
+    if (capturedError && capturedError.trim()) {
+      const redactedError = redactSensitiveInfo(capturedError)
+      await logger.error(redactedError)
     }
 
     // Check if any files were modified
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)
     const hasChanges = gitStatusCheck.success && gitStatusCheck.output?.trim()
 
-    if (result.success || result.exitCode === 0) {
-      return {
-        success: true,
-        output: `Codex CLI executed successfully${hasChanges ? ' (Changes detected)' : ' (No changes made)'}`,
-        agentResponse: result.output || 'Codex CLI completed the task',
-        cliName: 'codex',
-        changesDetected: !!hasChanges,
-        error: undefined,
-        sessionId: extractedSessionId, // Include session ID if available
-      }
-    } else {
-      return {
-        success: false,
-        error: `Codex CLI failed (exit code ${result.exitCode}): ${result.error || 'No error message'}`,
-        agentResponse: result.output,
-        cliName: 'codex',
-        changesDetected: !!hasChanges,
-        sessionId: extractedSessionId, // Include session ID even on failure
-      }
+    // Success is determined by the CLI execution, not by code changes
+    return {
+      success: true,
+      output: `Codex CLI executed successfully${hasChanges ? ' (Changes detected)' : ' (No changes made)'}`,
+      // When streaming to DB, agentResponse is already in chat; omit it here
+      agentResponse: agentMessageId ? undefined : capturedOutput || 'Codex CLI completed the task',
+      cliName: 'codex',
+      changesDetected: !!hasChanges,
+      error: undefined,
+      sessionId: extractedSessionId, // Include session ID for resumption
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to execute Codex CLI in sandbox'

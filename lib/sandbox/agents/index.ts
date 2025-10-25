@@ -98,6 +98,8 @@ export async function executeAgentInSandbox(
           mcpServers,
           isResumed,
           sessionId,
+          taskId,
+          agentMessageId,
         )
 
       case 'copilot':
