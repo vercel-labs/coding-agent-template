@@ -360,34 +360,40 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
               await runInProject(sandbox, 'git', ['config', 'core.excludesfile', '~/.gitignore_global'])
               await logger.info('Added vite.config to global gitignore')
 
-              // Now modify vite.config.js to set host: true (disables host checking)
+              // Now modify vite.config.js to allow remote hosts
               const hasViteConfigJs = await runInProject(sandbox, 'test', ['-f', 'vite.config.js'])
 
               if (hasViteConfigJs.success) {
                 // Read and modify the config
                 const configRead = await runInProject(sandbox, 'cat', ['vite.config.js'])
                 if (configRead.success) {
-                  let config = configRead.output || ''
+                  const originalConfig = configRead.output || ''
 
-                  // Simple sed replacement to set host: true in server config
-                  // This disables Vite's host checking
-                  await runInProject(sandbox, 'sh', [
-                    '-c',
-                    `
-# Backup original
-cp vite.config.js vite.config.js.backup
+                  // Create a script to prepend the server config
+                  const script = `
+const fs = require('fs');
+const path = require('path');
 
-# Add host: true to server config using sed
-if grep -q "server:" vite.config.js; then
-  # Server section exists, add host: true
-  sed -i "/server:[[:space:]]*{/a\\    host: true," vite.config.js
-else
-  # No server section, add it
-  sed -i "/export default defineConfig/a\\  server: { host: true }," vite.config.js  
-fi
-`,
-                  ])
-                  await logger.info('Modified vite.config.js to disable host checking (globally ignored)')
+const configPath = path.join('${PROJECT_DIR}', 'vite.config.js');
+let content = fs.readFileSync(configPath, 'utf8');
+
+// Add server config
+if (content.includes('defineConfig')) {
+  content = content.replace('defineConfig({', \`defineConfig({
+  server: {
+    host: '0.0.0.0',
+    allowedHosts: ['.vercel.run'],
+  },\`);
+}
+
+fs.writeFileSync(configPath, content);
+`
+                  // Write the script to a temporary file
+                  await runCommandInSandbox(sandbox, 'sh', ['-c', `echo "${script.replace(/"/g, '\\"')}" > /tmp/modify_vite_config.js`])
+                  
+                  // Run the script
+                  await runCommandInSandbox(sandbox, 'node', ['/tmp/modify_vite_config.js'])
+                  await logger.info('Modified vite.config.js to allow remote hosts (globally ignored)')
                 }
               }
 
