@@ -15,10 +15,11 @@ interface CheckRun {
 
 interface PRCheckStatusProps {
   taskId: string
+  isActive?: boolean
   className?: string
 }
 
-export function PRCheckStatus({ taskId, className = '' }: PRCheckStatusProps) {
+export function PRCheckStatus({ taskId, isActive = false, className = '' }: PRCheckStatusProps) {
   const [checkRuns, setCheckRuns] = useState<CheckRun[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -55,10 +56,13 @@ export function PRCheckStatus({ taskId, className = '' }: PRCheckStatusProps) {
   const hasFailed = checkRuns.some((run) => run.conclusion === 'failure' || run.conclusion === 'cancelled')
   const allPassed = checkRuns.every((run) => run.status === 'completed' && run.conclusion === 'success')
 
+  // Determine background color based on active state
+  const bgColor = isActive ? 'bg-accent' : 'bg-card'
+
   // Render the appropriate indicator
   if (hasInProgress) {
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 ${className}`}>
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
         <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
       </div>
     )
@@ -66,7 +70,7 @@ export function PRCheckStatus({ taskId, className = '' }: PRCheckStatusProps) {
 
   if (hasFailed) {
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 ${className}`}>
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
         <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
       </div>
     )
@@ -74,7 +78,7 @@ export function PRCheckStatus({ taskId, className = '' }: PRCheckStatusProps) {
 
   if (allPassed) {
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 ${className}`}>
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
         <Check className="w-2 h-2 text-green-500" strokeWidth={3} />
       </div>
     )
