@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
+import { formatAbbreviatedNumber } from '@/lib/utils/format-number'
 
 const GITHUB_REPO_URL = 'https://github.com/vercel-labs/coding-agent-template'
 
@@ -23,7 +24,7 @@ export function HomePageMobileFooter({ initialStars = 1056 }: HomePageMobileFoot
             className="flex items-center justify-center gap-2"
           >
             <GitHubIcon className="h-4 w-4" />
-            <span className="text-sm font-medium">{initialStars.toLocaleString()}</span>
+            <span className="text-sm font-medium">{formatAbbreviatedNumber(initialStars)}</span>
           </a>
         </Button>
 
