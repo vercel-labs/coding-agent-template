@@ -160,8 +160,7 @@ export function TaskForm({
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
-  const [savedAgent, setSavedAgent] = useAtom(lastSelectedAgentAtom)
-  const [selectedAgent, setSelectedAgent] = useState(savedAgent || 'claude')
+  const [selectedAgent, setSelectedAgent] = useAtom(lastSelectedAgentAtom)
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
   const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [repos, setRepos] = useAtom(githubReposAtomFamily(selectedOwner))
@@ -235,11 +234,9 @@ export function TaskForm({
           setSelectedModel(urlModel)
         }
       }
-    } else if (savedAgent) {
-      // Fall back to saved agent from Jotai atom
-      if (CODING_AGENTS.some((agent) => agent.value === savedAgent && !('isDivider' in agent && agent.isDivider))) {
-        setSelectedAgent(savedAgent)
-      }
+    } else if (!selectedAgent) {
+      // Initialize with default agent if none is saved
+      setSelectedAgent('claude')
     }
 
     // Options are now initialized from server props, no need to load from cookies
@@ -252,7 +249,7 @@ export function TaskForm({
   }, [])
 
   // Get saved model atom for current agent
-  const savedModelAtom = lastSelectedModelAtomFamily(selectedAgent)
+  const savedModelAtom = lastSelectedModelAtomFamily(selectedAgent || 'claude')
   const savedModel = useAtomValue(savedModelAtom)
   const setSavedModel = useSetAtom(savedModelAtom)
 
@@ -326,7 +323,7 @@ export function TaskForm({
       onSubmit({
         prompt: prompt.trim(),
         repoUrl: '',
-        selectedAgent,
+        selectedAgent: selectedAgent || 'claude',
         selectedModel,
         selectedModels: selectedAgent === 'multi-agent' ? selectedModels : undefined,
         installDependencies,
@@ -370,7 +367,7 @@ export function TaskForm({
     onSubmit({
       prompt: prompt.trim(),
       repoUrl: selectedRepoData?.clone_url || '',
-      selectedAgent,
+      selectedAgent: selectedAgent || 'claude',
       selectedModel,
       selectedModels: selectedAgent === 'multi-agent' ? selectedModels : undefined,
       installDependencies,
@@ -430,11 +427,9 @@ export function TaskForm({
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 {/* Agent Selection - Icon only on mobile, minimal width */}
                 <Select
-                  value={selectedAgent}
+                  value={selectedAgent || 'claude'}
                   onValueChange={(value) => {
                     setSelectedAgent(value)
-                    // Save to Jotai atom immediately
-                    setSavedAgent(value)
                   }}
                   disabled={isSubmitting}
                 >
