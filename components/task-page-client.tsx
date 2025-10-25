@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTask } from '@/lib/hooks/use-task'
+import { useClientLogger } from '@/lib/hooks/use-client-logger'
 import { TaskDetails } from '@/components/task-details'
 import { TaskPageHeader } from '@/components/task-page-header'
 import { PageHeader } from '@/components/page-header'
@@ -31,6 +32,14 @@ export function TaskPageClient({
   const { task, isLoading, error } = useTask(taskId)
   const { toggleSidebar } = useTasks()
   const [logsPaneHeight, setLogsPaneHeight] = useState(40) // Default to collapsed height
+  const clientLogger = useClientLogger(taskId)
+
+  // Log when the page is loaded
+  useEffect(() => {
+    if (task && clientLogger) {
+      clientLogger.info('Task page loaded in browser')
+    }
+  }, [task, clientLogger])
 
   if (isLoading) {
     return (

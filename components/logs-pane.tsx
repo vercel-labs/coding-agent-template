@@ -17,7 +17,7 @@ interface LogsPaneProps {
 }
 
 type TabType = 'logs' | 'terminal'
-type LogFilterType = 'all' | 'platform' | 'server'
+type LogFilterType = 'all' | 'platform' | 'server' | 'client'
 
 export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
@@ -161,8 +161,10 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const getFilteredLogs = (filter: LogFilterType) => {
     return (task.logs || []).filter((log) => {
       const isServerLog = log.message.startsWith('[SERVER]')
+      const isClientLog = log.message.startsWith('[CLIENT]')
       if (filter === 'server') return isServerLog
-      if (filter === 'platform') return !isServerLog
+      if (filter === 'client') return isClientLog
+      if (filter === 'platform') return !isServerLog && !isClientLog
       return true
     })
   }
@@ -302,6 +304,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="platform">Platform</SelectItem>
                   <SelectItem value="server">Server</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -357,7 +360,13 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
         >
           {getFilteredLogs(logFilter).map((log, index) => {
             const isServerLog = log.message.startsWith('[SERVER]')
-            const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
+            const isClientLog = log.message.startsWith('[CLIENT]')
+            let messageContent = log.message
+            if (isServerLog) {
+              messageContent = log.message.substring(9) // Remove '[SERVER] '
+            } else if (isClientLog) {
+              messageContent = log.message.substring(9) // Remove '[CLIENT] '
+            }
 
             const getLogColor = (logType: LogEntry['type']) => {
               switch (logType) {
@@ -388,7 +397,8 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                 <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
                 <span className={cn('flex-1', getLogColor(log.type))}>
                   {isServerLog && <span className="text-purple-400">[SERVER]</span>}
-                  {isServerLog && ' '}
+                  {isClientLog && <span className="text-blue-400">[CLIENT]</span>}
+                  {(isServerLog || isClientLog) && ' '}
                   {messageContent}
                 </span>
               </div>
