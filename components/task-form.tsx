@@ -337,7 +337,7 @@ export function TaskForm({
     // Skip this check if we don't have repo data (likely not signed in) or if multi-agent mode
     const selectedRepoData = repos?.find((repo) => repo.name === selectedRepo)
 
-    if (selectedRepoData && selectedAgent !== 'multi-agent') {
+    if (selectedRepoData && selectedAgent && selectedAgent !== 'multi-agent') {
       try {
         const response = await fetch(`/api/api-keys/check?agent=${selectedAgent}&model=${selectedModel}`)
         const data = await response.json()
