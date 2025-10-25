@@ -381,30 +381,6 @@ export function TaskForm({
 
   return (
     <div className="w-full max-w-2xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Coding Agent Template</h1>
-        <p className="text-lg text-muted-foreground mb-2">
-          Multi-agent AI coding platform powered by{' '}
-          <a
-            href="https://vercel.com/docs/sandbox"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:no-underline"
-          >
-            Vercel Sandbox
-          </a>{' '}
-          and{' '}
-          <a
-            href="https://vercel.com/docs/ai-gateway"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:no-underline"
-          >
-            AI Gateway
-          </a>
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit}>
         <div className="relative border rounded-2xl shadow-sm overflow-hidden bg-muted/30 cursor-text">
           {/* Prompt Input */}
