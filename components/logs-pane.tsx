@@ -284,7 +284,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
           {activeTab === 'logs' && (
             <div className="flex items-center gap-1.5 mr-3" onClick={(e) => e.stopPropagation()}>
               <Select value={logFilter} onValueChange={(value) => setLogFilter(value as LogFilterType)}>
-                <SelectTrigger size="sm" className="h-6 text-xs px-2 py-0 min-w-[90px]">
+                <SelectTrigger size="sm" className="h-6 text-xs px-2 py-0 min-w-[90px] border-0 shadow-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
