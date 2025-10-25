@@ -101,8 +101,8 @@ export default mergeConfig(userConfig, defineConfig({
   server: {
     host: '0.0.0.0',
     strictPort: false,
-    // Remove any allowedHosts restrictions for sandbox
-    allowedHosts: undefined,
+    // Allow sandbox domains to access the dev server
+    allowedHosts: true,
   }
 }))`
 
