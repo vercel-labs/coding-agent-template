@@ -8,13 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Loader2, ArrowUp, Settings, X, Cable, Users } from 'lucide-react'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
@@ -172,7 +171,6 @@ export function TaskForm({
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [keepAlive, setKeepAliveState] = useState(initialKeepAlive)
-  const [showOptionsDialog, setShowOptionsDialog] = useState(false)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
 
   // Connectors state
@@ -544,11 +542,7 @@ export function TaskForm({
                 {(!installDependencies || maxDuration !== maxSandboxDuration || keepAlive) && (
                   <div className="hidden sm:flex items-center gap-2 flex-wrap">
                     {!installDependencies && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                        onClick={() => setShowOptionsDialog(true)}
-                      >
+                      <Badge variant="secondary" className="text-xs h-6 px-2 gap-1 bg-transparent border-0">
                         Skip Install
                         <Button
                           variant="ghost"
@@ -564,11 +558,7 @@ export function TaskForm({
                       </Badge>
                     )}
                     {maxDuration !== maxSandboxDuration && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                        onClick={() => setShowOptionsDialog(true)}
-                      >
+                      <Badge variant="secondary" className="text-xs h-6 px-2 gap-1 bg-transparent border-0">
                         {maxDuration}m
                         <Button
                           variant="ghost"
@@ -584,11 +574,7 @@ export function TaskForm({
                       </Badge>
                     )}
                     {keepAlive && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs h-6 px-2 gap-1 cursor-pointer hover:bg-muted/20 bg-transparent border-0"
-                        onClick={() => setShowOptionsDialog(true)}
-                      >
+                      <Badge variant="secondary" className="text-xs h-6 px-2 gap-1 bg-transparent border-0">
                         Keep Alive
                         <Button
                           variant="ghost"
@@ -637,10 +623,10 @@ export function TaskForm({
                       </TooltipContent>
                     </Tooltip>
 
-                    <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+                    <DropdownMenu>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <DialogTrigger asChild>
+                          <DropdownMenuTrigger asChild>
                             <Button
                               type="button"
                               variant="ghost"
@@ -664,58 +650,55 @@ export function TaskForm({
                                 ) : null
                               })()}
                             </Button>
-                          </DialogTrigger>
+                          </DropdownMenuTrigger>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>Task Options</p>
                         </TooltipContent>
                       </Tooltip>
-                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                        <DialogHeader>
-                          <DialogTitle>Task Options</DialogTitle>
-                          <DialogDescription>Configure settings for your task execution.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-6 py-4 overflow-y-auto flex-1">
-                          <div className="space-y-4">
-                            <h3 className="text-sm font-semibold">Task Settings</h3>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id="install-deps"
-                                checked={installDependencies}
-                                onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
-                              />
-                              <Label
-                                htmlFor="install-deps"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                              >
-                                Install Dependencies?
-                              </Label>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="max-duration" className="text-sm font-medium">
-                                Maximum Duration
-                              </Label>
-                              <Select
-                                value={maxDuration.toString()}
-                                onValueChange={(value) => updateMaxDuration(parseInt(value))}
-                              >
-                                <SelectTrigger id="max-duration" className="w-full">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="5">5 minutes</SelectItem>
-                                  <SelectItem value="10">10 minutes</SelectItem>
-                                  <SelectItem value="15">15 minutes</SelectItem>
-                                  <SelectItem value="30">30 minutes</SelectItem>
-                                  <SelectItem value="45">45 minutes</SelectItem>
-                                  <SelectItem value="60">1 hour</SelectItem>
-                                  <SelectItem value="120">2 hours</SelectItem>
-                                  <SelectItem value="180">3 hours</SelectItem>
-                                  <SelectItem value="240">4 hours</SelectItem>
-                                  <SelectItem value="300">5 hours</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                      <DropdownMenuContent className="w-72" align="end">
+                        <DropdownMenuLabel>Task Options</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <div className="p-2 space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="install-deps"
+                              checked={installDependencies}
+                              onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
+                            />
+                            <Label
+                              htmlFor="install-deps"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              Install Dependencies?
+                            </Label>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="max-duration" className="text-sm font-medium">
+                              Maximum Duration
+                            </Label>
+                            <Select
+                              value={maxDuration.toString()}
+                              onValueChange={(value) => updateMaxDuration(parseInt(value))}
+                            >
+                              <SelectTrigger id="max-duration" className="w-full h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="5">5 minutes</SelectItem>
+                                <SelectItem value="10">10 minutes</SelectItem>
+                                <SelectItem value="15">15 minutes</SelectItem>
+                                <SelectItem value="30">30 minutes</SelectItem>
+                                <SelectItem value="45">45 minutes</SelectItem>
+                                <SelectItem value="60">1 hour</SelectItem>
+                                <SelectItem value="120">2 hours</SelectItem>
+                                <SelectItem value="180">3 hours</SelectItem>
+                                <SelectItem value="240">4 hours</SelectItem>
+                                <SelectItem value="300">5 hours</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="keep-alive"
@@ -724,18 +707,16 @@ export function TaskForm({
                               />
                               <Label
                                 htmlFor="keep-alive"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                               >
-                                Keep Alive ({maxSandboxDuration} minutes max)
+                                Keep Alive ({maxSandboxDuration}m max)
                               </Label>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              Keep the sandbox running after task completion to reuse it for follow-up messages.
-                            </p>
+                            <p className="text-xs text-muted-foreground pl-6">Keep sandbox running after completion.</p>
                           </div>
                         </div>
-                      </DialogContent>
-                    </Dialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TooltipProvider>
 
                   <Button
