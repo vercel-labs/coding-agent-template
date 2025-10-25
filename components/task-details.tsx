@@ -2029,7 +2029,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               {activeTab === 'code' ? (
                 <div className="relative h-full">
                   {/* Current File Path Bar */}
-                  <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background">
+                  <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background border-b">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -2044,7 +2044,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   </div>
 
                   {/* Diff Viewer */}
-                  <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-3.5rem)]">
+                  <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-41px)]">
                     <div className="overflow-y-auto h-full">
                       <FileDiffViewer
                         selectedFile={selectedItemIsFolder ? undefined : selectedFile}
