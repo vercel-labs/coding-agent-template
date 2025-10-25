@@ -153,17 +153,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           }
 
           // Look for Vercel check runs - try Preview Comments first as it's more likely to have the URL
+          // Note: We now fetch ALL deployment states, not just successful ones
           const vercelPreviewCheck = checkRuns.check_runs.find(
-            (check) =>
-              check.app?.slug === 'vercel' && check.name === 'Vercel Preview Comments' && check.status === 'completed',
+            (check) => check.app?.slug === 'vercel' && check.name === 'Vercel Preview Comments',
           )
 
           const vercelDeploymentCheck = checkRuns.check_runs.find(
-            (check) =>
-              check.app?.slug === 'vercel' &&
-              check.name === 'Vercel' &&
-              check.conclusion === 'success' &&
-              check.status === 'completed',
+            (check) => check.app?.slug === 'vercel' && check.name === 'Vercel',
           )
 
           // Try to get preview URL from either check
@@ -183,17 +179,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             previewUrl = convertFeedbackUrlToDeploymentUrl(vercelDeploymentCheck.details_url)
           }
 
-          if (previewUrl) {
-            // Store the preview URL in the database
-            await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
+          // If we found a Vercel check, return deployment info regardless of state
+          const vercelCheck = vercelDeploymentCheck || vercelPreviewCheck
+          if (vercelCheck) {
+            // Store the preview URL in the database if available
+            if (previewUrl) {
+              await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
+            }
 
             return NextResponse.json({
               success: true,
               data: {
                 hasDeployment: true,
-                previewUrl,
-                checkId: vercelDeploymentCheck?.id || vercelPreviewCheck?.id,
-                createdAt: vercelDeploymentCheck?.completed_at || vercelPreviewCheck?.completed_at,
+                previewUrl: previewUrl || undefined,
+                checkId: vercelCheck.id,
+                status: vercelCheck.status,
+                conclusion: vercelCheck.conclusion,
+                createdAt: vercelCheck.started_at,
+                completedAt: vercelCheck.completed_at,
+                detailsUrl: vercelCheck.details_url,
               },
             })
           }
@@ -231,25 +235,39 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
               if (statuses && statuses.length > 0) {
                 const status = statuses[0]
-                if (status.state === 'success') {
-                  let previewUrl = status.environment_url || status.target_url
-                  if (previewUrl) {
-                    // Convert feedback URL to actual deployment URL if needed
-                    previewUrl = convertFeedbackUrlToDeploymentUrl(previewUrl)
-                    // Store the preview URL in the database
+                // Return deployment info regardless of state
+                let previewUrl = status.environment_url || status.target_url
+                if (previewUrl) {
+                  // Convert feedback URL to actual deployment URL if needed
+                  previewUrl = convertFeedbackUrlToDeploymentUrl(previewUrl)
+                  // Store the preview URL in the database only if successful
+                  if (status.state === 'success') {
                     await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
-
-                    return NextResponse.json({
-                      success: true,
-                      data: {
-                        hasDeployment: true,
-                        previewUrl,
-                        deploymentId: deployment.id,
-                        createdAt: deployment.created_at,
-                      },
-                    })
                   }
+
+                  return NextResponse.json({
+                    success: true,
+                    data: {
+                      hasDeployment: true,
+                      previewUrl,
+                      deploymentId: deployment.id,
+                      state: status.state,
+                      createdAt: deployment.created_at,
+                      updatedAt: status.updated_at,
+                    },
+                  })
                 }
+                // Return deployment info even without URL if state is not success
+                return NextResponse.json({
+                  success: true,
+                  data: {
+                    hasDeployment: true,
+                    deploymentId: deployment.id,
+                    state: status.state,
+                    createdAt: deployment.created_at,
+                    updatedAt: status.updated_at,
+                  },
+                })
               }
             }
           }
@@ -269,23 +287,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             per_page: 100,
           })
 
-          const vercelStatus = statuses.find(
-            (status) =>
-              status.context?.toLowerCase().includes('vercel') && status.state === 'success' && status.target_url,
-          )
+          const vercelStatus = statuses.find((status) => status.context?.toLowerCase().includes('vercel'))
 
-          if (vercelStatus && vercelStatus.target_url) {
-            // Convert feedback URL to actual deployment URL if needed
-            const previewUrl = convertFeedbackUrlToDeploymentUrl(vercelStatus.target_url)
-            // Store the preview URL in the database
-            await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
+          if (vercelStatus) {
+            let previewUrl: string | null = null
+            if (vercelStatus.target_url) {
+              // Convert feedback URL to actual deployment URL if needed
+              previewUrl = convertFeedbackUrlToDeploymentUrl(vercelStatus.target_url)
+              // Store the preview URL in the database only if successful
+              if (vercelStatus.state === 'success') {
+                await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
+              }
+            }
 
             return NextResponse.json({
               success: true,
               data: {
                 hasDeployment: true,
-                previewUrl,
+                previewUrl: previewUrl || undefined,
+                state: vercelStatus.state,
                 createdAt: vercelStatus.created_at,
+                updatedAt: vercelStatus.updated_at,
               },
             })
           }

@@ -18,6 +18,7 @@ import {
   RefreshCw,
   MoreVertical,
   MessageSquare,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Streamdown } from 'streamdown'
@@ -56,6 +57,12 @@ interface DeploymentInfo {
   previewUrl?: string
   message?: string
   createdAt?: string
+  completedAt?: string
+  updatedAt?: string
+  status?: string // queued, in_progress, completed
+  conclusion?: string | null // success, failure, neutral, cancelled, skipped, timed_out, action_required
+  state?: string // pending, success, error, failure
+  detailsUrl?: string
 }
 
 export function TaskChat({ taskId, task }: TaskChatProps) {
@@ -646,24 +653,100 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             </div>
           ) : (
             <div className="space-y-2 px-2">
-              <a
-                href={deployment.previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-              >
-                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
-                  <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-                </svg>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">Vercel Preview</div>
-                  <div className="text-xs text-muted-foreground">
-                    {deployment.createdAt
-                      ? `Deployed ${new Date(deployment.createdAt).toLocaleString()}`
-                      : 'Preview deployment'}
+              {deployment.previewUrl ? (
+                <a
+                  href={deployment.previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                >
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
+                    <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">Vercel Preview</div>
+                    <div className="text-xs text-muted-foreground">
+                      {deployment.status === 'completed' && deployment.conclusion === 'success'
+                        ? deployment.createdAt
+                          ? `Deployed ${new Date(deployment.createdAt).toLocaleString()}`
+                          : 'Preview deployment'
+                        : deployment.status === 'in_progress' || deployment.status === 'queued'
+                          ? 'Deployment in progress...'
+                          : deployment.conclusion === 'failure' ||
+                              deployment.state === 'error' ||
+                              deployment.state === 'failure'
+                            ? 'Deployment failed'
+                            : deployment.conclusion === 'cancelled'
+                              ? 'Deployment cancelled'
+                              : deployment.state === 'pending'
+                                ? 'Deployment pending...'
+                                : 'Deployment status unknown'}
+                    </div>
                   </div>
+                  {(deployment.status === 'in_progress' ||
+                    deployment.status === 'queued' ||
+                    deployment.state === 'pending') && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  {(deployment.conclusion === 'failure' ||
+                    deployment.state === 'error' ||
+                    deployment.state === 'failure') && (
+                    <svg className="h-4 w-4 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                  {deployment.status === 'completed' && deployment.conclusion === 'success' && (
+                    <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </a>
+              ) : (
+                <div className="flex items-center gap-3 p-2 rounded-md bg-muted/30">
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 76 65" fill="currentColor">
+                    <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium">Vercel Deployment</div>
+                    <div className="text-xs text-muted-foreground">
+                      {deployment.status === 'in_progress' || deployment.status === 'queued'
+                        ? 'Building...'
+                        : deployment.state === 'pending'
+                          ? 'Pending...'
+                          : deployment.conclusion === 'failure' ||
+                              deployment.state === 'error' ||
+                              deployment.state === 'failure'
+                            ? 'Build failed'
+                            : deployment.conclusion === 'cancelled'
+                              ? 'Build cancelled'
+                              : 'Building...'}
+                    </div>
+                  </div>
+                  {(deployment.status === 'in_progress' ||
+                    deployment.status === 'queued' ||
+                    deployment.state === 'pending') && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  {(deployment.conclusion === 'failure' ||
+                    deployment.state === 'error' ||
+                    deployment.state === 'failure') && (
+                    <svg className="h-4 w-4 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
                 </div>
-              </a>
+              )}
+              {deployment.detailsUrl && (
+                <a
+                  href={deployment.detailsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  View deployment details
+                </a>
+              )}
             </div>
           )}
         </div>
