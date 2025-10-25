@@ -181,6 +181,22 @@ async function continueTask(
           await logger.info('Successfully reconnected to existing sandbox')
           sandbox = reconnectedSandbox
           isResumedSandbox = true // Mark as resumed
+
+          // Refresh the sandbox URL since subdomain can change
+          const port = await detectPortFromRepo(repoUrl, githubToken)
+          const refreshedUrl = reconnectedSandbox.domain(port)
+          console.log('Refreshed sandbox URL:', refreshedUrl)
+
+          // Update the database with the refreshed URL
+          await db
+            .update(tasks)
+            .set({
+              sandboxUrl: refreshedUrl,
+              updatedAt: new Date(),
+            })
+            .where(eq(tasks.id, taskId))
+
+          await logger.info('Refreshed sandbox URL')
           await logger.updateProgress(50, 'Executing agent with follow-up message')
         }
       } catch (error) {

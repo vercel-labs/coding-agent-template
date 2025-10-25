@@ -41,6 +41,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
     const logger = createTaskLogger(taskId)
 
+    // Get GitHub token early for port detection
+    const githubToken = await getUserGitHubToken()
+
     // Check if sandbox is already running by verifying if it's actually accessible
     if (task.sandboxId && task.sandboxUrl) {
       try {
@@ -54,6 +57,22 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
         // Try a simple command to verify it's accessible
         const testResult = await runCommandInSandbox(existingSandbox, 'echo', ['test'])
         if (testResult.success) {
+          // Refresh the sandbox URL since subdomain can change
+          const currentPort = task.repoUrl ? await detectPortFromRepo(task.repoUrl, githubToken) : 3000
+          const refreshedUrl = existingSandbox.domain(currentPort)
+
+          // Update database with refreshed URL if it changed
+          if (refreshedUrl !== task.sandboxUrl) {
+            console.log('Sandbox URL changed:', { old: task.sandboxUrl, new: refreshedUrl })
+            await db
+              .update(tasks)
+              .set({
+                sandboxUrl: refreshedUrl,
+                updatedAt: new Date(),
+              })
+              .where(eq(tasks.id, taskId))
+          }
+
           return NextResponse.json({ error: 'Sandbox is already running' }, { status: 400 })
         }
       } catch (error) {
@@ -79,9 +98,6 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     // Get max sandbox duration - use task's maxDuration if available, otherwise fall back to global setting
     const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
     const maxDurationMinutes = task.maxDuration || maxSandboxDuration
-
-    // Get GitHub token for authenticated API access
-    const githubToken = await getUserGitHubToken()
 
     // Detect the appropriate port for the project
     const port = task.repoUrl ? await detectPortFromRepo(task.repoUrl, githubToken) : 3000

@@ -51,9 +51,36 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         })
       }
 
+      // Refresh the sandbox URL since subdomain can change
+      // Extract port from existing URL or default to common ports
+      let port = 3000
+      try {
+        const existingUrl = new URL(taskData.sandboxUrl)
+        const portMatch = existingUrl.pathname.match(/\/(\d+)/)
+        if (portMatch) {
+          port = parseInt(portMatch[1])
+        }
+      } catch {
+        // Keep default port
+      }
+
+      const currentUrl = sandbox.domain(port)
+
+      // Update database with refreshed URL if it changed
+      if (currentUrl !== taskData.sandboxUrl) {
+        console.log('Sandbox URL changed:', { old: taskData.sandboxUrl, new: currentUrl })
+        await db
+          .update(tasks)
+          .set({
+            sandboxUrl: currentUrl,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, taskData.id))
+      }
+
       // Try to fetch from the sandbox to check if dev server is running
       try {
-        const response = await fetch(taskData.sandboxUrl, {
+        const response = await fetch(currentUrl, {
           method: 'GET',
           signal: AbortSignal.timeout(5000), // 5 second timeout
         })
