@@ -234,8 +234,8 @@ export function TaskForm({
           setSelectedModel(urlModel)
         }
       }
-    } else if (!selectedAgent) {
-      // Initialize with default agent if none is saved
+    } else if (selectedAgent === null) {
+      // Initialize with default agent only if explicitly null (never set before)
       setSelectedAgent('claude')
     }
 
