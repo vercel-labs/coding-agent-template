@@ -4,6 +4,7 @@ import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getOctokit } from '@/lib/github/client'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 import type { Octokit } from '@octokit/rest'
 
 function getLanguageFromFilename(filename: string): string {
@@ -255,7 +256,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             if (sandbox) {
               // Read file from sandbox
               const normalizedPath = filename.startsWith('/') ? filename.substring(1) : filename
-              const catResult = await sandbox.runCommand('cat', [normalizedPath])
+              const catResult = await sandbox.runCommand({
+                cmd: 'cat',
+                args: [normalizedPath],
+                cwd: PROJECT_DIR,
+              })
 
               if (catResult.exitCode === 0) {
                 newContent = await catResult.stdout()

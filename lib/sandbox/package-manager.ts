@@ -1,23 +1,23 @@
 import { Sandbox } from '@vercel/sandbox'
-import { runCommandInSandbox } from './commands'
+import { runInProject } from './commands'
 import { TaskLogger } from '@/lib/utils/task-logger'
 
 // Helper function to detect package manager based on lock files
 export async function detectPackageManager(sandbox: Sandbox, logger: TaskLogger): Promise<'pnpm' | 'yarn' | 'npm'> {
   // Check for lock files in order of preference
-  const pnpmLockCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'pnpm-lock.yaml'])
+  const pnpmLockCheck = await runInProject(sandbox, 'test', ['-f', 'pnpm-lock.yaml'])
   if (pnpmLockCheck.success) {
     await logger.info('Detected pnpm package manager')
     return 'pnpm'
   }
 
-  const yarnLockCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'yarn.lock'])
+  const yarnLockCheck = await runInProject(sandbox, 'test', ['-f', 'yarn.lock'])
   if (yarnLockCheck.success) {
     await logger.info('Detected yarn package manager')
     return 'yarn'
   }
 
-  const npmLockCheck = await runCommandInSandbox(sandbox, 'test', ['-f', 'package-lock.json'])
+  const npmLockCheck = await runInProject(sandbox, 'test', ['-f', 'package-lock.json'])
   if (npmLockCheck.success) {
     await logger.info('Detected npm package manager')
     return 'npm'
@@ -40,7 +40,7 @@ export async function installDependencies(
   switch (packageManager) {
     case 'pnpm':
       // Configure pnpm to use /tmp/pnpm-store to avoid large files in project
-      const configStore = await runCommandInSandbox(sandbox, 'pnpm', ['config', 'set', 'store-dir', '/tmp/pnpm-store'])
+      const configStore = await runInProject(sandbox, 'pnpm', ['config', 'set', 'store-dir', '/tmp/pnpm-store'])
       if (!configStore.success) {
         await logger.error('Failed to configure pnpm store directory')
       } else {
@@ -62,7 +62,7 @@ export async function installDependencies(
 
   await logger.info(logMessage)
 
-  const installResult = await runCommandInSandbox(sandbox, installCommand[0], installCommand.slice(1))
+  const installResult = await runInProject(sandbox, installCommand[0], installCommand.slice(1))
 
   if (installResult.success) {
     await logger.info('Node.js dependencies installed')

@@ -31,9 +31,5 @@ export async function fetchUser(accessToken: string): Promise<VercelUser | undef
     return undefined
   }
 
-  console.log('Successfully fetched user:', user.username)
-  console.log('User object keys:', Object.keys(user))
-  console.log('User uid:', user.uid)
-  console.log('User id:', user.id)
   return user
 }

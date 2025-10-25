@@ -1,5 +1,5 @@
 import { Sandbox } from '@vercel/sandbox'
-import { runCommandInSandbox } from '../commands'
+import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
@@ -10,12 +10,30 @@ import { generateId } from '@/lib/utils/id'
 
 type Connector = typeof connectors.$inferSelect
 
-// Helper function to run command and collect
-async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
+// Helper function to run command in sandbox root (for installation checks)
+async function runAndLogCommandRoot(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   await logger.command(redactSensitiveInfo(fullCommand))
 
   const result = await runCommandInSandbox(sandbox, command, args)
+
+  if (result.output && result.output.trim()) {
+    await logger.info(redactSensitiveInfo(result.output.trim()))
+  }
+
+  if (!result.success && result.error) {
+    await logger.error(redactSensitiveInfo(result.error))
+  }
+
+  return result
+}
+
+// Helper function to run command in project directory (for git operations)
+async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
+  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
+  await logger.command(redactSensitiveInfo(fullCommand))
+
+  const result = await runInProject(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
     await logger.info(redactSensitiveInfo(result.output.trim()))
@@ -65,7 +83,7 @@ export async function executeCursorInSandbox(
       // Install Cursor CLI using the official installation script
       // Add debugging to see what the installation script does
       const installCommand = 'curl https://cursor.com/install -fsS | bash -s -- --verbose'
-      cursorInstall = await runAndLogCommand(sandbox, 'sh', ['-c', installCommand], logger)
+      cursorInstall = await runAndLogCommandRoot(sandbox, 'sh', ['-c', installCommand], logger)
 
       // After installation, check what was installed and where
       if (logger) {
@@ -80,7 +98,7 @@ export async function executeCursorInSandbox(
       ]
 
       for (const checkCmd of postInstallChecks) {
-        const checkResult = await runAndLogCommand(sandbox, 'sh', ['-c', checkCmd], logger)
+        const checkResult = await runAndLogCommandRoot(sandbox, 'sh', ['-c', checkCmd], logger)
         if (logger && checkResult.output) {
           await logger.info('Post-install check completed')
         }
@@ -112,7 +130,7 @@ export async function executeCursorInSandbox(
     }
 
     // Check if Cursor CLI is available (add ~/.local/bin to PATH)
-    const cliCheck = await runAndLogCommand(
+    const cliCheck = await runAndLogCommandRoot(
       sandbox,
       'sh',
       ['-c', 'export PATH="$HOME/.local/bin:$PATH"; which cursor-agent'],
@@ -134,7 +152,7 @@ export async function executeCursorInSandbox(
       ]
 
       for (const searchCmd of searchPaths) {
-        const searchResult = await runAndLogCommand(sandbox, 'sh', ['-c', searchCmd], logger)
+        const searchResult = await runAndLogCommandRoot(sandbox, 'sh', ['-c', searchCmd], logger)
         if (logger && searchResult.output) {
           await logger.info('Search completed')
         }
@@ -248,7 +266,7 @@ EOF`
     }
 
     // Debug: Check if cursor-agent is still available right before execution
-    const preExecCheck = await runAndLogCommand(
+    const preExecCheck = await runAndLogCommandRoot(
       sandbox,
       'sh',
       ['-c', 'export PATH="$HOME/.local/bin:$PATH"; which cursor-agent'],
@@ -448,6 +466,7 @@ EOF`
       },
       sudo: false,
       detached: true,
+      cwd: PROJECT_DIR,
       stdout: captureStdout,
       stderr: captureStderr,
     })

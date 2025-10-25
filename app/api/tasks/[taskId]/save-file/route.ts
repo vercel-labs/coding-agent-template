@@ -5,6 +5,7 @@ import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getSandbox } from '@/lib/sandbox/sandbox-registry'
 import { Sandbox } from '@vercel/sandbox'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -80,7 +81,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // The base64-encoded content cannot contain shell metacharacters or newlines that would break the command
       const writeCommand = `echo '${encodedContent}' | base64 -d > ${escapedFilename}`
 
-      const result = await sandbox.runCommand('sh', ['-c', writeCommand])
+      const result = await sandbox.runCommand({
+        cmd: 'sh',
+        args: ['-c', writeCommand],
+        cwd: PROJECT_DIR,
+      })
 
       if (result.exitCode !== 0) {
         let stderr = ''

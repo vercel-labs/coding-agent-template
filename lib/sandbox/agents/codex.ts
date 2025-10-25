@@ -1,5 +1,5 @@
 import { Sandbox } from '@vercel/sandbox'
-import { runCommandInSandbox } from '../commands'
+import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
@@ -7,12 +7,12 @@ import { connectors } from '@/lib/db/schema'
 
 type Connector = typeof connectors.$inferSelect
 
-// Helper function to run command and log it
+// Helper function to run command and log it in project directory
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   await logger.command(redactSensitiveInfo(fullCommand))
 
-  const result = await runCommandInSandbox(sandbox, command, args)
+  const result = await runInProject(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
     await logger.info(redactSensitiveInfo(result.output.trim()))
@@ -138,6 +138,7 @@ export async function executeCodexInSandbox(
         HOME: '/home/vercel-sandbox',
       },
       sudo: false,
+      cwd: PROJECT_DIR,
     })
 
     if (logger) {
@@ -242,6 +243,7 @@ url = "${server.baseUrl}"
       args: ['-c', `mkdir -p ~/.codex && cat > ~/.codex/config.toml << 'EOF'\n${configToml}EOF`],
       env: {},
       sudo: false,
+      cwd: PROJECT_DIR,
     })
 
     if (logger) {
@@ -254,6 +256,7 @@ url = "${server.baseUrl}"
       args: ['-f', '~/.codex/config.toml'],
       env: { HOME: '/home/vercel-sandbox' },
       sudo: false,
+      cwd: PROJECT_DIR,
     })
 
     if (logger && configCheckResult.exitCode === 0) {
@@ -304,8 +307,8 @@ url = "${server.baseUrl}"
     const envPrefix = `AI_GATEWAY_API_KEY="${process.env.AI_GATEWAY_API_KEY}" HOME="/home/vercel-sandbox" CI="true"`
     const fullCommand = `${envPrefix} ${codexCommand} "${instruction}"`
 
-    // Use the standard runCommandInSandbox helper like other agents
-    const result = await runCommandInSandbox(sandbox, 'sh', ['-c', fullCommand])
+    // Use the standard runInProject helper like other agents
+    const result = await runInProject(sandbox, 'sh', ['-c', fullCommand])
 
     // Log the output and error results (similar to Claude and Cursor)
     if (result.output && result.output.trim()) {

@@ -1002,13 +1002,21 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                             // Pre-process content to mark the last tool call with a special marker
                             let processedContent = content
                             if (isAgentWorking && isLastAgentMessage) {
-                              // Find all tool calls
-                              const toolCallRegex = /\n\n((?:Editing|Reading|Running|Listing|Executing)[^\n]*)/g
+                              // Find all tool calls (more comprehensive pattern)
+                              const toolCallRegex = /\n\n([A-Z][a-z]+(?:\s+[a-z]+)*:?\s+[^\n]+)/g
                               const matches = Array.from(content.matchAll(toolCallRegex))
 
-                              if (matches.length > 0) {
+                              // Filter to only actual tool calls
+                              const toolCallMatches = matches.filter((match) => {
+                                const text = match[1]
+                                return /^(?:Editing|Reading|Running|Listing|Executing|Searching|Finding|Grep)/i.test(
+                                  text,
+                                )
+                              })
+
+                              if (toolCallMatches.length > 0) {
                                 // Get the last match
-                                const lastMatch = matches[matches.length - 1]
+                                const lastMatch = toolCallMatches[toolCallMatches.length - 1]
                                 const lastToolCall = lastMatch[1]
                                 const lastIndex = lastMatch.index! + 2 // +2 for \n\n
                                 const endOfToolCall = lastIndex + lastToolCall.length
@@ -1058,13 +1066,22 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                     const text = textParts.join('')
                                     const hasShimmerMarker = text.includes('🔄SHIMMER🔄')
                                     const isToolCall =
-                                      /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing)/i.test(text)
+                                      /^(🔄SHIMMER🔄)?(Editing|Reading|Running|Listing|Executing|Searching|Finding|Grep)/i.test(
+                                        text,
+                                      )
 
-                                    // Remove the marker from display
-                                    const displayText = text.replace('🔄SHIMMER🔄', '')
+                                    // Always remove the marker from display (global replace to catch all instances)
+                                    const displayText = text.replace(/🔄SHIMMER🔄/g, '')
 
-                                    // If we have React elements, render them; otherwise render the text
+                                    // If we have React elements, also remove marker from string children
                                     const hasReactElements = childrenArray.some((child) => isValidElement(child))
+                                    const cleanedChildren = hasReactElements
+                                      ? childrenArray
+                                          .map((child) =>
+                                            typeof child === 'string' ? child.replace(/🔄SHIMMER🔄/g, '') : child,
+                                          )
+                                          .filter((child) => typeof child === 'string' || isValidElement(child))
+                                      : displayText
 
                                     return (
                                       <p
@@ -1077,11 +1094,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                                         }
                                         {...props}
                                       >
-                                        {hasReactElements
-                                          ? childrenArray.filter(
-                                              (child) => typeof child === 'string' || isValidElement(child),
-                                            )
-                                          : displayText}
+                                        {cleanedChildren}
                                       </p>
                                     )
                                   },

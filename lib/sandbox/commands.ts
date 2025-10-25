@@ -1,5 +1,8 @@
 import { Sandbox } from '@vercel/sandbox'
 
+// Project directory where repo is cloned
+export const PROJECT_DIR = '/vercel/sandbox/project'
+
 export interface CommandResult {
   success: boolean
   exitCode?: number
@@ -57,6 +60,19 @@ export async function runCommandInSandbox(
       command: fullCommand,
     }
   }
+}
+
+// Helper function to run command in project directory
+export async function runInProject(sandbox: Sandbox, command: string, args: string[] = []): Promise<CommandResult> {
+  // Properly escape arguments for shell execution
+  const escapeArg = (arg: string) => {
+    // Escape single quotes by replacing ' with '\''
+    return `'${arg.replace(/'/g, "'\\''")}'`
+  }
+
+  const fullCommand = args.length > 0 ? `${command} ${args.map(escapeArg).join(' ')}` : command
+  const cdCommand = `cd ${PROJECT_DIR} && ${fullCommand}`
+  return await runCommandInSandbox(sandbox, 'sh', ['-c', cdCommand])
 }
 
 export async function runStreamingCommandInSandbox(

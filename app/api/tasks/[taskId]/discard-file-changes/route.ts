@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -61,12 +62,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Check if file is tracked in git
-    const lsFilesResult = await sandbox.runCommand('git', ['ls-files', filename])
+    const lsFilesResult = await sandbox.runCommand({
+      cmd: 'git',
+      args: ['ls-files', filename],
+      cwd: PROJECT_DIR,
+    })
     const isTracked = (await lsFilesResult.stdout()).trim().length > 0
 
     if (isTracked) {
       // File is tracked, use git checkout to revert changes
-      const checkoutResult = await sandbox.runCommand('git', ['checkout', 'HEAD', '--', filename])
+      const checkoutResult = await sandbox.runCommand({
+        cmd: 'git',
+        args: ['checkout', 'HEAD', '--', filename],
+        cwd: PROJECT_DIR,
+      })
 
       if (checkoutResult.exitCode !== 0) {
         const stderr = await checkoutResult.stderr()
@@ -75,7 +84,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     } else {
       // File is untracked (new file), delete it
-      const rmResult = await sandbox.runCommand('rm', [filename])
+      const rmResult = await sandbox.runCommand({
+        cmd: 'rm',
+        args: [filename],
+        cwd: PROJECT_DIR,
+      })
 
       if (rmResult.exitCode !== 0) {
         const stderr = await rmResult.stderr()

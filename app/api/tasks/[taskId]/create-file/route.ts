@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -65,7 +66,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const pathParts = filename.split('/')
     if (pathParts.length > 1) {
       const dirPath = pathParts.slice(0, -1).join('/')
-      const mkdirResult = await sandbox.runCommand('mkdir', ['-p', dirPath])
+      const mkdirResult = await sandbox.runCommand({
+        cmd: 'mkdir',
+        args: ['-p', dirPath],
+        cwd: PROJECT_DIR,
+      })
 
       if (mkdirResult.exitCode !== 0) {
         const stderr = await mkdirResult.stderr()
@@ -75,7 +80,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Create the file using touch
-    const touchResult = await sandbox.runCommand('touch', [filename])
+    const touchResult = await sandbox.runCommand({
+      cmd: 'touch',
+      args: [filename],
+      cwd: PROJECT_DIR,
+    })
 
     if (touchResult.exitCode !== 0) {
       const stderr = await touchResult.stderr()

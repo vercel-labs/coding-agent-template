@@ -7,9 +7,9 @@ import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
-import { detectPackageManager, getDevCommandArgs } from '@/lib/sandbox/package-manager'
+import { detectPackageManager } from '@/lib/sandbox/package-manager'
+import { runCommandInSandbox, runInProject, PROJECT_DIR } from '@/lib/sandbox/commands'
 import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
-import { runCommandInSandbox } from '@/lib/sandbox/commands'
 import { eq, desc, or, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
@@ -664,40 +664,8 @@ async function processTask(
       if (keepAlive) {
         // Keep sandbox alive for follow-up messages
         await logger.info('Sandbox kept alive for follow-up messages')
-
-        // Start dev server in background if keepAlive is enabled
-        try {
-          // Check if package.json exists and has a dev script
-          const packageJsonCheck = await runCommandInSandbox(sandbox!, 'test', ['-f', 'package.json'])
-          if (packageJsonCheck.success) {
-            const packageJsonRead = await runCommandInSandbox(sandbox!, 'cat', ['package.json'])
-            if (packageJsonRead.success && packageJsonRead.output) {
-              const packageJson = JSON.parse(packageJsonRead.output)
-              const hasDevScript = packageJson?.scripts?.dev
-
-              if (hasDevScript) {
-                await logger.info('Starting development server')
-
-                // Detect package manager and start dev server
-                const packageManager = await detectPackageManager(sandbox!, logger)
-                const devCommand = packageManager === 'npm' ? 'npm' : packageManager
-                const devArgs = await getDevCommandArgs(sandbox!, packageManager)
-
-                // Start dev server in detached mode (runs in background)
-                await sandbox!.runCommand({
-                  cmd: devCommand,
-                  args: devArgs,
-                  detached: true, // Key: runs in background without blocking
-                })
-
-                await logger.info('Development server started')
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Failed to start dev server:', error)
-          // Don't log anything to user - just silently skip if no dev script
-        }
+        // Dev server is already started during sandbox creation if installDependencies was true
+        // No need to start it again here
       } else {
         // Unregister and shutdown sandbox
         unregisterSandbox(taskId)

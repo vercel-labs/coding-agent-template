@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
@@ -61,7 +62,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Create the folder using mkdir -p
-    const mkdirResult = await sandbox.runCommand('mkdir', ['-p', foldername])
+    const mkdirResult = await sandbox.runCommand({
+      cmd: 'mkdir',
+      args: ['-p', foldername],
+      cwd: PROJECT_DIR,
+    })
 
     if (mkdirResult.exitCode !== 0) {
       const stderr = await mkdirResult.stderr()

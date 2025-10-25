@@ -4,6 +4,7 @@ import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { getOctokit } from '@/lib/github/client'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { PROJECT_DIR } from '@/lib/sandbox/commands'
 
 interface FileChange {
   filename: string
@@ -144,7 +145,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         // Run git status to get local changes
-        const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
+        const statusResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['status', '--porcelain'],
+          cwd: PROJECT_DIR,
+        })
 
         if (statusResult.exitCode !== 0) {
           return NextResponse.json({
@@ -163,14 +168,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           .filter((line) => line.trim())
 
         // First, check if remote branch exists to determine comparison base
-        const lsRemoteResult = await sandbox.runCommand('git', ['ls-remote', '--heads', 'origin', task.branchName])
+        const lsRemoteResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['ls-remote', '--heads', 'origin', task.branchName],
+          cwd: PROJECT_DIR,
+        })
         const remoteBranchRef = `origin/${task.branchName}`
-        const checkRemoteResult = await sandbox.runCommand('git', ['rev-parse', '--verify', remoteBranchRef])
+        const checkRemoteResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['rev-parse', '--verify', remoteBranchRef],
+          cwd: PROJECT_DIR,
+        })
         const remoteBranchExists = checkRemoteResult.exitCode === 0
         const compareRef = remoteBranchExists ? remoteBranchRef : 'HEAD'
 
         // Get diff stats using git diff --numstat
-        const numstatResult = await sandbox.runCommand('git', ['diff', '--numstat', compareRef])
+        const numstatResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['diff', '--numstat', compareRef],
+          cwd: PROJECT_DIR,
+        })
         const diffStats: Record<string, { additions: number; deletions: number }> = {}
 
         if (numstatResult.exitCode === 0) {
@@ -233,7 +250,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             (indexStatus === 'A' && !stats.additions && !stats.deletions)
           ) {
             try {
-              const wcResult = await sandbox.runCommand('wc', ['-l', filename])
+              const wcResult = await sandbox.runCommand({
+                cmd: 'wc',
+                args: ['-l', filename],
+                cwd: PROJECT_DIR,
+              })
               if (wcResult.exitCode === 0) {
                 const wcOutput = await wcResult.stdout()
                 const lineCount = parseInt(wcOutput.trim().split(/\s+/)[0]) || 0
@@ -352,29 +373,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         }
 
         // Use find to list all files in the sandbox, excluding .git directory and common build directories
-        const findResult = await sandbox.runCommand('find', [
-          '.',
-          '-type',
-          'f',
-          '-not',
-          '-path',
-          '*/.git/*',
-          '-not',
-          '-path',
-          '*/node_modules/*',
-          '-not',
-          '-path',
-          '*/.next/*',
-          '-not',
-          '-path',
-          '*/dist/*',
-          '-not',
-          '-path',
-          '*/build/*',
-          '-not',
-          '-path',
-          '*/.vercel/*',
-        ])
+        const findResult = await sandbox.runCommand({
+          cmd: 'find',
+          args: [
+            '.',
+            '-type',
+            'f',
+            '-not',
+            '-path',
+            '*/.git/*',
+            '-not',
+            '-path',
+            '*/node_modules/*',
+            '-not',
+            '-path',
+            '*/.next/*',
+            '-not',
+            '-path',
+            '*/dist/*',
+            '-not',
+            '-path',
+            '*/build/*',
+            '-not',
+            '-path',
+            '*/.vercel/*',
+          ],
+          cwd: PROJECT_DIR,
+        })
 
         if (findResult.exitCode !== 0) {
           console.error('Failed to run find command')
@@ -395,7 +420,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           .map((line) => line.replace(/^\.\//, '')) // Remove leading ./
 
         // Get git status to determine which files are added/modified
-        const statusResult = await sandbox.runCommand('git', ['status', '--porcelain'])
+        const statusResult = await sandbox.runCommand({
+          cmd: 'git',
+          args: ['status', '--porcelain'],
+          cwd: PROJECT_DIR,
+        })
         const changedFilesMap: Record<string, 'added' | 'modified' | 'deleted' | 'renamed'> = {}
 
         if (statusResult.exitCode === 0) {
