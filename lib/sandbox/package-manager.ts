@@ -81,3 +81,11 @@ export async function installDependencies(
     return { success: false, error: installResult.error }
   }
 }
+
+/**
+ * Gets the appropriate dev command arguments for the given package manager.
+ * Next.js 16+ uses Turbo by default (not Turbopack), which works on Vercel Sandbox.
+ */
+export async function getDevCommandArgs(_sandbox: Sandbox, packageManager: 'pnpm' | 'yarn' | 'npm'): Promise<string[]> {
+  return packageManager === 'npm' ? ['run', 'dev'] : ['dev']
+}

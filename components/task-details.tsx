@@ -28,6 +28,7 @@ import {
   MoreVertical,
   X,
   ExternalLink,
+  Plus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -65,6 +66,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import BrowserbaseIcon from '@/components/icons/browserbase-icon'
 import Context7Icon from '@/components/icons/context7-icon'
 import ConvexIcon from '@/components/icons/convex-icon'
@@ -1313,7 +1315,11 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       <div className="space-y-2 md:space-y-3 pb-3 md:pb-6 border-b pl-3 md:pl-6 pr-3 flex-shrink-0">
         {/* Prompt */}
         <div className="flex items-center gap-2">
-          {prStatus && <PRStatusIcon status={prStatus} className="h-4 w-4 md:h-5 md:w-5" />}
+          {currentStatus === 'processing' ? (
+            <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin text-muted-foreground" />
+          ) : (
+            prStatus && <PRStatusIcon status={prStatus} className="h-4 w-4 md:h-5 md:w-5" />
+          )}
           <p className="text-lg md:text-2xl flex-1 truncate">{task.title || task.prompt}</p>
           {currentStatus === 'completed' && task.repoUrl && task.branchName && (
             <>
@@ -1436,6 +1442,27 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  // Extract owner and repo from repoUrl
+                  const repoUrl = task.repoUrl || ''
+                  const match = repoUrl.match(/github\.com\/([^/]+)\/([^/]+?)(\.git)?$/)
+                  const owner = match?.[1] || ''
+                  const repo = match?.[2] || ''
+
+                  // Build the URL with query parameters
+                  const params = new URLSearchParams()
+                  if (owner) params.set('owner', owner)
+                  if (repo) params.set('repo', repo)
+                  if (task.selectedAgent) params.set('agent', task.selectedAgent)
+                  if (task.selectedModel) params.set('model', task.selectedModel)
+
+                  router.push(`/?${params.toString()}`)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Task
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowTryAgainDialog(true)}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Try Again
