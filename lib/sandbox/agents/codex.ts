@@ -345,16 +345,69 @@ url = "${server.baseUrl}"
             try {
               const parsed = JSON.parse(line)
 
+              // Debug: Log event types to understand the structure
+              if (parsed.type) {
+                console.log('Codex event type:', parsed.type)
+              }
+
               // Extract session_id from any event that has it
               if (parsed.session_id) {
                 extractedSessionId = parsed.session_id
+                console.log('Extracted session ID:', extractedSessionId)
               }
 
               // Only update database if streaming to taskId
               if (agentMessageId && taskId) {
-                // Handle different event types from Codex's JSONL stream
-                if (parsed.type === 'item.started' || parsed.type === 'item.updated') {
-                  // Show tool execution status
+                // Handle assistant messages (similar to Cursor format)
+                if (parsed.type === 'assistant' && parsed.message?.content) {
+                  console.log('Processing assistant message with content')
+                  // Extract text from content array
+                  for (const contentBlock of parsed.message.content) {
+                    if (contentBlock.type === 'text' && contentBlock.text) {
+                      accumulatedContent += '\n\n' + contentBlock.text
+                      db.update(taskMessages)
+                        .set({ content: accumulatedContent })
+                        .where(eq(taskMessages.id, agentMessageId))
+                        .catch((err: Error) => console.error('Failed to update message:', err))
+                    }
+                  }
+                }
+                // Handle tool calls
+                else if (parsed.type === 'tool_call' && parsed.subtype === 'started') {
+                  const toolCall = parsed.tool_call || {}
+                  const toolName = Object.keys(toolCall)[0]
+                  let statusMsg = ''
+
+                  if (toolName === 'editToolCall') {
+                    const path = toolCall.editToolCall?.args?.path || 'file'
+                    statusMsg = `\n\nEditing ${path}`
+                  } else if (toolName === 'readToolCall') {
+                    const path = toolCall.readToolCall?.args?.path || 'file'
+                    statusMsg = `\n\nReading ${path}`
+                  } else if (toolName === 'shellToolCall') {
+                    const command = toolCall.shellToolCall?.args?.command || 'command'
+                    statusMsg = `\n\nRunning: ${command}`
+                  } else if (toolName === 'globToolCall') {
+                    const pattern = toolCall.globToolCall?.args?.glob_pattern || 'files'
+                    statusMsg = `\n\nFinding files: ${pattern}`
+                  } else if (toolName === 'grepToolCall') {
+                    const pattern = toolCall.grepToolCall?.args?.pattern || 'pattern'
+                    statusMsg = `\n\nSearching for: ${pattern}`
+                  } else if (toolName) {
+                    const cleanName = toolName.replace(/ToolCall$/, '')
+                    statusMsg = `\n\nExecuting ${cleanName}`
+                  }
+
+                  if (statusMsg) {
+                    accumulatedContent += statusMsg
+                    db.update(taskMessages)
+                      .set({ content: accumulatedContent })
+                      .where(eq(taskMessages.id, agentMessageId))
+                      .catch((err: Error) => console.error('Failed to update message:', err))
+                  }
+                }
+                // Handle item-based events (alternative format)
+                else if (parsed.type === 'item.started' || parsed.type === 'item.updated') {
                   if (parsed.item?.type === 'tool_call') {
                     const toolName = parsed.item.name
                     let statusMsg = ''
@@ -397,15 +450,16 @@ url = "${server.baseUrl}"
                       .where(eq(taskMessages.id, agentMessageId))
                       .catch((err: Error) => console.error('Failed to update message:', err))
                   }
-                } else if (parsed.type === 'turn.completed') {
-                  // Mark as completed when turn is done
+                }
+                // Mark completion
+                else if (parsed.type === 'turn.completed' || parsed.type === 'result') {
                   isCompleted = true
                   if (logger) {
                     logger.info('Detected completion in Codex output')
                   }
                 }
               }
-            } catch {
+            } catch (e) {
               // Ignore JSON parse errors for non-JSON lines
             }
           }
