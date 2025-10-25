@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
 import { getLogsPaneHeight, setLogsPaneHeight, getLogsPaneCollapsed, setLogsPaneCollapsed } from '@/lib/utils/cookies'
 import { Terminal, TerminalRef } from '@/components/terminal'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface LogsPaneProps {
   task: Task
@@ -16,6 +17,7 @@ interface LogsPaneProps {
 }
 
 type TabType = 'logs' | 'terminal'
+type LogFilterType = 'all' | 'platform' | 'server'
 
 export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
@@ -27,6 +29,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [hasMounted, setHasMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('logs')
   const [isClearingLogs, setIsClearingLogs] = useState(false)
+  const [logFilter, setLogFilter] = useState<LogFilterType>('all')
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<TerminalRef>(null)
   const prevLogsLengthRef = useRef<number>(0)
@@ -279,7 +282,17 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             </div>
           </div>
           {activeTab === 'logs' && (
-            <div className="flex items-center gap-1 mr-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5 mr-3" onClick={(e) => e.stopPropagation()}>
+              <Select value={logFilter} onValueChange={(value) => setLogFilter(value as LogFilterType)}>
+                <SelectTrigger size="sm" className="h-6 text-xs px-2 py-0 min-w-[90px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="platform">Platform</SelectItem>
+                  <SelectItem value="server">Server</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="ghost"
                 size="sm"
@@ -331,45 +344,54 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             (isCollapsed || activeTab !== 'logs') && 'hidden',
           )}
         >
-          {(task.logs || []).map((log, index) => {
-            const isServerLog = log.message.startsWith('[SERVER]')
-            const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
+          {(task.logs || [])
+            .filter((log) => {
+              const isServerLog = log.message.startsWith('[SERVER]')
+              if (logFilter === 'server') return isServerLog
+              if (logFilter === 'platform') return !isServerLog
+              return true
+            })
+            .map((log, index) => {
+              const isServerLog = log.message.startsWith('[SERVER]')
+              const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
 
-            const getLogColor = (logType: LogEntry['type']) => {
-              switch (logType) {
-                case 'command':
-                  return 'text-cyan-400'
-                case 'error':
-                  return 'text-red-400'
-                case 'success':
-                  return 'text-green-400'
-                case 'info':
-                default:
-                  return 'text-white'
+              const getLogColor = (logType: LogEntry['type']) => {
+                switch (logType) {
+                  case 'command':
+                    return 'text-cyan-400'
+                  case 'error':
+                    return 'text-red-400'
+                  case 'success':
+                    return 'text-green-400'
+                  case 'info':
+                  default:
+                    return 'text-white'
+                }
               }
-            }
 
-            const formatTime = (timestamp: Date) => {
-              return new Date(timestamp).toLocaleTimeString('en-US', {
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                fractionalSecondDigits: 3,
-              })
-            }
+              const formatTime = (timestamp: Date) => {
+                return new Date(timestamp).toLocaleTimeString('en-US', {
+                  hour12: false,
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  fractionalSecondDigits: 3,
+                })
+              }
 
-            return (
-              <div key={index} className={cn('flex gap-1.5 leading-tight')}>
-                <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
-                <span className={cn('flex-1', getLogColor(log.type))}>
-                  {isServerLog && <span className="text-purple-400">[SERVER]</span>}
-                  {isServerLog && ' '}
-                  {messageContent}
-                </span>
-              </div>
-            )
-          })}
+              return (
+                <div key={index} className={cn('flex gap-1.5 leading-tight')}>
+                  <span className="text-white/40 text-[10px] shrink-0">
+                    [{formatTime(log.timestamp || new Date())}]
+                  </span>
+                  <span className={cn('flex-1', getLogColor(log.type))}>
+                    {isServerLog && <span className="text-purple-400">[SERVER]</span>}
+                    {isServerLog && ' '}
+                    {messageContent}
+                  </span>
+                </div>
+              )
+            })}
         </div>
         <div className={cn('flex-1 overflow-hidden', (isCollapsed || activeTab !== 'terminal') && 'hidden')}>
           <Terminal
