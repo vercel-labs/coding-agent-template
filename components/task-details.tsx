@@ -29,6 +29,8 @@ import {
   X,
   ExternalLink,
   Plus,
+  Maximize,
+  Minimize,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -204,6 +206,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [showPreviewPane, setShowPreviewPane] = useState(() => getShowPreviewPane())
   const [showChatPane, setShowChatPane] = useState(() => getShowChatPane())
   const [previewKey, setPreviewKey] = useState(0)
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false)
   const [isRestartingDevServer, setIsRestartingDevServer] = useState(false)
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false)
   const [isStartingSandbox, setIsStartingSandbox] = useState(false)
@@ -1860,7 +1863,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
             {/* Preview */}
             {showPreviewPane && (
-              <div className="flex-1 min-h-0 min-w-0">
+              <div className={cn('flex-1 min-h-0 min-w-0', isPreviewFullscreen && 'fixed inset-0 z-50 bg-background')}>
                 <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
                   {/* Preview Toolbar */}
                   <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
@@ -1893,6 +1896,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                       disabled={!task.sandboxUrl}
                     >
                       <RefreshCw className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsPreviewFullscreen(!isPreviewFullscreen)}
+                      className="h-6 w-6 p-0 flex-shrink-0"
+                      title={isPreviewFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                    >
+                      {isPreviewFullscreen ? (
+                        <Minimize className="h-3.5 w-3.5" />
+                      ) : (
+                        <Maximize className="h-3.5 w-3.5" />
+                      )}
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
