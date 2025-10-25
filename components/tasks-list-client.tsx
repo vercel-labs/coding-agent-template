@@ -28,6 +28,7 @@ import type { Session } from '@/lib/session/types'
 import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { PRStatusIcon } from '@/components/pr-status-icon'
+import { PRCheckStatus } from '@/components/pr-check-status'
 
 interface TasksListClientProps {
   user: Session['user'] | null
@@ -420,7 +421,12 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                         </div>
                         {task.repoUrl && (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                            {task.prStatus && <PRStatusIcon status={task.prStatus} />}
+                            {task.prStatus && (
+                              <div className="relative">
+                                <PRStatusIcon status={task.prStatus} />
+                                <PRCheckStatus taskId={task.id} />
+                              </div>
+                            )}
                             <span className="truncate">
                               {(() => {
                                 try {

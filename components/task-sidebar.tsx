@@ -25,6 +25,7 @@ import { useTasks } from '@/components/app-layout'
 import { useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
 import { PRStatusIcon } from '@/components/pr-status-icon'
+import { PRCheckStatus } from '@/components/pr-check-status'
 
 // Model mappings for human-friendly names
 const AGENT_MODELS = {
@@ -397,7 +398,12 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                             </div>
                             {task.repoUrl && (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
-                                {task.prStatus && <PRStatusIcon status={task.prStatus} />}
+                                {task.prStatus && (
+                                  <div className="relative">
+                                    <PRStatusIcon status={task.prStatus} />
+                                    <PRCheckStatus taskId={task.id} />
+                                  </div>
+                                )}
                                 <span className="truncate">
                                   {(() => {
                                     try {
