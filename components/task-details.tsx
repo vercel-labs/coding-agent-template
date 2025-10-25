@@ -2025,11 +2025,11 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           {/* Mobile Layout */}
           <div className="md:hidden flex flex-col flex-1 min-h-0 relative pb-14">
             {/* Content Area */}
-            <div className="flex-1 overflow-hidden px-3 pt-3">
+            <div className="flex-1 overflow-hidden">
               {activeTab === 'code' ? (
                 <div className="relative h-full">
                   {/* Current File Path Bar */}
-                  <div className="mb-2 flex items-center gap-2">
+                  <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background border-b">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -2044,7 +2044,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   </div>
 
                   {/* Diff Viewer */}
-                  <div className="bg-card rounded-md border overflow-hidden h-[calc(100%-3rem)]">
+                  <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-41px)]">
                     <div className="overflow-y-auto h-full">
                       <FileDiffViewer
                         selectedFile={selectedItemIsFolder ? undefined : selectedFile}
@@ -2069,12 +2069,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   </div>
                 </div>
               ) : activeTab === 'chat' ? (
-                <div className="h-full pb-3">
+                <div className="h-full px-3 pb-3">
                   <TaskChat taskId={task.id} task={task} />
                 </div>
               ) : activeTab === 'preview' ? (
-                <div className="h-full pb-3">
-                  <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
+                <div className="h-full">
+                  <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
                     {/* Preview Toolbar */}
                     <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
                       <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -2104,18 +2104,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         disabled={!task.sandboxUrl}
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                        title="Open in New Tab"
-                        disabled={!task.sandboxUrl}
-                      >
-                        <a href={`/api/tasks/${task.id}/sandbox-proxy`} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

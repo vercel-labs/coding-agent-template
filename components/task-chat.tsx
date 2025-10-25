@@ -883,7 +883,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     })
 
     return (
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden pb-4">
         {hiddenMessagesCount > 0 && (
           <div className="text-xs text-center text-muted-foreground opacity-50 mb-4 italic">
             {hiddenMessagesCount} older message{hiddenMessagesCount !== 1 ? 's' : ''} hidden
