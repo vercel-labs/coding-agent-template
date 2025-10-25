@@ -14,6 +14,18 @@ function convertFeedbackUrlToDeploymentUrl(url: string): string {
   return url
 }
 
+// Helper function to generate Vercel inspector URL from details_url or check ID
+function getInspectorUrl(detailsUrl?: string): string | undefined {
+  if (!detailsUrl) return undefined
+
+  // If it's already a vercel.com URL, return it
+  if (detailsUrl.includes('vercel.com')) {
+    return detailsUrl
+  }
+
+  return undefined
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
@@ -50,6 +62,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         data: {
           hasDeployment: true,
           previewUrl,
+          inspectorUrl: undefined,
           cached: true,
         },
       })
@@ -187,11 +200,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             // Store the preview URL in the database
             await db.update(tasks).set({ previewUrl }).where(eq(tasks.id, taskId))
 
+            // Get inspector URL from details_url
+            const detailsUrl = vercelDeploymentCheck?.details_url ?? vercelPreviewCheck?.details_url
+            const inspectorUrl = detailsUrl ? getInspectorUrl(detailsUrl) : undefined
+
             return NextResponse.json({
               success: true,
               data: {
                 hasDeployment: true,
                 previewUrl,
+                inspectorUrl,
                 checkId: vercelDeploymentCheck?.id || vercelPreviewCheck?.id,
                 createdAt: vercelDeploymentCheck?.completed_at || vercelPreviewCheck?.completed_at,
               },
@@ -244,6 +262,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                       data: {
                         hasDeployment: true,
                         previewUrl,
+                        inspectorUrl: undefined,
                         deploymentId: deployment.id,
                         createdAt: deployment.created_at,
                       },
@@ -285,6 +304,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               data: {
                 hasDeployment: true,
                 previewUrl,
+                inspectorUrl: getInspectorUrl(vercelStatus.target_url),
                 createdAt: vercelStatus.created_at,
               },
             })
