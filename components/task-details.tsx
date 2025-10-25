@@ -2042,233 +2042,235 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           <div className="md:hidden flex flex-col flex-1 min-h-0 relative pb-14">
             {/* Content Area */}
             <div className="flex-1 overflow-hidden">
-              {activeTab === 'code' ? (
-                <div className="relative h-full">
-                  {/* Current File Path Bar */}
-                  <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background border-b">
+              {/* Code Tab */}
+              <div className={cn('relative h-full', activeTab !== 'code' && 'hidden')}>
+                {/* Current File Path Bar */}
+                <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background border-b">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFilesList(true)}
+                    className="h-6 w-6 p-0 flex-shrink-0"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground truncate flex-1">
+                    {selectedFile || 'Select a file'}
+                  </span>
+                </div>
+
+                {/* Diff Viewer */}
+                <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-41px)]">
+                  <div className="overflow-y-auto h-full">
+                    <FileDiffViewer
+                      selectedFile={selectedItemIsFolder ? undefined : selectedFile}
+                      diffsCache={diffsCache}
+                      isInitialLoading={Object.keys(diffsCache).length === 0}
+                      viewMode={viewMode}
+                      taskId={task.id}
+                      onUnsavedChanges={
+                        selectedFile ? (hasChanges) => handleUnsavedChanges(selectedFile, hasChanges) : undefined
+                      }
+                      onSavingStateChange={
+                        selectedFile ? (isSaving) => handleSavingStateChange(selectedFile, isSaving) : undefined
+                      }
+                      onOpenFile={(filename, lineNumber) => {
+                        openFileInTab(filename)
+                        // TODO: Optionally scroll to lineNumber after opening
+                      }}
+                      onFileLoaded={handleFileLoaded}
+                      onSaveSuccess={handleSaveSuccess}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Chat Tab */}
+              <div className={cn('h-full px-3 pb-3', activeTab !== 'chat' && 'hidden')}>
+                <TaskChat taskId={task.id} task={task} />
+              </div>
+
+              {/* Preview Tab */}
+              <div
+                className={cn(
+                  'h-full',
+                  activeTab !== 'preview' && 'hidden',
+                  isPreviewFullscreen && 'fixed inset-0 z-50 bg-background',
+                )}
+              >
+                <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
+                  {/* Preview Toolbar */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
+                    <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    {task.sandboxUrl ? (
+                      <a
+                        href={task.sandboxUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted-foreground hover:text-foreground truncate flex-1 transition-colors"
+                        title={task.sandboxUrl}
+                      >
+                        {task.sandboxUrl}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-muted-foreground truncate flex-1">
+                        {currentStatus === 'pending' || currentStatus === 'processing'
+                          ? 'Creating sandbox...'
+                          : 'Sandbox not running'}
+                      </span>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setShowFilesList(true)}
+                      onClick={() => setPreviewKey((prev) => prev + 1)}
                       className="h-6 w-6 p-0 flex-shrink-0"
+                      title="Refresh Preview"
+                      disabled={!task.sandboxUrl}
                     >
-                      <FileText className="h-4 w-4" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                     </Button>
-                    <span className="text-sm text-muted-foreground truncate flex-1">
-                      {selectedFile || 'Select a file'}
-                    </span>
-                  </div>
-
-                  {/* Diff Viewer */}
-                  <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-41px)]">
-                    <div className="overflow-y-auto h-full">
-                      <FileDiffViewer
-                        selectedFile={selectedItemIsFolder ? undefined : selectedFile}
-                        diffsCache={diffsCache}
-                        isInitialLoading={Object.keys(diffsCache).length === 0}
-                        viewMode={viewMode}
-                        taskId={task.id}
-                        onUnsavedChanges={
-                          selectedFile ? (hasChanges) => handleUnsavedChanges(selectedFile, hasChanges) : undefined
-                        }
-                        onSavingStateChange={
-                          selectedFile ? (isSaving) => handleSavingStateChange(selectedFile, isSaving) : undefined
-                        }
-                        onOpenFile={(filename, lineNumber) => {
-                          openFileInTab(filename)
-                          // TODO: Optionally scroll to lineNumber after opening
-                        }}
-                        onFileLoaded={handleFileLoaded}
-                        onSaveSuccess={handleSaveSuccess}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : activeTab === 'chat' ? (
-                <div className="h-full px-3 pb-3">
-                  <TaskChat taskId={task.id} task={task} />
-                </div>
-              ) : activeTab === 'preview' ? (
-                <div className={cn('h-full', isPreviewFullscreen && 'fixed inset-0 z-50 bg-background')}>
-                  <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
-                    {/* Preview Toolbar */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
-                      <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      {task.sandboxUrl ? (
-                        <a
-                          href={task.sandboxUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-muted-foreground hover:text-foreground truncate flex-1 transition-colors"
-                          title={task.sandboxUrl}
-                        >
-                          {task.sandboxUrl}
-                        </a>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsPreviewFullscreen(!isPreviewFullscreen)}
+                      className="h-6 w-6 p-0 flex-shrink-0"
+                      title={isPreviewFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                    >
+                      {isPreviewFullscreen ? (
+                        <Minimize className="h-3.5 w-3.5" />
                       ) : (
-                        <span className="text-sm text-muted-foreground truncate flex-1">
-                          {currentStatus === 'pending' || currentStatus === 'processing'
-                            ? 'Creating sandbox...'
-                            : 'Sandbox not running'}
-                        </span>
+                        <Maximize className="h-3.5 w-3.5" />
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPreviewKey((prev) => prev + 1)}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                        title="Refresh Preview"
-                        disabled={!task.sandboxUrl}
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsPreviewFullscreen(!isPreviewFullscreen)}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                        title={isPreviewFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                      >
-                        {isPreviewFullscreen ? (
-                          <Minimize className="h-3.5 w-3.5" />
-                        ) : (
-                          <Maximize className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 flex-shrink-0"
-                            disabled={isRestartingDevServer || isStoppingSandbox || isStartingSandbox}
-                          >
-                            <MoreVertical className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {task.keepAlive && (
-                            <>
-                              {task.sandboxUrl ? (
-                                <DropdownMenuItem onClick={handleStopSandbox} disabled={isStoppingSandbox}>
-                                  {isStoppingSandbox ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                      Stopping...
-                                    </>
-                                  ) : (
-                                    'Stop Sandbox'
-                                  )}
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem onClick={handleStartSandbox} disabled={isStartingSandbox}>
-                                  {isStartingSandbox ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                      Starting...
-                                    </>
-                                  ) : (
-                                    'Start Sandbox'
-                                  )}
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-                          <DropdownMenuItem
-                            onClick={handleRestartDevServer}
-                            disabled={isRestartingDevServer || !task.sandboxUrl}
-                          >
-                            {isRestartingDevServer ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Restarting...
-                              </>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 flex-shrink-0"
+                          disabled={isRestartingDevServer || isStoppingSandbox || isStartingSandbox}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {task.keepAlive && (
+                          <>
+                            {task.sandboxUrl ? (
+                              <DropdownMenuItem onClick={handleStopSandbox} disabled={isStoppingSandbox}>
+                                {isStoppingSandbox ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Stopping...
+                                  </>
+                                ) : (
+                                  'Stop Sandbox'
+                                )}
+                              </DropdownMenuItem>
                             ) : (
-                              'Restart Dev Server'
+                              <DropdownMenuItem onClick={handleStartSandbox} disabled={isStartingSandbox}>
+                                {isStartingSandbox ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Starting...
+                                  </>
+                                ) : (
+                                  'Start Sandbox'
+                                )}
+                              </DropdownMenuItem>
                             )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    {task.sandboxUrl ? (
-                      <div className="overflow-y-auto flex-1 relative">
-                        {sandboxHealth === 'running' ? (
-                          <iframe
-                            key={previewKey}
-                            src={task.sandboxUrl}
-                            className="w-full h-full border-0"
-                            title="Preview"
-                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-                          />
-                        ) : null}
-                        {sandboxHealth === 'starting' && (
-                          <div className="absolute inset-0 bg-background flex items-center justify-center">
-                            <div className="text-center">
-                              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-                              <p className="text-sm text-muted-foreground">Starting dev server...</p>
-                            </div>
-                          </div>
+                          </>
                         )}
-                        {sandboxHealth === 'stopped' && (
-                          <div className="absolute inset-0 bg-background flex items-center justify-center">
-                            <div className="text-center">
-                              <StopCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                              <p className="text-sm text-muted-foreground mb-1">Sandbox Stopped</p>
-                              <p className="text-xs text-muted-foreground">Start a new sandbox from the menu above</p>
-                            </div>
-                          </div>
-                        )}
-                        {sandboxHealth === 'error' && (
-                          <div className="absolute inset-0 bg-background flex items-center justify-center">
-                            <div className="text-center">
-                              <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
-                              <p className="text-sm text-muted-foreground mb-1">Application Error</p>
-                              <p className="text-xs text-muted-foreground">The dev server encountered an error</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center flex-1 text-muted-foreground text-sm p-6 text-center">
-                        <div>
-                          {currentStatus === 'pending' || currentStatus === 'processing' ? (
+                        <DropdownMenuItem
+                          onClick={handleRestartDevServer}
+                          disabled={isRestartingDevServer || !task.sandboxUrl}
+                        >
+                          {isRestartingDevServer ? (
                             <>
-                              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-                              <p className="mb-1">Creating sandbox...</p>
-                              <p className="text-xs mb-4">The preview will appear here once the dev server starts</p>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Restarting...
                             </>
                           ) : (
-                            <>
-                              <p className="mb-1">Sandbox not running</p>
-                              <p className="text-xs mb-4">
-                                {task.keepAlive
-                                  ? 'Start the sandbox to view the preview'
-                                  : 'This task does not have keep-alive enabled'}
-                              </p>
-                            </>
+                            'Restart Dev Server'
                           )}
-                          {task.keepAlive && !task.sandboxUrl && (
-                            <Button
-                              size="sm"
-                              onClick={handleStartSandbox}
-                              disabled={isStartingSandbox}
-                              className="mt-2"
-                            >
-                              {isStartingSandbox ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Starting...
-                                </>
-                              ) : (
-                                'Start Sandbox'
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
+                  {task.sandboxUrl ? (
+                    <div className="overflow-y-auto flex-1 relative">
+                      {sandboxHealth === 'running' ? (
+                        <iframe
+                          key={previewKey}
+                          src={task.sandboxUrl}
+                          className="w-full h-full border-0"
+                          title="Preview"
+                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                        />
+                      ) : null}
+                      {sandboxHealth === 'starting' && (
+                        <div className="absolute inset-0 bg-background flex items-center justify-center">
+                          <div className="text-center">
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">Starting dev server...</p>
+                          </div>
+                        </div>
+                      )}
+                      {sandboxHealth === 'stopped' && (
+                        <div className="absolute inset-0 bg-background flex items-center justify-center">
+                          <div className="text-center">
+                            <StopCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground mb-1">Sandbox Stopped</p>
+                            <p className="text-xs text-muted-foreground">Start a new sandbox from the menu above</p>
+                          </div>
+                        </div>
+                      )}
+                      {sandboxHealth === 'error' && (
+                        <div className="absolute inset-0 bg-background flex items-center justify-center">
+                          <div className="text-center">
+                            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+                            <p className="text-sm text-muted-foreground mb-1">Application Error</p>
+                            <p className="text-xs text-muted-foreground">The dev server encountered an error</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center flex-1 text-muted-foreground text-sm p-6 text-center">
+                      <div>
+                        {currentStatus === 'pending' || currentStatus === 'processing' ? (
+                          <>
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                            <p className="mb-1">Creating sandbox...</p>
+                            <p className="text-xs mb-4">The preview will appear here once the dev server starts</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="mb-1">Sandbox not running</p>
+                            <p className="text-xs mb-4">
+                              {task.keepAlive
+                                ? 'Start the sandbox to view the preview'
+                                : 'This task does not have keep-alive enabled'}
+                            </p>
+                          </>
+                        )}
+                        {task.keepAlive && !task.sandboxUrl && (
+                          <Button size="sm" onClick={handleStartSandbox} disabled={isStartingSandbox} className="mt-2">
+                            {isStartingSandbox ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Starting...
+                              </>
+                            ) : (
+                              'Start Sandbox'
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : null}
+              </div>
             </div>
 
             {/* Bottom Tab Bar */}
