@@ -85,7 +85,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
     // Detect the appropriate port for the project
     const port = task.repoUrl ? await detectPortFromRepo(task.repoUrl, githubToken) : 3000
-    console.log(`Detected port ${port} for project`)
+    console.log('Detected project port')
 
     // Create a new sandbox by cloning the repo
     const sandbox = await Sandbox.create({
@@ -207,8 +207,8 @@ export default mergeConfig(userConfig, defineConfig({
   server: {
     host: '0.0.0.0',
     strictPort: false,
-    // Remove any allowedHosts restrictions for sandbox
-    allowedHosts: undefined,
+    // Allow all hosts in sandbox so remote preview works
+    allowedHosts: 'all',
   }
 }))`
 

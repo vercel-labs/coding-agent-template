@@ -101,8 +101,8 @@ export default mergeConfig(userConfig, defineConfig({
   server: {
     host: '0.0.0.0',
     strictPort: false,
-    // Remove any allowedHosts restrictions for sandbox
-    allowedHosts: undefined,
+    // Allow all hosts in sandbox so remote preview works
+    allowedHosts: 'all',
   }
 }))`
 
