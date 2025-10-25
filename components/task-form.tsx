@@ -309,8 +309,10 @@ export function TaskForm({
   }, [selectedOwner, repos, setRepos])
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('Task form submitted')
     e.preventDefault()
     if (!prompt.trim()) {
+      console.log('Empty prompt, not submitting')
       return
     }
 
@@ -408,13 +410,21 @@ export function TaskForm({
       <form onSubmit={handleSubmit}>
         <div className="relative border rounded-2xl shadow-sm overflow-hidden bg-muted/30 cursor-text">
           {/* Prompt Input */}
-          <div className="relative bg-transparent">
+          <div
+            className="relative bg-transparent"
+            onClick={() => {
+              console.log('Prompt area clicked')
+            }}
+          >
             <Textarea
               ref={textareaRef}
               id="prompt"
               placeholder="Describe what you want the AI agent to do..."
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => {
+                console.log('Prompt input changed')
+                setPrompt(e.target.value)
+              }}
               onKeyDown={handleTextareaKeyDown}
               disabled={isSubmitting}
               required
@@ -432,6 +442,7 @@ export function TaskForm({
                 <Select
                   value={selectedAgent}
                   onValueChange={(value) => {
+                    console.log('Agent selected')
                     setSelectedAgent(value)
                     // Save to Jotai atom immediately
                     setSavedAgent(value)
@@ -489,6 +500,7 @@ export function TaskForm({
                                 key={fullValue}
                                 className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
                                 onClick={(e) => {
+                                  console.log('Multi-agent model toggled')
                                   e.preventDefault()
                                   setSelectedModels((prev) =>
                                     isSelected ? prev.filter((m) => m !== fullValue) : [...prev, fullValue],
@@ -519,6 +531,7 @@ export function TaskForm({
                   <Select
                     value={selectedModel}
                     onValueChange={(value) => {
+                      console.log('Model selected')
                       setSelectedModel(value)
                       // Save to Jotai atom immediately
                       setSavedModel(value)
@@ -549,6 +562,7 @@ export function TaskForm({
                           size="sm"
                           className="h-3 w-3 p-0 hover:bg-transparent"
                           onClick={(e) => {
+                            console.log('Skip install chip removed')
                             e.stopPropagation()
                             updateInstallDependencies(true)
                           }}
@@ -565,6 +579,7 @@ export function TaskForm({
                           size="sm"
                           className="h-3 w-3 p-0 hover:bg-transparent"
                           onClick={(e) => {
+                            console.log('Max duration chip removed')
                             e.stopPropagation()
                             updateMaxDuration(maxSandboxDuration)
                           }}
@@ -581,6 +596,7 @@ export function TaskForm({
                           size="sm"
                           className="h-3 w-3 p-0 hover:bg-transparent"
                           onClick={(e) => {
+                            console.log('Keep alive chip removed')
                             e.stopPropagation()
                             updateKeepAlive(false)
                           }}
@@ -605,7 +621,10 @@ export function TaskForm({
                           variant="ghost"
                           size="sm"
                           className="rounded-full h-8 w-8 p-0 relative"
-                          onClick={() => setShowMcpServersDialog(true)}
+                          onClick={() => {
+                            console.log('MCP servers button clicked')
+                            setShowMcpServersDialog(true)
+                          }}
                         >
                           <Cable className="h-4 w-4" />
                           {connectors.filter((c) => c.status === 'connected').length > 0 && (
@@ -664,7 +683,10 @@ export function TaskForm({
                             <Checkbox
                               id="install-deps"
                               checked={installDependencies}
-                              onCheckedChange={(checked) => updateInstallDependencies(checked === true)}
+                              onCheckedChange={(checked) => {
+                                console.log('Install dependencies checkbox changed')
+                                updateInstallDependencies(checked === true)
+                              }}
                             />
                             <Label
                               htmlFor="install-deps"
@@ -679,7 +701,10 @@ export function TaskForm({
                             </Label>
                             <Select
                               value={maxDuration.toString()}
-                              onValueChange={(value) => updateMaxDuration(parseInt(value))}
+                              onValueChange={(value) => {
+                                console.log('Max duration changed')
+                                updateMaxDuration(parseInt(value))
+                              }}
                             >
                               <SelectTrigger id="max-duration" className="w-full h-8">
                                 <SelectValue />
@@ -703,7 +728,10 @@ export function TaskForm({
                               <Checkbox
                                 id="keep-alive"
                                 checked={keepAlive}
-                                onCheckedChange={(checked) => updateKeepAlive(checked === true)}
+                                onCheckedChange={(checked) => {
+                                  console.log('Keep alive checkbox changed')
+                                  updateKeepAlive(checked === true)
+                                }}
                               />
                               <Label
                                 htmlFor="keep-alive"

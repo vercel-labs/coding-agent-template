@@ -13,7 +13,13 @@ interface GitHubStarsButtonProps {
 export function GitHubStarsButton({ initialStars = 1100 }: GitHubStarsButtonProps) {
   return (
     <Button asChild variant="ghost" size="sm" className="h-8 px-2 sm:px-3 gap-1.5">
-      <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center">
+      <a
+        href={GITHUB_REPO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center"
+        onClick={() => console.log('GitHub stars button clicked')}
+      >
         <GitHubIcon className="h-3.5 w-3.5" />
         <span className="text-sm">{formatAbbreviatedNumber(initialStars)}</span>
       </a>

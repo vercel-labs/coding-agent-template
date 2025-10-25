@@ -347,7 +347,14 @@ export function RepoSelector({
 
   return (
     <div className="flex items-center gap-1 sm:gap-2 h-8">
-      <Select value={selectedOwner} onValueChange={handleOwnerChange} disabled={disabled || showOwnersLoading}>
+      <Select
+        value={selectedOwner}
+        onValueChange={(value) => {
+          console.log('Owner dropdown selected')
+          handleOwnerChange(value)
+        }}
+        disabled={disabled || showOwnersLoading}
+      >
         <SelectTrigger className={ownerTriggerClassName}>
           {showOwnersLoading ? (
             <div className="flex items-center gap-2">
@@ -397,9 +404,15 @@ export function RepoSelector({
 
           <Select
             value={selectedRepo}
-            onValueChange={handleRepoChange}
+            onValueChange={(value) => {
+              console.log('Repo dropdown selected')
+              handleRepoChange(value)
+            }}
             disabled={disabled || showReposLoading}
-            onOpenChange={setRepoDropdownOpen}
+            onOpenChange={(open) => {
+              console.log('Repo dropdown toggled')
+              setRepoDropdownOpen(open)
+            }}
           >
             <SelectTrigger className={repoTriggerClassName}>
               {showReposLoading ? (
@@ -422,7 +435,10 @@ export function RepoSelector({
                         : 'Filter repositories...'
                     }
                     value={repoFilter}
-                    onChange={(e) => setRepoFilter(e.target.value)}
+                    onChange={(e) => {
+                      console.log('Repo filter changed')
+                      setRepoFilter(e.target.value)
+                    }}
                     disabled={disabled}
                     className="text-base md:text-sm h-8"
                     onClick={(e) => e.stopPropagation()}

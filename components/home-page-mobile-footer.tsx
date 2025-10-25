@@ -22,6 +22,7 @@ export function HomePageMobileFooter({ initialStars = 1056 }: HomePageMobileFoot
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2"
+            onClick={() => console.log('GitHub stars button clicked')}
           >
             <GitHubIcon className="h-4 w-4" />
             <span className="text-sm font-medium">{formatAbbreviatedNumber(initialStars)}</span>
@@ -40,6 +41,7 @@ export function HomePageMobileFooter({ initialStars = 1056 }: HomePageMobileFoot
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2"
+            onClick={() => console.log('Deploy to Vercel button clicked')}
           >
             <svg viewBox="0 0 76 65" className="h-3.5 w-3.5" fill="currentColor">
               <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />

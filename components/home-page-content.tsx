@@ -102,6 +102,7 @@ export function HomePageContent({
 
   // Wrapper functions to update both state and cookies
   const handleOwnerChange = (owner: string) => {
+    console.log('Owner changed')
     setSelectedOwnerState(owner)
     setSelectedOwner(owner)
     // Clear repo when owner changes
@@ -112,6 +113,7 @@ export function HomePageContent({
   }
 
   const handleRepoChange = (repo: string) => {
+    console.log('Repo changed')
     setSelectedRepoState(repo)
     setSelectedRepo(repo)
   }
@@ -126,8 +128,10 @@ export function HomePageContent({
     maxDuration: number
     keepAlive: boolean
   }) => {
+    console.log('Task submit clicked')
     // Check if user is authenticated
     if (!user) {
+      console.log('User not authenticated, showing sign in dialog')
       setShowSignInDialog(true)
       return
     }
@@ -251,17 +255,19 @@ export function HomePageContent({
   }
 
   const handleVercelSignIn = async () => {
+    console.log('Vercel sign in clicked')
     setLoadingVercel(true)
     await redirectToSignIn()
   }
 
   const handleGitHubSignIn = () => {
+    console.log('GitHub sign in clicked')
     setLoadingGitHub(true)
     window.location.href = '/api/auth/signin/github'
   }
 
   return (
-    <div className="flex-1 bg-background flex flex-col">
+    <div className="flex-1 bg-background flex flex-col" onClick={() => console.log('Homepage clicked')}>
       <div className="p-3">
         <HomePageHeader
           selectedOwner={selectedOwner}
@@ -290,7 +296,13 @@ export function HomePageContent({
       {user && <HomePageMobileFooter initialStars={initialStars} />}
 
       {/* Sign In Dialog */}
-      <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
+      <Dialog
+        open={showSignInDialog}
+        onOpenChange={(open) => {
+          console.log('Sign in dialog toggled')
+          setShowSignInDialog(open)
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Sign in to continue</DialogTitle>
