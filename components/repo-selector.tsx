@@ -208,22 +208,22 @@ export function RepoSelector({
   useEffect(() => {
     if (selectedOwner) {
       const loadRepos = async () => {
-      try {
-        // Check cache first - show cached data immediately if available
-        if (repos && repos.length > 0) {
-          setLoadingRepos(false)
-          // Continue fetching in background to update
-        } else {
-          // Only show loading if we don't have cached data or existing repos
-          setLoadingRepos(true)
-        }
+        try {
+          // Check cache first - show cached data immediately if available
+          if (repos && repos.length > 0) {
+            setLoadingRepos(false)
+            // Continue fetching in background to update
+          } else {
+            // Only show loading if we don't have cached data or existing repos
+            setLoadingRepos(true)
+          }
 
           const response = await fetch(`/api/github/repos?owner=${selectedOwner}`)
 
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
-            // Clear cache using atoms
-            setOwners(null)
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+              // Clear cache using atoms
+              setOwners(null)
 
               // Call backend to disconnect GitHub
               try {
@@ -244,10 +244,10 @@ export function RepoSelector({
             throw new Error('Failed to load repositories')
           }
 
-        const reposList = await response.json()
-        setRepos(reposList)
-        // Cache is automatic with atomWithStorage
-      } catch (error) {
+          const reposList = await response.json()
+          setRepos(reposList)
+          // Cache is automatic with atomWithStorage
+        } catch (error) {
           console.error('Error loading repos:', error)
 
           // Call backend to disconnect GitHub
@@ -373,20 +373,21 @@ export function RepoSelector({
           )}
         </SelectTrigger>
         <SelectContent>
-          {owners && owners.map((owner) => (
-            <SelectItem key={owner.login} value={owner.login}>
-              <div className="flex items-center gap-2">
-                <Image
-                  src={owner.avatar_url}
-                  alt={owner.login}
-                  width={16}
-                  height={16}
-                  className="w-4 h-4 rounded-full"
-                />
-                <span>{owner.login}</span>
-              </div>
-            </SelectItem>
-          ))}
+          {owners &&
+            owners.map((owner) => (
+              <SelectItem key={owner.login} value={owner.login}>
+                <div className="flex items-center gap-2">
+                  <Image
+                    src={owner.avatar_url}
+                    alt={owner.login}
+                    width={16}
+                    height={16}
+                    className="w-4 h-4 rounded-full"
+                  />
+                  <span>{owner.login}</span>
+                </div>
+              </SelectItem>
+            ))}
         </SelectContent>
       </Select>
 

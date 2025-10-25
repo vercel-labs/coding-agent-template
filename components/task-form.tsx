@@ -239,9 +239,7 @@ export function TaskForm({
       }
     } else if (savedAgent) {
       // Fall back to saved agent from Jotai atom
-      if (
-        CODING_AGENTS.some((agent) => agent.value === savedAgent && !('isDivider' in agent && agent.isDivider))
-      ) {
+      if (CODING_AGENTS.some((agent) => agent.value === savedAgent && !('isDivider' in agent && agent.isDivider))) {
         setSelectedAgent(savedAgent)
       }
     }
