@@ -15,11 +15,12 @@ interface CheckRun {
 
 interface PRCheckStatusProps {
   taskId: string
+  prStatus: 'open' | 'closed' | 'merged'
   isActive?: boolean
   className?: string
 }
 
-export function PRCheckStatus({ taskId, isActive = false, className = '' }: PRCheckStatusProps) {
+export function PRCheckStatus({ taskId, prStatus, isActive = false, className = '' }: PRCheckStatusProps) {
   const [checkRuns, setCheckRuns] = useState<CheckRun[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -46,6 +47,11 @@ export function PRCheckStatus({ taskId, isActive = false, className = '' }: PRCh
     return () => clearInterval(interval)
   }, [taskId])
 
+  // Only show indicator for open PRs
+  if (prStatus !== 'open') {
+    return null
+  }
+
   // Don't render anything if loading or no check runs
   if (isLoading || checkRuns.length === 0) {
     return null
@@ -63,7 +69,7 @@ export function PRCheckStatus({ taskId, isActive = false, className = '' }: PRCh
   if (hasInProgress) {
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
-        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+        <div className="w-1 h-1 rounded-full bg-yellow-500 animate-pulse" />
       </div>
     )
   }
@@ -71,7 +77,7 @@ export function PRCheckStatus({ taskId, isActive = false, className = '' }: PRCh
   if (hasFailed) {
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
-        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        <div className="w-1 h-1 rounded-full bg-red-500" />
       </div>
     )
   }
@@ -79,7 +85,7 @@ export function PRCheckStatus({ taskId, isActive = false, className = '' }: PRCh
   if (allPassed) {
     return (
       <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
-        <Check className="w-2 h-2 text-green-500" strokeWidth={3} />
+        <Check className="w-1.5 h-1.5 text-green-500" strokeWidth={3} />
       </div>
     )
   }

@@ -401,7 +401,7 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                                 {task.prStatus && (
                                   <div className="relative">
                                     <PRStatusIcon status={task.prStatus} />
-                                    <PRCheckStatus taskId={task.id} isActive={isActive} />
+                                    <PRCheckStatus taskId={task.id} prStatus={task.prStatus} isActive={isActive} />
                                   </div>
                                 )}
                                 <span className="truncate">
