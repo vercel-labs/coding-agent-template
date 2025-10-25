@@ -2041,8 +2041,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           {/* Mobile Layout */}
           <div className="md:hidden flex flex-col flex-1 min-h-0 relative pb-14">
             {/* Content Area */}
-            <div className="flex-1 overflow-hidden">
-              {activeTab === 'code' ? (
+            <div className="flex-1 overflow-hidden relative">
+              {/* Code Tab */}
+              <div className={cn('absolute inset-0', activeTab !== 'code' && 'hidden')}>
                 <div className="relative h-full">
                   {/* Current File Path Bar */}
                   <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background border-b">
@@ -2084,11 +2085,17 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     </div>
                   </div>
                 </div>
-              ) : activeTab === 'chat' ? (
+              </div>
+
+              {/* Chat Tab */}
+              <div className={cn('absolute inset-0', activeTab !== 'chat' && 'hidden')}>
                 <div className="h-full px-3 pb-3">
                   <TaskChat taskId={task.id} task={task} />
                 </div>
-              ) : activeTab === 'preview' ? (
+              </div>
+
+              {/* Preview Tab */}
+              <div className={cn('absolute inset-0', activeTab !== 'preview' && 'hidden')}>
                 <div className="h-full">
                   <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
                     {/* Preview Toolbar */}
@@ -2255,7 +2262,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     )}
                   </div>
                 </div>
-              ) : null}
+              </div>
             </div>
 
             {/* Bottom Tab Bar */}
