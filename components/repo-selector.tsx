@@ -372,7 +372,7 @@ export function RepoSelector({
             <SelectValue placeholder="Owner" />
           )}
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-transparent">
           {owners &&
             owners.map((owner) => (
               <SelectItem key={owner.login} value={owner.login}>
@@ -411,7 +411,7 @@ export function RepoSelector({
                 <SelectValue placeholder="Repo" />
               )}
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-transparent">
               {repos && repos.length > 0 && (
                 <div className="p-2 border-b">
                   <Input
