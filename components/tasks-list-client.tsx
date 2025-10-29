@@ -60,6 +60,7 @@ const AGENT_MODELS = {
   ],
   cursor: [
     { value: 'auto', label: 'Auto' },
+    { value: 'composer-1', label: 'Composer' },
     { value: 'sonnet-4.5', label: 'Sonnet 4.5' },
     { value: 'sonnet-4.5-thinking', label: 'Sonnet 4.5 Thinking' },
     { value: 'gpt-5', label: 'GPT-5' },
