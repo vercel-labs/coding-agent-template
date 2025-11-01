@@ -17,7 +17,7 @@ interface TaskPageHeaderProps {
   initialStars?: number
 }
 
-export function TaskPageHeader({ task, user, authProvider, initialStars = 1056 }: TaskPageHeaderProps) {
+export function TaskPageHeader({ task, user, authProvider, initialStars = 1200 }: TaskPageHeaderProps) {
   const { toggleSidebar } = useTasks()
 
   return (

@@ -100,7 +100,7 @@ function getTimeAgo(date: Date): string {
   return new Date(date).toLocaleDateString()
 }
 
-export function TasksListClient({ user, authProvider, initialStars = 1056 }: TasksListClientProps) {
+export function TasksListClient({ user, authProvider, initialStars = 1200 }: TasksListClientProps) {
   const { toggleSidebar, refreshTasks } = useTasks()
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -456,7 +456,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1056 }: Tas
                               )}
                             </div>
                           )}
-                          {task.selectedAgent && <span>•</span>}
+                          {task.selectedAgent && <span>?</span>}
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             <span>{getTimeAgo(task.createdAt)}</span>
