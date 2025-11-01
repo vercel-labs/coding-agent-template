@@ -378,9 +378,9 @@ export function FileDiffViewer({
 
   try {
     return (
-      <div className="git-diff-view-container w-full">
+      <div className="git-diff-view-container w-full" data-theme={mounted ? theme : 'light'}>
         <DiffView
-          key={`${selectedFile}-${diffData?.filename}`}
+          key={`${selectedFile}-${diffData?.filename}-${theme}`}
           diffFile={diffFile}
           diffViewMode={diffViewMode}
           diffViewTheme={mounted ? theme : 'light'}
