@@ -2,63 +2,47 @@ import * as React from 'react'
 import type { SVGProps } from 'react'
 
 const Cursor = (props: SVGProps<SVGSVGElement>) => {
-  const uniqueId = React.useId()
-
   return (
-    <svg
-      height="1em"
-      style={{
-        flex: 'none',
-        lineHeight: 1,
-      }}
-      viewBox="0 0 24 24"
-      width="1em"
-      xmlns="http://www.w3.org/2000/svg"
-      className="dark:brightness-100 brightness-0"
-      {...props}
-    >
-      <title>{'Cursor'}</title>
-      <path d="M11.925 24l10.425-6-10.425-6L1.5 18l10.425 6z" fill={`url(#cursor-fill-0-${uniqueId})`} />
-      <path d="M22.35 18V6L11.925 0v12l10.425 6z" fill={`url(#cursor-fill-1-${uniqueId})`} />
-      <path d="M11.925 0L1.5 6v12l10.425-6V0z" fill={`url(#cursor-fill-2-${uniqueId})`} />
-      <path d="M22.35 6L11.925 24V12L22.35 6z" fill="#555" />
-      <path d="M22.35 6l-10.425 6L1.5 6h20.85z" fill="#fff" />
-      <defs>
-        <linearGradient
-          gradientUnits="userSpaceOnUse"
-          id={`cursor-fill-0-${uniqueId}`}
-          x1={11.925}
-          x2={11.925}
-          y1={12}
-          y2={24}
-        >
-          <stop offset={0.16} stopColor="#fff" stopOpacity={0.39} />
-          <stop offset={0.658} stopColor="#fff" stopOpacity={0.8} />
-        </linearGradient>
-        <linearGradient
-          gradientUnits="userSpaceOnUse"
-          id={`cursor-fill-1-${uniqueId}`}
-          x1={22.35}
-          x2={11.925}
-          y1={6.037}
-          y2={12.15}
-        >
-          <stop offset={0.182} stopColor="#fff" stopOpacity={0.31} />
-          <stop offset={0.715} stopColor="#fff" stopOpacity={0} />
-        </linearGradient>
-        <linearGradient
-          gradientUnits="userSpaceOnUse"
-          id={`cursor-fill-2-${uniqueId}`}
-          x1={11.925}
-          x2={1.5}
-          y1={0}
-          y2={18}
-        >
-          <stop stopColor="#fff" stopOpacity={0.6} />
-          <stop offset={0.667} stopColor="#fff" stopOpacity={0.22} />
-        </linearGradient>
-      </defs>
-    </svg>
+    <>
+      {/* Light mode version */}
+      <svg
+        height="1em"
+        style={{
+          flex: 'none',
+          lineHeight: 1,
+        }}
+        viewBox="0 0 466.73 532.09"
+        width="1em"
+        xmlns="http://www.w3.org/2000/svg"
+        className="dark:hidden"
+        {...props}
+      >
+        <title>{'Cursor'}</title>
+        <path
+          fill="#26251e"
+          d="M457.43,125.94L244.42,2.96c-6.84-3.95-15.28-3.95-22.12,0L9.3,125.94c-5.75,3.32-9.3,9.46-9.3,16.11v247.99c0,6.65,3.55,12.79,9.3,16.11l213.01,122.98c6.84,3.95,15.28,3.95,22.12,0l213.01-122.98c5.75-3.32,9.3-9.46,9.3-16.11v-247.99c0-6.65-3.55-12.79-9.3-16.11h-.01ZM444.05,151.99l-205.63,356.16c-1.39,2.4-5.06,1.42-5.06-1.36v-233.21c0-4.66-2.49-8.97-6.53-11.31L24.87,145.67c-2.4-1.39-1.42-5.06,1.36-5.06h411.26c5.84,0,9.49,6.33,6.57,11.39h-.01Z"
+        />
+      </svg>
+      {/* Dark mode version */}
+      <svg
+        height="1em"
+        style={{
+          flex: 'none',
+          lineHeight: 1,
+        }}
+        viewBox="0 0 466.73 532.09"
+        width="1em"
+        xmlns="http://www.w3.org/2000/svg"
+        className="hidden dark:inline-block"
+        {...props}
+      >
+        <title>{'Cursor'}</title>
+        <path
+          fill="#edecec"
+          d="M457.43,125.94L244.42,2.96c-6.84-3.95-15.28-3.95-22.12,0L9.3,125.94c-5.75,3.32-9.3,9.46-9.3,16.11v247.99c0,6.65,3.55,12.79,9.3,16.11l213.01,122.98c6.84,3.95,15.28,3.95,22.12,0l213.01-122.98c5.75-3.32,9.3-9.46,9.3-16.11v-247.99c0-6.65-3.55-12.79-9.3-16.11h-.01ZM444.05,151.99l-205.63,356.16c-1.39,2.4-5.06,1.42-5.06-1.36v-233.21c0-4.66-2.49-8.97-6.53-11.31L24.87,145.67c-2.4-1.39-1.42-5.06,1.36-5.06h411.26c5.84,0,9.49,6.33,6.57,11.39h-.01Z"
+        />
+      </svg>
+    </>
   )
 }
 
