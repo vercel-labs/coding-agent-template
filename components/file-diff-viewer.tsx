@@ -195,7 +195,9 @@ export function FileDiffViewer({
         return null
       }
 
-      file.initTheme(mounted ? theme : 'light')
+      // Initialize with the current theme
+      const currentTheme = mounted ? theme : 'light'
+      file.initTheme(currentTheme)
 
       // Wrap file.init() in try-catch to handle diff parsing errors
       try {
@@ -218,6 +220,13 @@ export function FileDiffViewer({
       return null
     }
   }, [diffData, mounted, theme, viewMode])
+
+  // Re-initialize theme when it changes
+  useEffect(() => {
+    if (diffFile && mounted) {
+      diffFile.initTheme(theme)
+    }
+  }, [diffFile, theme, mounted])
 
   if (!selectedFile) {
     // Don't show "No file selected" during initial loading
@@ -271,7 +280,7 @@ export function FileDiffViewer({
     return (
       <div className="flex items-center justify-center h-full p-4">
         <div className="text-center">
-          <div className="mb-4 text-4xl">📦</div>
+          <div className="mb-4 text-4xl">??</div>
           <p className="text-muted-foreground mb-2 text-sm md:text-base font-medium">Binary File</p>
           <p className="text-xs md:text-sm text-muted-foreground">This is binary content and cannot be displayed</p>
         </div>
