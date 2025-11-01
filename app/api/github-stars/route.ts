@@ -36,6 +36,6 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching GitHub stars:', error)
     // Return cached value or fallback
-    return NextResponse.json({ stars: cachedStars || 994 })
+    return NextResponse.json({ stars: cachedStars || 1200 })
   }
 }

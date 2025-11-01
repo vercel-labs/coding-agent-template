@@ -22,7 +22,7 @@ interface RepoLayoutProps {
   children: React.ReactNode
 }
 
-export function RepoLayout({ owner, repo, user, authProvider, initialStars = 1056, children }: RepoLayoutProps) {
+export function RepoLayout({ owner, repo, user, authProvider, initialStars = 1200, children }: RepoLayoutProps) {
   const { toggleSidebar } = useTasks()
   const pathname = usePathname()
   const router = useRouter()

@@ -21,7 +21,7 @@ interface RepoPageClientProps {
   initialStars?: number
 }
 
-export function RepoPageClient({ owner, repo, user, authProvider, initialStars = 1056 }: RepoPageClientProps) {
+export function RepoPageClient({ owner, repo, user, authProvider, initialStars = 1200 }: RepoPageClientProps) {
   const { toggleSidebar } = useTasks()
   const [activeTab, setActiveTab] = useState('commits')
 

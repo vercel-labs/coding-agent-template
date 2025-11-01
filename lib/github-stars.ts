@@ -16,9 +16,9 @@ export async function getGitHubStars(): Promise<number> {
     }
 
     const data = await response.json()
-    return data.stargazers_count || 994
+    return data.stargazers_count || 1200
   } catch (error) {
     console.error('Error fetching GitHub stars:', error)
-    return 994 // Fallback value
+    return 1200 // Fallback value
   }
 }

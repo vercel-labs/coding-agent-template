@@ -182,7 +182,7 @@ export default function NewRepoPage() {
           onToggleMobileMenu={toggleSidebar}
           actions={
             <div className="flex items-center gap-2 h-8">
-              <GitHubStarsButton initialStars={1056} />
+              <GitHubStarsButton initialStars={1200} />
               {/* Deploy to Vercel Button */}
               <Button
                 asChild

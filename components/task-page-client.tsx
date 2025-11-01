@@ -25,7 +25,7 @@ export function TaskPageClient({
   taskId,
   user,
   authProvider,
-  initialStars = 1056,
+  initialStars = 1200,
   maxSandboxDuration = 300,
 }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
