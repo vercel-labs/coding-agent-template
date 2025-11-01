@@ -232,7 +232,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     if (correctModel !== selectedModel) {
       setSelectedModel(correctModel)
     }
-  }, [selectedAgent, task.selectedModel, selectedModel])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAgent, task.selectedModel])
 
   // File search state
   const [fileSearchQuery, setFileSearchQuery] = useState('')
@@ -1067,17 +1068,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     previousStatusRef.current = currentStatus
   }, [task.status, optimisticStatus])
 
-  // Update model when agent changes
-  useEffect(() => {
-    if (selectedAgent) {
-      const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
-      const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
-      if (defaultModel && agentModels) {
-        setSelectedModel(defaultModel)
-      }
-    }
-  }, [selectedAgent])
-
   // Scroll active tab into view when it changes
   useEffect(() => {
     const tabKey = `${viewMode}-${activeTabIndex}`
@@ -1759,7 +1749,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                                   isSaving
                                     ? 'Saving...'
                                     : hasUnsavedChanges
-                                      ? 'Unsaved changes • Click to close'
+                                      ? 'Unsaved changes ? Click to close'
                                       : 'Close tab'
                                 }
                                 role="button"
