@@ -1067,16 +1067,20 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     previousStatusRef.current = currentStatus
   }, [task.status, optimisticStatus])
 
-  // Update model when agent changes
+  // Update model when agent changes (only reset to default if current model is not valid for new agent)
   useEffect(() => {
     if (selectedAgent) {
       const agentModels = AGENT_MODELS[selectedAgent as keyof typeof AGENT_MODELS]
       const defaultModel = DEFAULT_MODELS[selectedAgent as keyof typeof DEFAULT_MODELS]
-      if (defaultModel && agentModels) {
+
+      // Only reset to default if current model is not in the new agent's model list
+      const currentModelValid = agentModels?.some((m) => m.value === selectedModel)
+
+      if (defaultModel && agentModels && !currentModelValid) {
         setSelectedModel(defaultModel)
       }
     }
-  }, [selectedAgent])
+  }, [selectedAgent, selectedModel])
 
   // Scroll active tab into view when it changes
   useEffect(() => {
@@ -1759,7 +1763,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                                   isSaving
                                     ? 'Saving...'
                                     : hasUnsavedChanges
-                                      ? 'Unsaved changes • Click to close'
+                                      ? 'Unsaved changes ? Click to close'
                                       : 'Close tab'
                                 }
                                 role="button"
