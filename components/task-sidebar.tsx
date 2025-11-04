@@ -363,7 +363,12 @@ export function TaskSidebar({ tasks, onTaskSelect, width = 288 }: TaskSidebarPro
                   <Link
                     key={task.id}
                     href={`/tasks/${task.id}`}
-                    onClick={() => onTaskSelect(task)}
+                    onClick={(e) => {
+                      // Don't call onTaskSelect if Cmd/Ctrl is pressed (opening in new tab)
+                      if (!e.metaKey && !e.ctrlKey) {
+                        onTaskSelect(task)
+                      }
+                    }}
                     className={cn('block rounded-lg', isActive && 'ring-1 ring-primary/50 ring-offset-0')}
                   >
                     <Card
