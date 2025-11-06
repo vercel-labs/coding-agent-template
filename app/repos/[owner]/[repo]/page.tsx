@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 
 interface RepoPageProps {
-  params: {
+  params: Promise<{
     owner: string
     repo: string
-  }
+  }>
 }
 
 export default async function RepoPage({ params }: RepoPageProps) {

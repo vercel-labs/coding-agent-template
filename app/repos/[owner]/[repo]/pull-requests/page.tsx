@@ -1,10 +1,10 @@
 import { RepoPullRequests } from '@/components/repo-pull-requests'
 
 interface PullRequestsPageProps {
-  params: {
+  params: Promise<{
     owner: string
     repo: string
-  }
+  }>
 }
 
 export default async function PullRequestsPage({ params }: PullRequestsPageProps) {

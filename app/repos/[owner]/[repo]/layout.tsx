@@ -1,6 +1,7 @@
 import { RepoLayout } from '@/components/repo-layout'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getGitHubStars } from '@/lib/github-stars'
+import { Metadata } from 'next'
 
 interface LayoutPageProps {
   params: Promise<{
@@ -28,7 +29,7 @@ export default async function Layout({ params, children }: LayoutPageProps) {
   )
 }
 
-export async function generateMetadata({ params }: LayoutPageProps) {
+export async function generateMetadata({ params }: LayoutPageProps): Promise<Metadata> {
   const { owner, repo } = await params
 
   return {
