@@ -1,10 +1,10 @@
 import { RepoIssues } from '@/components/repo-issues'
 
 interface IssuesPageProps {
-  params: {
+  params: Promise<{
     owner: string
     repo: string
-  }
+  }>
 }
 
 export default async function IssuesPage({ params }: IssuesPageProps) {

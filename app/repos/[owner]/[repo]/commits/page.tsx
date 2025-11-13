@@ -1,10 +1,10 @@
 import { RepoCommits } from '@/components/repo-commits'
 
 interface CommitsPageProps {
-  params: {
+  params: Promise<{
     owner: string
     repo: string
-  }
+  }>
 }
 
 export default async function CommitsPage({ params }: CommitsPageProps) {

@@ -2,11 +2,12 @@ import { TaskPageClient } from '@/components/task-page-client'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getGitHubStars } from '@/lib/github-stars'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
+import { Metadata } from 'next'
 
 interface TaskPageProps {
-  params: {
+  params: Promise<{
     taskId: string
-  }
+  }>
 }
 
 export default async function TaskPage({ params }: TaskPageProps) {
@@ -29,7 +30,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
   )
 }
 
-export async function generateMetadata({ params }: TaskPageProps) {
+export async function generateMetadata({ params }: TaskPageProps): Promise<Metadata> {
   const { taskId } = await params
   const session = await getServerSession()
 
