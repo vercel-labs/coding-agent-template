@@ -106,7 +106,7 @@ const AGENT_MODELS = {
 
 const DEFAULT_MODELS = {
   claude: 'claude-sonnet-4-5-20250929',
-  codex: 'openai/gpt-5',
+  codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
   gemini: 'gemini-2.5-pro',

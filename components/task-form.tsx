@@ -76,6 +76,9 @@ const AGENT_MODELS = {
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
   ],
   codex: [
+    { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
+    { value: 'openai/gpt-5.1-codex', label: 'GPT-5.1-Codex' },
+    { value: 'openai/gpt-5.1-codex-mini', label: 'GPT-5.1-Codex mini' },
     { value: 'openai/gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
     { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
@@ -117,7 +120,7 @@ const AGENT_MODELS = {
 // Default models for each agent
 const DEFAULT_MODELS = {
   claude: 'claude-sonnet-4-5-20250929',
-  codex: 'openai/gpt-5',
+  codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
   gemini: 'gemini-2.5-pro',
@@ -420,7 +423,7 @@ export function TaskForm({
               disabled={isSubmitting}
               required
               rows={4}
-              className="w-full border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 p-4 text-base !bg-transparent"
+              className="w-full border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 p-4 text-base !bg-transparent shadow-none!"
             />
           </div>
 
