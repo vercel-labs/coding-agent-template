@@ -49,6 +49,8 @@ export function RepoSelector({
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [repoDropdownOpen, setRepoDropdownOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [temporaryOwner, setTemporaryOwner] = useState<GitHubOwner | null>(null)
+  const [temporaryRepo, setTemporaryRepo] = useState<GitHubRepo | null>(null)
 
   // Ref for the filter input to focus it when dropdown opens
   const filterInputRef = useRef<HTMLInputElement>(null)
@@ -68,9 +70,14 @@ export function RepoSelector({
       // Since we can't clear all atomFamily members easily, we'll just clear the current one
       setRepos(null)
 
-      // Clear state
-      onOwnerChange('')
-      onRepoChange('')
+      // Don't clear state - keep the temporary owner/repo if they exist
+      // Only clear if no temporary owner/repo exists
+      if (!temporaryOwner) {
+        onOwnerChange('')
+      }
+      if (!temporaryRepo) {
+        onRepoChange('')
+      }
     }
 
     // If GitHub was reconnected, reload owners
@@ -78,10 +85,13 @@ export function RepoSelector({
       setLoadingOwners(true)
       setOwners(null)
       setRepos(null)
+      // Clear temporary owner/repo when reconnecting since we'll load real data
+      setTemporaryOwner(null)
+      setTemporaryRepo(null)
     }
 
     githubConnectionRef.current = githubConnection.connected
-  }, [githubConnection.connected, onOwnerChange, onRepoChange, setOwners, setRepos])
+  }, [githubConnection.connected, onOwnerChange, onRepoChange, setOwners, setRepos, temporaryOwner, temporaryRepo])
 
   // Load owners on component mount and when GitHub is connected
   useEffect(() => {
@@ -186,6 +196,80 @@ export function RepoSelector({
     loadOwners()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [githubConnection.connected, setGitHubConnection, setOwners])
+
+  // Check if a selected owner/repo is accessible even if not in the user's scopes
+  // OR create a placeholder owner when signed out
+  useEffect(() => {
+    const verifyExternalRepo = async () => {
+      // If not connected but owner is selected, create a placeholder
+      if (!githubConnection.connected && selectedOwner && temporaryOwner?.login !== selectedOwner) {
+        setTemporaryOwner({
+          login: selectedOwner,
+          name: selectedOwner,
+          avatar_url: `https://github.com/${selectedOwner}.png`,
+        })
+
+        // Also create a temporary repo if repo is selected
+        if (selectedRepo && temporaryRepo?.name !== selectedRepo) {
+          setTemporaryRepo({
+            name: selectedRepo,
+            full_name: `${selectedOwner}/${selectedRepo}`,
+            description: '',
+            private: false,
+            clone_url: `https://github.com/${selectedOwner}/${selectedRepo}.git`,
+            language: '',
+          })
+        }
+        return
+      }
+
+      // Only verify if:
+      // 1. GitHub is connected
+      // 2. Both owner and repo are selected
+      // 3. Owner is not in the owners list
+      // 4. Owner is not already the temporary owner
+      if (
+        !githubConnection.connected ||
+        !selectedOwner ||
+        !selectedRepo ||
+        !owners ||
+        owners.some((o) => o.login === selectedOwner) ||
+        temporaryOwner?.login === selectedOwner
+      ) {
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/github/verify-repo?owner=${selectedOwner}&repo=${selectedRepo}`)
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.accessible && data.owner) {
+            // Temporarily add this owner to the list
+            setTemporaryOwner(data.owner)
+            // Also add the repo to temporary repos
+            if (data.repo) {
+              setTemporaryRepo(data.repo)
+            }
+          } else {
+            // Repo is not accessible, clear temporary owner
+            setTemporaryOwner(null)
+            setTemporaryRepo(null)
+          }
+        } else {
+          // Failed to verify, clear temporary owner
+          setTemporaryOwner(null)
+          setTemporaryRepo(null)
+        }
+      } catch (error) {
+        console.error('Error verifying external repo:', error)
+        setTemporaryOwner(null)
+        setTemporaryRepo(null)
+      }
+    }
+
+    verifyExternalRepo()
+  }, [selectedOwner, selectedRepo, owners, githubConnection.connected, temporaryOwner?.login, temporaryRepo?.name])
 
   // Auto-select user's personal account if no owner is selected and no saved owner exists
   useEffect(() => {
@@ -302,6 +386,11 @@ export function RepoSelector({
       repo.description?.toLowerCase().includes(repoFilter.toLowerCase()),
   )
 
+  // Add temporary repo if it exists and is not in the repos list
+  if (temporaryRepo && !filteredRepos.some((r) => r.name === temporaryRepo.name)) {
+    filteredRepos.unshift(temporaryRepo)
+  }
+
   // Show first 50 filtered repos, but always include the selected repo if it exists
   let displayedRepos = filteredRepos.slice(0, 50)
   const hasMoreRepos = filteredRepos.length > 50
@@ -322,6 +411,8 @@ export function RepoSelector({
     onRepoChange('') // Reset repo when owner changes
     setRepoFilter('') // Reset filter when owner changes
     setRepos(null) // Clear repos to trigger loading state for new owner
+    setTemporaryOwner(null) // Clear temporary owner when user manually changes
+    setTemporaryRepo(null) // Clear temporary repo when owner changes
   }
 
   const handleRepoChange = (value: string) => {
@@ -339,11 +430,39 @@ export function RepoSelector({
       : 'w-auto min-w-[160px] border-0 bg-transparent shadow-none focus:ring-0 h-8'
 
   // Find the selected owner for avatar display
-  const selectedOwnerData = owners?.find((owner) => owner.login === selectedOwner)
+  const selectedOwnerData = owners?.find((owner) => owner.login === selectedOwner) || temporaryOwner
+
+  // Combine owners with temporary owner if needed
+  const displayedOwners = (() => {
+    // If no owners but we have a temporary owner (logged out case), show just the temporary owner
+    if (!owners && temporaryOwner) {
+      return [temporaryOwner]
+    }
+
+    if (!owners) return null
+
+    // If temporary owner exists and is not in owners list, add it
+    if (temporaryOwner && !owners.some((o) => o.login === temporaryOwner.login)) {
+      // Find the position to insert (keep it sorted)
+      const insertIndex = owners.findIndex(
+        (o) => o.login.toLowerCase() > temporaryOwner.login.toLowerCase() && o.login !== owners[0]?.login,
+      )
+
+      if (insertIndex === -1) {
+        // Add at the end
+        return [...owners, temporaryOwner]
+      } else {
+        // Insert at the correct position
+        return [...owners.slice(0, insertIndex), temporaryOwner, ...owners.slice(insertIndex)]
+      }
+    }
+
+    return owners
+  })()
 
   // Determine if we should show loading indicators
-  const showOwnersLoading = loadingOwners && (!owners || owners.length === 0)
-  const showReposLoading = loadingRepos && (!repos || repos.length === 0)
+  const showOwnersLoading = loadingOwners && (!owners || owners.length === 0) && !temporaryOwner
+  const showReposLoading = loadingRepos && (!repos || repos.length === 0) && !temporaryRepo
 
   return (
     <div className="flex items-center gap-1 sm:gap-2 h-8">
@@ -373,8 +492,8 @@ export function RepoSelector({
           )}
         </SelectTrigger>
         <SelectContent>
-          {owners &&
-            owners.map((owner) => (
+          {displayedOwners &&
+            displayedOwners.map((owner) => (
               <SelectItem key={owner.login} value={owner.login}>
                 <div className="flex items-center gap-2">
                   <Image
