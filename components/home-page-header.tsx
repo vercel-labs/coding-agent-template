@@ -191,13 +191,13 @@ export function HomePageHeader({
 
   const actions = (
     <div className="flex items-center gap-2 flex-shrink-0">
-      {/* GitHub Stars Button - Show on mobile only when logged out, always show on desktop */}
-      <div className={user ? 'hidden md:block' : 'block'}>
+      {/* GitHub Stars Button - Show on mobile only when logged out (unless owner/repo selected), always show on desktop */}
+      <div className={user ? 'hidden md:block' : selectedOwner || selectedRepo ? 'hidden' : 'block md:block'}>
         <GitHubStarsButton initialStars={initialStars} />
       </div>
 
-      {/* Deploy to Vercel Button - Show on mobile only when logged out, always show on desktop */}
-      <div className={user ? 'hidden md:block' : 'block'}>
+      {/* Deploy to Vercel Button - Show on mobile only when logged out (unless owner/repo selected), always show on desktop */}
+      <div className={user ? 'hidden md:block' : selectedOwner || selectedRepo ? 'hidden' : 'block md:block'}>
         <Button
           asChild
           variant="outline"
@@ -293,6 +293,15 @@ export function HomePageHeader({
           <GitHubIcon className="h-4 w-4 mr-2" />
           Connect GitHub
         </Button>
+      ) : selectedOwner || selectedRepo ? (
+        // Show RepoSelector when logged out if owner/repo are provided via URL
+        <RepoSelector
+          selectedOwner={selectedOwner}
+          selectedRepo={selectedRepo}
+          onOwnerChange={onOwnerChange}
+          onRepoChange={onRepoChange}
+          size="sm"
+        />
       ) : null}
     </div>
   )
