@@ -56,4 +56,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ accessible: false, error: 'Failed to verify repository' }, { status: 500 })
   }
 }
-

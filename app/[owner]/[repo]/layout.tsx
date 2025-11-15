@@ -20,4 +20,3 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
 export default function Layout({ children }: LayoutProps) {
   return children
 }
-
