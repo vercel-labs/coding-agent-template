@@ -244,8 +244,8 @@ export function ChatPageContent({
         />
       </div>
 
-      {/* Mobile Footer with Stars and Deploy Button - Only show when logged in */}
-      {user && <HomePageMobileFooter initialStars={initialStars} />}
+      {/* Mobile Footer with Stars and Deploy Button */}
+      <HomePageMobileFooter initialStars={initialStars} />
 
       {/* Sign In Dialog */}
       <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>
