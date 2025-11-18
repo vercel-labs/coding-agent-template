@@ -554,4 +554,3 @@ Confirm that:
 - **Users must connect GitHub** (if they signed in with Vercel) to access repositories
 - **API keys** can now be per-user - users can override global API keys in their profile
 - **Breaking API changes**: If you have external integrations calling your API, they'll need to be updated to include authentication
-
