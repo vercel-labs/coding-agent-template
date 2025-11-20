@@ -57,8 +57,9 @@ interface TaskFormProps {
 }
 
 const CODING_AGENTS = [
-  { value: 'multi-agent', label: 'Compare', icon: Users, isLogo: false },
+  { value: 'mojocodex', label: 'MojoCodex', icon: Codex, isLogo: true },
   { value: 'divider', label: '', icon: () => null, isLogo: false, isDivider: true },
+  { value: 'multi-agent', label: 'Compare', icon: Users, isLogo: false },
   { value: 'claude', label: 'Claude', icon: Claude, isLogo: true },
   { value: 'codex', label: 'Codex', icon: Codex, isLogo: true },
   { value: 'copilot', label: 'Copilot', icon: Copilot, isLogo: true },
@@ -69,6 +70,12 @@ const CODING_AGENTS = [
 
 // Model options for each agent
 const AGENT_MODELS = {
+  mojocodex: [
+    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+    { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
+    { value: 'openai/gpt-5', label: 'GPT-5' },
+    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+  ],
   claude: [
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
@@ -119,6 +126,7 @@ const AGENT_MODELS = {
 
 // Default models for each agent
 const DEFAULT_MODELS = {
+  mojocodex: 'claude-sonnet-4-5-20250929',
   claude: 'claude-sonnet-4-5-20250929',
   codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
@@ -129,6 +137,7 @@ const DEFAULT_MODELS = {
 
 // API key requirements for each agent
 const AGENT_API_KEY_REQUIREMENTS: Record<string, Provider[]> = {
+  mojocodex: [], // Will be determined dynamically based on selected model
   claude: ['anthropic'],
   codex: ['aigateway'], // Uses AI Gateway for OpenAI proxy
   copilot: [], // Uses user's GitHub account token automatically
@@ -165,8 +174,8 @@ export function TaskForm({
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
   const [savedAgent, setSavedAgent] = useAtom(lastSelectedAgentAtom)
-  const [selectedAgent, setSelectedAgent] = useState(savedAgent || 'claude')
-  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
+  const [selectedAgent, setSelectedAgent] = useState(savedAgent || 'mojocodex')
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.mojocodex)
   const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [repos, setRepos] = useAtom(githubReposAtomFamily(selectedOwner))
   const [, setLoadingRepos] = useState(false)
@@ -386,26 +395,15 @@ export function TaskForm({
   return (
     <div className="w-full max-w-2xl">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Coding Agent Template</h1>
-        <p className="text-lg text-muted-foreground mb-2">
-          Multi-agent AI coding platform powered by{' '}
-          <a
-            href="https://vercel.com/docs/sandbox"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:no-underline"
-          >
-            Vercel Sandbox
-          </a>{' '}
-          and{' '}
-          <a
-            href="https://vercel.com/docs/ai-gateway"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:no-underline"
-          >
-            AI Gateway
-          </a>
+        <div className="flex items-center justify-center mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-red-500/20 bg-red-500/10">
+            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+            <span className="text-sm font-medium tracking-widest">MOJOCODE</span>
+          </div>
+        </div>
+        <h1 className="text-5xl md:text-6xl font-bold mb-6">Build. Cool. Shit.</h1>
+        <p className="text-lg text-muted-foreground max-w-3xl mx-auto px-4">
+          Mojo and his team of jaded, and annoyed agents totally dominate your project. Add a feature. Fix a bug. What does it matter? A prompt is all you have to worry about. The crew is doing all the work.
         </p>
       </div>
 
@@ -416,7 +414,7 @@ export function TaskForm({
             <Textarea
               ref={textareaRef}
               id="prompt"
-              placeholder="Describe what you want the AI agent to do..."
+              placeholder="Design a deployment pipeline, refactor a module, or craft a new feature brief..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
