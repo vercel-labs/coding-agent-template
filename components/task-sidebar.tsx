@@ -59,6 +59,7 @@ const AGENT_MODELS = {
     { value: 'grok', label: 'Grok' },
   ],
   gemini: [
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
