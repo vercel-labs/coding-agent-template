@@ -41,6 +41,7 @@
     "@vercel/analytics": "^1.5.0",
     "@vercel/sandbox": "^0.0.21",
     "@vercel/sdk": "^1.13.9",
+    "@vercel/speed-insights": "^1.2.0",
     "ai": "5.0.51",
     "arctic": "^3.7.0",
     "class-variance-authority": "^0.7.1",
