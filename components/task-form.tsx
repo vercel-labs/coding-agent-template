@@ -71,6 +71,7 @@ const CODING_AGENTS = [
 const AGENT_MODELS = {
   claude: [
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
+    { value: 'claude-opus-4-5-20250201', label: 'Opus 4.5' },
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
     { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
     { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
@@ -99,6 +100,7 @@ const AGENT_MODELS = {
     { value: 'sonnet-4.5-thinking', label: 'Sonnet 4.5 Thinking' },
     { value: 'gpt-5', label: 'GPT-5' },
     { value: 'gpt-5-codex', label: 'GPT-5 Codex' },
+    { value: 'opus-4.5', label: 'Opus 4.5' },
     { value: 'opus-4.1', label: 'Opus 4.1' },
     { value: 'grok', label: 'Grok' },
   ],
