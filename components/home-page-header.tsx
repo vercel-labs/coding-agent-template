@@ -24,6 +24,7 @@ import { githubConnectionAtom, githubConnectionInitializedAtom } from '@/lib/ato
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { GitHubStarsButton } from '@/components/github-stars-button'
 import { OpenRepoUrlDialog } from '@/components/open-repo-url-dialog'
+import { MultiRepoDialog } from '@/components/multi-repo-dialog'
 import { useTasks as useTasksContext } from '@/components/app-layout'
 
 interface HomePageHeaderProps {
@@ -50,6 +51,7 @@ export function HomePageHeader({
   const setGitHubConnection = useSetAtom(githubConnectionAtom)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showOpenRepoDialog, setShowOpenRepoDialog] = useState(false)
+  const [showMultiRepoDialog, setShowMultiRepoDialog] = useState(false)
   const { addTaskOptimistically } = useTasksContext()
 
   const handleRefreshOwners = async () => {
@@ -249,6 +251,7 @@ export function HomePageHeader({
             onOwnerChange={onOwnerChange}
             onRepoChange={onRepoChange}
             size="sm"
+            onMultiRepoClick={() => setShowMultiRepoDialog(true)}
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -315,6 +318,7 @@ export function HomePageHeader({
         leftActions={leftActions}
       />
       <OpenRepoUrlDialog open={showOpenRepoDialog} onOpenChange={setShowOpenRepoDialog} onSubmit={handleOpenRepoUrl} />
+      <MultiRepoDialog open={showMultiRepoDialog} onOpenChange={setShowMultiRepoDialog} />
     </>
   )
 }
