@@ -3,7 +3,7 @@
 import { Task } from '@/lib/db/schema'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, Plus, Trash2, GitBranch } from 'lucide-react'
+import { AlertCircle, Plus, Trash2, GitBranch, Loader2, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -19,13 +19,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
-import { useState, useMemo } from 'react'
+import { Input } from '@/components/ui/input'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
 import { useAtomValue } from 'jotai'
 import { sessionAtom } from '@/lib/atoms/session'
 import { PRStatusIcon } from '@/components/pr-status-icon'
 import { PRCheckStatus } from '@/components/pr-check-status'
+import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 
 // Model mappings for human-friendly names
 const AGENT_MODELS = {
@@ -81,24 +83,42 @@ interface TaskSidebarProps {
 
 type TabType = 'tasks' | 'repos'
 
-interface RepoInfo {
-  url: string
-  owner: string
+interface GitHubRepoInfo {
   name: string
-  taskCount: number
-  lastUsed: Date
+  full_name: string
+  owner: string
+  description?: string
+  private: boolean
+  clone_url: string
+  updated_at: string
+  language?: string
 }
 
 export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
   const pathname = usePathname()
   const { refreshTasks, toggleSidebar } = useTasks()
   const session = useAtomValue(sessionAtom)
+  const githubConnection = useAtomValue(githubConnectionAtom)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
   const [deleteFailed, setDeleteFailed] = useState(true)
   const [deleteStopped, setDeleteStopped] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('tasks')
+
+  // State for repos from API
+  const [repos, setRepos] = useState<GitHubRepoInfo[]>([])
+  const [reposLoading, setReposLoading] = useState(false)
+  const [reposPage, setReposPage] = useState(1)
+  const [hasMoreRepos, setHasMoreRepos] = useState(true)
+  const [reposInitialized, setReposInitialized] = useState(false)
+  const [repoSearchQuery, setRepoSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<GitHubRepoInfo[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchPage, setSearchPage] = useState(1)
+  const [searchHasMore, setSearchHasMore] = useState(false)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
   // Close sidebar on mobile when clicking any link
   const handleLinkClick = () => {
@@ -107,9 +127,9 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
     }
   }
 
-  // Extract unique repositories from tasks
-  const repositories = useMemo(() => {
-    const repoMap = new Map<string, RepoInfo>()
+  // Extract task counts per repo from tasks
+  const taskCountByRepo = useMemo(() => {
+    const counts = new Map<string, number>()
 
     tasks.forEach((task) => {
       if (task.repoUrl) {
@@ -120,23 +140,7 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
             const owner = pathParts[0]
             const name = pathParts[1].replace(/\.git$/, '')
             const repoKey = `${owner}/${name}`
-
-            if (repoMap.has(repoKey)) {
-              const existing = repoMap.get(repoKey)!
-              existing.taskCount++
-              const taskCreatedAt = new Date(task.createdAt)
-              if (taskCreatedAt > existing.lastUsed) {
-                existing.lastUsed = taskCreatedAt
-              }
-            } else {
-              repoMap.set(repoKey, {
-                url: task.repoUrl,
-                owner,
-                name,
-                taskCount: 1,
-                lastUsed: new Date(task.createdAt),
-              })
-            }
+            counts.set(repoKey, (counts.get(repoKey) || 0) + 1)
           }
         } catch {
           // Invalid URL, skip
@@ -144,9 +148,160 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
       }
     })
 
-    // Sort by last used (most recent first)
-    return Array.from(repoMap.values()).sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime())
+    return counts
   }, [tasks])
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(repoSearchQuery)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [repoSearchQuery])
+
+  // Fetch search results when debounced query changes
+  const fetchSearchResults = useCallback(async (query: string, page: number, append: boolean = false) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      setSearchHasMore(false)
+      return
+    }
+
+    setSearchLoading(true)
+    try {
+      const response = await fetch(
+        `/api/github/user-repos?page=${page}&per_page=25&search=${encodeURIComponent(query)}`,
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to search repos')
+      }
+
+      const data = await response.json()
+
+      if (append) {
+        setSearchResults((prev) => [...prev, ...data.repos])
+      } else {
+        setSearchResults(data.repos)
+      }
+
+      setSearchHasMore(data.has_more)
+      setSearchPage(page)
+    } catch (error) {
+      console.error('Error searching repos:', error)
+    } finally {
+      setSearchLoading(false)
+    }
+  }, [])
+
+  // Fetch search results when debounced query changes
+  useEffect(() => {
+    if (debouncedSearchQuery.trim()) {
+      fetchSearchResults(debouncedSearchQuery, 1)
+    } else {
+      setSearchResults([])
+      setSearchHasMore(false)
+    }
+  }, [debouncedSearchQuery, fetchSearchResults])
+
+  // Get the repos to display (search results or regular repos)
+  const displayedRepos = debouncedSearchQuery.trim() ? searchResults : repos
+  const displayedHasMore = debouncedSearchQuery.trim() ? searchHasMore : hasMoreRepos
+  const isSearching = debouncedSearchQuery.trim().length > 0
+
+  // Fetch repos from API
+  const fetchRepos = useCallback(
+    async (page: number, append: boolean = false) => {
+      if (reposLoading) return
+
+      setReposLoading(true)
+      try {
+        const response = await fetch(`/api/github/user-repos?page=${page}&per_page=25`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch repos')
+        }
+
+        const data = await response.json()
+
+        if (append) {
+          setRepos((prev) => [...prev, ...data.repos])
+        } else {
+          setRepos(data.repos)
+        }
+
+        setHasMoreRepos(data.has_more)
+        setReposPage(page)
+        setReposInitialized(true)
+      } catch (error) {
+        console.error('Error fetching repos:', error)
+      } finally {
+        setReposLoading(false)
+      }
+    },
+    [reposLoading],
+  )
+
+  // Load repos when switching to repos tab or when GitHub is connected
+  useEffect(() => {
+    if (activeTab === 'repos' && session.user && githubConnection.connected && !reposInitialized && !reposLoading) {
+      fetchRepos(1)
+    }
+  }, [activeTab, session.user, githubConnection.connected, reposInitialized, reposLoading, fetchRepos])
+
+  // Reset repos when GitHub connection changes
+  useEffect(() => {
+    if (!githubConnection.connected) {
+      setRepos([])
+      setReposPage(1)
+      setHasMoreRepos(true)
+      setReposInitialized(false)
+    }
+  }, [githubConnection.connected])
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const isLoading = isSearching ? searchLoading : reposLoading
+    const hasMore = displayedHasMore
+
+    if (activeTab !== 'repos' || !hasMore || isLoading) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          if (isSearching) {
+            fetchSearchResults(debouncedSearchQuery, searchPage + 1, true)
+          } else {
+            fetchRepos(reposPage + 1, true)
+          }
+        }
+      },
+      { threshold: 0.1 },
+    )
+
+    const currentRef = loadMoreRef.current
+    if (currentRef) {
+      observer.observe(currentRef)
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef)
+      }
+    }
+  }, [
+    activeTab,
+    displayedHasMore,
+    reposLoading,
+    searchLoading,
+    reposPage,
+    searchPage,
+    isSearching,
+    debouncedSearchQuery,
+    fetchRepos,
+    fetchSearchResults,
+  ])
 
   const handleDeleteTasks = async () => {
     if (!deleteCompleted && !deleteFailed && !deleteStopped) {
@@ -450,49 +605,112 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
 
       {/* Repos Tab Content */}
       {activeTab === 'repos' && (
-        <div className="space-y-1">
-          {repositories.length === 0 ? (
-            <Card>
-              <CardContent className="p-3 text-center text-xs text-muted-foreground">
-                No repositories yet. Create a task with a repository!
-              </CardContent>
-            </Card>
-          ) : (
-            repositories.map((repo) => {
-              const repoPath = `/repos/${repo.owner}/${repo.name}`
-              const isActive = pathname === repoPath || pathname.startsWith(repoPath + '/')
-
-              return (
-                <Link
-                  key={`${repo.owner}/${repo.name}`}
-                  href={repoPath}
-                  onClick={handleLinkClick}
-                  className={cn('block rounded-lg', isActive && 'ring-1 ring-primary/50 ring-offset-0')}
+        <div className="space-y-2">
+          {/* Search input */}
+          {githubConnection.connected && (repos.length > 0 || repoSearchQuery) && (
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search repos..."
+                value={repoSearchQuery}
+                onChange={(e) => setRepoSearchQuery(e.target.value)}
+                className="h-8 pl-7 pr-7 text-xs"
+              />
+              {repoSearchQuery && (
+                <button
+                  onClick={() => setRepoSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <Card
-                    className={cn(
-                      'cursor-pointer transition-colors hover:bg-accent p-0 rounded-lg',
-                      isActive && 'bg-accent',
-                    )}
-                  >
-                    <CardContent className="px-3 py-2">
-                      <div className="flex gap-2 items-center">
-                        <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-xs font-medium truncate mb-0.5">
-                            {repo.owner}/{repo.name}
-                          </h3>
-                          <div className="text-xs text-muted-foreground">
-                            {repo.taskCount} {repo.taskCount === 1 ? 'task' : 'tasks'}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           )}
+
+          <div className="space-y-1">
+            {!githubConnection.connected ? (
+              <Card>
+                <CardContent className="p-3 text-center text-xs text-muted-foreground">
+                  Connect GitHub to view your repositories
+                </CardContent>
+              </Card>
+            ) : (reposLoading && repos.length === 0 && !isSearching) ||
+              (searchLoading && searchResults.length === 0 && isSearching) ? (
+              <Card>
+                <CardContent className="p-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {isSearching ? 'Searching...' : 'Loading repositories...'}
+                </CardContent>
+              </Card>
+            ) : displayedRepos.length === 0 && !isSearching ? (
+              <Card>
+                <CardContent className="p-3 text-center text-xs text-muted-foreground">
+                  No repositories found
+                </CardContent>
+              </Card>
+            ) : displayedRepos.length === 0 && isSearching && !searchLoading ? (
+              <Card>
+                <CardContent className="p-3 text-center text-xs text-muted-foreground">
+                  No repos match &quot;{repoSearchQuery}&quot;
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {displayedRepos.map((repo) => {
+                  const repoPath = `/repos/${repo.owner}/${repo.name}`
+                  const isActive = pathname === repoPath || pathname.startsWith(repoPath + '/')
+                  const repoKey = `${repo.owner}/${repo.name}`
+                  const taskCount = taskCountByRepo.get(repoKey) || 0
+
+                  return (
+                    <Link
+                      key={repoKey}
+                      href={repoPath}
+                      onClick={handleLinkClick}
+                      className={cn('block rounded-lg', isActive && 'ring-1 ring-primary/50 ring-offset-0')}
+                    >
+                      <Card
+                        className={cn(
+                          'cursor-pointer transition-colors hover:bg-accent p-0 rounded-lg',
+                          isActive && 'bg-accent',
+                        )}
+                      >
+                        <CardContent className="px-3 py-2">
+                          <div className="flex gap-2 items-center">
+                            <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-xs font-medium truncate mb-0.5">
+                                {repo.owner}/{repo.name}
+                              </h3>
+                              {taskCount > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
+                                </div>
+                              )}
+                            </div>
+                            {repo.private && (
+                              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                Private
+                              </span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  )
+                })}
+                {/* Load more trigger */}
+                {displayedHasMore && (
+                  <div ref={loadMoreRef} className="py-2 flex justify-center">
+                    {(isSearching ? searchLoading : reposLoading) && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
