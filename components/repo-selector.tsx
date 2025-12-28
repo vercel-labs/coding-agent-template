@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Lock, Loader2 } from 'lucide-react'
+import { Lock, Loader2, Layers } from 'lucide-react'
 import { useAtomValue, useSetAtom, useAtom } from 'jotai'
 import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 import { githubOwnersAtom, githubReposAtomFamily } from '@/lib/atoms/github-cache'
+import { multiRepoModeAtom, selectedReposAtom } from '@/lib/atoms/multi-repo'
 
 interface GitHubOwner {
   login: string
@@ -31,6 +32,7 @@ interface RepoSelectorProps {
   onRepoChange: (repo: string) => void
   disabled?: boolean
   size?: 'sm' | 'default'
+  onMultiRepoClick?: () => void
 }
 
 export function RepoSelector({
@@ -40,6 +42,7 @@ export function RepoSelector({
   onRepoChange,
   disabled = false,
   size = 'default',
+  onMultiRepoClick,
 }: RepoSelectorProps) {
   const [repoFilter, setRepoFilter] = useState('')
   // Initialize with selected owner to prevent flash
@@ -51,6 +54,10 @@ export function RepoSelector({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [temporaryOwner, setTemporaryOwner] = useState<GitHubOwner | null>(null)
   const [temporaryRepo, setTemporaryRepo] = useState<GitHubRepo | null>(null)
+
+  // Multi-repo mode state
+  const [multiRepoMode, setMultiRepoMode] = useAtom(multiRepoModeAtom)
+  const selectedRepos = useAtomValue(selectedReposAtom)
 
   // Ref for the filter input to focus it when dropdown opens
   const filterInputRef = useRef<HTMLInputElement>(null)
@@ -407,6 +414,16 @@ export function RepoSelector({
   }
 
   const handleOwnerChange = (value: string) => {
+    if (value === '__many__') {
+      // Enable multi-repo mode
+      setMultiRepoMode(true)
+      onMultiRepoClick?.()
+      return
+    }
+
+    // Disable multi-repo mode when selecting a specific owner
+    setMultiRepoMode(false)
+
     onOwnerChange(value)
     onRepoChange('') // Reset repo when owner changes
     setRepoFilter('') // Reset filter when owner changes
@@ -466,12 +483,21 @@ export function RepoSelector({
 
   return (
     <div className="flex items-center gap-1 sm:gap-2 h-8">
-      <Select value={selectedOwner} onValueChange={handleOwnerChange} disabled={disabled || showOwnersLoading}>
+      <Select
+        value={multiRepoMode ? '__many__' : selectedOwner}
+        onValueChange={handleOwnerChange}
+        disabled={disabled || showOwnersLoading}
+      >
         <SelectTrigger className={ownerTriggerClassName}>
           {showOwnersLoading ? (
             <div className="flex items-center gap-2">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Loading...</span>
+            </div>
+          ) : multiRepoMode ? (
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              <span className="hidden sm:inline">Multi-repo</span>
             </div>
           ) : size === 'sm' && selectedOwnerData ? (
             // Mobile: Show only avatar
@@ -492,6 +518,14 @@ export function RepoSelector({
           )}
         </SelectTrigger>
         <SelectContent>
+          {/* Multi-repo option */}
+          <SelectItem value="__many__">
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              <span>Multi-repo</span>
+            </div>
+          </SelectItem>
+          <div className="h-px bg-border my-1" />
           {displayedOwners &&
             displayedOwners.map((owner) => (
               <SelectItem key={owner.login} value={owner.login}>
@@ -510,74 +544,84 @@ export function RepoSelector({
         </SelectContent>
       </Select>
 
-      {selectedOwner && (
-        <>
-          <span className="text-muted-foreground text-xs">/</span>
+      {/* Show "X repo(s) selected" button in multi-repo mode, or regular repo dropdown otherwise */}
+      {multiRepoMode ? (
+        <button
+          onClick={onMultiRepoClick}
+          className="h-9 px-3 text-xs rounded-md bg-transparent dark:bg-input/30 hover:bg-accent dark:hover:bg-input/50 transition-colors"
+        >
+          {selectedRepos.length} repo{selectedRepos.length !== 1 ? 's' : ''} selected
+        </button>
+      ) : (
+        selectedOwner && (
+          <>
+            <span className="text-muted-foreground text-xs">/</span>
 
-          <Select
-            value={selectedRepo}
-            onValueChange={handleRepoChange}
-            disabled={disabled || showReposLoading}
-            onOpenChange={setRepoDropdownOpen}
-          >
-            <SelectTrigger className={repoTriggerClassName}>
-              {showReposLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Loading...</span>
-                </div>
-              ) : (
-                <SelectValue placeholder="Repo" />
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              {repos && repos.length > 0 && (
-                <div className="p-2 border-b">
-                  <Input
-                    ref={filterInputRef}
-                    placeholder={
-                      (repos?.length || 0) > 50
-                        ? `Filter ${repos?.length || 0} repositories...`
-                        : 'Filter repositories...'
-                    }
-                    value={repoFilter}
-                    onChange={(e) => setRepoFilter(e.target.value)}
-                    disabled={disabled}
-                    className="text-base md:text-sm h-8"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  />
-                </div>
-              )}
-              {filteredRepos.length === 0 && repoFilter ? (
-                <div className="p-2 text-sm text-muted-foreground text-center">
-                  No repositories match &quot;{repoFilter}&quot;
-                </div>
-              ) : showReposLoading ? (
-                <div className="p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Loading repositories...</span>
-                </div>
-              ) : (
-                <>
-                  {displayedRepos.map((repo) => (
-                    <SelectItem key={repo.full_name} value={repo.name}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{repo.name}</span>
-                        {repo.private && <Lock className="h-3 w-3 text-muted-foreground" />}
+            <Select
+              value={selectedRepo}
+              onValueChange={handleRepoChange}
+              disabled={disabled || showReposLoading}
+              onOpenChange={setRepoDropdownOpen}
+            >
+              <SelectTrigger className={repoTriggerClassName}>
+                {showReposLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="Repo" />
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                {repos && repos.length > 0 && (
+                  <div className="p-2 border-b">
+                    <Input
+                      ref={filterInputRef}
+                      placeholder={
+                        (repos?.length || 0) > 50
+                          ? `Filter ${repos?.length || 0} repositories...`
+                          : 'Filter repositories...'
+                      }
+                      value={repoFilter}
+                      onChange={(e) => setRepoFilter(e.target.value)}
+                      disabled={disabled}
+                      className="text-base md:text-sm h-8"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                )}
+                {filteredRepos.length === 0 && repoFilter ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    No repositories match &quot;{repoFilter}&quot;
+                  </div>
+                ) : showReposLoading ? (
+                  <div className="p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading repositories...</span>
+                  </div>
+                ) : (
+                  <>
+                    {displayedRepos.map((repo) => (
+                      <SelectItem key={repo.full_name} value={repo.name}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{repo.name}</span>
+                          {repo.private && <Lock className="h-3 w-3 text-muted-foreground" />}
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {hasMoreRepos && (
+                      <div className="p-2 text-xs text-muted-foreground text-center border-t">
+                        Showing first 50 of {repos?.length || 0} repositories. Use filter to find more.
                       </div>
-                    </SelectItem>
-                  ))}
-                  {hasMoreRepos && (
-                    <div className="p-2 text-xs text-muted-foreground text-center border-t">
-                      Showing first 50 of {repos?.length || 0} repositories. Use filter to find more.
-                    </div>
-                  )}
-                </>
-              )}
-            </SelectContent>
-          </Select>
-        </>
+                    )}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </>
+        )
       )}
     </div>
   )

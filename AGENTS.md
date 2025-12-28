@@ -72,6 +72,16 @@ pnpm lint
 
 This ensures all code follows the project's formatting standards, type safety requirements, and linting rules, preventing issues in pull requests.
 
+### Use shadcn CLI for UI Components
+
+**When adding UI components, check if a shadcn/ui component exists and install it via CLI instead of writing it manually.**
+
+```bash
+pnpm dlx shadcn@latest add <component-name>
+```
+
+Existing components are in `components/ui/`. See [shadcn/ui docs](https://ui.shadcn.com/) for available components.
+
 ### CRITICAL: Never Run Dev Servers
 
 **DO NOT run development servers (e.g., `npm run dev`, `pnpm dev`, `next dev`) as they will conflict with other running instances.**

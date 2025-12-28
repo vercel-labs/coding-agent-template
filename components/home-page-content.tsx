@@ -13,9 +13,10 @@ import { Button } from '@/components/ui/button'
 import { redirectToSignIn } from '@/lib/session/redirect-to-sign-in'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { getEnabledAuthProviders } from '@/lib/auth/providers'
-import { useSetAtom } from 'jotai'
+import { useSetAtom, useAtom, useAtomValue } from 'jotai'
 import { taskPromptAtom } from '@/lib/atoms/task'
 import { HomePageMobileFooter } from '@/components/home-page-mobile-footer'
+import { multiRepoModeAtom, selectedReposAtom } from '@/lib/atoms/multi-repo'
 
 interface HomePageContentProps {
   initialSelectedOwner?: string
@@ -48,6 +49,10 @@ export function HomePageContent({
   const searchParams = useSearchParams()
   const { refreshTasks, addTaskOptimistically, removeTaskOptimistically } = useTasks()
   const setTaskPrompt = useSetAtom(taskPromptAtom)
+
+  // Multi-repo mode state
+  const multiRepoMode = useAtomValue(multiRepoModeAtom)
+  const [selectedRepos, setSelectedRepos] = useAtom(selectedReposAtom)
 
   // Check which auth providers are enabled
   const { github: hasGitHub, vercel: hasVercel } = getEnabledAuthProviders()
@@ -132,18 +137,97 @@ export function HomePageContent({
       return
     }
 
-    // Check if user has selected a repository
-    if (!data.repoUrl) {
-      toast.error('Please select a repository', {
-        description: 'Choose a GitHub repository to work with from the header.',
-      })
-      return
+    // Check if multi-repo mode is enabled
+    if (multiRepoMode) {
+      if (selectedRepos.length === 0) {
+        toast.error('Please select repositories', {
+          description: 'Click on "0 repos selected" to choose repositories.',
+        })
+        return
+      }
+    } else {
+      // Check if user has selected a repository
+      if (!data.repoUrl) {
+        toast.error('Please select a repository', {
+          description: 'Choose a GitHub repository to work with from the header.',
+        })
+        return
+      }
     }
 
     // Clear the saved prompt since we're actually submitting it now
     setTaskPrompt('')
 
     setIsSubmitting(true)
+
+    // Check if this is multi-repo mode
+    if (multiRepoMode && selectedRepos.length > 0) {
+      // Create multiple tasks, one for each selected repo
+      const taskIds: string[] = []
+      const tasksData = selectedRepos.map((repo) => {
+        const { id } = addTaskOptimistically({
+          prompt: data.prompt,
+          repoUrl: repo.clone_url,
+          selectedAgent: data.selectedAgent,
+          selectedModel: data.selectedModel,
+          installDependencies: data.installDependencies,
+          maxDuration: data.maxDuration,
+        })
+        taskIds.push(id)
+        return {
+          id,
+          prompt: data.prompt,
+          repoUrl: repo.clone_url,
+          selectedAgent: data.selectedAgent,
+          selectedModel: data.selectedModel,
+          installDependencies: data.installDependencies,
+          maxDuration: data.maxDuration,
+          keepAlive: data.keepAlive,
+        }
+      })
+
+      // Navigate to the first task
+      router.push(`/tasks/${taskIds[0]}`)
+
+      try {
+        // Create all tasks in parallel
+        const responses = await Promise.all(
+          tasksData.map((taskData) =>
+            fetch('/api/tasks', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(taskData),
+            }),
+          ),
+        )
+
+        const successCount = responses.filter((r) => r.ok).length
+        const failCount = responses.length - successCount
+
+        if (successCount === responses.length) {
+          toast.success(`${successCount} tasks created successfully!`)
+        } else if (successCount > 0) {
+          toast.warning(`${successCount} tasks created, ${failCount} failed`)
+        } else {
+          toast.error('Failed to create tasks')
+        }
+
+        // Clear selected repos after creating tasks
+        setSelectedRepos([])
+
+        // Refresh sidebar to get the real task data from server
+        await refreshTasks()
+      } catch (error) {
+        console.error('Error creating tasks:', error)
+        toast.error('Failed to create tasks')
+        await refreshTasks()
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
 
     // Check if this is multi-agent mode with multiple models selected
     const isMultiAgent = data.selectedAgent === 'multi-agent' && data.selectedModels && data.selectedModels.length > 0
