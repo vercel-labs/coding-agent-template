@@ -90,6 +90,7 @@ const AGENT_MODELS = {
     { value: 'grok', label: 'Grok' },
   ],
   gemini: [
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
@@ -109,7 +110,7 @@ const DEFAULT_MODELS = {
   codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
-  gemini: 'gemini-2.5-pro',
+  gemini: 'gemini-3-pro-preview',
   opencode: 'gpt-5',
 } as const
 
