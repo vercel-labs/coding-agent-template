@@ -49,8 +49,19 @@ function buildMcpJsonConfig(mcpServers: Connector[]): Record<string, unknown> {
         url: server.baseUrl,
       }
 
-      // Add authorization headers if OAuth credentials provided
+      // Build headers from multiple sources
       const headers: Record<string, string> = {}
+
+      // 1. Add env variables as headers (for remote servers, env vars like "Authorization" become HTTP headers)
+      if (server.env && typeof server.env === 'object') {
+        for (const [key, value] of Object.entries(server.env)) {
+          if (typeof value === 'string' && value.length > 0) {
+            headers[key] = value
+          }
+        }
+      }
+
+      // 2. Add OAuth credentials (these override env if both are set)
       if (server.oauthClientSecret) {
         headers['Authorization'] = `Bearer ${server.oauthClientSecret}`
       }
