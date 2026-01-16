@@ -182,14 +182,20 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                   <Input
                     id={provider.id}
                     type={showKeys[provider.id] ? 'text' : 'password'}
-                    placeholder={provider.placeholder}
-                    value={hasSavedKey && !isCleared && showKeys[provider.id] ? apiKeys[provider.id] : ''}
+                    placeholder={!hasSavedKey || isCleared ? provider.placeholder : ''}
+                    value={
+                      hasSavedKey && !isCleared
+                        ? showKeys[provider.id]
+                          ? apiKeys[provider.id]
+                          : '••••••••••••••••'
+                        : apiKeys[provider.id]
+                    }
                     onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
                     disabled={loading || isInputDisabled}
                     className="pr-9 h-8 text-sm"
                   />
                   {/* Show eye toggle when there's a saved key */}
-                  {(hasSavedKey || isCleared || apiKeys[provider.id]) && (
+                  {hasSavedKey && !isCleared && (
                     <button
                       onClick={() => toggleShowKey(provider.id)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
