@@ -17,17 +17,18 @@ import { generateTaskTitle, createFallbackTitle } from '@/lib/utils/title-genera
 import { generateCommitMessage, createFallbackCommitMessage } from '@/lib/utils/commit-message-generator'
 import { decrypt } from '@/lib/crypto'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getGitHubUser } from '@/lib/github/client'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get user session
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    // Get user from Bearer token or session
+    const user = await getAuthFromRequest(request)
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -35,7 +36,7 @@ export async function GET() {
     const userTasks = await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .where(and(eq(tasks.userId, user.id), isNull(tasks.deletedAt)))
       .orderBy(desc(tasks.createdAt))
 
     return NextResponse.json({ tasks: userTasks })
@@ -47,15 +48,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user session
-    const session = await getServerSession()
-    const user = session?.user
+    // Get user from Bearer token or session
+    const user = await getAuthFromRequest(request)
     if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check rate limit
-    const rateLimit = await checkRateLimit(user)
+    // Check rate limit (convert null to undefined for type compatibility)
+    const rateLimit = await checkRateLimit({ id: user.id, email: user.email ?? undefined })
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -733,9 +733,9 @@ async function processTask(
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    // Get user from Bearer token or session
+    const user = await getAuthFromRequest(request)
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -777,7 +777,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete tasks based on conditions AND user ownership
     const statusClause = statusConditions.length === 1 ? statusConditions[0] : or(...statusConditions)
-    const whereClause = and(statusClause, eq(tasks.userId, session.user.id))
+    const whereClause = and(statusClause, eq(tasks.userId, user.id))
     const deletedTasks = await db.delete(tasks).where(whereClause).returning()
 
     // Build response message

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { db } from '@/lib/db/client'
 import { tasks, taskMessages, connectors } from '@/lib/db/schema'
@@ -21,14 +22,13 @@ import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
-    const session = await getServerSession()
-    const user = session?.user
+    const user = await getAuthFromRequest(req)
     if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check rate limit for follow-up messages
-    const rateLimit = await checkRateLimit(user)
+    const rateLimit = await checkRateLimit({ id: user.id, email: user.email ?? undefined })
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {

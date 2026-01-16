@@ -3,13 +3,13 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Sandbox } from '@vercel/sandbox'
-import { getServerSession } from '@/lib/session/get-server-session'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
 
-export async function POST(_request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    const user = await getAuthFromRequest(request)
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -23,7 +23,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     }
 
     // Verify ownership
-    if (task.userId !== session.user.id) {
+    if (task.userId !== user.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
