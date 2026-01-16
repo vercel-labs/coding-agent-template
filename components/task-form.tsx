@@ -420,26 +420,22 @@ export function TaskForm({
   return (
     <div className="w-full max-w-2xl">
       <div className="text-center mb-8">
-        <div className="mb-6 flex justify-center">
-          <Image
-            src="/agentic-assets/agentic-logo.svg"
-            alt="Agentic Assets"
-            width={320}
-            height={37}
-            priority
-            className="w-48 sm:w-64 md:w-80 h-auto dark:invert"
-          />
-        </div>
         <h1 className="text-4xl font-bold mb-4">AI Coding Agent</h1>
-        <p className="text-lg text-muted-foreground mb-2">
-          Multi-agent AI coding platform powered by{' '}
+        <p className="text-lg text-muted-foreground mb-2 flex items-center justify-center gap-1.5">
+          <span>Multi-agent AI coding platform powered by</span>
           <a
             href="https://www.agenticassets.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:no-underline"
+            className="inline-flex items-center"
           >
-            Agentic Assets
+            <Image
+              src="/agentic-assets/agentic-logo.svg"
+              alt="Agentic Assets"
+              width={158}
+              height={18}
+              className="h-[18px] w-auto dark:invert"
+            />
           </a>
         </p>
       </div>
