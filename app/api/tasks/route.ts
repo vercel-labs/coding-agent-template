@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     const validatedData = insertTaskSchema.parse({
       ...body,
       id: taskId,
-      userId: session.user.id,
+      userId: user.id,
       status: 'pending',
       progress: 0,
       logs: [],
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
     const userGithubToken = await getUserGitHubToken()
     const githubUser = await getGitHubUser()
     // Get max sandbox duration for this user (user-specific > global > env var)
-    const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
+    const maxSandboxDuration = await getMaxSandboxDuration(user.id)
 
     // Process the task asynchronously with timeout
     // CRITICAL: Wrap in after() to ensure Vercel doesn't kill the function after response
