@@ -102,7 +102,8 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
           newSet.delete(provider)
           return newSet
         })
-        setApiKeys((prev) => ({ ...prev, [provider]: '' }))
+        // Keep the key value in state so "show key" still works
+        // The key is already in apiKeys[provider], no need to clear it
       } else {
         const error = await response.json()
         toast.error(error.error || 'Failed to save API key')
@@ -194,8 +195,8 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                     disabled={loading || isInputDisabled}
                     className="pr-9 h-8 text-sm"
                   />
-                  {/* Show eye toggle when there's a saved key */}
-                  {hasSavedKey && !isCleared && (
+                  {/* Show eye toggle when there's a saved key OR when entering a new key */}
+                  {((hasSavedKey && !isCleared) || apiKeys[provider.id]) && (
                     <button
                       onClick={() => toggleShowKey(provider.id)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
