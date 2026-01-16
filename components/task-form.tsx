@@ -393,21 +393,12 @@ export function TaskForm({
         <p className="text-lg text-muted-foreground mb-2">
           Multi-agent AI coding platform powered by{' '}
           <a
-            href="https://vercel.com/docs/sandbox"
+            href="https://www.agenticassets.ai"
             target="_blank"
             rel="noopener noreferrer"
             className="underline hover:no-underline"
           >
-            Vercel Sandbox
-          </a>{' '}
-          and{' '}
-          <a
-            href="https://vercel.com/docs/ai-gateway"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:no-underline"
-          >
-            AI Gateway
+            Agentic Assets
           </a>
         </p>
       </div>
