@@ -1,14 +1,14 @@
-# Coding Agent Template
+# AI Coding Agent
 
 A template for building AI-powered coding agents that supports Claude Code, OpenAI's Codex CLI, GitHub Copilot CLI, Cursor CLI, Google Gemini CLI, and opencode with [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) to automatically execute coding tasks on your repositories.
 
-![Coding Agent Template Screenshot](screenshot.png)
+![AI Coding Agent Screenshot](screenshot.png)
 
 ## Deploy Your Own
 
-You can deploy your own version of the coding agent template to Vercel with one click:
+You can deploy your own version of the AI Coding Agent to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=SANDBOX_VERCEL_TEAM_ID,SANDBOX_VERCEL_PROJECT_ID,SANDBOX_VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+coding+agent+template.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel)+after+deployment.+Optional+API+keys+can+be+added+later.&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&project-name=coding-agent-template&repository-name=coding-agent-template)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=SANDBOX_VERCEL_TEAM_ID,SANDBOX_VERCEL_PROJECT_ID,SANDBOX_VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+AI+coding+agent.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel)+after+deployment.+Optional+API+keys+can+be+added+later.&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&project-name=ai-coding-agent&repository-name=ai-coding-agent)
 
 **What happens during deployment:**
 - **Automatic Database Setup**: A Neon Postgres database is automatically created and connected to your project
@@ -28,6 +28,8 @@ You can deploy your own version of the coding agent template to Vercel with one 
 - **Git Integration**: Automatically creates branches and commits changes
 - **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
 - **MCP Server Support**: Connect MCP servers to Claude Code for extended capabilities (Claude only)
+  - **Preset MCP Servers**: Browserbase, Context7, Convex, Figma, Hugging Face, Linear, Notion, Orbis, Playwright, Supabase
+  - **Custom MCP Servers**: Add your own local or remote MCP servers
 
 ## Quick Start
 
@@ -160,13 +162,83 @@ The system automatically generates descriptive Git branch names using AI SDK 5 a
 
 Connect MCP Servers to extend Claude Code with additional tools and integrations. **Currently only works with Claude Code agent.**
 
+### Available Preset MCP Servers
+
+The application includes preset configurations for the following MCP servers:
+
+1. **Browserbase** - Web browsing and automation
+   - Type: Local CLI
+   - Requires: `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`
+
+2. **Context7** - Documentation and knowledge base search
+   - Type: Remote HTTP
+   - URL: https://mcp.context7.com/mcp
+
+3. **Convex** - Backend database and real-time sync
+   - Type: Local CLI
+   - URL: https://convex.dev
+
+4. **Figma** - Design and prototyping tool access
+   - Type: Remote HTTP
+   - URL: https://mcp.figma.com/mcp
+
+5. **Hugging Face** - Machine learning models and datasets
+   - Type: Remote HTTP
+   - URL: https://hf.co/mcp
+
+6. **Linear** - Issue tracking and project management
+   - Type: Remote HTTP
+   - URL: https://mcp.linear.app/sse
+
+7. **Notion** - Note-taking and knowledge management
+   - Type: Remote HTTP
+   - URL: https://mcp.notion.com/mcp
+
+8. **Orbis** - AI-powered research and document analysis (via phdai.ai)
+   - Type: Remote HTTP
+   - URL: https://www.phdai.ai/api/mcp/universal
+   - Requires: Bearer token authentication (`Authorization` header)
+   - Note: Obtain API credentials from https://www.phdai.ai
+
+9. **Playwright** - Web automation and browser testing
+   - Type: Local CLI
+   - Documentation: https://playwright.dev/docs/mcp
+
+10. **Supabase** - Open-source Firebase alternative
+    - Type: Remote HTTP
+    - URL: https://mcp.supabase.com/mcp
+
 ### How to Add MCP Servers
 
 1. Go to the "Connectors" tab and click "Add MCP Server"
-2. Enter server details (name, base URL, optional OAuth credentials)
-3. If using OAuth, ensure `ENCRYPTION_KEY` is set in your environment variables
+2. Select a preset MCP server or configure a custom server
+3. Enter required environment variables or OAuth credentials
+4. Click "Save" to enable the connector
 
-**Note**: `ENCRYPTION_KEY` is required when using MCP servers with OAuth authentication.
+### Custom MCP Servers
+
+You can also add custom MCP servers by:
+
+1. Clicking "Add MCP Server" then "Custom MCP Server"
+2. Choosing between **Local** (CLI command) or **Remote** (HTTP endpoint)
+3. Providing required authentication credentials
+
+**Local MCP Servers:**
+- Requires a CLI command (e.g., `npx @browserbasehq/mcp`)
+- Runs in the same process as Claude Code
+- Suitable for packages and tools available via npm/yarn
+
+**Remote MCP Servers:**
+- Requires a remote HTTP endpoint URL
+- Communicates over HTTP/HTTPS
+- Suitable for cloud services or external APIs
+
+### Security Notes
+
+- All API keys and tokens are encrypted at rest in the database
+- `ENCRYPTION_KEY` environment variable is required when using MCP servers with authentication
+- Never commit `.env` files with real credentials to version control
+- Credentials are only accessible to the user who created the connector
 
 ## Local Development Setup
 
@@ -274,7 +346,7 @@ Based on your `NEXT_PUBLIC_AUTH_PROVIDERS` configuration, you'll need to create 
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Click "New OAuth App"
 3. Fill in the details:
-   - **Application name**: Your app name (e.g., "My Coding Agent")
+   - **Application name**: Your app name (e.g., "My AI Coding Agent")
    - **Homepage URL**: `http://localhost:3000` (or your production URL)
    - **Authorization callback URL**: `http://localhost:3000/api/auth/github/callback`
 4. Click "Register application"
@@ -409,11 +481,11 @@ This release introduces **user authentication** and **major security improvement
      - `JWE_SECRET`: Base64-encoded secret for session encryption (generate: `openssl rand -base64 32`)
      - `ENCRYPTION_KEY`: 32-byte hex string for encrypting sensitive data (generate: `openssl rand -hex 32`)
      - `NEXT_PUBLIC_AUTH_PROVIDERS`: Configure which auth providers to enable (`github`, `vercel`, or both)
-   
+
    - **New OAuth Configuration (at least one required):**
      - GitHub: `NEXT_PUBLIC_GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
      - Vercel: `NEXT_PUBLIC_VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`
-   
+
    - **Changed Authentication:**
      - `GITHUB_TOKEN` no longer used as fallback in API routes
      - Users must connect their own GitHub account for repository access

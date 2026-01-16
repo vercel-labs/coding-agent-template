@@ -71,21 +71,15 @@ const CODING_AGENTS = [
 const AGENT_MODELS = {
   claude: [
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-opus-4-5-20250201', label: 'Opus 4.5' },
+    { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5' },
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
   ],
   codex: [
-    { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
-    { value: 'openai/gpt-5.1-codex', label: 'GPT-5.1-Codex' },
+    { value: 'openai/gpt-5.2', label: 'GPT-5.2' },
+    { value: 'openai/gpt-5.2-codex', label: 'GPT-5.2-Codex' },
     { value: 'openai/gpt-5.1-codex-mini', label: 'GPT-5.1-Codex mini' },
-    { value: 'openai/gpt-5', label: 'GPT-5' },
-    { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
     { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
     { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
-    { value: 'gpt-5-pro', label: 'GPT-5 pro' },
-    { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
   ],
   copilot: [
     { value: 'claude-sonnet-4.5', label: 'Sonnet 4.5' },
@@ -106,17 +100,29 @@ const AGENT_MODELS = {
   ],
   gemini: [
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
+    // { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    // { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
   opencode: [
-    { value: 'gpt-5', label: 'GPT-5' },
+    // Z.ai / Zhipu AI (New)
+    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
+
+    // Google Gemini 3 (New)
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
+
+    // OpenAI GPT Models
+    { value: 'gpt-5.2', label: 'GPT-5.2' }, 
+    { value: 'gpt-5.2-codex', label: 'GPT-5.2-Codex' },
+    { value: 'gpt-5.1-codex-mini', label: 'GPT-5.1-Codex-Mini' },
     { value: 'gpt-5-mini', label: 'GPT-5 mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 nano' },
-    { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+
+    // Anthropic Claude 4.5 (Latest)
+    { value: 'claude-opus-4-5-20251101', label: 'Claude 4.5 Opus' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Claude 4.5 Sonnet' },
+    { value: 'claude-haiku-4-5-20251001', label: 'Claude 4.5 Haiku' },
   ],
 } as const
 
@@ -127,7 +133,7 @@ const DEFAULT_MODELS = {
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
   gemini: 'gemini-3-pro-preview',
-  opencode: 'gpt-5',
+  opencode: 'gpt-5.1-codex-mini',
 } as const
 
 // API key requirements for each agent
