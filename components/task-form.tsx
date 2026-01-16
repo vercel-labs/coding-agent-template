@@ -71,16 +71,18 @@ const CODING_AGENTS = [
 // Model options for each agent
 const AGENT_MODELS = {
   claude: [
+    // Standard Anthropic Models (use ANTHROPIC_API_KEY)
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5' },
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
 
-    // Z.ai / Zhipu AI (New)
+    // AI Gateway Alternative Models (use AI_GATEWAY_API_KEY)
+    // Z.ai / Zhipu AI
     { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
 
-    // Google Gemini 3 (New)
-    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+    // Google Gemini 3
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
 
     // OpenAI GPT Models
     { value: 'gpt-5.2', label: 'GPT-5.2' },
@@ -151,7 +153,7 @@ const DEFAULT_MODELS = {
 
 // API key requirements for each agent
 const AGENT_API_KEY_REQUIREMENTS: Record<string, Provider[]> = {
-  claude: ['anthropic'],
+  claude: [], // Will be determined dynamically based on selected model
   codex: ['aigateway'], // Uses AI Gateway for OpenAI proxy
   copilot: [], // Uses user's GitHub account token automatically
   cursor: ['cursor'],
@@ -160,6 +162,16 @@ const AGENT_API_KEY_REQUIREMENTS: Record<string, Provider[]> = {
 }
 
 type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
+
+// Helper to determine which API key is needed for Claude based on model
+const getClaudeRequiredKeys = (model: string): Provider[] => {
+  // Standard Anthropic models (claude-*)
+  if (model.startsWith('claude-')) {
+    return ['anthropic']
+  }
+  // All other models use AI Gateway
+  return ['aigateway']
+}
 
 // Helper to determine which API key is needed for opencode based on model
 const getOpenCodeRequiredKeys = (model: string): Provider[] => {

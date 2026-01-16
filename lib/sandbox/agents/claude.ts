@@ -83,8 +83,94 @@ export async function installClaudeCLI(
   if (claudeInstall.success) {
     await logger.info('Claude CLI installed successfully')
 
-    // Authenticate Claude CLI with API key
-    if (process.env.ANTHROPIC_API_KEY) {
+    // Detect authentication method
+    const hasAiGatewayKey = !!process.env.AI_GATEWAY_API_KEY
+    const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY
+    const useAiGateway = hasAiGatewayKey // Priority: AI Gateway first
+
+    if (!hasAiGatewayKey && !hasAnthropicKey) {
+      await logger.info('No API keys found for Claude CLI')
+      return { success: false }
+    }
+
+    if (useAiGateway) {
+      await logger.info('Using AI Gateway authentication')
+    } else {
+      await logger.info('Using direct Anthropic API authentication')
+    }
+
+    // Authenticate Claude CLI with appropriate method
+    if (useAiGateway && process.env.AI_GATEWAY_API_KEY) {
+      // AI Gateway configuration via environment variables
+      const envExport = [
+        'export ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh"',
+        `export ANTHROPIC_AUTH_TOKEN="${process.env.AI_GATEWAY_API_KEY}"`,
+        'export ANTHROPIC_API_KEY=""',
+      ].join(' && ')
+
+      // Add to shell profile for persistence
+      await runCommandInSandbox(sandbox, 'sh', ['-c', `${envExport} && echo '${envExport}' >> ~/.bashrc`])
+
+      // MCP servers configuration (if any)
+      if (mcpServers && mcpServers.length > 0) {
+        await logger.info('Adding MCP servers')
+
+        for (const server of mcpServers) {
+          const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+
+          if (server.type === 'local') {
+            // Local STDIO server
+            const envPrefix = `ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh" ANTHROPIC_AUTH_TOKEN="${process.env.AI_GATEWAY_API_KEY}" ANTHROPIC_API_KEY=""`
+            let addMcpCmd = `${envPrefix} claude mcp add "${serverName}" -- ${server.command}`
+
+            // Add env vars if provided
+            if (server.env && Object.keys(server.env).length > 0) {
+              const envVars = Object.entries(server.env)
+                .map(([key, value]) => `--env ${key}="${value}"`)
+                .join(' ')
+              addMcpCmd = addMcpCmd.replace(' --', ` ${envVars} --`)
+            }
+
+            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
+
+            if (addResult.success) {
+              await logger.info('Successfully added local MCP server')
+            } else {
+              await logger.info('Failed to add MCP server')
+            }
+          } else {
+            // Remote HTTP/SSE server
+            const envPrefix = `ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh" ANTHROPIC_AUTH_TOKEN="${process.env.AI_GATEWAY_API_KEY}" ANTHROPIC_API_KEY=""`
+            let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
+
+            if (server.oauthClientSecret) {
+              addMcpCmd += ` --header "Authorization: Bearer ${server.oauthClientSecret}"`
+            }
+
+            if (server.oauthClientId) {
+              addMcpCmd += ` --header "X-Client-ID: ${server.oauthClientId}"`
+            }
+
+            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
+
+            if (addResult.success) {
+              await logger.info('Successfully added remote MCP server')
+            } else {
+              await logger.info('Failed to add MCP server')
+            }
+          }
+        }
+      }
+
+      // Verify authentication
+      const verifyAuth = await runCommandInSandbox(sandbox, 'sh', ['-c', `${envExport} && claude --version`])
+
+      if (verifyAuth.success) {
+        await logger.info('Claude CLI authenticated successfully')
+      } else {
+        await logger.info('Warning: Claude CLI authentication could not be verified')
+      }
+    } else if (process.env.ANTHROPIC_API_KEY) {
       await logger.info('Authenticating Claude CLI...')
 
       // Create Claude config directory (use $HOME instead of ~)
@@ -233,11 +319,11 @@ export async function executeClaudeInSandbox(
       }
     }
 
-    // Check if ANTHROPIC_API_KEY is available
-    if (!process.env.ANTHROPIC_API_KEY) {
+    // Check if either API key is available
+    if (!process.env.AI_GATEWAY_API_KEY && !process.env.ANTHROPIC_API_KEY) {
       return {
         success: false,
-        error: 'ANTHROPIC_API_KEY environment variable is required but not found',
+        error: 'Either ANTHROPIC_API_KEY or AI_GATEWAY_API_KEY environment variable is required',
         cliName: 'claude',
         changesDetected: false,
       }
@@ -251,8 +337,13 @@ export async function executeClaudeInSandbox(
       )
     }
 
+    // Determine environment prefix based on auth method
+    const useAiGateway = !!process.env.AI_GATEWAY_API_KEY
+    const envPrefix = useAiGateway
+      ? `ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh" ANTHROPIC_AUTH_TOKEN="${process.env.AI_GATEWAY_API_KEY}" ANTHROPIC_API_KEY=""`
+      : `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
+
     // Check MCP configuration status
-    const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
     const mcpList = await runCommandInSandbox(sandbox, 'sh', ['-c', `${envPrefix} claude mcp list`])
     await logger.info('MCP servers list retrieved')
     if (mcpList.error) {
@@ -294,8 +385,14 @@ export async function executeClaudeInSandbox(
       await logger.info('Executing Claude CLI with --dangerously-skip-permissions for automated file changes...')
     }
 
-    // Log the command we're about to execute (with redacted API key)
-    const redactedCommand = fullCommand.replace(process.env.ANTHROPIC_API_KEY!, '[REDACTED]')
+    // Log the command we're about to execute (with redacted API keys)
+    let redactedCommand = fullCommand
+    if (process.env.ANTHROPIC_API_KEY) {
+      redactedCommand = redactedCommand.replace(process.env.ANTHROPIC_API_KEY, '[REDACTED]')
+    }
+    if (process.env.AI_GATEWAY_API_KEY) {
+      redactedCommand = redactedCommand.replace(process.env.AI_GATEWAY_API_KEY, '[REDACTED]')
+    }
     await logger.command(redactedCommand)
 
     // Set up streaming output capture if we have an agent message
