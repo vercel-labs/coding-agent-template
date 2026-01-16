@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
       let apiUrl: string
 
       if (isAuthenticatedUser) {
-        // Use /user/repos for authenticated user to get private repos, but only owned repos
-        apiUrl = `https://api.github.com/user/repos?sort=name&direction=asc&per_page=${perPage}&page=${page}&visibility=all&affiliation=owner`
+        // Use /user/repos for authenticated user to get all accessible repos (owned, collaborator, org member)
+        apiUrl = `https://api.github.com/user/repos?sort=name&direction=asc&per_page=${perPage}&page=${page}&visibility=all&affiliation=owner,collaborator,organization_member`
       } else {
         // Check if it's an organization
         const orgResponse = await fetch(`https://api.github.com/orgs/${owner}`, {
