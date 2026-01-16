@@ -56,11 +56,11 @@ export const keys = pgTable(
 
 | Provider | Used By | Environment Variable Fallback | Purpose |
 |----------|---------|-------------------------------|---------|
-| `anthropic` | Claude agent | `ANTHROPIC_API_KEY` | Anthropic Claude models |
-| `openai` | Codex, OpenCode agents | `OPENAI_API_KEY` | OpenAI GPT models (via AI Gateway) |
+| `anthropic` | Claude agent | `ANTHROPIC_API_KEY` | Anthropic Claude models (claude-*) |
+| `aigateway` | Claude agent, Codex agent, OpenCode agent | `AI_GATEWAY_API_KEY` | Vercel AI Gateway for alternative models and routing |
 | `cursor` | Cursor agent | `CURSOR_API_KEY` | Cursor IDE agent |
 | `gemini` | Gemini agent | `GEMINI_API_KEY` | Google Gemini models |
-| `aigateway` | Codex agent | `AI_GATEWAY_API_KEY` | Vercel AI Gateway for provider routing |
+| `openai` | Codex, OpenCode agents | `OPENAI_API_KEY` | OpenAI GPT models (via AI Gateway) |
 
 ### User API Key Retrieval Flow
 
@@ -140,35 +140,68 @@ Uses **AES-256-GCM** encryption with keys derived from `ENCRYPTION_KEY` environm
 **CLI Package**: `@anthropic-ai/claude-code`
 **Installation**: Automatic (see `lib/sandbox/agents/claude.ts`)
 **Default Model**: `claude-sonnet-4-5-20250929`
-**Required API Key**: `anthropic` provider
+
+#### Authentication Methods
+
+The Claude agent supports **two authentication methods** with automatic detection:
+
+**1. Direct Anthropic API** (for Anthropic models):
+- Required API Key: `anthropic` provider or `ANTHROPIC_API_KEY`
+- Supported models: All `claude-*` models
+- Configuration: `~/.config/claude/config.json` with `api_key` and `default_model`
+
+**2. AI Gateway** (for alternative models):
+- Required API Key: `aigateway` provider or `AI_GATEWAY_API_KEY`
+- **Priority**: AI Gateway takes precedence if both keys are present
+- Configuration via environment variables:
+  ```
+  ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh"
+  ANTHROPIC_AUTH_TOKEN=<AI_GATEWAY_API_KEY>
+  ANTHROPIC_API_KEY=""
+  ```
+- Works seamlessly with MCP servers
 
 #### Available Models (from `components/task-form.tsx`)
 
 ```typescript
 const AGENT_MODELS = {
   claude: [
+    // Standard Anthropic Models (use ANTHROPIC_API_KEY)
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-opus-4-5-20250201', label: 'Opus 4.5' },
+    { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5' },
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+
+    // AI Gateway Alternative Models (use AI_GATEWAY_API_KEY)
+    // Z.ai / Zhipu AI
+    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
+
+    // Google Gemini 3
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+
+    // OpenAI GPT Models
+    { value: 'gpt-5.2', label: 'GPT-5.2' },
+    { value: 'gpt-5.2-codex', label: 'GPT-5.2-Codex' },
+    { value: 'gpt-5.1-codex-mini', label: 'GPT-5.1-Codex-Mini' },
   ],
-  // ...
 }
 ```
 
-**Model Selection in Code** (`lib/sandbox/agents/claude.ts`, line ~200):
+#### Model Selection Logic
+
 ```typescript
-const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
-const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
-{
-  "api_key": "${process.env.ANTHROPIC_API_KEY}",
-  "default_model": "${modelToUse}"
+// From components/task-form.tsx
+const getClaudeRequiredKeys = (model: string): Provider[] => {
+  // Standard Anthropic models (claude-*)
+  if (model.startsWith('claude-')) {
+    return ['anthropic']
+  }
+  // All other models use AI Gateway
+  return ['aigateway']
 }
-EOF`
 ```
 
-**MCP Server Support**: Claude is the only agent that supports MCP (Model Context Protocol) servers for extending capabilities.
+**MCP Server Support**: Claude is the only agent that supports MCP (Model Context Protocol) servers for extending capabilities. Works with both Anthropic API and AI Gateway authentication.
 
 ---
 
@@ -184,17 +217,12 @@ EOF`
 ```typescript
 const AGENT_MODELS = {
   codex: [
-    { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
-    { value: 'openai/gpt-5.1-codex', label: 'GPT-5.1-Codex' },
+    { value: 'openai/gpt-5.2', label: 'GPT-5.2' },
+    { value: 'openai/gpt-5.2-codex', label: 'GPT-5.2-Codex' },
     { value: 'openai/gpt-5.1-codex-mini', label: 'GPT-5.1-Codex mini' },
-    { value: 'openai/gpt-5', label: 'GPT-5' },
-    { value: 'gpt-5-codex', label: 'GPT-5-Codex' },
     { value: 'openai/gpt-5-mini', label: 'GPT-5 mini' },
     { value: 'openai/gpt-5-nano', label: 'GPT-5 nano' },
-    { value: 'gpt-5-pro', label: 'GPT-5 pro' },
-    { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
   ],
-  // ...
 }
 ```
 
@@ -249,7 +277,6 @@ const AGENT_MODELS = {
     { value: 'claude-haiku-4.5', label: 'Haiku 4.5' },
     { value: 'gpt-5', label: 'GPT-5' },
   ],
-  // ...
 }
 ```
 
@@ -295,7 +322,6 @@ const AGENT_MODELS = {
     { value: 'opus-4.1', label: 'Opus 4.1' },
     { value: 'grok', label: 'Grok' },
   ],
-  // ...
 }
 ```
 
@@ -320,10 +346,8 @@ const logCommand = `cursor-agent -p --force --output-format stream-json${modelFl
 const AGENT_MODELS = {
   gemini: [
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
   ],
-  // ...
 }
 ```
 
@@ -346,22 +370,32 @@ const AGENT_MODELS = {
 ```typescript
 const AGENT_MODELS = {
   opencode: [
-    { value: 'gpt-5', label: 'GPT-5' },
+    // Z.ai / Zhipu AI (New)
+    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
+
+    // Google Gemini 3 (New)
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
+
+    // OpenAI GPT Models
+    { value: 'gpt-5.2', label: 'GPT-5.2' },
+    { value: 'gpt-5.2-codex', label: 'GPT-5.2-Codex' },
+    { value: 'gpt-5.1-codex-mini', label: 'GPT-5.1-Codex-Mini' },
     { value: 'gpt-5-mini', label: 'GPT-5 mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 nano' },
-    { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+
+    // Anthropic Claude 4.5 (Latest)
+    { value: 'claude-opus-4-5-20251101', label: 'Claude 4.5 Opus' },
+    { value: 'claude-sonnet-4-5-20250929', label: 'Claude 4.5 Sonnet' },
+    { value: 'claude-haiku-4-5-20251001', label: 'Claude 4.5 Haiku' },
   ],
-  // ...
 }
 ```
 
 #### Dynamic API Key Selection
 
 ```typescript
-// From components/task-form.tsx (lines 104-114)
+// From components/task-form.tsx (lines 176-188)
 const getOpenCodeRequiredKeys = (model: string): Provider[] => {
   // Check if it's an Anthropic model (claude models)
   if (model.includes('claude') || model.includes('sonnet') || model.includes('opus')) {
@@ -507,9 +541,9 @@ export async function DELETE(req: NextRequest) {
 ### API Key Requirements by Agent
 
 ```typescript
-// From components/task-form.tsx (lines 96-103)
+// From components/task-form.tsx (lines 155-162)
 const AGENT_API_KEY_REQUIREMENTS: Record<string, Provider[]> = {
-  claude: ['anthropic'],
+  claude: [], // Will be determined dynamically based on selected model
   codex: ['aigateway'], // Uses AI Gateway for OpenAI proxy
   copilot: [], // Uses user's GitHub account token automatically
   cursor: ['cursor'],
@@ -533,9 +567,35 @@ Vercel AI Gateway is a unified API gateway for accessing multiple LLM providers 
 
 ### Usage in Codebase
 
-#### 1. Codex Agent with AI Gateway
+#### 1. Claude Agent with AI Gateway
 
-The Codex agent uses AI Gateway to route to OpenAI models:
+The Claude agent uses AI Gateway automatically when:
+- Selecting non-Anthropic models (GLM-4.7, Gemini, GPT)
+- `AI_GATEWAY_API_KEY` is provided and takes priority over `ANTHROPIC_API_KEY`
+
+```typescript
+// lib/sandbox/agents/claude.ts
+const hasAiGatewayKey = !!process.env.AI_GATEWAY_API_KEY
+const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY
+const useAiGateway = hasAiGatewayKey // Priority: AI Gateway first
+
+if (useAiGateway) {
+  // AI Gateway configuration via environment variables
+  const envExport = [
+    'export ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh"',
+    `export ANTHROPIC_AUTH_TOKEN="${process.env.AI_GATEWAY_API_KEY}"`,
+    'export ANTHROPIC_API_KEY=""',
+  ].join(' && ')
+}
+```
+
+**Supported Key Formats**:
+- OpenAI: `sk-*` (direct OpenAI API key)
+- Vercel AI Gateway: `vck_*` (Vercel's unified gateway key)
+
+#### 2. Codex Agent with AI Gateway
+
+Codex always uses AI Gateway:
 
 ```typescript
 // lib/sandbox/agents/codex.ts
@@ -553,11 +613,7 @@ const isOpenAIKey = apiKey?.startsWith('sk-')
 const isVercelKey = apiKey?.startsWith('vck_')
 ```
 
-**Supported Key Formats**:
-- OpenAI: `sk-*` (direct OpenAI API key)
-- Vercel AI Gateway: `vck_*` (Vercel's unified gateway key)
-
-#### 2. Branch Name Generation with AI Gateway
+#### 3. Branch Name Generation with AI Gateway
 
 Uses Vercel AI SDK 5 + AI Gateway for non-blocking branch name generation:
 
@@ -698,7 +754,9 @@ All agents follow this pattern:
 **File**: `lib/sandbox/agents/claude.ts`
 
 Key features:
-- **MCP server support** for extending capabilities
+- **Dual authentication**: Anthropic API or AI Gateway (automatic detection)
+- **Alternative models**: Support for Google, OpenAI, and Z.ai models via AI Gateway
+- **MCP server support** for extending capabilities (works with both auth methods)
 - **Stream-JSON output format** for real-time streaming
 - **Session management** for conversation resumption
 - **Configuration file** creation in `~/.config/claude/config.json`
@@ -713,12 +771,19 @@ const claudeInstall = await runCommandInSandbox(
 )
 ```
 
-**Configuration**:
+**Configuration (Anthropic API)**:
 ```json
 {
   "api_key": "sk-ant-...",
   "default_model": "claude-sonnet-4-5-20250929"
 }
+```
+
+**Configuration (AI Gateway)**:
+```bash
+export ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh"
+export ANTHROPIC_AUTH_TOKEN="vck_..."
+export ANTHROPIC_API_KEY=""
 ```
 
 **MCP Server Setup**:
@@ -741,14 +806,19 @@ let fullCommand = `${envPrefix} claude --model "${modelToUse}" --dangerously-ski
 
 ### Step 1: Update Model List in Task Form
 
-**File**: `components/task-form.tsx` (lines 55-92)
+**File**: `components/task-form.tsx` (lines 72-142)
 
 ```typescript
 const AGENT_MODELS = {
   claude: [
+    // Standard Anthropic Models (use ANTHROPIC_API_KEY)
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     // ADD NEW MODEL HERE
-    { value: 'claude-new-model-20250101', label: 'New Model Label' },
+    { value: 'claude-new-model-20260101', label: 'New Model Label' },
+
+    // AI Gateway Alternative Models (use AI_GATEWAY_API_KEY)
+    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
+    // ...
   ],
   // ...
 }
@@ -756,7 +826,7 @@ const AGENT_MODELS = {
 
 ### Step 2: Set Default Model (if needed)
 
-**File**: `components/task-form.tsx` (lines 93-101)
+**File**: `components/task-form.tsx` (lines 145-152)
 
 ```typescript
 const DEFAULT_MODELS = {
@@ -783,7 +853,7 @@ const modelToUse = selectedModel || 'claude-sonnet-4-5-20250929'
 const AGENT_MODELS = {
   claude: [
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-opus-4-5-20250201', label: 'Opus 4.5' },
+    { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5' },
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
     // NEW MODEL
     { value: 'claude-new-pro-20260101', label: 'New Pro (2026)' },
@@ -1277,7 +1347,7 @@ const AGENT_MODELS = {
 | `lib/api-keys/user-keys.ts` | API key retrieval with fallback logic |
 | `app/api/api-keys/route.ts` | API endpoints for managing keys |
 | `lib/sandbox/agents/index.ts` | Agent dispatcher and orchestrator |
-| `lib/sandbox/agents/claude.ts` | Claude agent implementation |
+| `lib/sandbox/agents/claude.ts` | Claude agent implementation with AI Gateway support |
 | `lib/sandbox/agents/codex.ts` | Codex agent implementation |
 | `lib/sandbox/agents/cursor.ts` | Cursor agent implementation |
 | `lib/sandbox/agents/gemini.ts` | Gemini agent implementation |
@@ -1303,6 +1373,7 @@ const AGENT_MODELS = {
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1 | Jan 2025 | Added Claude AI Gateway support documentation |
 | 1.0 | Jan 2025 | Initial comprehensive documentation |
 
 ---

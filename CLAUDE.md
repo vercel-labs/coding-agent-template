@@ -136,6 +136,43 @@ Each agent file (claude.ts, codex.ts, copilot.ts, cursor.ts, gemini.ts, opencode
 - Model selection logic
 - API key handling (user keys override env vars)
 
+### Claude Agent - AI Gateway Support
+The Claude agent supports two authentication methods with automatic detection:
+
+**Direct Anthropic API** (for Anthropic models):
+- Uses `ANTHROPIC_API_KEY`
+- Supports Claude models: `claude-sonnet-4-5-20250929`, `claude-opus-4-5-20251101`, etc.
+- Configuration file: `~/.config/claude/config.json`
+
+**AI Gateway** (for alternative models):
+- Uses `AI_GATEWAY_API_KEY` (automatic priority if both keys present)
+- Supports alternative models:
+  - **Google**: `gemini-3-pro-preview`, `gemini-3-flash-preview`
+  - **OpenAI**: `gpt-5.2`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`
+  - **Z.ai/Zhipu**: `glm-4.7`
+- Environment setup:
+  ```
+  ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh"
+  ANTHROPIC_AUTH_TOKEN=<AI_GATEWAY_API_KEY>
+  ANTHROPIC_API_KEY=""
+  ```
+- Works with MCP servers (no configuration changes needed)
+
+**API Key Priority Logic** (`lib/sandbox/agents/claude.ts`):
+1. Check if `AI_GATEWAY_API_KEY` is available (preferred)
+2. Fall back to `ANTHROPIC_API_KEY`
+3. Return error if neither is available
+
+**Model Selection Logic** (`components/task-form.tsx`):
+```typescript
+const getClaudeRequiredKeys = (model: string): Provider[] => {
+  if (model.startsWith('claude-')) {
+    return ['anthropic']  // Anthropic models need ANTHROPIC_API_KEY
+  }
+  return ['aigateway']    // All other models need AI_GATEWAY_API_KEY
+}
+```
+
 ### Sandbox Workflow (lib/sandbox/creation.ts)
 1. **Validate credentials** - Check Vercel API tokens, user GitHub access
 2. **Create sandbox** - Provision Vercel sandbox with repo
@@ -150,6 +187,7 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 - `type: 'local'` - Local CLI command
 - `type: 'remote'` - Remote HTTP endpoint
 - Encrypted environment variables and OAuth credentials
+- Works with both Anthropic API and AI Gateway authentication methods
 
 ## API Architecture
 
@@ -216,9 +254,9 @@ Adding new tabs:
 - **Vercel**: `NEXT_PUBLIC_VERCEL_CLIENT_ID`, `VERCEL_CLIENT_SECRET`
 
 ### Optional (Global Fallbacks - Users Can Override)
-- `ANTHROPIC_API_KEY` - Claude agent
+- `ANTHROPIC_API_KEY` - Claude agent with Anthropic models (claude-*)
+- `AI_GATEWAY_API_KEY` - Claude agent with alternative models + branch name generation + Codex
 - `OPENAI_API_KEY` - Codex/OpenCode agents
-- `AI_GATEWAY_API_KEY` - AI Gateway + branch name generation
 - `CURSOR_API_KEY` - Cursor agent
 - `GEMINI_API_KEY` - Gemini agent
 - `NPM_TOKEN` - Private npm packages
@@ -321,9 +359,11 @@ Uses Vercel AI SDK 5 + AI Gateway in `lib/actions/generate-branch-name.ts`:
 ## Additional Resources
 
 - **AGENTS.md** - Complete security guidelines, logging rules, repo page architecture
+- **AI_MODELS_AND_KEYS.md** - Comprehensive API key and model documentation
 - **README.md** - Full setup instructions, OAuth configuration, deployment guide
 - **Vercel Sandbox Docs** - https://vercel.com/docs/vercel-sandbox
 - **Vercel AI SDK 5** - https://sdk.vercel.ai/docs
+- **Vercel AI Gateway** - https://vercel.com/docs/ai-gateway
 - **Drizzle ORM** - https://orm.drizzle.team/docs/overview
 - **shadcn/ui** - https://ui.shadcn.com/
 
@@ -336,3 +376,4 @@ Uses Vercel AI SDK 5 + AI Gateway in `lib/actions/generate-branch-name.ts`:
 5. **User-scoped access** - Filter all queries by userId
 6. **Encrypt sensitive data** - Use lib/crypto.ts for tokens and API keys
 7. **Check for existing components** - Use shadcn CLI before creating new UI components
+8. **Claude API Gateway support** - Use AI_GATEWAY_API_KEY for alternative models, ANTHROPIC_API_KEY for Claude models
