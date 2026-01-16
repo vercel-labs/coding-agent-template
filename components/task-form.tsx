@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -129,7 +130,7 @@ const AGENT_MODELS = {
 // Default models for each agent
 const DEFAULT_MODELS = {
   claude: 'claude-sonnet-4-5-20250929',
-  codex: 'openai/gpt-5.1',
+  codex: 'openai/gpt-5.1-codex-mini',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
   gemini: 'gemini-3-pro-preview',
@@ -395,6 +396,16 @@ export function TaskForm({
   return (
     <div className="w-full max-w-2xl">
       <div className="text-center mb-8">
+        <div className="mb-6 flex justify-center">
+          <Image
+            src="/agentic-assets/agentic-logo.svg"
+            alt="Agentic Assets"
+            width={400}
+            height={46}
+            priority
+            className="w-60 sm:w-80 md:w-[400px] h-auto"
+          />
+        </div>
         <h1 className="text-4xl font-bold mb-4">AI Coding Agent</h1>
         <p className="text-lg text-muted-foreground mb-2">
           Multi-agent AI coding platform powered by{' '}
