@@ -85,7 +85,7 @@ const AGENT_MODELS = {
     { value: 'deepseek/deepseek-v3.2-exp', label: 'DeepSeek-V3.2' },
 
     // Z.ai / Xiaomi
-    { value: 'xiaomi/mimo-v2-flash', label: 'MiMo-V2-Flash' },    
+    { value: 'xiaomi/mimo-v2-flash', label: 'MiMo-V2-Flash' },
 
     // Google Gemini 3
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
