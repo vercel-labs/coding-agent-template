@@ -55,10 +55,19 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
 
       if (data.success) {
         const saved = new Set<Provider>()
-        data.apiKeys.forEach((key: { provider: Provider }) => {
+        const keyValues: Record<Provider, string> = {
+          openai: '',
+          gemini: '',
+          cursor: '',
+          anthropic: '',
+          aigateway: '',
+        }
+        data.apiKeys.forEach((key: { provider: Provider; value: string }) => {
           saved.add(key.provider)
+          keyValues[key.provider] = key.value
         })
         setSavedKeys(saved)
+        setApiKeys(keyValues)
       }
     } catch (error) {
       console.error('Error fetching API keys:', error)
@@ -173,14 +182,14 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                   <Input
                     id={provider.id}
                     type={showKeys[provider.id] ? 'text' : 'password'}
-                    placeholder={hasSavedKey && !isCleared ? '••••••••••••••••' : provider.placeholder}
-                    value={apiKeys[provider.id]}
+                    placeholder={provider.placeholder}
+                    value={hasSavedKey && !isCleared && showKeys[provider.id] ? apiKeys[provider.id] : ''}
                     onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
                     disabled={loading || isInputDisabled}
-                    className={hasSavedKey && !isCleared ? 'h-8 text-sm' : 'pr-9 h-8 text-sm'}
+                    className="pr-9 h-8 text-sm"
                   />
-                  {/* Only show eye toggle when editing a new key (not when viewing saved placeholder) */}
-                  {(!isInputDisabled || isCleared) && (
+                  {/* Show eye toggle when there's a saved key */}
+                  {(hasSavedKey || isCleared || apiKeys[provider.id]) && (
                     <button
                       onClick={() => toggleShowKey(provider.id)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
