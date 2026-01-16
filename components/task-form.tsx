@@ -424,10 +424,10 @@ export function TaskForm({
           <Image
             src="/agentic-assets/agentic-logo.svg"
             alt="Agentic Assets"
-            width={400}
-            height={46}
+            width={320}
+            height={37}
             priority
-            className="w-60 sm:w-80 md:w-[400px] h-auto"
+            className="w-48 sm:w-64 md:w-80 h-auto dark:invert"
           />
         </div>
         <h1 className="text-4xl font-bold mb-4">AI Coding Agent</h1>
