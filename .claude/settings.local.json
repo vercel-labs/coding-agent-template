@@ -154,7 +154,8 @@
       "Bash(DOTENV_CONFIG_PATH=.env.local pnpm tsx:*)",
       "Bash(DOTENV_CONFIG_PATH=.env.local POSTGRES_URL=\"$POSTGRES_URL_NON_POOLING\" pnpm tsx:*)",
       "Bash(DOTENV_CONFIG_PATH=.env pnpm tsx:*)",
-      "Bash(openssl rand:*)"
+      "Bash(openssl rand:*)",
+      "WebFetch(domain:docs.github.com)"
     ]
   }
 }
