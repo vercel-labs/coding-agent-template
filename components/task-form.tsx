@@ -77,8 +77,15 @@ const AGENT_MODELS = {
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
 
     // AI Gateway Alternative Models (use AI_GATEWAY_API_KEY)
-    // Z.ai / Zhipu AI
+    // Mi.com / Zhipu AI
     { value: 'glm-4.7', label: 'GLM-4.7' },
+
+    { value: 'minimax/minimax-m2.1', label: 'MiniMax-M2.1' },
+
+    { value: 'deepseek/deepseek-v3.2-exp', label: 'DeepSeek-V3.2' },
+
+    // Z.ai / Xiaomi
+    { value: 'xiaomi/mimo-v2-flash', label: 'MiMo-V2-Flash' },    
 
     // Google Gemini 3
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
