@@ -245,10 +245,10 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>API Keys</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             Configure your own API keys. System defaults will be used if not provided.
           </DialogDescription>
         </DialogHeader>
@@ -263,7 +263,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
 
             return (
               <div key={provider.id} className="flex items-center gap-2">
-                <Label htmlFor={provider.id} className="text-sm w-24 shrink-0">
+                <Label htmlFor={provider.id} className="text-xs sm:text-sm w-20 sm:w-24 shrink-0">
                   {provider.name}
                 </Label>
                 <div className="relative flex-1">
@@ -298,7 +298,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                     size="sm"
                     onClick={() => handleSave(provider.id)}
                     disabled={loading || !apiKeys[provider.id].trim()}
-                    className="h-8 px-3 text-xs w-16"
+                    className="h-8 px-2 sm:px-3 text-xs w-14 sm:w-16"
                   >
                     Save
                   </Button>
@@ -308,7 +308,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                     size="sm"
                     onClick={() => handleClear(provider.id)}
                     disabled={loading}
-                    className="h-8 px-3 text-xs w-16"
+                    className="h-8 px-2 sm:px-3 text-xs w-14 sm:w-16"
                   >
                     Clear
                   </Button>
@@ -387,11 +387,17 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
           ) : tokens.length > 0 ? (
             <div className="space-y-1">
               {tokens.map((token) => (
-                <div key={token.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div
+                  key={token.id}
+                  className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50 gap-2"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 min-w-0 flex-1">
                     <span className="text-sm truncate">{token.name}</span>
-                    <span className="text-xs text-muted-foreground font-mono">{token.tokenPrefix}...</span>
-                    <span className="text-xs text-muted-foreground">Used: {formatDate(token.lastUsedAt)}</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="font-mono">{token.tokenPrefix}...</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>Used: {formatDate(token.lastUsedAt)}</span>
+                    </div>
                   </div>
                   <Button
                     variant="ghost"
@@ -426,8 +432,8 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                 Copy
               </Button>
             </div>
-            <div className="rounded-md bg-muted/50 p-2.5 overflow-x-auto">
-              <pre className="text-[11px] leading-relaxed text-muted-foreground">
+            <div className="rounded-md bg-muted/50 p-2 sm:p-2.5 overflow-x-auto">
+              <pre className="text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground whitespace-pre">
                 <code>{curlExample}</code>
               </pre>
             </div>
