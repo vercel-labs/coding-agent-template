@@ -322,7 +322,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
         <div className="border-t my-4" />
 
         {/* External API Tokens Section */}
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium">External API Access</h3>
@@ -419,7 +419,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
           ) : null}
 
           {/* Usage Example */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Usage Example</span>
               <Button
@@ -432,10 +432,12 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                 Copy
               </Button>
             </div>
-            <div className="rounded-md bg-muted/50 p-2 sm:p-2.5 overflow-x-auto">
-              <pre className="text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground whitespace-pre">
-                <code>{curlExample}</code>
-              </pre>
+            <div className="rounded-md bg-muted/50 p-2 sm:p-2.5 overflow-hidden">
+              <div className="overflow-x-auto">
+                <pre className="text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground whitespace-pre w-max">
+                  <code>{curlExample}</code>
+                </pre>
+              </div>
             </div>
           </div>
         </div>
