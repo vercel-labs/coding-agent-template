@@ -183,7 +183,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                     onClick={() => toggleShowKey(provider.id)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     type="button"
-                    disabled={loading || isInputDisabled}
+                    disabled={loading}
                   >
                     {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
