@@ -13,9 +13,9 @@ interface Token {
   id: string
   name: string
   tokenPrefix: string
-  createdAt: Date
-  lastUsedAt: Date | null
-  expiresAt: Date | null
+  createdAt: string
+  lastUsedAt: string | null
+  expiresAt: string | null
 }
 
 export function ApiTokens() {
@@ -109,7 +109,7 @@ export function ApiTokens() {
     setTokenName('')
   }
 
-  const formatDate = (date: Date | null) => {
+  const formatDate = (date: string | null) => {
     if (!date) return 'Never'
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
@@ -158,6 +158,7 @@ export function ApiTokens() {
                     onClick={() => handleDelete(token.id)}
                     disabled={deletingId === token.id}
                     className="h-8 w-8 p-0"
+                    aria-label="Delete token"
                   >
                     {deletingId === token.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -218,6 +219,7 @@ export function ApiTokens() {
                   value={tokenName}
                   onChange={(e) => setTokenName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                  maxLength={50}
                 />
               </div>
               <div className="flex justify-end gap-2">

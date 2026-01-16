@@ -53,6 +53,17 @@ export async function POST(req: NextRequest) {
     }
 
     const { name, expiresAt } = validationResult.data
+
+    // Rate limiting: max 20 tokens per user
+    const existingTokens = await db
+      .select({ id: apiTokens.id })
+      .from(apiTokens)
+      .where(eq(apiTokens.userId, session.user.id))
+
+    if (existingTokens.length >= 20) {
+      return NextResponse.json({ error: 'Maximum token limit reached' }, { status: 429 })
+    }
+
     const { raw, hash, prefix } = generateApiToken()
 
     await db.insert(apiTokens).values({
