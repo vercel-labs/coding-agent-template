@@ -55,10 +55,19 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
 
       if (data.success) {
         const saved = new Set<Provider>()
-        data.apiKeys.forEach((key: { provider: Provider }) => {
+        const keyValues: Record<Provider, string> = {
+          openai: '',
+          gemini: '',
+          cursor: '',
+          anthropic: '',
+          aigateway: '',
+        }
+        data.apiKeys.forEach((key: { provider: Provider; value: string }) => {
           saved.add(key.provider)
+          keyValues[key.provider] = key.value
         })
         setSavedKeys(saved)
+        setApiKeys(keyValues)
       }
     } catch (error) {
       console.error('Error fetching API keys:', error)
@@ -173,20 +182,23 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                   <Input
                     id={provider.id}
                     type={showKeys[provider.id] ? 'text' : 'password'}
-                    placeholder={hasSavedKey && !isCleared ? '••••••••••••••••' : provider.placeholder}
-                    value={apiKeys[provider.id]}
+                    placeholder={provider.placeholder}
+                    value={hasSavedKey && !isCleared && showKeys[provider.id] ? apiKeys[provider.id] : ''}
                     onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
                     disabled={loading || isInputDisabled}
                     className="pr-9 h-8 text-sm"
                   />
-                  <button
-                    onClick={() => toggleShowKey(provider.id)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    type="button"
-                    disabled={loading}
-                  >
-                    {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  </button>
+                  {/* Show eye toggle when there's a saved key */}
+                  {(hasSavedKey || isCleared || apiKeys[provider.id]) && (
+                    <button
+                      onClick={() => toggleShowKey(provider.id)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      type="button"
+                      disabled={loading}
+                    >
+                      {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
                 </div>
                 {showSaveButton ? (
                   <Button
