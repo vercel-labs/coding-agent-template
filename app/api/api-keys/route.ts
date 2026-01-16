@@ -19,14 +19,21 @@ export async function GET(req: NextRequest) {
     const userKeys = await db
       .select({
         provider: keys.provider,
+        value: keys.value,
         createdAt: keys.createdAt,
       })
       .from(keys)
       .where(eq(keys.userId, session.user.id))
 
+    // Decrypt the keys for display
+    const decryptedKeys = userKeys.map((key) => ({
+      ...key,
+      value: decrypt(key.value),
+    }))
+
     return NextResponse.json({
       success: true,
-      apiKeys: userKeys,
+      apiKeys: decryptedKeys,
     })
   } catch (error) {
     console.error('Error fetching API keys:', error)
