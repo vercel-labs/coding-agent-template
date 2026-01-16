@@ -22,6 +22,7 @@ You can deploy your own version of the AI Coding Agent to Vercel with one click:
 - **Multi-User Support**: Each user has their own tasks, API keys, and GitHub connection
 - **Vercel Sandbox**: Runs code in isolated, secure sandboxes ([docs](https://vercel.com/docs/vercel-sandbox))
 - **AI Gateway Integration**: Built for seamless integration with [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) for model routing and observability
+- **Claude AI Gateway Support**: Claude agent supports both direct Anthropic API and AI Gateway (including alternative models from Google, OpenAI, and Z.ai)
 - **AI-Generated Branch Names**: Automatically generates descriptive Git branch names using AI SDK 5 + AI Gateway
 - **Task Management**: Track task progress with real-time updates
 - **Persistent Storage**: Tasks stored in Neon Postgres database
@@ -313,7 +314,12 @@ NEXT_PUBLIC_AUTH_PROVIDERS=github,vercel
 These API keys can be set globally (fallback for all users) or left unset to require users to provide their own:
 
 - `ANTHROPIC_API_KEY`: Anthropic API key for Claude agent (users can override in their profile)
-- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation and Codex (users can override)
+  - Used by Claude agent when selecting Anthropic models (claude-*)
+  - Optional if using AI Gateway for Claude
+- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation, Codex, and Claude alternative models (users can override)
+  - Used by Claude agent when selecting non-Anthropic models (GLM, Gemini, GPT)
+  - Used by OpenCode agent for multi-model support
+  - Used for AI-generated branch names
 - `CURSOR_API_KEY`: For Cursor agent support (users can override)
 - `GEMINI_API_KEY`: For Google Gemini agent support (users can override)
 - `OPENAI_API_KEY`: For Codex and OpenCode agents (users can override)
