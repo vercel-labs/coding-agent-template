@@ -428,7 +428,7 @@ export function TaskForm({
     <div className="w-full max-w-2xl">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-4">AI Coding Agent</h1>
-        <p className="text-lg text-muted-foreground mb-2 flex items-center justify-center gap-1.5">
+        <p className="text-lg text-muted-foreground mb-2 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5">
           <span>Multi-agent AI coding platform powered by</span>
           <a
             href="https://www.agenticassets.ai"
@@ -441,7 +441,7 @@ export function TaskForm({
               alt="Agentic Assets"
               width={158}
               height={18}
-              className="h-[18px] w-auto dark:invert translate-y-[2px]"
+              className="h-[18px] w-auto dark:invert sm:translate-y-[2px]"
             />
           </a>
         </p>
