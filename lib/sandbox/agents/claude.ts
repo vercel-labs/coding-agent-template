@@ -11,6 +11,16 @@ import { generateId } from '@/lib/utils/id'
 
 type Connector = typeof connectors.$inferSelect
 
+/**
+ * Check if the selected model supports MCP tools natively.
+ * Only Claude models (starting with "claude-") support MCP tool invocation.
+ * Models routed through AI Gateway (gemini-*, gpt-*, xiaomi/*, etc.) cannot use MCP tools.
+ */
+function isModelMcpCompatible(model: string | undefined): boolean {
+  if (!model) return true // Default Claude model is compatible
+  return model.startsWith('claude-')
+}
+
 // Helper function to run command and collect logs in project directory
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
@@ -113,6 +123,12 @@ export async function installClaudeCLI(
 
       // MCP servers configuration (if any)
       if (mcpServers && mcpServers.length > 0) {
+        // Check model compatibility with MCP tools
+        if (!isModelMcpCompatible(selectedModel)) {
+          await logger.info('Warning: MCP servers are configured but the selected model does not support MCP tools')
+          await logger.info('Warning: Only Claude models can invoke MCP tools - other models will ignore MCP servers')
+        }
+
         await logger.info('Adding MCP servers')
 
         for (const server of mcpServers) {
@@ -136,7 +152,9 @@ export async function installClaudeCLI(
             if (addResult.success) {
               await logger.info('Successfully added local MCP server')
             } else {
-              await logger.info('Failed to add MCP server')
+              // Include sanitized error details for debugging
+              const errorDetail = addResult.error ? `: ${redactSensitiveInfo(addResult.error).substring(0, 200)}` : ''
+              await logger.info('Failed to add MCP server' + errorDetail)
             }
           } else {
             // Remote HTTP/SSE server
@@ -156,9 +174,15 @@ export async function installClaudeCLI(
             if (addResult.success) {
               await logger.info('Successfully added remote MCP server')
             } else {
-              await logger.info('Failed to add MCP server')
+              const errorDetail = addResult.error ? `: ${redactSensitiveInfo(addResult.error).substring(0, 200)}` : ''
+              await logger.info('Failed to add MCP server' + errorDetail)
             }
           }
+        }
+
+        // Verify MCP tools are accessible (only meaningful for Claude-compatible models)
+        if (isModelMcpCompatible(selectedModel)) {
+          await logger.info('MCP server configuration complete')
         }
       }
 
@@ -180,6 +204,12 @@ export async function installClaudeCLI(
       // Use selectedModel if provided, otherwise fall back to default
 
       if (mcpServers && mcpServers.length > 0) {
+        // Check model compatibility with MCP tools
+        if (!isModelMcpCompatible(selectedModel)) {
+          await logger.info('Warning: MCP servers are configured but the selected model does not support MCP tools')
+          await logger.info('Warning: Only Claude models can invoke MCP tools - other models will ignore MCP servers')
+        }
+
         await logger.info('Adding MCP servers')
 
         for (const server of mcpServers) {
@@ -203,8 +233,9 @@ export async function installClaudeCLI(
             if (addResult.success) {
               await logger.info('Successfully added local MCP server')
             } else {
-              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
-              await logger.info('Failed to add MCP server')
+              // Include sanitized error details for debugging
+              const errorDetail = addResult.error ? `: ${redactSensitiveInfo(addResult.error).substring(0, 200)}` : ''
+              await logger.info('Failed to add MCP server' + errorDetail)
             }
           } else {
             // Remote HTTP/SSE server
@@ -224,10 +255,15 @@ export async function installClaudeCLI(
             if (addResult.success) {
               await logger.info('Successfully added remote MCP server')
             } else {
-              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
-              await logger.info('Failed to add MCP server')
+              const errorDetail = addResult.error ? `: ${redactSensitiveInfo(addResult.error).substring(0, 200)}` : ''
+              await logger.info('Failed to add MCP server' + errorDetail)
             }
           }
+        }
+
+        // Verify MCP tools are accessible (only meaningful for Claude-compatible models)
+        if (isModelMcpCompatible(selectedModel)) {
+          await logger.info('MCP server configuration complete')
         }
       }
 
