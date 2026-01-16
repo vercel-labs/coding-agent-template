@@ -113,7 +113,7 @@ const AGENT_MODELS = {
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
 
     // OpenAI GPT Models
-    { value: 'gpt-5.2', label: 'GPT-5.2' }, 
+    { value: 'gpt-5.2', label: 'GPT-5.2' },
     { value: 'gpt-5.2-codex', label: 'GPT-5.2-Codex' },
     { value: 'gpt-5.1-codex-mini', label: 'GPT-5.1-Codex-Mini' },
     { value: 'gpt-5-mini', label: 'GPT-5 mini' },
