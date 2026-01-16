@@ -333,7 +333,8 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
             <DialogDescription>
               {view === 'list' && 'Manage your Model Context Protocol servers.'}
               {view === 'presets' && 'Choose a preset or add a custom server.'}
-              {view === 'form' && 'Allow agents to reference other apps and services for more context.'}
+              {view === 'form' &&
+                'Allow agents to reference other apps and services for more context. For authentication, add headers like Authorization using environment variables below.'}
             </DialogDescription>
           </DialogHeader>
 
