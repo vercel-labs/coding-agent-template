@@ -158,6 +158,8 @@ const SENSITIVE_PATTERNS = {
   vercel: /[A-Za-z0-9]{24}/g,
 
   // External API tokens (64-char hex from /api/tokens)
+  // NOTE: tokenPrefix (first 8 chars) is safe to log for identification
+  // Only the full 64-char token needs redaction
   apiTokens: /[a-f0-9]{64}/gi,
 
   // File paths (Windows/Unix)

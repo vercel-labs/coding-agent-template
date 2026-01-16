@@ -233,6 +233,8 @@ API tokens enable external applications to call the API without OAuth session co
 - Tokens are SHA256 hashed before storage (never stored in plaintext)
 - Raw token is shown once at creation - cannot be retrieved later
 - Supports optional expiration dates
+- Max 20 tokens per user (rate limited)
+- Supported endpoints: All `/api/tasks/*` and `/api/tokens/*` routes
 
 **Token Management Endpoints:**
 - `POST /api/tokens` - Create token (returns raw token once)

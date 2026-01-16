@@ -154,6 +154,17 @@ curl -X POST https://your-app.vercel.app/api/tasks \
 - Revoke tokens anytime from Settings
 - Tokens inherit your user permissions and rate limits
 
+### Token Endpoints
+
+- **POST /api/tokens** - Create token
+  - Body: `{ "name": "string", "expiresAt": "ISO date (optional)" }`
+  - Returns: `{ "token": "64-char hex" }` (shown only once)
+  - Limit: Max 20 tokens per user
+
+- **GET /api/tokens** - List tokens (shows prefix only, not full token)
+
+- **DELETE /api/tokens/[id]** - Revoke token
+
 ## How It Works
 
 1. **Task Creation**: When you submit a task, it's stored in the database

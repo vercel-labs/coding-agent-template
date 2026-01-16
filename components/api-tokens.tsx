@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { Copy, Loader2, Trash2, Plus, AlertTriangle } from 'lucide-react'
+import { Copy, Loader2, Trash2, Plus, AlertTriangle, Info } from 'lucide-react'
 
 interface Token {
   id: string
@@ -159,6 +159,16 @@ export function ApiTokens() {
         </Button>
       </div>
 
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          API tokens let you access the coding agent from external applications, scripts, or other AI agents using
+          Bearer authentication. Use the{' '}
+          <code className="text-xs bg-muted px-1 py-0.5 rounded">Authorization: Bearer YOUR_TOKEN</code> header in your
+          requests.
+        </AlertDescription>
+      </Alert>
+
       {loading ? (
         <div className="flex items-center justify-center py-8" role="status" aria-live="polite">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -242,6 +252,33 @@ export function ApiTokens() {
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Quick Start Example</Label>
+                <div className="rounded-md bg-muted p-3">
+                  <pre className="text-xs overflow-x-auto">
+                    <code>{`curl -X POST ${typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app'}/api/tasks \\
+  -H "Authorization: Bearer ${newToken}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "instruction": "Add a README to this repo",
+    "repoUrl": "https://github.com/owner/repo",
+    "selectedAgent": "claude"
+  }'`}</code>
+                  </pre>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  See{' '}
+                  <a
+                    href="https://github.com/yourusername/AA-coding-agent#api-documentation"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-foreground"
+                  >
+                    documentation
+                  </a>{' '}
+                  for full API reference.
+                </p>
               </div>
               <Button onClick={closeCreateDialog} className="w-full">
                 Done
