@@ -441,7 +441,7 @@ export function TaskForm({
               alt="Agentic Assets"
               width={158}
               height={18}
-              className="h-[18px] w-auto dark:invert"
+              className="h-[18px] w-auto dark:invert translate-y-[1px]"
             />
           </a>
         </p>
