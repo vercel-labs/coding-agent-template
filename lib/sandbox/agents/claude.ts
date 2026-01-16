@@ -11,6 +11,64 @@ import { generateId } from '@/lib/utils/id'
 
 type Connector = typeof connectors.$inferSelect
 
+/**
+ * Build .mcp.json content from connector configuration.
+ * Claude Code discovers MCP servers from this file at startup.
+ */
+function buildMcpJsonConfig(mcpServers: Connector[]): Record<string, unknown> {
+  const mcpServersConfig: Record<string, unknown> = {}
+
+  for (const server of mcpServers) {
+    const serverName = server.name.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+
+    if (server.type === 'local' && server.command) {
+      // Local STDIO server - parse command into command + args
+      const commandParts = server.command.split(' ')
+      const command = commandParts[0]
+      const args = commandParts.slice(1)
+
+      const serverConfig: Record<string, unknown> = {
+        type: 'stdio',
+        command,
+      }
+
+      if (args.length > 0) {
+        serverConfig.args = args
+      }
+
+      // Add environment variables if provided
+      if (server.env && typeof server.env === 'object' && Object.keys(server.env).length > 0) {
+        serverConfig.env = server.env
+      }
+
+      mcpServersConfig[serverName] = serverConfig
+    } else if (server.type === 'remote' && server.baseUrl) {
+      // Remote HTTP server
+      const serverConfig: Record<string, unknown> = {
+        type: 'http',
+        url: server.baseUrl,
+      }
+
+      // Add authorization headers if OAuth credentials provided
+      const headers: Record<string, string> = {}
+      if (server.oauthClientSecret) {
+        headers['Authorization'] = `Bearer ${server.oauthClientSecret}`
+      }
+      if (server.oauthClientId) {
+        headers['X-Client-ID'] = server.oauthClientId
+      }
+
+      if (Object.keys(headers).length > 0) {
+        serverConfig.headers = headers
+      }
+
+      mcpServersConfig[serverName] = serverConfig
+    }
+  }
+
+  return { mcpServers: mcpServersConfig }
+}
+
 // Helper function to run command and collect logs in project directory
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
@@ -111,54 +169,30 @@ export async function installClaudeCLI(
       // Add to shell profile for persistence
       await runCommandInSandbox(sandbox, 'sh', ['-c', `${envExport} && echo '${envExport}' >> ~/.bashrc`])
 
-      // MCP servers configuration (if any)
+      // MCP servers configuration via .mcp.json file (Claude Code discovers servers from this file at startup)
       if (mcpServers && mcpServers.length > 0) {
-        await logger.info('Adding MCP servers')
+        await logger.info('Creating .mcp.json config file for MCP server discovery')
 
-        for (const server of mcpServers) {
-          const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        // Build and write .mcp.json to project directory
+        const mcpConfig = buildMcpJsonConfig(mcpServers)
+        const mcpJsonContent = JSON.stringify(mcpConfig, null, 2)
 
-          if (server.type === 'local') {
-            // Local STDIO server
-            const envPrefix = `ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh" ANTHROPIC_AUTH_TOKEN="${process.env.AI_GATEWAY_API_KEY}" ANTHROPIC_API_KEY=""`
-            let addMcpCmd = `${envPrefix} claude mcp add "${serverName}" -- ${server.command}`
+        // Write .mcp.json using heredoc (safe for JSON with quotes)
+        const writeMcpCmd = `cat > ${PROJECT_DIR}/.mcp.json << 'MCPEOF'
+${mcpJsonContent}
+MCPEOF`
 
-            // Add env vars if provided
-            if (server.env && Object.keys(server.env).length > 0) {
-              const envVars = Object.entries(server.env)
-                .map(([key, value]) => `--env ${key}="${value}"`)
-                .join(' ')
-              addMcpCmd = addMcpCmd.replace(' --', ` ${envVars} --`)
-            }
+        const writeResult = await runCommandInSandbox(sandbox, 'sh', ['-c', writeMcpCmd])
 
-            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
+        if (writeResult.success) {
+          await logger.info('MCP config file created successfully')
 
-            if (addResult.success) {
-              await logger.info('Successfully added local MCP server')
-            } else {
-              await logger.info('Failed to add MCP server')
-            }
-          } else {
-            // Remote HTTP/SSE server
-            const envPrefix = `ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh" ANTHROPIC_AUTH_TOKEN="${process.env.AI_GATEWAY_API_KEY}" ANTHROPIC_API_KEY=""`
-            let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
-
-            if (server.oauthClientSecret) {
-              addMcpCmd += ` --header "Authorization: Bearer ${server.oauthClientSecret}"`
-            }
-
-            if (server.oauthClientId) {
-              addMcpCmd += ` --header "X-Client-ID: ${server.oauthClientId}"`
-            }
-
-            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
-
-            if (addResult.success) {
-              await logger.info('Successfully added remote MCP server')
-            } else {
-              await logger.info('Failed to add MCP server')
-            }
-          }
+          // Log which servers were configured
+          const serverNames = mcpServers.map((s) => s.name.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
+          await logger.info(`Configured MCP servers: ${serverNames.length} server(s)`)
+        } else {
+          const errorDetail = writeResult.error ? `: ${redactSensitiveInfo(writeResult.error).substring(0, 200)}` : ''
+          await logger.info('Failed to create MCP config file' + errorDetail)
         }
       }
 
@@ -179,55 +213,29 @@ export async function installClaudeCLI(
       // Create config file directly using absolute path
       // Use selectedModel if provided, otherwise fall back to default
 
+      // MCP servers configuration via .mcp.json file (Claude Code discovers servers from this file at startup)
       if (mcpServers && mcpServers.length > 0) {
-        await logger.info('Adding MCP servers')
+        await logger.info('Creating .mcp.json config file for MCP server discovery')
 
-        for (const server of mcpServers) {
-          const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        // Build and write .mcp.json to project directory
+        const mcpConfig = buildMcpJsonConfig(mcpServers)
+        const mcpJsonContent = JSON.stringify(mcpConfig, null, 2)
 
-          if (server.type === 'local') {
-            // Local STDIO server - command string contains both executable and args
-            const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
-            let addMcpCmd = `${envPrefix} claude mcp add "${serverName}" -- ${server.command}`
+        const writeMcpCmd = `cat > ${PROJECT_DIR}/.mcp.json << 'MCPEOF'
+${mcpJsonContent}
+MCPEOF`
 
-            // Add env vars if provided
-            if (server.env && Object.keys(server.env).length > 0) {
-              const envVars = Object.entries(server.env)
-                .map(([key, value]) => `--env ${key}="${value}"`)
-                .join(' ')
-              addMcpCmd = addMcpCmd.replace(' --', ` ${envVars} --`)
-            }
+        const writeResult = await runCommandInSandbox(sandbox, 'sh', ['-c', writeMcpCmd])
 
-            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
+        if (writeResult.success) {
+          await logger.info('MCP config file created successfully')
 
-            if (addResult.success) {
-              await logger.info('Successfully added local MCP server')
-            } else {
-              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
-              await logger.info('Failed to add MCP server')
-            }
-          } else {
-            // Remote HTTP/SSE server
-            const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
-            let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
-
-            if (server.oauthClientSecret) {
-              addMcpCmd += ` --header "Authorization: Bearer ${server.oauthClientSecret}"`
-            }
-
-            if (server.oauthClientId) {
-              addMcpCmd += ` --header "X-Client-ID: ${server.oauthClientId}"`
-            }
-
-            const addResult = await runCommandInSandbox(sandbox, 'sh', ['-c', addMcpCmd])
-
-            if (addResult.success) {
-              await logger.info('Successfully added remote MCP server')
-            } else {
-              const redactedError = redactSensitiveInfo(addResult.error || 'Unknown error')
-              await logger.info('Failed to add MCP server')
-            }
-          }
+          // Log which servers were configured
+          const serverNames = mcpServers.map((s) => s.name.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
+          await logger.info(`Configured MCP servers: ${serverNames.length} server(s)`)
+        } else {
+          const errorDetail = writeResult.error ? `: ${redactSensitiveInfo(writeResult.error).substring(0, 200)}` : ''
+          await logger.info('Failed to create MCP config file' + errorDetail)
         }
       }
 
