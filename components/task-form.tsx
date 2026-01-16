@@ -74,6 +74,18 @@ const AGENT_MODELS = {
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     { value: 'claude-opus-4-5-20251101', label: 'Opus 4.5' },
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
+
+    // Z.ai / Zhipu AI (New)
+    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
+
+    // Google Gemini 3 (New)
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
+
+    // OpenAI GPT Models
+    { value: 'gpt-5.2', label: 'GPT-5.2' },
+    { value: 'gpt-5.2-codex', label: 'GPT-5.2-Codex' },
+    { value: 'gpt-5.1-codex-mini', label: 'GPT-5.1-Codex-Mini' },
   ],
   codex: [
     { value: 'openai/gpt-5.2', label: 'GPT-5.2' },
