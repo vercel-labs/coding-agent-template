@@ -389,7 +389,7 @@ export function TaskForm({
   return (
     <div className="w-full max-w-2xl">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Coding Agent Template</h1>
+        <h1 className="text-4xl font-bold mb-4">AI Coding Agent</h1>
         <p className="text-lg text-muted-foreground mb-2">
           Multi-agent AI coding platform powered by{' '}
           <a
