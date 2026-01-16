@@ -59,3 +59,5 @@ logs/
 Thumbs.db
 .pnpm-store
 .env*.local
+
+.env
