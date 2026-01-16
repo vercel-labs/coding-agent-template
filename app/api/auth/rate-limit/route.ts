@@ -5,11 +5,12 @@ import { checkRateLimit } from '@/lib/utils/rate-limit'
 export async function GET() {
   try {
     const session = await getServerSession()
-    if (!session?.user?.id) {
+    const user = session?.user
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const rateLimit = await checkRateLimit(session.user.id)
+    const rateLimit = await checkRateLimit(user)
 
     return NextResponse.json({
       allowed: rateLimit.allowed,

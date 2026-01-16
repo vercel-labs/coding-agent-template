@@ -22,12 +22,13 @@ import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
-    if (!session?.user?.id) {
+    const user = session?.user
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check rate limit for follow-up messages
-    const rateLimit = await checkRateLimit(session.user.id)
+    const rateLimit = await checkRateLimit(user)
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
     const [task] = await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, user.id), isNull(tasks.deletedAt)))
       .limit(1)
 
     if (!task) {
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
     const userGithubToken = await getUserGitHubToken()
     const githubUser = await getGitHubUser()
     // Get max sandbox duration for this user (user-specific > global > env var)
-    const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
+    const maxSandboxDuration = await getMaxSandboxDuration(user.id)
 
     // Process the continuation asynchronously
     after(async () => {

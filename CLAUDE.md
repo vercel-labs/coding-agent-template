@@ -170,7 +170,7 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 - `app/api/sandboxes/` - Sandbox creation and management
 
 ### Rate Limiting
-Default: 5 tasks + follow-ups per user per day (configurable via `MAX_MESSAGES_PER_DAY` env var). See `lib/auth/rate-limit.ts`.
+Default: 20 tasks + follow-ups per user per day (configurable via `MAX_MESSAGES_PER_DAY` env var). Admin domains in `NEXT_PUBLIC_ADMIN_EMAIL_DOMAINS` get 100/day. See `lib/utils/rate-limit.ts`.
 
 ## UI Component Guidelines
 
@@ -223,7 +223,8 @@ Adding new tabs:
 - `GEMINI_API_KEY` - Gemini agent
 - `NPM_TOKEN` - Private npm packages
 - `MAX_SANDBOX_DURATION` - Default max duration in minutes (default: 300)
-- `MAX_MESSAGES_PER_DAY` - Rate limit (default: 5)
+- `MAX_MESSAGES_PER_DAY` - Rate limit (default: 20)
+- `NEXT_PUBLIC_ADMIN_EMAIL_DOMAINS` - Admin email domains for 100/day limit
 
 ## Key Implementation Patterns
 

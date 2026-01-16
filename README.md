@@ -335,7 +335,8 @@ These API keys can be set globally (fallback for all users) or left unset to req
 
 - `NPM_TOKEN`: For private npm packages
 - `MAX_SANDBOX_DURATION`: Default maximum sandbox duration in minutes (default: `300` = 5 hours)
-- `MAX_MESSAGES_PER_DAY`: Maximum number of tasks + follow-ups per user per day (default: `5`)
+- `MAX_MESSAGES_PER_DAY`: Maximum number of tasks + follow-ups per user per day (default: `20`)
+- `NEXT_PUBLIC_ADMIN_EMAIL_DOMAINS`: Comma-separated admin email domains for a 100/day limit (example: `@agenticassets.ai,@reitfactors.ai`)
 
 ### 4. Set up OAuth Applications
 
