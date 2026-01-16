@@ -30,6 +30,7 @@ import FigmaIcon from '@/components/icons/figma-icon'
 import HuggingFaceIcon from '@/components/icons/huggingface-icon'
 import LinearIcon from '@/components/icons/linear-icon'
 import NotionIcon from '@/components/icons/notion-icon'
+import OrbisIcon from '@/components/icons/orbis-icon'
 import PlaywrightIcon from '@/components/icons/playwright-icon'
 import SupabaseIcon from '@/components/icons/supabase-icon'
 import { Card } from '@/components/ui/card'
@@ -108,6 +109,12 @@ const PRESETS: PresetConfig[] = [
     name: 'Notion',
     type: 'remote',
     url: 'https://mcp.notion.com/mcp',
+  },
+  {
+    name: 'Orbis',
+    type: 'remote',
+    url: 'https://www.phdai.ai/api/mcp/universal',
+    envKeys: ['Authorization'],
   },
   {
     name: 'Playwright',
@@ -300,6 +307,9 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
     if (lowerName.includes('notion') || url.includes('notion.com')) {
       return <NotionIcon className="h-8 w-8 flex-shrink-0" />
     }
+    if (lowerName.includes('orbis') || url.includes('phdai.ai')) {
+      return <OrbisIcon className="h-8 w-8 flex-shrink-0" />
+    }
     if (lowerName.includes('playwright') || cmd.includes('playwright') || cmd.includes('@playwright/mcp')) {
       return <PlaywrightIcon className="h-8 w-8 flex-shrink-0" />
     }
@@ -419,6 +429,8 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                       <LinearIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
                     ) : preset.name === 'Notion' ? (
                       <NotionIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
+                    ) : preset.name === 'Orbis' ? (
+                      <OrbisIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
                     ) : preset.name === 'Playwright' ? (
                       <PlaywrightIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
                     ) : preset.name === 'Supabase' ? (
@@ -485,6 +497,8 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                       <LinearIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
                     ) : selectedPreset.name === 'Notion' ? (
                       <NotionIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
+                    ) : selectedPreset.name === 'Orbis' ? (
+                      <OrbisIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
                     ) : selectedPreset.name === 'Playwright' ? (
                       <PlaywrightIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
                     ) : selectedPreset.name === 'Supabase' ? (
