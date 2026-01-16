@@ -22,12 +22,13 @@ import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
     const session = await getServerSession()
-    if (!session?.user?.id) {
+    const user = session?.user
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check rate limit for follow-up messages
-    const rateLimit = await checkRateLimit(session.user.id)
+    const rateLimit = await checkRateLimit(user)
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {

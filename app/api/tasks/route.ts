@@ -49,12 +49,13 @@ export async function POST(request: NextRequest) {
   try {
     // Get user session
     const session = await getServerSession()
-    if (!session?.user?.id) {
+    const user = session?.user
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check rate limit
-    const rateLimit = await checkRateLimit(session.user.id)
+    const rateLimit = await checkRateLimit(user)
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
