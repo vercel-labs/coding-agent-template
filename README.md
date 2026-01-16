@@ -122,6 +122,38 @@ When Keep Alive is enabled, the sandbox stays alive after task completion for th
 
 **Note:** The maximum duration timeout always takes precedence. If you set a 1-hour timeout, the sandbox will expire after 1 hour regardless of the Keep Alive setting. Keep Alive only determines whether the sandbox shuts down early (after task completion) or stays alive until the timeout.
 
+## External API Access
+
+Create tasks programmatically from external applications using API tokens.
+
+### Generate a Token
+
+1. Sign in to the application
+2. Go to Settings (`/settings`)
+3. Click "Generate API Token"
+4. Copy the token (shown only once)
+
+### Create Tasks via API
+
+```bash
+curl -X POST https://your-app.vercel.app/api/tasks \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "selectedAgent": "claude",
+    "repositoryUrl": "https://github.com/owner/repo",
+    "prompt": "Add unit tests for the auth module",
+    "model": "claude-sonnet-4-5-20250929"
+  }'
+```
+
+### Token Security
+
+- Tokens are hashed (SHA256) before storage - raw token cannot be recovered
+- Set expiration dates for temporary access
+- Revoke tokens anytime from Settings
+- Tokens inherit your user permissions and rate limits
+
 ## How It Works
 
 1. **Task Creation**: When you submit a task, it's stored in the database
