@@ -12,16 +12,6 @@ import { generateId } from '@/lib/utils/id'
 type Connector = typeof connectors.$inferSelect
 
 /**
- * Check if the selected model supports MCP tools natively.
- * Only Claude models (starting with "claude-") support MCP tool invocation.
- * Models routed through AI Gateway (gemini-*, gpt-*, xiaomi/*, etc.) cannot use MCP tools.
- */
-function isModelMcpCompatible(model: string | undefined): boolean {
-  if (!model) return true // Default Claude model is compatible
-  return model.startsWith('claude-')
-}
-
-/**
  * Build .mcp.json content from connector configuration.
  * Claude Code discovers MCP servers from this file at startup.
  */
@@ -181,12 +171,6 @@ export async function installClaudeCLI(
 
       // MCP servers configuration via .mcp.json file (Claude Code discovers servers from this file at startup)
       if (mcpServers && mcpServers.length > 0) {
-        // Check model compatibility with MCP tools
-        if (!isModelMcpCompatible(selectedModel)) {
-          await logger.info('Warning: MCP servers are configured but the selected model does not support MCP tools')
-          await logger.info('Warning: Only Claude models can invoke MCP tools - other models will ignore MCP servers')
-        }
-
         await logger.info('Creating .mcp.json config file for MCP server discovery')
 
         // Build and write .mcp.json to project directory
@@ -231,12 +215,6 @@ MCPEOF`
 
       // MCP servers configuration via .mcp.json file (Claude Code discovers servers from this file at startup)
       if (mcpServers && mcpServers.length > 0) {
-        // Check model compatibility with MCP tools
-        if (!isModelMcpCompatible(selectedModel)) {
-          await logger.info('Warning: MCP servers are configured but the selected model does not support MCP tools')
-          await logger.info('Warning: Only Claude models can invoke MCP tools - other models will ignore MCP servers')
-        }
-
         await logger.info('Creating .mcp.json config file for MCP server discovery')
 
         // Build and write .mcp.json to project directory
