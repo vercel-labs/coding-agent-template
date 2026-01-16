@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ tasks: userTasks })
   } catch (error) {
-    console.error('Error fetching tasks:', error)
+    console.error('Error fetching tasks')
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 })
   }
 }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Rate limit exceeded',
-          message: `You have reached the daily limit of ${rateLimit.total} messages (tasks + follow-ups). Your limit will reset at ${rateLimit.resetAt.toISOString()}`,
+          message: 'You have reached your daily message limit. Please try again later.',
           remaining: rateLimit.remaining,
           total: rateLimit.total,
           resetAt: rateLimit.resetAt.toISOString(),
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
         await logger.success('Generated AI branch name')
       } catch (error) {
-        console.error('Error generating AI branch name:', error)
+        console.error('Error generating AI branch name')
 
         // Fallback to timestamp-based branch name
         const fallbackBranchName = createFallbackBranchName(taskId)
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
           const logger = createTaskLogger(taskId)
           await logger.info('Using fallback branch name')
         } catch (dbError) {
-          console.error('Error updating task with fallback branch name:', dbError)
+          console.error('Error updating task with fallback branch name')
         }
       }
     })
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(tasks.id, taskId))
       } catch (error) {
-        console.error('Error generating AI title:', error)
+        console.error('Error generating AI title')
 
         // Fallback to truncated prompt
         const fallbackTitle = createFallbackTitle(validatedData.prompt)
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
             })
             .where(eq(tasks.id, taskId))
         } catch (dbError) {
-          console.error('Error updating task with fallback title:', dbError)
+          console.error('Error updating task with fallback title')
         }
       }
     })
@@ -237,14 +237,14 @@ export async function POST(request: NextRequest) {
           githubUser,
         )
       } catch (error) {
-        console.error('Task processing failed:', error)
+        console.error('Task processing failed')
         // Error handling is already done inside processTaskWithTimeout
       }
     })
 
     return NextResponse.json({ task: newTask })
   } catch (error) {
-    console.error('Error creating task:', error)
+    console.error('Error creating task')
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
   }
 }
@@ -281,7 +281,7 @@ async function processTaskWithTimeout(
       const warningLogger = createTaskLogger(taskId)
       await warningLogger.info('Task is approaching timeout, will complete soon')
     } catch (error) {
-      console.error('Failed to add timeout warning:', error)
+      console.error('Failed to add timeout warning')
     }
   }, warningTimeMs)
 
@@ -316,7 +316,7 @@ async function processTaskWithTimeout(
     clearTimeout(warningTimeout)
     // Handle timeout specifically
     if (error instanceof Error && error.message?.includes('timed out after')) {
-      console.error('Task timed out:', taskId)
+      console.error('Task timed out')
 
       // Use logger for timeout error
       const timeoutLogger = createTaskLogger(taskId)
@@ -340,7 +340,7 @@ async function waitForBranchName(taskId: string, maxWaitMs: number = 10000): Pro
         return task.branchName
       }
     } catch (error) {
-      console.error('Error checking for branch name:', error)
+      console.error('Error checking for branch name')
     }
 
     // Wait 500ms before checking again
@@ -356,7 +356,7 @@ async function isTaskStopped(taskId: string): Promise<boolean> {
     const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
     return task?.status === 'stopped'
   } catch (error) {
-    console.error('Error checking task status:', error)
+    console.error('Error checking task status')
     return false
   }
 }
@@ -404,7 +404,7 @@ async function processTask(
         content: prompt,
       })
     } catch (error) {
-      console.error('Failed to save user message:', error)
+      console.error('Failed to save user message')
     }
 
     // GitHub token and API keys are passed as parameters (retrieved before entering after() block)
@@ -489,7 +489,7 @@ async function processTask(
         try {
           await shutdownSandbox(sandboxResult.sandbox)
         } catch (error) {
-          console.error('Failed to cleanup sandbox after stop:', error)
+          console.error('Failed to cleanup sandbox after stop')
         }
       }
       return
@@ -569,7 +569,7 @@ async function processTask(
         await logger.info('No user session found, continuing without MCP servers')
       }
     } catch (mcpError) {
-      console.error('Failed to fetch MCP servers:', mcpError)
+      console.error('Failed to fetch MCP servers')
       await logger.info('Warning: Could not fetch MCP servers, continuing without them')
     }
 
@@ -622,7 +622,7 @@ async function processTask(
             content: agentResult.agentResponse,
           })
         } catch (error) {
-          console.error('Failed to save agent message:', error)
+          console.error('Failed to save agent message')
         }
       }
 
@@ -654,7 +654,7 @@ async function processTask(
           commitMessage = createFallbackCommitMessage(prompt)
         }
       } catch (error) {
-        console.error('Error generating commit message:', error)
+        console.error('Error generating commit message')
         commitMessage = createFallbackCommitMessage(prompt)
       }
 
@@ -700,7 +700,7 @@ async function processTask(
       throw new Error(agentResult.error || 'Agent execution failed')
     }
   } catch (error) {
-    console.error('Error processing task:', error)
+    console.error('Error processing task')
 
     // Try to shutdown sandbox even on error (unless keepAlive is enabled)
     if (sandbox) {
@@ -718,7 +718,7 @@ async function processTask(
           }
         }
       } catch (shutdownError) {
-        console.error('Failed to shutdown sandbox after error:', shutdownError)
+        console.error('Failed to shutdown sandbox after error')
         await logger.error('Failed to shutdown sandbox after error')
       }
     }
@@ -805,7 +805,7 @@ export async function DELETE(request: NextRequest) {
       deletedCount: deletedTasks.length,
     })
   } catch (error) {
-    console.error('Error deleting tasks:', error)
+    console.error('Error deleting tasks')
     return NextResponse.json({ error: 'Failed to delete tasks' }, { status: 500 })
   }
 }

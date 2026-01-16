@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessionFromReq } from '@/lib/session/server'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { db } from '@/lib/db/client'
 import { apiTokens } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getSessionFromReq(req)
+    const user = await getAuthFromRequest(req)
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -17,14 +17,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const [token] = await db
       .select()
       .from(apiTokens)
-      .where(and(eq(apiTokens.id, id), eq(apiTokens.userId, session.user.id)))
+      .where(and(eq(apiTokens.id, id), eq(apiTokens.userId, user.id)))
       .limit(1)
 
     if (!token) {
       return NextResponse.json({ error: 'Token not found' }, { status: 404 })
     }
 
-    await db.delete(apiTokens).where(and(eq(apiTokens.id, id), eq(apiTokens.userId, session.user.id)))
+    await db.delete(apiTokens).where(and(eq(apiTokens.id, id), eq(apiTokens.userId, user.id)))
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { Copy, Loader2, Trash2, Plus } from 'lucide-react'
+import { Copy, Loader2, Trash2, Plus, AlertTriangle } from 'lucide-react'
 
 interface Token {
   id: string
@@ -26,10 +27,28 @@ export function ApiTokens() {
   const [creating, setCreating] = useState(false)
   const [newToken, setNewToken] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const copyButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     fetchTokens()
   }, [])
+
+  // Clear newToken after 60 seconds for security
+  useEffect(() => {
+    if (newToken) {
+      const timer = setTimeout(() => {
+        setNewToken(null)
+      }, 60000)
+      return () => clearTimeout(timer)
+    }
+  }, [newToken])
+
+  // Focus copy button when new token appears
+  useEffect(() => {
+    if (newToken && copyButtonRef.current) {
+      copyButtonRef.current.focus()
+    }
+  }, [newToken])
 
   const fetchTokens = async () => {
     setLoading(true)
@@ -49,6 +68,11 @@ export function ApiTokens() {
   const handleCreate = async () => {
     if (!tokenName.trim()) {
       toast.error('Token name is required')
+      return
+    }
+
+    // Guard against double-submit
+    if (creating) {
       return
     }
 
@@ -98,9 +122,13 @@ export function ApiTokens() {
     }
   }
 
-  const copyToken = (token: string) => {
-    navigator.clipboard.writeText(token)
-    toast.success('Token copied to clipboard')
+  const copyToken = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(token)
+      toast.success('Token copied to clipboard')
+    } catch (error) {
+      toast.error('Failed to copy token')
+    }
   }
 
   const closeCreateDialog = () => {
@@ -132,12 +160,12 @@ export function ApiTokens() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
+        <div className="flex items-center justify-center py-8" role="status" aria-live="polite">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : tokens.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8">
+          <CardContent className="flex flex-col items-center justify-center py-8" role="status">
             <p className="text-sm text-muted-foreground">No API tokens yet</p>
             <p className="text-xs text-muted-foreground mt-1">Create a token to get started</p>
           </CardContent>
@@ -158,7 +186,7 @@ export function ApiTokens() {
                     onClick={() => handleDelete(token.id)}
                     disabled={deletingId === token.id}
                     className="h-8 w-8 p-0"
-                    aria-label="Delete token"
+                    aria-label={`Delete token ${token.name}`}
                   >
                     {deletingId === token.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -196,11 +224,21 @@ export function ApiTokens() {
 
           {newToken ? (
             <div className="space-y-4">
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>Copy your token now. You will not be able to see it again.</AlertDescription>
+              </Alert>
               <div className="space-y-2">
                 <Label>Your new token</Label>
                 <div className="flex gap-2">
                   <Input value={newToken} readOnly className="font-mono text-sm" />
-                  <Button onClick={() => copyToken(newToken)} size="icon" variant="outline">
+                  <Button
+                    ref={copyButtonRef}
+                    onClick={() => copyToken(newToken)}
+                    size="icon"
+                    variant="outline"
+                    aria-label="Copy token to clipboard"
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
@@ -212,7 +250,10 @@ export function ApiTokens() {
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="token-name">Token name</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="token-name">Token name</Label>
+                  <span className="text-xs text-muted-foreground">{tokenName.length}/50</span>
+                </div>
                 <Input
                   id="token-name"
                   placeholder="My API Token"

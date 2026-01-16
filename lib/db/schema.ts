@@ -442,6 +442,7 @@ export const apiTokens = pgTable(
     lastUsedAt: timestamp('last_used_at'),
     expiresAt: timestamp('expires_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => ({
     userIdIdx: index('api_tokens_user_id_idx').on(table.userId),
@@ -457,6 +458,7 @@ export const insertApiTokenSchema = z.object({
   lastUsedAt: z.date().optional(),
   expiresAt: z.date().optional(),
   createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
 })
 
 export const selectApiTokenSchema = z.object({
@@ -468,6 +470,7 @@ export const selectApiTokenSchema = z.object({
   lastUsedAt: z.date().nullable(),
   expiresAt: z.date().nullable(),
   createdAt: z.date(),
+  updatedAt: z.date(),
 })
 
 export type ApiToken = z.infer<typeof selectApiTokenSchema>

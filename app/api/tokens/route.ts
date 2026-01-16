@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessionFromReq } from '@/lib/session/server'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { db } from '@/lib/db/client'
 import { apiTokens } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -13,9 +13,9 @@ const createTokenSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getSessionFromReq(req)
+    const user = await getAuthFromRequest(req)
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         expiresAt: apiTokens.expiresAt,
       })
       .from(apiTokens)
-      .where(eq(apiTokens.userId, session.user.id))
+      .where(eq(apiTokens.userId, user.id))
 
     return NextResponse.json({ tokens })
   } catch (error) {
@@ -39,9 +39,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSessionFromReq(req)
+    const user = await getAuthFromRequest(req)
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -49,16 +49,13 @@ export async function POST(req: NextRequest) {
     const validationResult = createTokenSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json({ error: 'Invalid request', details: validationResult.error.issues }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
     const { name, expiresAt } = validationResult.data
 
     // Rate limiting: max 20 tokens per user
-    const existingTokens = await db
-      .select({ id: apiTokens.id })
-      .from(apiTokens)
-      .where(eq(apiTokens.userId, session.user.id))
+    const existingTokens = await db.select({ id: apiTokens.id }).from(apiTokens).where(eq(apiTokens.userId, user.id))
 
     if (existingTokens.length >= 20) {
       return NextResponse.json({ error: 'Maximum token limit reached' }, { status: 429 })
@@ -67,7 +64,7 @@ export async function POST(req: NextRequest) {
     const { raw, hash, prefix } = generateApiToken()
 
     await db.insert(apiTokens).values({
-      userId: session.user.id,
+      userId: user.id,
       name,
       tokenHash: hash,
       tokenPrefix: prefix,

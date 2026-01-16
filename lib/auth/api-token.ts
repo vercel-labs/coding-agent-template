@@ -41,7 +41,10 @@ export async function getAuthFromRequest(request: NextRequest): Promise<User | n
     }
 
     // Only update lastUsedAt if token is valid (not expired)
-    await db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.tokenHash, hash))
+    await db
+      .update(apiTokens)
+      .set({ lastUsedAt: new Date(), updatedAt: new Date() })
+      .where(eq(apiTokens.tokenHash, hash))
 
     return user
   }
