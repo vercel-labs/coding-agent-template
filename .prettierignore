@@ -1,0 +1,14 @@
+# Template files with placeholders
+.claude/skills/**/templates/**
+.claude/skills/**/assets/templates/**
+
+# Node modules
+node_modules
+
+# Build output
+.next
+out
+dist
+
+# Other
+.cache

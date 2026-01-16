@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=mfqjkcqkibyxrcgwoyxm&features=docs%2Cdatabase%2Cdebugging%2Cdevelopment%2Cstorage%2Cbranching%2Cfunctions",
+      "headers": {
+        "Authorization": "Bearer sbp_6442e0b00f7f357521195169db351547a1d2e6bf"
+      }
+    },
+    "orbis": {
+      "type": "http",
+      "url": "https://www.phdai.ai/api/mcp/universal",
+      "headers": {
+        "Authorization": "Bearer orbis_mcp_H87XFReOGgfPw53D1_NT7bRKr2DV07lZIV39JMqcJAJLK1wh"
+      }
+    },
+    "exa": {
+      "type": "http",
+      "url": "https://mcp.exa.ai/mcp"
+    },
+    "ai-elements": {
+      "type": "http",
+      "url": "https://registry.ai-sdk.dev/api/mcp"
+    }
+  }
+}

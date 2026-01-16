@@ -58,3 +58,4 @@ logs/
 .DS_Store
 Thumbs.db
 .pnpm-store
+.env*.local
