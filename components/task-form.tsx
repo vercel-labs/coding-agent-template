@@ -78,7 +78,7 @@ const AGENT_MODELS = {
 
     // AI Gateway Alternative Models (use AI_GATEWAY_API_KEY)
     // Z.ai / Zhipu AI
-    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
+    { value: 'glm-4.7', label: 'GLM-4.7' },
 
     // Google Gemini 3
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
