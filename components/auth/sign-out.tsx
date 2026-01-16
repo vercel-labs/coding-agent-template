@@ -19,10 +19,9 @@ import { GitHubIcon } from '@/components/icons/github-icon'
 import { ApiKeysDialog } from '@/components/api-keys-dialog'
 import { SandboxesDialog } from '@/components/sandboxes-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Key, Server, Settings } from 'lucide-react'
+import { Key, Server } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import { getEnabledAuthProviders } from '@/lib/auth/providers'
-import Link from 'next/link'
 
 interface RateLimitInfo {
   used: number
@@ -144,13 +143,6 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
         <DropdownMenuItem onClick={() => setShowSandboxesDialog(true)} className="cursor-pointer">
           <Server className="h-4 w-4 mr-2" />
           Sandboxes
-        </DropdownMenuItem>
-
-        <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/settings">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Link>
         </DropdownMenuItem>
 
         {/* Only show GitHub Connect/Disconnect for Vercel users when GitHub is enabled */}
