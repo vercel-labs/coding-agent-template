@@ -30,6 +30,7 @@ This is a multi-agent AI coding assistant platform built with Next.js 15 and Rea
 - **users** - User profiles and primary OAuth accounts
 - **accounts** - Additional linked accounts (e.g., Vercel users connecting GitHub)
 - **keys** - User-specific API keys (Anthropic, OpenAI, Cursor, Gemini, AI Gateway)
+- **apiTokens** - External API tokens for programmatic access (hashed storage)
 - **tasks** - Coding tasks with logs, status, PR info, sandbox IDs
 - **taskMessages** - Chat messages between users and agents
 - **connectors** - MCP server configurations
@@ -221,6 +222,34 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 - `app/api/connectors/` - MCP server management
 - `app/api/api-keys/` - User API key management
 - `app/api/sandboxes/` - Sandbox creation and management
+- `app/api/tokens/` - External API token management
+
+### External API Token Authentication
+API tokens enable external applications to call the API without OAuth session cookies.
+
+**How it works:**
+- Tokens are generated via UI at `/settings` or `POST /api/tokens`
+- Authenticate requests with `Authorization: Bearer <token>` header
+- Tokens are SHA256 hashed before storage (never stored in plaintext)
+- Raw token is shown once at creation - cannot be retrieved later
+- Supports optional expiration dates
+- Max 20 tokens per user (rate limited)
+- Supported endpoints: All `/api/tasks/*` and `/api/tokens/*` routes
+
+**Token Management Endpoints:**
+- `POST /api/tokens` - Create token (returns raw token once)
+- `GET /api/tokens` - List user's tokens (prefix only, not full token)
+- `DELETE /api/tokens/[id]` - Revoke a token
+
+**Dual-Auth Helper** (`lib/auth/api-token.ts`):
+```typescript
+import { getAuthFromRequest } from '@/lib/auth/api-token'
+
+// Checks Bearer token first, falls back to session cookie
+const user = await getAuthFromRequest(request)
+```
+
+Use `getAuthFromRequest()` for routes that should accept both Bearer tokens and session cookies.
 
 ### Rate Limiting
 Default: 20 tasks + follow-ups per user per day (configurable via `MAX_MESSAGES_PER_DAY` env var). Admin domains in `NEXT_PUBLIC_ADMIN_EMAIL_DOMAINS` get 100/day. See `lib/utils/rate-limit.ts`.

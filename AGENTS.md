@@ -37,6 +37,7 @@ console.error('Error occurred:', error)
 - File paths and repository URLs
 - Branch names and commit messages
 - Error details that may contain sensitive context
+- External API tokens (64-character hex strings from `/api/tokens`)
 - Any dynamic values that could reveal system internals
 
 ### Credential Redaction
@@ -187,6 +188,7 @@ Never expose these in logs or to the client:
 - `JWE_SECRET` - Encryption secret
 - `ENCRYPTION_KEY` - Encryption key
 - Any user-provided API keys
+- External API tokens (Bearer tokens for programmatic access)
 
 ### Client-Safe Variables
 

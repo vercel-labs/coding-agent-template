@@ -17,17 +17,18 @@ import { generateTaskTitle, createFallbackTitle } from '@/lib/utils/title-genera
 import { generateCommitMessage, createFallbackCommitMessage } from '@/lib/utils/commit-message-generator'
 import { decrypt } from '@/lib/crypto'
 import { getServerSession } from '@/lib/session/get-server-session'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getGitHubUser } from '@/lib/github/client'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get user session
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    // Get user from Bearer token or session
+    const user = await getAuthFromRequest(request)
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -35,32 +36,31 @@ export async function GET() {
     const userTasks = await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+      .where(and(eq(tasks.userId, user.id), isNull(tasks.deletedAt)))
       .orderBy(desc(tasks.createdAt))
 
     return NextResponse.json({ tasks: userTasks })
   } catch (error) {
-    console.error('Error fetching tasks:', error)
+    console.error('Error fetching tasks')
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user session
-    const session = await getServerSession()
-    const user = session?.user
+    // Get user from Bearer token or session
+    const user = await getAuthFromRequest(request)
     if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check rate limit
-    const rateLimit = await checkRateLimit(user)
+    // Check rate limit (convert null to undefined for type compatibility)
+    const rateLimit = await checkRateLimit({ id: user.id, email: user.email ?? undefined })
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
           error: 'Rate limit exceeded',
-          message: `You have reached the daily limit of ${rateLimit.total} messages (tasks + follow-ups). Your limit will reset at ${rateLimit.resetAt.toISOString()}`,
+          message: 'You have reached your daily message limit. Please try again later.',
           remaining: rateLimit.remaining,
           total: rateLimit.total,
           resetAt: rateLimit.resetAt.toISOString(),
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
         await logger.success('Generated AI branch name')
       } catch (error) {
-        console.error('Error generating AI branch name:', error)
+        console.error('Error generating AI branch name')
 
         // Fallback to timestamp-based branch name
         const fallbackBranchName = createFallbackBranchName(taskId)
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
           const logger = createTaskLogger(taskId)
           await logger.info('Using fallback branch name')
         } catch (dbError) {
-          console.error('Error updating task with fallback branch name:', dbError)
+          console.error('Error updating task with fallback branch name')
         }
       }
     })
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(tasks.id, taskId))
       } catch (error) {
-        console.error('Error generating AI title:', error)
+        console.error('Error generating AI title')
 
         // Fallback to truncated prompt
         const fallbackTitle = createFallbackTitle(validatedData.prompt)
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
             })
             .where(eq(tasks.id, taskId))
         } catch (dbError) {
-          console.error('Error updating task with fallback title:', dbError)
+          console.error('Error updating task with fallback title')
         }
       }
     })
@@ -237,14 +237,14 @@ export async function POST(request: NextRequest) {
           githubUser,
         )
       } catch (error) {
-        console.error('Task processing failed:', error)
+        console.error('Task processing failed')
         // Error handling is already done inside processTaskWithTimeout
       }
     })
 
     return NextResponse.json({ task: newTask })
   } catch (error) {
-    console.error('Error creating task:', error)
+    console.error('Error creating task')
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
   }
 }
@@ -281,7 +281,7 @@ async function processTaskWithTimeout(
       const warningLogger = createTaskLogger(taskId)
       await warningLogger.info('Task is approaching timeout, will complete soon')
     } catch (error) {
-      console.error('Failed to add timeout warning:', error)
+      console.error('Failed to add timeout warning')
     }
   }, warningTimeMs)
 
@@ -316,7 +316,7 @@ async function processTaskWithTimeout(
     clearTimeout(warningTimeout)
     // Handle timeout specifically
     if (error instanceof Error && error.message?.includes('timed out after')) {
-      console.error('Task timed out:', taskId)
+      console.error('Task timed out')
 
       // Use logger for timeout error
       const timeoutLogger = createTaskLogger(taskId)
@@ -340,7 +340,7 @@ async function waitForBranchName(taskId: string, maxWaitMs: number = 10000): Pro
         return task.branchName
       }
     } catch (error) {
-      console.error('Error checking for branch name:', error)
+      console.error('Error checking for branch name')
     }
 
     // Wait 500ms before checking again
@@ -356,7 +356,7 @@ async function isTaskStopped(taskId: string): Promise<boolean> {
     const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
     return task?.status === 'stopped'
   } catch (error) {
-    console.error('Error checking task status:', error)
+    console.error('Error checking task status')
     return false
   }
 }
@@ -404,7 +404,7 @@ async function processTask(
         content: prompt,
       })
     } catch (error) {
-      console.error('Failed to save user message:', error)
+      console.error('Failed to save user message')
     }
 
     // GitHub token and API keys are passed as parameters (retrieved before entering after() block)
@@ -489,7 +489,7 @@ async function processTask(
         try {
           await shutdownSandbox(sandboxResult.sandbox)
         } catch (error) {
-          console.error('Failed to cleanup sandbox after stop:', error)
+          console.error('Failed to cleanup sandbox after stop')
         }
       }
       return
@@ -569,7 +569,7 @@ async function processTask(
         await logger.info('No user session found, continuing without MCP servers')
       }
     } catch (mcpError) {
-      console.error('Failed to fetch MCP servers:', mcpError)
+      console.error('Failed to fetch MCP servers')
       await logger.info('Warning: Could not fetch MCP servers, continuing without them')
     }
 
@@ -622,7 +622,7 @@ async function processTask(
             content: agentResult.agentResponse,
           })
         } catch (error) {
-          console.error('Failed to save agent message:', error)
+          console.error('Failed to save agent message')
         }
       }
 
@@ -654,7 +654,7 @@ async function processTask(
           commitMessage = createFallbackCommitMessage(prompt)
         }
       } catch (error) {
-        console.error('Error generating commit message:', error)
+        console.error('Error generating commit message')
         commitMessage = createFallbackCommitMessage(prompt)
       }
 
@@ -700,7 +700,7 @@ async function processTask(
       throw new Error(agentResult.error || 'Agent execution failed')
     }
   } catch (error) {
-    console.error('Error processing task:', error)
+    console.error('Error processing task')
 
     // Try to shutdown sandbox even on error (unless keepAlive is enabled)
     if (sandbox) {
@@ -718,7 +718,7 @@ async function processTask(
           }
         }
       } catch (shutdownError) {
-        console.error('Failed to shutdown sandbox after error:', shutdownError)
+        console.error('Failed to shutdown sandbox after error')
         await logger.error('Failed to shutdown sandbox after error')
       }
     }
@@ -733,9 +733,9 @@ async function processTask(
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    // Get user from Bearer token or session
+    const user = await getAuthFromRequest(request)
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -777,7 +777,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete tasks based on conditions AND user ownership
     const statusClause = statusConditions.length === 1 ? statusConditions[0] : or(...statusConditions)
-    const whereClause = and(statusClause, eq(tasks.userId, session.user.id))
+    const whereClause = and(statusClause, eq(tasks.userId, user.id))
     const deletedTasks = await db.delete(tasks).where(whereClause).returning()
 
     // Build response message
@@ -805,7 +805,7 @@ export async function DELETE(request: NextRequest) {
       deletedCount: deletedTasks.length,
     })
   } catch (error) {
-    console.error('Error deleting tasks:', error)
+    console.error('Error deleting tasks')
     return NextResponse.json({ error: 'Failed to delete tasks' }, { status: 500 })
   }
 }

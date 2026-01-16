@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, integer, jsonb, boolean, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, integer, jsonb, boolean, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
 
 // Log entry types
@@ -424,6 +425,56 @@ export const selectSettingSchema = z.object({
 
 export type Setting = z.infer<typeof selectSettingSchema>
 export type InsertSetting = z.infer<typeof insertSettingSchema>
+
+// API Tokens table - user-generated API tokens for authenticating external requests
+export const apiTokens = pgTable(
+  'api_tokens',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    tokenPrefix: text('token_prefix').notNull(),
+    lastUsedAt: timestamp('last_used_at'),
+    expiresAt: timestamp('expires_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('api_tokens_user_id_idx').on(table.userId),
+  }),
+)
+
+export const insertApiTokenSchema = z.object({
+  id: z.string().optional(),
+  userId: z.string().min(1, 'User ID is required'),
+  name: z.string().min(1, 'Name is required'),
+  tokenHash: z.string().min(1, 'Token hash is required'),
+  tokenPrefix: z.string().min(1, 'Token prefix is required'),
+  lastUsedAt: z.date().optional(),
+  expiresAt: z.date().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+})
+
+export const selectApiTokenSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  tokenHash: z.string(),
+  tokenPrefix: z.string(),
+  lastUsedAt: z.date().nullable(),
+  expiresAt: z.date().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+})
+
+export type ApiToken = z.infer<typeof selectApiTokenSchema>
+export type InsertApiToken = z.infer<typeof insertApiTokenSchema>
 
 // Keep legacy export for backwards compatibility during migration
 export const userConnections = accounts

@@ -197,6 +197,21 @@ pnpm lint
 
 ## Advanced Features
 
+### Dual Authentication (Session + Bearer Token)
+For routes that accept both session cookies and external API tokens:
+```typescript
+import { getAuthFromRequest } from '@/lib/auth/api-token'
+
+export async function POST(request: NextRequest) {
+  // Checks Bearer token first, falls back to session cookie
+  const user = await getAuthFromRequest(request)
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  // ... rest of handler
+}
+```
+
 ### Rate Limiting Integration
 ```typescript
 import { checkRateLimit } from '@/lib/utils/rate-limit'

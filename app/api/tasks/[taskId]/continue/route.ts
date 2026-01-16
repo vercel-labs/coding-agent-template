@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { db } from '@/lib/db/client'
 import { tasks, taskMessages, connectors } from '@/lib/db/schema'
@@ -21,14 +22,13 @@ import { detectPortFromRepo } from '@/lib/sandbox/port-detection'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   try {
-    const session = await getServerSession()
-    const user = session?.user
+    const user = await getAuthFromRequest(req)
     if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check rate limit for follow-up messages
-    const rateLimit = await checkRateLimit(user)
+    const rateLimit = await checkRateLimit({ id: user.id, email: user.email ?? undefined })
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error continuing task:', error)
+    console.error('Error continuing task')
     return NextResponse.json({ error: 'Failed to continue task' }, { status: 500 })
   }
 }
@@ -185,7 +185,7 @@ async function continueTask(
           await logger.updateProgress(50, 'Executing agent with follow-up message')
         }
       } catch (error) {
-        console.error('Failed to reconnect to sandbox:', error)
+        console.error('Failed to reconnect to sandbox')
         await logger.info('Could not reconnect to sandbox, will create new one')
       }
     }
@@ -311,7 +311,7 @@ async function continueTask(
         }
       }
     } catch (mcpError) {
-      console.error('Failed to fetch MCP servers:', mcpError)
+      console.error('Failed to fetch MCP servers')
       await logger.info('Warning: Could not fetch MCP servers, continuing without them')
     }
 
@@ -360,7 +360,7 @@ async function continueTask(
             content: agentResult.agentResponse,
           })
         } catch (error) {
-          console.error('Failed to save agent message:', error)
+          console.error('Failed to save agent message')
         }
       }
 
@@ -389,7 +389,7 @@ async function continueTask(
           commitMessage = createFallbackCommitMessage(prompt)
         }
       } catch (error) {
-        console.error('Error generating commit message:', error)
+        console.error('Error generating commit message')
         commitMessage = createFallbackCommitMessage(prompt)
       }
 
@@ -428,17 +428,9 @@ async function continueTask(
       throw new Error(agentResult.error || 'Agent execution failed')
     }
   } catch (error) {
-    console.error('Error continuing task:', error)
+    console.error('Error continuing task')
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    const errorStack = error instanceof Error ? error.stack : undefined
-
-    // Log detailed error for debugging
-    console.error('Detailed error:', {
-      message: errorMessage,
-      stack: errorStack,
-      taskId,
-    })
 
     try {
       if (sandbox) {
@@ -454,13 +446,11 @@ async function continueTask(
         }
       }
     } catch (cleanupError) {
-      console.error('Error during cleanup:', cleanupError)
+      console.error('Error during cleanup')
     }
 
     await logger.updateStatus('error')
     await logger.error('Task failed to continue')
-    // Error details are saved to the database for debugging
-    console.error('Task error details:', errorMessage)
 
     await db
       .update(tasks)

@@ -1,30 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { Sandbox } from '@vercel/sandbox'
-import { getServerSession } from '@/lib/session/get-server-session'
+import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
 
-export async function POST(_request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.id) {
+    const user = await getAuthFromRequest(request)
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { taskId } = await params
 
-    // Get the task
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+    // Get the task (user-scoped)
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, taskId), eq(tasks.userId, user.id)))
+      .limit(1)
 
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
-    }
-
-    // Verify ownership
-    if (task.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     // Check if sandbox is active
@@ -61,11 +60,10 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       message: 'Sandbox stopped successfully',
     })
   } catch (error) {
-    console.error('Error stopping sandbox:', error)
+    console.error('Error stopping sandbox')
     return NextResponse.json(
       {
         error: 'Failed to stop sandbox',
-        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 },
     )
