@@ -189,6 +189,21 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 - Encrypted environment variables and OAuth credentials
 - Works with both Anthropic API and AI Gateway authentication methods
 
+## Delegating to Specialized Subagents
+
+**When working on this codebase, proactively delegate tasks to specialized subagents to improve efficiency and code quality.** This project includes custom Claude Code subagents (located in `.claude/agents/`) that are expert in specific domains of this platform. Using subagents keeps the main conversation focused while allowing deep, specialized work to happen in isolated contexts with appropriate tool access and validation patterns.
+
+**Available Custom Subagents:**
+- **api-route-architect** - Generate production-ready Next.js 15 API routes with session validation, rate limiting, Zod schemas, and static-string logging
+- **database-schema-optimizer** - Design tables, generate Drizzle migrations, create type-safe query helpers, validate relationships and encryption
+- **security-logging-enforcer** - Audit code for vulnerabilities, enforce static-string logging, validate encryption coverage, prevent data leakage
+- **sandbox-agent-manager** - Unify agent implementations, standardize sandbox lifecycle, handle error recovery, manage session persistence
+- **react-component-builder** - Create type-safe, accessible React 19 components with shadcn/ui, Zod validation, and WCAG 2.1 AA compliance
+
+**When to Delegate:** Use subagents for focused, domain-specific work that benefits from specialized expertise and isolated context. For example: delegate API route creation to `api-route-architect`, database changes to `database-schema-optimizer`, security audits to `security-logging-enforcer`, agent refactoring to `sandbox-agent-manager`, and UI component development to `react-component-builder`. Additionally, consider using other available subagents from Claude Code's built-in library or user-installed plugins when their capabilities match the task at hand.
+
+**How Subagents Help:** Subagents provide specialized system prompts, enforce domain-specific patterns, maintain isolated context for high-volume operations, and reduce main conversation clutter. They ensure consistency (all API routes follow the same pattern), enforce security requirements (static logging, encryption), and accelerate development (automated boilerplate, type-safe generation). After a subagent completes its work, it returns results to the main conversation where you can integrate findings, apply changes, or proceed with dependent tasks.
+
 ## API Architecture
 
 ### Authentication Flow
