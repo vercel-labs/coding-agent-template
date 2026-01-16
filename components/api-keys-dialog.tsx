@@ -177,16 +177,19 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                     value={apiKeys[provider.id]}
                     onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
                     disabled={loading || isInputDisabled}
-                    className="pr-9 h-8 text-sm"
+                    className={hasSavedKey && !isCleared ? 'h-8 text-sm' : 'pr-9 h-8 text-sm'}
                   />
-                  <button
-                    onClick={() => toggleShowKey(provider.id)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    type="button"
-                    disabled={loading}
-                  >
-                    {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  </button>
+                  {/* Only show eye toggle when editing a new key (not when viewing saved placeholder) */}
+                  {(!isInputDisabled || isCleared) && (
+                    <button
+                      onClick={() => toggleShowKey(provider.id)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      type="button"
+                      disabled={loading}
+                    >
+                      {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
                 </div>
                 {showSaveButton ? (
                   <Button
