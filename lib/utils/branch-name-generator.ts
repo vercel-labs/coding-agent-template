@@ -65,7 +65,7 @@ Return ONLY the branch name, nothing else.`
 
     return branchName
   } catch (error) {
-    console.error('Branch name generation error:', error)
+    console.error('Branch name generation error')
     throw new Error(`Failed to generate branch name: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ own
 
     return NextResponse.json({ pullRequests })
   } catch (error) {
-    console.error('Error fetching pull requests:', error)
+    console.error('Error fetching pull requests:')
     return NextResponse.json({ error: 'Failed to fetch pull requests' }, { status: 500 })
   }
 }

@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       })),
     )
   } catch (error) {
-    console.error('Error fetching GitHub organizations:', error)
+    console.error('Error fetching GitHub organizations:')
     return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 })
   }
 }

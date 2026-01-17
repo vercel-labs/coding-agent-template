@@ -71,7 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         message: 'Pull request reopened successfully',
       })
     } catch (error: unknown) {
-      console.error('Error reopening pull request:', error)
+      console.error('Error reopening pull request:')
 
       // Handle specific error cases
       if (error && typeof error === 'object' && 'status' in error) {
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       )
     }
   } catch (error) {
-    console.error('Error in reopen PR API:', error)
+    console.error('Error in reopen PR API:')
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error',

@@ -198,7 +198,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             })
           }
         } catch (checksError) {
-          console.error('Error checking GitHub Checks:', checksError)
+          console.error('Error checking GitHub Checks:')
           // Continue to try other methods
         }
       }
@@ -255,7 +255,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           }
         }
       } catch (deploymentsError) {
-        console.error('Error checking GitHub Deployments:', deploymentsError)
+        console.error('Error checking GitHub Deployments:')
         // Continue to final fallback
       }
 
@@ -290,7 +290,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             })
           }
         } catch (statusError) {
-          console.error('Error checking commit statuses:', statusError)
+          console.error('Error checking commit statuses:')
         }
       }
 
@@ -303,7 +303,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
       })
     } catch (error) {
-      console.error('Error fetching deployment status:', error)
+      console.error('Error fetching deployment status:')
 
       // Return graceful response for common errors
       if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
@@ -325,7 +325,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })
     }
   } catch (error) {
-    console.error('Error in deployment API:', error)
+    console.error('Error in deployment API:')
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error',

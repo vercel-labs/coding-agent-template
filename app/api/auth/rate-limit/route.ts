@@ -20,7 +20,7 @@ export async function GET() {
       resetAt: rateLimit.resetAt.toISOString(),
     })
   } catch (error) {
-    console.error('Error fetching rate limit:', error)
+    console.error('Error fetching rate limit:')
     return NextResponse.json({ error: 'Failed to fetch rate limit' }, { status: 500 })
   }
 }

@@ -43,7 +43,7 @@ export async function GET(
       taskId: existingTasks.length > 0 ? existingTasks[0].id : null,
     })
   } catch (error) {
-    console.error('Error checking for existing task:', error)
+    console.error('Error checking for existing task:')
     return NextResponse.json({ error: 'Failed to check for existing task' }, { status: 500 })
   }
 }

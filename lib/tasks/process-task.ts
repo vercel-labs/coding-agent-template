@@ -21,6 +21,32 @@ import { generateCommitMessage, createFallbackCommitMessage } from '@/lib/utils/
 import { decrypt } from '@/lib/crypto'
 import { generateId } from '@/lib/utils/id'
 
+/**
+ * Validate GitHub repository URL format
+ * Ensures URL is a valid GitHub repository before passing to git clone
+ */
+function validateGitHubUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+
+    // Must be github.com or www.github.com
+    if (!['github.com', 'www.github.com'].includes(parsed.hostname || '')) {
+      return false
+    }
+
+    // Path must match /owner/repo or /owner/repo.git format
+    // Allow alphanumeric, hyphens, underscores, and dots in owner/repo names
+    if (!/^\/[\w.-]+\/[\w.-]+(\.git)?$/.test(parsed.pathname)) {
+      return false
+    }
+
+    return true
+  } catch {
+    // Invalid URL format
+    return false
+  }
+}
+
 export interface TaskProcessingInput {
   taskId: string
   prompt: string
@@ -43,6 +69,8 @@ export interface TaskProcessingInput {
     name: string | null
     email: string | null
   } | null
+  userId?: string
+  mcpServers?: (typeof connectors.$inferSelect)[]
 }
 
 /**
@@ -262,6 +290,19 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
   try {
     console.log('Starting task processing')
 
+    // Re-validate GitHub token if repo access is needed
+    if (repoUrl && !githubToken) {
+      await logger.error('GitHub access no longer available')
+      await db
+        .update(tasks)
+        .set({
+          status: 'error',
+          error: 'GitHub token was revoked or expired. Please reconnect GitHub.',
+        })
+        .where(eq(tasks.id, taskId))
+      return
+    }
+
     await logger.updateStatus('processing', 'Task created, preparing to start...')
     await logger.updateProgress(10, 'Initializing task execution...')
 
@@ -280,6 +321,19 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
       await logger.info('Using authenticated GitHub access')
     }
     await logger.info('API keys configured for selected agent')
+
+    // Validate repository URL format
+    if (repoUrl && !validateGitHubUrl(repoUrl)) {
+      await logger.error('Invalid repository URL format')
+      await db
+        .update(tasks)
+        .set({
+          status: 'error',
+          error: 'Invalid GitHub repository URL format. Please provide a valid GitHub repository URL.',
+        })
+        .where(eq(tasks.id, taskId))
+      return
+    }
 
     if (await isTaskStopped(taskId)) {
       await logger.info('Task was stopped before execution began')
@@ -378,10 +432,29 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
     }
 
     type Connector = typeof connectors.$inferSelect
-    let mcpServers: Connector[] = []
+    let mcpServers: Connector[] = input.mcpServers || []
 
-    // Note: MCP servers are user-specific - we'd need to fetch them separately for MCP flows
-    // For now, task processing doesn't have access to connected MCP servers in MCP flow
+    // If no pre-fetched servers but we have userId, fetch them
+    if (mcpServers.length === 0 && input.userId) {
+      try {
+        const userConnectors = await db
+          .select()
+          .from(connectors)
+          .where(and(eq(connectors.userId, input.userId), eq(connectors.status, 'connected')))
+
+        mcpServers = userConnectors.map((connector: Connector) => ({
+          ...connector,
+          env: connector.env ? JSON.parse(decrypt(connector.env)) : null,
+          oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
+        }))
+
+        if (mcpServers.length > 0) {
+          await logger.info('Found connected MCP servers')
+        }
+      } catch {
+        await logger.info('Warning: Could not fetch MCP servers, continuing without them')
+      }
+    }
 
     const sanitizedPrompt = prompt.replace(/`/g, "'").replace(/\$/g, '').replace(/\\/g, '').replace(/^-/gm, ' -')
 

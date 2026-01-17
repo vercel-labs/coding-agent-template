@@ -76,7 +76,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (copyResult.exitCode !== 0) {
         const stderr = await copyResult.stderr()
-        console.error('Failed to copy file:', stderr)
+        console.error('Failed to copy file:')
         return NextResponse.json({ success: false, error: 'Failed to copy file' }, { status: 500 })
       }
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (mvResult.exitCode !== 0) {
         const stderr = await mvResult.stderr()
-        console.error('Failed to move file:', stderr)
+        console.error('Failed to move file:')
         return NextResponse.json({ success: false, error: 'Failed to move file' }, { status: 500 })
       }
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, error: 'Invalid operation' }, { status: 400 })
     }
   } catch (error) {
-    console.error('Error performing file operation:', error)
+    console.error('Error performing file operation:')
     return NextResponse.json({ success: false, error: 'Failed to perform file operation' }, { status: 500 })
   }
 }

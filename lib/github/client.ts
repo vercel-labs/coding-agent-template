@@ -69,7 +69,7 @@ export function parseGitHubUrl(repoUrl: string): { owner: string; repo: string }
     }
     return null
   } catch (error) {
-    console.error('Error parsing GitHub URL:', error)
+    console.error('Error parsing GitHub URL')
     return null
   }
 }
@@ -133,7 +133,7 @@ export async function createPullRequest(params: CreatePullRequestParams): Promis
       prNumber: response.data.number,
     }
   } catch (error: unknown) {
-    console.error('Error creating pull request:', error)
+    console.error('Error creating pull request')
 
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {
@@ -238,7 +238,7 @@ export async function mergePullRequest(params: MergePullRequestParams): Promise<
       sha: response.data.sha,
     }
   } catch (error: unknown) {
-    console.error('Error merging pull request:', error)
+    console.error('Error merging pull request')
 
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {
@@ -327,7 +327,7 @@ export async function getPullRequestStatus(params: GetPullRequestStatusParams): 
       mergeCommitSha: response.data.merge_commit_sha || undefined,
     }
   } catch (error: unknown) {
-    console.error('Error getting pull request status:', error)
+    console.error('Error getting pull request status')
 
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {

@@ -15,7 +15,7 @@ export async function fetchTeams(accessToken: string) {
       return []
     }
 
-    console.error('Failed to fetch teams', response.status, errorText)
+    console.error('Failed to fetch teams')
     return undefined
   }
 

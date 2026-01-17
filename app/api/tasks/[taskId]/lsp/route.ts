@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           token: sandboxToken,
         })
       } catch (error) {
-        console.error('Failed to reconnect to sandbox:', error)
+        console.error('Failed to reconnect to sandbox:')
         return NextResponse.json({ error: 'Failed to connect to sandbox' }, { status: 500 })
       }
     }
@@ -189,12 +189,12 @@ if (definitions && definitions.length > 0) {
         try {
           stdout = await result.stdout()
         } catch (e) {
-          console.error('Failed to read LSP stdout:', e)
+          console.error('Failed to read LSP stdout:')
         }
         try {
           stderr = await result.stderr()
         } catch (e) {
-          console.error('Failed to read LSP stderr:', e)
+          console.error('Failed to read LSP stderr:')
         }
 
         // Clean up
@@ -202,7 +202,7 @@ if (definitions && definitions.length > 0) {
 
         // Parse the result
         if (result.exitCode !== 0) {
-          console.error('LSP script failed:', stderr)
+          console.error('LSP script failed:')
           return NextResponse.json({ definitions: [], error: stderr || 'Script execution failed' })
         }
 
@@ -210,7 +210,7 @@ if (definitions && definitions.length > 0) {
           const parsed = JSON.parse(stdout.trim())
           return NextResponse.json(parsed)
         } catch (parseError) {
-          console.error('Failed to parse LSP result:', parseError)
+          console.error('Failed to parse LSP result:')
           return NextResponse.json({ definitions: [], error: 'Failed to parse TypeScript response' })
         }
       }
@@ -229,7 +229,7 @@ if (definitions && definitions.length > 0) {
         return NextResponse.json({ error: 'Unsupported LSP method' }, { status: 400 })
     }
   } catch (error) {
-    console.error('LSP request error:', error)
+    console.error('LSP request error:')
     return NextResponse.json({ error: 'Failed to process LSP request' }, { status: 500 })
   }
 }

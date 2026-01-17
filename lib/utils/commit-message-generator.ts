@@ -55,7 +55,7 @@ Return ONLY the commit message, nothing else.`
 
     return commitMessage
   } catch (error) {
-    console.error('Commit message generation error:', error)
+    console.error('Commit message generation error')
     // Return a fallback commit message based on the description
     return createFallbackCommitMessage(description)
   }

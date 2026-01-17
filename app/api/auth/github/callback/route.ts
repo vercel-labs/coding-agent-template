@@ -74,7 +74,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     if (!tokenResponse.ok) {
       console.error('[GitHub Callback] Token exchange failed with status:', tokenResponse.status)
       const errorText = await tokenResponse.text()
-      console.error('[GitHub Callback] Error response:', errorText)
+      console.error('[GitHub Callback] Error response:')
       return new Response('Failed to exchange code for token', { status: 400 })
     }
 
@@ -224,8 +224,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       return Response.redirect(new URL(storedRedirectTo, req.nextUrl.origin))
     }
   } catch (error) {
-    console.error('[GitHub Callback] OAuth callback error:', error)
-    console.error('[GitHub Callback] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('[GitHub Callback] OAuth callback error')
     return new Response(
       `Failed to complete GitHub authentication: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { status: 500 },

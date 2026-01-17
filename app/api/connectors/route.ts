@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       data: decryptedConnectors,
     })
   } catch (error) {
-    console.error('Error fetching connectors:', error)
+    console.error('Error fetching connectors:')
 
     return NextResponse.json(
       {

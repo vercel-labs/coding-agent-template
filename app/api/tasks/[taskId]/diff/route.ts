@@ -304,7 +304,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           },
         })
       } catch (error) {
-        console.error('Error getting local diff:', error)
+        console.error('Error getting local diff:')
 
         // Check if it's a 410 error (sandbox not running)
         if (error && typeof error === 'object' && 'status' in error && error.status === 410) {
@@ -389,7 +389,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               .where(eq(tasks.id, task.id))
           }
         } catch (error) {
-          console.error('Failed to fetch PR data, falling back to branch comparison:', error)
+          console.error('Failed to fetch PR data, falling back to branch comparison:')
           // Fall through to default branch comparison
         }
       }
@@ -439,7 +439,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         newContent = result.content
         newIsBase64 = result.isBase64
       } catch (error) {
-        console.error('Error fetching new content from ref:', headRef, error)
+        console.error('Error fetching new content from ref:')
         // File might have been deleted
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
           newContent = ''
@@ -472,11 +472,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
       })
     } catch (error: unknown) {
-      console.error('Error fetching file content from GitHub:', error)
+      console.error('Error fetching file content from GitHub:')
       return NextResponse.json({ error: 'Failed to fetch file content from GitHub' }, { status: 500 })
     }
   } catch (error) {
-    console.error('Error in diff API:', error)
+    console.error('Error in diff API:')
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error',

@@ -74,7 +74,7 @@ export async function createConnector(_: FormState, formData: FormData): Promise
       errors: {},
     }
   } catch (error) {
-    console.error('Error creating connector:', error)
+    console.error('Error creating connector')
 
     if (error instanceof ZodError) {
       const fieldErrors: Record<string, string> = {}
@@ -124,7 +124,7 @@ export async function toggleConnectorStatus(id: string, status: 'connected' | 'd
       message: `Connector ${status === 'connected' ? 'connected' : 'disconnected'} successfully`,
     }
   } catch (error) {
-    console.error('Error toggling connector status:', error)
+    console.error('Error toggling connector status')
 
     return {
       success: false,
@@ -203,7 +203,7 @@ export async function updateConnector(_: FormState, formData: FormData): Promise
       errors: {},
     }
   } catch (error) {
-    console.error('Error updating connector:', error)
+    console.error('Error updating connector')
 
     if (error instanceof ZodError) {
       const fieldErrors: Record<string, string> = {}
@@ -250,7 +250,7 @@ export async function deleteConnector(id: string) {
       message: 'Connector deleted successfully',
     }
   } catch (error) {
-    console.error('Error deleting connector:', error)
+    console.error('Error deleting connector')
 
     return {
       success: false,
@@ -285,7 +285,7 @@ export async function getConnectors() {
       data: decryptedConnectors,
     }
   } catch (error) {
-    console.error('Error fetching connectors:', error)
+    console.error('Error fetching connectors')
 
     return {
       success: false,

@@ -347,7 +347,7 @@ EOF`
         .update(taskMessages)
         .set({ content: accumulatedContent })
         .where(eq(taskMessages.id, agentMessageId))
-        .catch((err: Error) => console.error('Failed to update message:', err))
+        .catch((err: Error) => console.error('Failed to update message'))
     }
 
     // Check if any files were modified
@@ -373,7 +373,7 @@ EOF`
         .update(taskMessages)
         .set({ content: accumulatedContent })
         .where(eq(taskMessages.id, agentMessageId))
-        .catch((err: Error) => console.error('Failed to update message:', err))
+        .catch((err: Error) => console.error('Failed to update message'))
     }
 
     const errorMessage = error instanceof Error ? error.message : 'Failed to execute GitHub Copilot CLI in sandbox'

@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Error verifying GitHub repository:', error)
+    console.error('Error verifying GitHub repository:')
     return NextResponse.json({ accessible: false, error: 'Failed to verify repository' }, { status: 500 })
   }
 }

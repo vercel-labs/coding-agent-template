@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ own
 
     return NextResponse.json({ issues: filteredIssues })
   } catch (error) {
-    console.error('Error fetching issues:', error)
+    console.error('Error fetching issues:')
     return NextResponse.json({ error: 'Failed to fetch issues' }, { status: 500 })
   }
 }

@@ -86,7 +86,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       })),
     })
   } catch (error) {
-    console.error('Error fetching check runs:', error)
+    console.error('Error fetching check runs:')
     return NextResponse.json({ success: false, error: 'Failed to fetch check runs' }, { status: 500 })
   }
 }

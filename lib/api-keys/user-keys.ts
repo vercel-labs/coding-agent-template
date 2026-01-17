@@ -9,12 +9,14 @@ import { decrypt } from '@/lib/crypto'
 type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
 
 /**
- * Get API keys for a user by their userId.
- * This is the core function that retrieves API keys.
+ * Internal helper function to fetch and decrypt API keys from the database.
+ * This is a private implementation detail - use getUserApiKeys() or getUserApiKey() instead.
  *
  * @param userId - The user's internal ID
+ * @returns Object with all API keys (user keys override system env vars)
+ * @private
  */
-async function getApiKeysByUserId(userId: string): Promise<{
+async function _fetchKeysFromDatabase(userId: string): Promise<{
   OPENAI_API_KEY: string | undefined
   GEMINI_API_KEY: string | undefined
   CURSOR_API_KEY: string | undefined
@@ -63,10 +65,22 @@ async function getApiKeysByUserId(userId: string): Promise<{
 }
 
 /**
- * Get API keys for the currently authenticated user.
- * Returns user's keys if available, otherwise falls back to system env vars.
+ * Get all API keys for a user.
+ * Returns an object containing all available API keys (OpenAI, Gemini, Cursor, Anthropic, AI Gateway).
+ * User-provided keys override system environment variables.
  *
- * @param userId - Optional userId for API token authentication (bypasses session lookup)
+ * @param userId - Optional user ID for API token authentication. If not provided, uses current session.
+ * @returns Object with provider names mapped to decrypted API key values (or undefined if not set)
+ *
+ * @example
+ * // With session authentication
+ * const keys = await getUserApiKeys()
+ * console.log(keys.ANTHROPIC_API_KEY)
+ *
+ * @example
+ * // With API token authentication
+ * const keys = await getUserApiKeys('user-123')
+ * console.log(keys.OPENAI_API_KEY)
  */
 export async function getUserApiKeys(userId?: string): Promise<{
   OPENAI_API_KEY: string | undefined
@@ -86,7 +100,7 @@ export async function getUserApiKeys(userId?: string): Promise<{
 
   // If userId is provided directly, use it
   if (userId) {
-    return getApiKeysByUserId(userId)
+    return _fetchKeysFromDatabase(userId)
   }
 
   // Otherwise, try to get userId from session
@@ -95,15 +109,25 @@ export async function getUserApiKeys(userId?: string): Promise<{
     return systemKeys
   }
 
-  return getApiKeysByUserId(session.user.id)
+  return _fetchKeysFromDatabase(session.user.id)
 }
 
 /**
- * Get a specific API key for a provider.
- * Returns user's key if available, otherwise falls back to system env var.
+ * Get a single API key for a specific provider.
+ * More efficient than getUserApiKeys() when you only need one key.
+ * User-provided key overrides system environment variable.
  *
- * @param provider - The API key provider
- * @param userId - Optional userId for API token authentication (bypasses session lookup)
+ * @param provider - The API key provider ('openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway')
+ * @param userId - Optional user ID for API token authentication. If not provided, uses current session.
+ * @returns The decrypted API key value, or undefined if not set
+ *
+ * @example
+ * // With session authentication
+ * const anthropicKey = await getUserApiKey('anthropic')
+ *
+ * @example
+ * // With API token authentication
+ * const openaiKey = await getUserApiKey('openai', 'user-123')
  */
 export async function getUserApiKey(provider: Provider, userId?: string): Promise<string | undefined> {
   // Default to system key

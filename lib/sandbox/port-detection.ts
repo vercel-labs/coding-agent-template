@@ -62,7 +62,7 @@ export async function detectPortFromRepo(repoUrl: string, githubToken?: string |
     return 3000
   } catch (error) {
     // If any error occurs during detection, fall back to default port
-    console.error('Error detecting port from repository:', error)
+    console.error('Error detecting port from repository')
     return 3000
   }
 }

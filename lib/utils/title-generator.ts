@@ -53,7 +53,7 @@ Return ONLY the title, nothing else.`
 
     return title
   } catch (error) {
-    console.error('Title generation error:', error)
+    console.error('Title generation error')
     // Return a fallback title based on the prompt
     return createFallbackTitle(prompt)
   }

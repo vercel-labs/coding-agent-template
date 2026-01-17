@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     console.log('GitHub account disconnected successfully for user:', session.user.id)
     return Response.json({ success: true })
   } catch (error) {
-    console.error('Error disconnecting GitHub:', error)
+    console.error('Error disconnecting GitHub:')
     return Response.json(
       { error: 'Failed to disconnect', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 },

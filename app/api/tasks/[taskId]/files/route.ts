@@ -261,7 +261,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 stats = { additions: lineCount, deletions: 0 }
               }
             } catch (err) {
-              console.error('Error counting lines for new file:', err)
+              console.error('Error counting lines for new file:')
             }
           }
 
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         files = await Promise.all(filePromises)
       } catch (error) {
-        console.error('Error fetching local changes from sandbox:', error)
+        console.error('Error fetching local changes from sandbox:')
 
         // Check if it's a 410 error (sandbox not running)
         const is410Error =
@@ -481,7 +481,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           }
         })
       } catch (error) {
-        console.error('Error fetching local files from sandbox:', error)
+        console.error('Error fetching local files from sandbox:')
 
         // Check if it's a 410 error (sandbox not running)
         const is410Error =
@@ -550,7 +550,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             changes: 0,
           }))
       } catch (error: unknown) {
-        console.error('Error fetching repository tree:', error)
+        console.error('Error fetching repository tree:')
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
           return NextResponse.json({
             success: true,
@@ -647,7 +647,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             changes: file.changes || 0,
           })) || []
       } catch (error: unknown) {
-        console.error('Error fetching file changes from GitHub:', error)
+        console.error('Error fetching file changes from GitHub:')
 
         // If it's a 404 error, return empty results instead of failing
         if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
@@ -687,7 +687,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response
   } catch (error) {
-    console.error('Error fetching task files:', error)
+    console.error('Error fetching task files:')
     const response = NextResponse.json({ success: false, error: 'Failed to fetch task files' }, { status: 500 })
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return response

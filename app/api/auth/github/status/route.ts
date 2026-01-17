@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     return Response.json({ connected: false })
   } catch (error) {
-    console.error('Error checking GitHub connection status:', error)
+    console.error('Error checking GitHub connection status:')
     return Response.json({ connected: false, error: 'Failed to check status' }, { status: 500 })
   }
 }

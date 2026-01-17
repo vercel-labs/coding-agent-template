@@ -67,7 +67,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         unregisterSandbox(taskId)
       } catch (sandboxError) {
         // Log error but don't fail the merge
-        console.error('Error stopping sandbox after merge:', sandboxError)
+        console.error('Error stopping sandbox after merge:')
       }
     }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     })
   } catch (error) {
-    console.error('Error merging pull request:', error)
+    console.error('Error merging pull request:')
     return NextResponse.json({ error: 'Failed to merge pull request' }, { status: 500 })
   }
 }

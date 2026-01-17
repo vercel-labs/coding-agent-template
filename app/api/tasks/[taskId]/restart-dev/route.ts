@@ -186,7 +186,7 @@ export default mergeConfig(userConfig, defineConfig({
       message: 'Dev server restarted successfully',
     })
   } catch (error) {
-    console.error('Error restarting dev server:', error)
+    console.error('Error restarting dev server:')
     return NextResponse.json(
       {
         error: 'Failed to restart dev server',

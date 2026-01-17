@@ -34,7 +34,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   try {
     tokens = await client.validateAuthorizationCode('https://vercel.com/api/login/oauth/token', code, storedVerifier)
   } catch (error) {
-    console.error('Failed to validate authorization code:', error)
+    console.error('Failed to validate authorization code:')
     return new Response(null, {
       status: 400,
     })

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           token: sandboxToken,
         })
       } catch (error) {
-        console.error('Failed to reconnect to sandbox:', error)
+        console.error('Failed to reconnect to sandbox:')
         return NextResponse.json({ error: 'Failed to connect to sandbox' }, { status: 500 })
       }
     }
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         } catch {
           // Failed to read stderr
         }
-        console.error('Failed to write file, stderr:', stderr)
+        console.error('Failed to write file, stderr:')
         return NextResponse.json({ error: 'Failed to write file to sandbox' }, { status: 500 })
       }
 
@@ -103,11 +103,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         message: 'File saved successfully',
       })
     } catch (error) {
-      console.error('Error writing file to sandbox:', error)
+      console.error('Error writing file to sandbox:')
       return NextResponse.json({ error: 'Failed to write file to sandbox' }, { status: 500 })
     }
   } catch (error) {
-    console.error('Error in save-file API:', error)
+    console.error('Error in save-file API:')
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error',

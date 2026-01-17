@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           token: sandboxToken,
         })
       } catch (error) {
-        console.error('Failed to reconnect to sandbox:', error)
+        console.error('Failed to reconnect to sandbox:')
         return NextResponse.json({ success: false, error: 'Failed to connect to sandbox' }, { status: 500 })
       }
     }
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       })
     } catch (error) {
-      console.error('Error executing command:', error)
+      console.error('Error executing command:')
       return NextResponse.json(
         {
           success: false,
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       )
     }
   } catch (error) {
-    console.error('Error in terminal endpoint:', error)
+    console.error('Error in terminal endpoint:')
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 },

@@ -268,7 +268,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               }
             }
           } catch (sandboxError) {
-            console.error('Error reading from sandbox:', sandboxError)
+            console.error('Error reading from sandbox:')
           }
         }
 
@@ -321,7 +321,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               }
             }
           } catch (sandboxError) {
-            console.error('Error reading node_modules file from sandbox:', sandboxError)
+            console.error('Error reading node_modules file from sandbox:')
           }
         } else {
           // For regular files, try GitHub first
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               }
             }
           } catch (sandboxError) {
-            console.error('Error reading from sandbox:', sandboxError)
+            console.error('Error reading from sandbox:')
             // Continue to return 404 below
           }
         }
@@ -402,11 +402,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
       })
     } catch (error: unknown) {
-      console.error('Error fetching file content from GitHub:', error)
+      console.error('Error fetching file content from GitHub:')
       return NextResponse.json({ error: 'Failed to fetch file content from GitHub' }, { status: 500 })
     }
   } catch (error) {
-    console.error('Error in file-content API:', error)
+    console.error('Error in file-content API:')
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Internal server error',

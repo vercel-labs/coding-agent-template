@@ -29,7 +29,7 @@ export async function PATCH(
 
     return NextResponse.json({ pullRequest })
   } catch (error) {
-    console.error('Error closing pull request:', error)
+    console.error('Error closing pull request:')
     return NextResponse.json({ error: 'Failed to close pull request' }, { status: 500 })
   }
 }

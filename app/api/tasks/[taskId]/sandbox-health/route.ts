@@ -120,14 +120,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         })
       }
     } catch (sandboxError) {
-      console.error('Sandbox.get() error:', sandboxError)
+      console.error('Sandbox.get() error:')
       return NextResponse.json({
         status: 'stopped',
         message: 'Sandbox no longer exists',
       })
     }
   } catch (error) {
-    console.error('Error checking sandbox health:', error)
+    console.error('Error checking sandbox health:')
     return NextResponse.json({
       status: 'error',
       message: 'Failed to check sandbox health',

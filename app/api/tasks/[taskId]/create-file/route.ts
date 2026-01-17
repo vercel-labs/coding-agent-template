@@ -74,7 +74,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (mkdirResult.exitCode !== 0) {
         const stderr = await mkdirResult.stderr()
-        console.error('Failed to create parent directories:', stderr)
+        console.error('Failed to create parent directories:')
         return NextResponse.json({ success: false, error: 'Failed to create parent directories' }, { status: 500 })
       }
     }
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (touchResult.exitCode !== 0) {
       const stderr = await touchResult.stderr()
-      console.error('Failed to create file:', stderr)
+      console.error('Failed to create file:')
       return NextResponse.json({ success: false, error: 'Failed to create file' }, { status: 500 })
     }
 
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       filename,
     })
   } catch (error) {
-    console.error('Error creating file:', error)
+    console.error('Error creating file:')
 
     // Check if it's a 410 error (sandbox not running)
     if (error && typeof error === 'object' && 'status' in error && error.status === 410) {

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       message: 'Logs cleared successfully',
     })
   } catch (error) {
-    console.error('Error clearing logs:', error)
+    console.error('Error clearing logs:')
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Failed to clear logs' },
       { status: 500 },
