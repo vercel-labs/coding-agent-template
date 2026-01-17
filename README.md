@@ -28,6 +28,7 @@ You can deploy your own version of the AI Coding Agent to Vercel with one click:
 - **Persistent Storage**: Tasks stored in Neon Postgres database
 - **Git Integration**: Automatically creates branches and commits changes
 - **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
+- **MCP Server for Programmatic Access**: Expose the platform via Model Context Protocol for integration with Claude Desktop, Cursor, Windsurf, and other MCP clients
 - **MCP Server Support**: Connect MCP servers to Claude Code for extended capabilities (Claude only)
   - **Preset MCP Servers**: Browserbase, Context7, Convex, Figma, Hugging Face, Linear, Notion, Orbis, Playwright, Supabase
   - **Custom MCP Servers**: Add your own local or remote MCP servers
@@ -124,16 +125,55 @@ When Keep Alive is enabled, the sandbox stays alive after task completion for th
 
 ## External API Access
 
-Create tasks programmatically from external applications using API tokens.
+Access the platform programmatically from external applications using API tokens via REST API or Model Context Protocol (MCP).
 
-### Generate a Token
+### MCP Server (Recommended)
+
+The platform exposes an MCP server that integrates with AI assistants like Claude Desktop, Cursor, and Windsurf. This provides a standardized way to create and manage coding tasks through natural language.
+
+**Quick Setup for Claude Desktop:**
+
+1. Generate an API token from Settings (`/settings`)
+2. Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "aa-coding-agent": {
+      "url": "https://your-app.vercel.app/api/mcp?apikey=YOUR_API_TOKEN"
+    }
+  }
+}
+```
+
+3. Restart Claude Desktop and use natural language to create tasks:
+
+```
+Create a coding task to add unit tests for my auth module in
+https://github.com/myorg/myrepo using Claude Sonnet
+```
+
+**Available MCP Tools:**
+- `create-task` - Create new coding tasks
+- `get-task` - Retrieve task details and status
+- `continue-task` - Send follow-up messages
+- `list-tasks` - List your tasks with filters
+- `stop-task` - Stop running tasks
+
+For complete MCP documentation including Cursor and Windsurf setup, see **[docs/MCP_SERVER.md](docs/MCP_SERVER.md)**.
+
+### REST API
+
+Create tasks programmatically using standard HTTP requests.
+
+#### Generate a Token
 
 1. Sign in to the application
 2. Go to Settings (`/settings`)
 3. Click "Generate API Token"
 4. Copy the token (shown only once)
 
-### Create Tasks via API
+#### Create Tasks via API
 
 ```bash
 curl -X POST https://your-app.vercel.app/api/tasks \
@@ -147,14 +187,14 @@ curl -X POST https://your-app.vercel.app/api/tasks \
   }'
 ```
 
-### Token Security
+#### Token Security
 
 - Tokens are hashed (SHA256) before storage - raw token cannot be recovered
 - Set expiration dates for temporary access
 - Revoke tokens anytime from Settings
 - Tokens inherit your user permissions and rate limits
 
-### Token Endpoints
+#### Token Endpoints
 
 - **POST /api/tokens** - Create token
   - Body: `{ "name": "string", "expiresAt": "ISO date (optional)" }`
