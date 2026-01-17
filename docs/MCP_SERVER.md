@@ -33,6 +33,17 @@ The MCP server provides programmatic access to the AA Coding Agent platform via 
 
 ## Authentication Setup
 
+### Prerequisites
+
+**GitHub Connection Required**: To use the MCP server for repository operations, you must first connect your GitHub account via the web UI:
+
+1. Sign in to the AA Coding Agent web application
+2. Navigate to **Settings** (`/settings`)
+3. Go to **Accounts** and connect your GitHub account
+4. Authorize the application to access your repositories
+
+Your API token will automatically inherit your GitHub OAuth credentials, enabling full repository access via MCP.
+
 ### Step 1: Generate an API Token
 
 1. Sign in to the AA Coding Agent web application
@@ -76,7 +87,19 @@ This method is more secure but requires client support for custom headers.
 
 ### 1. create-task
 
-Create a new coding task with an AI agent.
+Create and immediately execute a new coding task with an AI agent.
+
+**Requirements:**
+- GitHub account must be connected (see Prerequisites above)
+- API token inherits your GitHub OAuth credentials for full repository access
+- Task execution starts automatically after creation
+
+**How It Works:**
+1. Verifies GitHub access is connected to your account
+2. Validates repository URL accessibility
+3. Creates task record with `processing` status
+4. Immediately triggers sandbox provisioning and agent execution
+5. Returns task ID for progress monitoring
 
 **Input Schema:**
 
@@ -118,7 +141,8 @@ Create a new coding task with an AI agent.
 {
   "success": true,
   "taskId": "abc123def456",
-  "status": "pending",
+  "status": "processing",
+  "message": "Task created and execution started. Use get-task to check progress.",
   "createdAt": "2026-01-17T10:30:00Z"
 }
 ```
@@ -429,6 +453,19 @@ All errors return an MCP response with `isError: true`:
 }
 ```
 
+**GitHub Not Connected**
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"error\":\"GitHub not connected\",\"message\":\"GitHub access is required for repository operations. Please connect your GitHub account via the web UI settings page.\",\"hint\":\"Sign in to the web application and connect GitHub under Settings > Accounts\"}"
+    }
+  ],
+  "isError": true
+}
+```
+
 **Rate Limit Exceeded**
 ```json
 {
@@ -624,11 +661,22 @@ curl -X POST "https://your-domain.com/api/mcp?apikey=YOUR_TOKEN" \
 **Problem**: Tasks fail to create or start
 
 **Solutions**:
-1. Verify the repository URL is valid and accessible
-2. Check that you have GitHub access connected in Settings
+1. **GitHub Not Connected** - If you receive a "GitHub not connected" error:
+   - Sign in to the web application
+   - Go to **Settings > Accounts**
+   - Click "Connect GitHub" and authorize the application
+   - Generate a new API token after connecting
+   - Retry the MCP request
+2. Verify the repository URL is valid and accessible from your GitHub account
 3. Ensure the selected AI agent has required API keys configured
-4. Review server logs for detailed error information
-5. Try creating the task through the web UI to isolate the issue
+4. Check that the selected AI model has sufficient quota/credits
+5. Review server logs for detailed error information
+6. Try creating the task through the web UI to isolate the issue
+
+**Note**: Tasks are executed immediately after creation with `processing` status. Use `get-task` to monitor progress. If a task fails to start, check that:
+- GitHub access is active and not rate-limited
+- The selected agent's API key is valid
+- The sandbox environment is available
 
 ### Getting Help
 

@@ -28,7 +28,7 @@ You can deploy your own version of the AI Coding Agent to Vercel with one click:
 - **Persistent Storage**: Tasks stored in Neon Postgres database
 - **Git Integration**: Automatically creates branches and commits changes
 - **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
-- **MCP Server for Programmatic Access**: Expose the platform via Model Context Protocol for integration with Claude Desktop, Cursor, Windsurf, and other MCP clients
+- **MCP Server for Programmatic Access**: Expose the platform via Model Context Protocol (MCP) for integration with Claude Desktop, Cursor, Windsurf, and other MCP clients with full GitHub repository access
 - **MCP Server Support**: Connect MCP servers to Claude Code for extended capabilities (Claude only)
   - **Preset MCP Servers**: Browserbase, Context7, Convex, Figma, Hugging Face, Linear, Notion, Orbis, Playwright, Supabase
   - **Custom MCP Servers**: Add your own local or remote MCP servers
@@ -129,12 +129,17 @@ Access the platform programmatically from external applications using API tokens
 
 ### MCP Server (Recommended)
 
-The platform exposes an MCP server that integrates with AI assistants like Claude Desktop, Cursor, and Windsurf. This provides a standardized way to create and manage coding tasks through natural language.
+The platform exposes an MCP server that integrates with AI assistants like Claude Desktop, Cursor, and Windsurf. This provides a standardized way to create and manage coding tasks through natural language, with full GitHub repository access for executing tasks.
+
+**Prerequisites:**
+- You must connect your GitHub account in the web UI first (go to `/settings` and connect GitHub)
+- Create an API token from Settings (`/settings`)
 
 **Quick Setup for Claude Desktop:**
 
-1. Generate an API token from Settings (`/settings`)
-2. Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+1. Sign in to the web app and connect your GitHub account (`/settings` → Accounts → Connect GitHub)
+2. Generate an API token from Settings (`/settings` → Tokens → Generate API Token)
+3. Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
@@ -146,7 +151,7 @@ The platform exposes an MCP server that integrates with AI assistants like Claud
 }
 ```
 
-3. Restart Claude Desktop and use natural language to create tasks:
+4. Restart Claude Desktop and use natural language to create tasks:
 
 ```
 Create a coding task to add unit tests for my auth module in
@@ -154,7 +159,7 @@ https://github.com/myorg/myrepo using Claude Sonnet
 ```
 
 **Available MCP Tools:**
-- `create-task` - Create new coding tasks
+- `create-task` - Create new coding tasks (verifies GitHub access before execution)
 - `get-task` - Retrieve task details and status
 - `continue-task` - Send follow-up messages
 - `list-tasks` - List your tasks with filters
