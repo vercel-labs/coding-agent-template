@@ -617,11 +617,11 @@ const isVercelKey = apiKey?.startsWith('vck_')
 
 Uses Vercel AI SDK 5 + AI Gateway for non-blocking branch name generation:
 
-**File**: `lib/actions/generate-branch-name.ts`
+**File**: `lib/utils/branch-name-generator.ts`
 
 ```typescript
 // Uses AI SDK 5 + AI Gateway to generate descriptive branch names
-// Non-blocking via Next.js 15 after() function
+// Non-blocking via Next.js after() function
 // Example outputs: feature/user-auth-A1b2C3, fix/memory-leak-X9y8Z7
 ```
 

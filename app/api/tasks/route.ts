@@ -7,7 +7,6 @@ import { createTaskLogger } from '@/lib/utils/task-logger'
 import { generateBranchName, createFallbackBranchName } from '@/lib/utils/branch-name-generator'
 import { generateTaskTitle, createFallbackTitle } from '@/lib/utils/title-generator'
 import { decrypt } from '@/lib/crypto'
-import { getServerSession } from '@/lib/session/get-server-session'
 import { getAuthFromRequest } from '@/lib/auth/api-token'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getGitHubUser } from '@/lib/github/client'
@@ -211,23 +210,21 @@ export async function POST(request: NextRequest) {
     // Get max sandbox duration for this user (user-specific > global > env var)
     const maxSandboxDuration = await getMaxSandboxDuration(user.id)
 
-    // Get MCP servers with session access (must be done before after() block)
-    const session = await getServerSession()
+    // Get MCP servers for this user (must be done before after() block)
+    // Use user.id from dual-auth (supports both session cookies and API tokens)
     let mcpServers: (typeof connectors.$inferSelect)[] = []
-    if (session?.user?.id) {
-      try {
-        const userConnectors = await db
-          .select()
-          .from(connectors)
-          .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
-        mcpServers = userConnectors.map((c) => ({
-          ...c,
-          env: c.env ? JSON.parse(decrypt(c.env)) : null,
-          oauthClientSecret: c.oauthClientSecret ? decrypt(c.oauthClientSecret) : null,
-        }))
-      } catch {
-        // Continue without MCP servers
-      }
+    try {
+      const userConnectors = await db
+        .select()
+        .from(connectors)
+        .where(and(eq(connectors.userId, user.id), eq(connectors.status, 'connected')))
+      mcpServers = userConnectors.map((c) => ({
+        ...c,
+        env: c.env ? JSON.parse(decrypt(c.env)) : null,
+        oauthClientSecret: c.oauthClientSecret ? decrypt(c.oauthClientSecret) : null,
+      }))
+    } catch {
+      // Continue without MCP servers
     }
 
     // Process the task asynchronously with timeout

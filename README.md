@@ -213,7 +213,7 @@ curl -X POST https://your-app.vercel.app/api/tasks \
 ## How It Works
 
 1. **Task Creation**: When you submit a task, it's stored in the database
-2. **AI Branch Name Generation**: AI SDK 5 + AI Gateway automatically generates a descriptive branch name based on your task (non-blocking using Next.js 15's `after()`)
+2. **AI Branch Name Generation**: AI SDK 5 + AI Gateway automatically generates a descriptive branch name based on your task (non-blocking using Next.js's `after()` function)
 3. **Sandbox Setup**: A Vercel sandbox is created with your repository
 4. **Agent Execution**: Your chosen coding agent (Claude Code, Codex CLI, GitHub Copilot CLI, Cursor CLI, Gemini CLI, or opencode) analyzes your prompt and makes changes
 5. **Git Operations**: Changes are committed and pushed to the AI-generated branch
@@ -223,7 +223,7 @@ curl -X POST https://your-app.vercel.app/api/tasks \
 
 The system automatically generates descriptive Git branch names using AI SDK 5 and Vercel AI Gateway. This feature:
 
-- **Non-blocking**: Uses Next.js 15's `after()` function to generate names without delaying task creation
+- **Non-blocking**: Uses Next.js's `after()` function to generate names without delaying task creation
 - **Descriptive**: Creates meaningful branch names like `feature/user-authentication-A1b2C3` or `fix/memory-leak-parser-X9y8Z7`
 - **Conflict-free**: Adds a 6-character alphanumeric hash to prevent naming conflicts
 - **Fallback**: Gracefully falls back to timestamp-based names if AI generation fails
@@ -238,7 +238,7 @@ The system automatically generates descriptive Git branch names using AI SDK 5 a
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, React 19, Tailwind CSS
+- **Frontend**: Next.js 16, React 19, Tailwind CSS
 - **UI Components**: shadcn/ui
 - **Database**: PostgreSQL with Drizzle ORM
 - **AI SDK**: AI SDK 5 with Vercel AI Gateway integration

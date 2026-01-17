@@ -396,8 +396,8 @@ await logger.error('Failed')
 ```
 
 ### AI Branch Name Generation
-Uses Vercel AI SDK 5 + AI Gateway in `lib/actions/generate-branch-name.ts`:
-- Non-blocking (Next.js 15 `after()` function)
+Uses Vercel AI SDK 5 + AI Gateway in `lib/utils/branch-name-generator.ts`:
+- Non-blocking (Next.js `after()` function)
 - Descriptive names like `feature/user-auth-A1b2C3` or `fix/memory-leak-X9y8Z7`
 - Fallback to timestamp-based names on failure
 - Includes 6-character hash to prevent conflicts

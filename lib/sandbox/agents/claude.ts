@@ -197,10 +197,7 @@ MCPEOF`
 
         if (writeResult.success) {
           await logger.info('MCP config file created successfully')
-
-          // Log which servers were configured
-          const serverNames = mcpServers.map((s) => s.name.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
-          await logger.info(`Configured MCP servers: ${serverNames.length} server(s)`)
+          await logger.info('MCP servers configured successfully')
         } else {
           const errorDetail = writeResult.error ? `: ${redactSensitiveInfo(writeResult.error).substring(0, 200)}` : ''
           await logger.info('Failed to create MCP config file' + errorDetail)
@@ -240,10 +237,7 @@ MCPEOF`
 
         if (writeResult.success) {
           await logger.info('MCP config file created successfully')
-
-          // Log which servers were configured
-          const serverNames = mcpServers.map((s) => s.name.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
-          await logger.info(`Configured MCP servers: ${serverNames.length} server(s)`)
+          await logger.info('MCP servers configured successfully')
         } else {
           const errorDetail = writeResult.error ? `: ${redactSensitiveInfo(writeResult.error).substring(0, 200)}` : ''
           await logger.info('Failed to create MCP config file' + errorDetail)

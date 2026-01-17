@@ -85,7 +85,7 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
     // Detect the appropriate port for the project
     const port = task.repoUrl ? await detectPortFromRepo(task.repoUrl, githubToken) : 3000
-    console.log(`Detected port ${port} for project`)
+    console.log('Port detection completed for project')
 
     // Create a new sandbox by cloning the repo
     const sandbox = await Sandbox.create({
@@ -256,28 +256,18 @@ export default mergeConfig(userConfig, defineConfig({
           // Import Writable for stream capture
           const { Writable } = await import('stream')
 
+          // Dev server output streams - logging disabled for security
+          // (output may contain sensitive paths, tokens, or environment variables)
           const captureServerStdout = new Writable({
-            write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-              const lines = chunk
-                .toString()
-                .split('\n')
-                .filter((line) => line.trim())
-              for (const line of lines) {
-                logger.info(`[SERVER] ${line}`).catch(() => {})
-              }
+            write(_chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+              // Dev server output is visible in sandbox terminal - no need to log
               callback()
             },
           })
 
           const captureServerStderr = new Writable({
-            write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-              const lines = chunk
-                .toString()
-                .split('\n')
-                .filter((line) => line.trim())
-              for (const line of lines) {
-                logger.info(`[SERVER] ${line}`).catch(() => {})
-              }
+            write(_chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+              // Dev server errors are visible in sandbox terminal - no need to log
               callback()
             },
           })
