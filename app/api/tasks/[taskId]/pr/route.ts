@@ -91,7 +91,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     })
   } catch (error) {
-    console.error('Error creating pull request:', error)
+    console.error('Error creating pull request:')
     return NextResponse.json({ error: 'Failed to create pull request' }, { status: 500 })
   }
 }

@@ -453,7 +453,7 @@ export async function executeClaudeInSandbox(
                       })
                       .where(eq(taskMessages.id, agentMessageId))
                       .then(() => {})
-                      .catch((err) => console.error('Failed to update message:', err))
+                      .catch((err) => console.error('Failed to update message'))
                   }
                   // Handle tool use
                   else if (contentBlock.type === 'tool_use') {
@@ -495,7 +495,7 @@ export async function executeClaudeInSandbox(
                         })
                         .where(eq(taskMessages.id, agentMessageId))
                         .then(() => {})
-                        .catch((err) => console.error('Failed to update message:', err))
+                        .catch((err) => console.error('Failed to update message'))
                     }
                   }
                 }

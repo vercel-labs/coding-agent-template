@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
       agentName: agent.charAt(0).toUpperCase() + agent.slice(1),
     })
   } catch (error) {
-    console.error('Error checking API key:', error)
+    console.error('Error checking API key:')
     return NextResponse.json({ error: 'Failed to check API key' }, { status: 500 })
   }
 }

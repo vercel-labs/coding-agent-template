@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (checkoutResult.exitCode !== 0) {
         const stderr = await checkoutResult.stderr()
-        console.error('Failed to discard changes:', stderr)
+        console.error('Failed to discard changes:')
         return NextResponse.json({ success: false, error: 'Failed to discard changes' }, { status: 500 })
       }
     } else {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (rmResult.exitCode !== 0) {
         const stderr = await rmResult.stderr()
-        console.error('Failed to delete file:', stderr)
+        console.error('Failed to delete file:')
         return NextResponse.json({ success: false, error: 'Failed to delete file' }, { status: 500 })
       }
     }
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       message: isTracked ? 'Changes discarded successfully' : 'New file deleted successfully',
     })
   } catch (error) {
-    console.error('Error discarding file changes:', error)
+    console.error('Error discarding file changes:')
 
     // Check if it's a 410 error (sandbox not running)
     if (error && typeof error === 'object' && 'status' in error && error.status === 410) {

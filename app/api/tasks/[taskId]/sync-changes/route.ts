@@ -70,7 +70,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
 
     if (addResult.exitCode !== 0) {
       const stderr = await addResult.stderr()
-      console.error('Failed to add changes:', stderr)
+      console.error('Failed to add changes:')
       return NextResponse.json({ success: false, error: 'Failed to add changes' }, { status: 500 })
     }
 
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
 
     if (statusResult.exitCode !== 0) {
       const stderr = await statusResult.stderr()
-      console.error('Failed to check status:', stderr)
+      console.error('Failed to check status:')
       return NextResponse.json({ success: false, error: 'Failed to check status' }, { status: 500 })
     }
 
@@ -109,7 +109,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
 
     if (commitResult.exitCode !== 0) {
       const stderr = await commitResult.stderr()
-      console.error('Failed to commit changes:', stderr)
+      console.error('Failed to commit changes:')
       return NextResponse.json({ success: false, error: 'Failed to commit changes' }, { status: 500 })
     }
 
@@ -122,7 +122,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
 
     if (pushResult.exitCode !== 0) {
       const stderr = await pushResult.stderr()
-      console.error('Failed to push changes:', stderr)
+      console.error('Failed to push changes:')
       return NextResponse.json({ success: false, error: 'Failed to push changes' }, { status: 500 })
     }
 
@@ -133,7 +133,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tas
       pushed: true,
     })
   } catch (error) {
-    console.error('Error syncing changes:', error)
+    console.error('Error syncing changes:')
 
     // Check if it's a 410 error (sandbox not running)
     if (error && typeof error === 'object' && 'status' in error && error.status === 410) {

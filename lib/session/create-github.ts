@@ -47,7 +47,7 @@ export async function createGitHubSession(accessToken: string, scope?: string): 
         email = primaryEmail?.email || emails[0]?.email || null
       }
     } catch (error) {
-      console.error('Failed to fetch GitHub emails:', error)
+      console.error('Failed to fetch GitHub emails')
     }
   }
 

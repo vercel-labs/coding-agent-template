@@ -70,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (mkdirResult.exitCode !== 0) {
       const stderr = await mkdirResult.stderr()
-      console.error('Failed to create folder:', stderr)
+      console.error('Failed to create folder:')
       return NextResponse.json({ success: false, error: 'Failed to create folder' }, { status: 500 })
     }
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       foldername,
     })
   } catch (error) {
-    console.error('Error creating folder:', error)
+    console.error('Error creating folder:')
 
     // Check if it's a 410 error (sandbox not running)
     if (error && typeof error === 'object' && 'status' in error && error.status === 410) {

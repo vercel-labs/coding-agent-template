@@ -5,12 +5,14 @@ import { getUserGitHubToken } from './user-token'
  * Create an Octokit instance for the currently authenticated user
  * Returns an Octokit instance with the user's GitHub token if connected, otherwise without authentication
  * Calling code should check octokit.auth to verify user has connected GitHub
+ *
+ * @param userId - Optional userId for API token authentication (bypasses session lookup)
  */
-export async function getOctokit(): Promise<Octokit> {
-  const userToken = await getUserGitHubToken()
+export async function getOctokit(userId?: string): Promise<Octokit> {
+  const userToken = await getUserGitHubToken(userId)
 
   if (!userToken) {
-    console.warn('No user GitHub token available. User needs to connect their GitHub account.')
+    console.warn('No user GitHub token available')
   }
 
   return new Octokit({
@@ -21,14 +23,16 @@ export async function getOctokit(): Promise<Octokit> {
 /**
  * Get the authenticated GitHub user's information
  * Returns null if no GitHub account is connected
+ *
+ * @param userId - Optional userId for API token authentication (bypasses session lookup)
  */
-export async function getGitHubUser(): Promise<{
+export async function getGitHubUser(userId?: string): Promise<{
   username: string
   name: string | null
   email: string | null
 } | null> {
   try {
-    const octokit = await getOctokit()
+    const octokit = await getOctokit(userId)
 
     if (!octokit.auth) {
       return null
@@ -42,7 +46,7 @@ export async function getGitHubUser(): Promise<{
       email: data.email,
     }
   } catch (error) {
-    console.error('Error getting GitHub user:', error)
+    console.error('Error getting GitHub user')
     return null
   }
 }
@@ -65,7 +69,7 @@ export function parseGitHubUrl(repoUrl: string): { owner: string; repo: string }
     }
     return null
   } catch (error) {
-    console.error('Error parsing GitHub URL:', error)
+    console.error('Error parsing GitHub URL')
     return null
   }
 }
@@ -129,7 +133,7 @@ export async function createPullRequest(params: CreatePullRequestParams): Promis
       prNumber: response.data.number,
     }
   } catch (error: unknown) {
-    console.error('Error creating pull request:', error)
+    console.error('Error creating pull request')
 
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {
@@ -234,7 +238,7 @@ export async function mergePullRequest(params: MergePullRequestParams): Promise<
       sha: response.data.sha,
     }
   } catch (error: unknown) {
-    console.error('Error merging pull request:', error)
+    console.error('Error merging pull request')
 
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {
@@ -323,7 +327,7 @@ export async function getPullRequestStatus(params: GetPullRequestStatusParams): 
       mergeCommitSha: response.data.merge_commit_sha || undefined,
     }
   } catch (error: unknown) {
-    console.error('Error getting pull request status:', error)
+    console.error('Error getting pull request status')
 
     // Handle specific error cases
     if (error && typeof error === 'object' && 'status' in error) {

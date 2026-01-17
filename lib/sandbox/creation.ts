@@ -714,7 +714,7 @@ fi
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-    console.error('Sandbox creation error:', error)
+    console.error('Sandbox creation error')
     await logger.error('Error occurred during sandbox creation')
 
     return {

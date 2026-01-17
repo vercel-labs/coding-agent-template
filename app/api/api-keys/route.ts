@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       apiKeys: decryptedKeys,
     })
   } catch (error) {
-    console.error('Error fetching API keys:', error)
+    console.error('Error fetching API keys:')
     return NextResponse.json({ error: 'Failed to fetch API keys' }, { status: 500 })
   }
 }
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error saving API key:', error)
+    console.error('Error saving API key:')
     return NextResponse.json({ error: 'Failed to save API key' }, { status: 500 })
   }
 }
@@ -114,7 +114,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting API key:', error)
+    console.error('Error deleting API key:')
     return NextResponse.json({ error: 'Failed to delete API key' }, { status: 500 })
   }
 }

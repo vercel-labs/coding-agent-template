@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       })),
     )
   } catch (error) {
-    console.error('Error fetching GitHub repositories:', error)
+    console.error('Error fetching GitHub repositories:')
     return NextResponse.json({ error: 'Failed to fetch repositories' }, { status: 500 })
   }
 }

@@ -175,14 +175,16 @@ const getClaudeRequiredKeys = (model: string): Provider[] => {
 }
 ```
 
-### Sandbox Workflow (lib/sandbox/creation.ts)
-1. **Validate credentials** - Check Vercel API tokens, user GitHub access
-2. **Create sandbox** - Provision Vercel sandbox with repo
+### Task Execution Workflow
+Task execution is centralized in `lib/tasks/process-task.ts` with `processTaskWithTimeout()`:
+1. **Validate task** - Check if task was stopped, wait for AI-generated branch name
+2. **Create sandbox** - Provision Vercel sandbox (via `lib/sandbox/creation.ts`)
 3. **Setup environment** - Configure API keys, NPM tokens, MCP servers
-4. **Install dependencies** - Detect package manager (npm/pnpm/yarn), run install if needed
-5. **Execute agent** - Run selected AI agent CLI
-6. **Git operations** - Commit changes, push to AI-generated branch
-7. **Cleanup** - Shutdown sandbox unless keepAlive is enabled
+4. **Execute agent** - Run selected AI agent CLI with githubToken and apiKeys
+5. **Git operations** - Commit changes, push to branch
+6. **Cleanup** - Shutdown sandbox unless keepAlive is enabled
+
+Works for both REST API and MCP task creation with same execution path.
 
 ### MCP Server Support (Claude Only)
 MCP servers extend Claude Code with additional tools. Configured in `connectors` table with:
@@ -246,16 +248,18 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 - `app/api/tokens/` - External API token management
 
 ### External API Token Authentication
-API tokens enable external applications to call the API without OAuth session cookies.
+API tokens enable external applications and MCP clients to call the API without OAuth session cookies.
 
 **How it works:**
 - Tokens are generated via UI at `/settings` or `POST /api/tokens`
-- Authenticate requests with `Authorization: Bearer <token>` header
+- Authenticate requests with `Authorization: Bearer <token>` header (or query param `?apikey=` for MCP)
+- Tokens carry `userId` context through to all service functions
+- GitHub access and API keys are looked up via `userId` from the token (same as session auth)
 - Tokens are SHA256 hashed before storage (never stored in plaintext)
 - Raw token is shown once at creation - cannot be retrieved later
 - Supports optional expiration dates
 - Max 20 tokens per user (rate limited)
-- Supported endpoints: All `/api/tasks/*` and `/api/tokens/*` routes
+- Supported endpoints: All `/api/tasks/*`, `/api/tokens/*`, and `/api/mcp` routes
 
 **Token Management Endpoints:**
 - `POST /api/tokens` - Create token (returns raw token once)
@@ -357,6 +361,29 @@ Check user-provided keys first, fall back to environment variables:
 ```typescript
 const anthropicKey = await getUserApiKey(userId, 'anthropic') || process.env.ANTHROPIC_API_KEY
 ```
+
+### API Token Authentication Support
+Functions now accept optional `userId` parameter for external API token authentication (bypasses session lookup):
+```typescript
+// Works with session cookie (no userId)
+const token = await getUserGitHubToken()
+
+// Works with API token auth (explicit userId)
+const token = await getUserGitHubToken(userId)
+
+// Same pattern for other functions
+const apiKeys = await getUserApiKeys(userId)
+const user = await getGitHubUser(userId)
+```
+
+This pattern enables MCP tools and external clients to work with full user context using API tokens.
+
+### Shared Task Processing Module
+Central task processing logic at `lib/tasks/process-task.ts` handles both REST API and MCP execution:
+- `processTaskWithTimeout(input)` - Main task execution with timeout wrapper
+- `generateTaskBranchName()` - Non-blocking AI-generated branch names
+- `generateTaskTitleAsync()` - Non-blocking AI-generated task titles
+- Accepts `TaskProcessingInput` with githubToken and githubUser for authenticated execution
 
 ### Task Logging with TaskLogger
 Use `lib/utils/task-logger.ts` for structured, real-time task logs:
@@ -460,9 +487,11 @@ Authorization: Bearer YOUR_API_TOKEN
 
 ### Available Tools
 
-1. **create-task** - Create a new coding task
+1. **create-task** - Create and execute a new coding task
    - Input: `prompt`, `repoUrl`, `selectedAgent`, `selectedModel`, `installDependencies`, `keepAlive`
    - Returns: `taskId`, `status`, `createdAt`
+   - **Key behavior**: Verifies GitHub access, retrieves user API keys, and triggers full task execution automatically
+   - Requires GitHub account connected via web UI settings
 
 2. **get-task** - Retrieve task details
    - Input: `taskId`
@@ -495,6 +524,18 @@ Authorization: Bearer YOUR_API_TOKEN
 
 See `docs/MCP_SERVER.md` for complete documentation including Cursor and Windsurf configuration.
 
+### External Access via API Tokens
+
+MCP clients can now create and execute tasks with full GitHub integration using API tokens:
+
+- **GitHub context**: API token authentication passes `userId` through to all functions, enabling GitHub token retrieval and user info lookup
+- **Verified access**: `create-task` verifies GitHub connection before task creation - returns error if GitHub not connected
+- **Automatic execution**: Task execution is triggered immediately by `create-task` tool using `processTaskWithTimeout()` from `lib/tasks/process-task.ts`
+- **API key retrieval**: User's stored API keys are automatically retrieved and passed to the agent for all AI providers
+- **Full workflow**: MCP tasks follow the complete execution flow: sandbox creation → agent execution → Git commit/push → sandbox cleanup
+
+**Workflow**: User connects GitHub via web UI → generates API token → configures MCP client → `create-task` automatically handles GitHub access verification and full task execution
+
 ### Security Notes
 
 - API tokens appear in URLs when using query parameter authentication - **always use HTTPS**
@@ -502,13 +543,15 @@ See `docs/MCP_SERVER.md` for complete documentation including Cursor and Windsur
 - Rate limiting applies to MCP requests (same limits as web UI)
 - All tools enforce user-scoped access control
 - Rotate tokens regularly from Settings page
+- GitHub access is required for `create-task` - will return error if not connected
 
 ### Implementation
 
 - Route handler: `app/api/mcp/route.ts`
-- Tool implementations: `lib/mcp/tools/`
+- Tool implementations: `lib/mcp/tools/` (create-task uses `lib/tasks/process-task.ts`)
 - Schemas: `lib/mcp/schemas.ts`
 - Uses `mcp-handler` package for MCP protocol support
+- Task processing: `lib/tasks/process-task.ts` - Shared logic for REST API and MCP execution
 
 ## Important Reminders
 

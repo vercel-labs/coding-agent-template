@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       avatar_url: user.avatar_url,
     })
   } catch (error) {
-    console.error('Error fetching GitHub user:', error)
+    console.error('Error fetching GitHub user:')
     return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 })
   }
 }

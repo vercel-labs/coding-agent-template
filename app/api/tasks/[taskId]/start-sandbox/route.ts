@@ -318,7 +318,7 @@ export default mergeConfig(userConfig, defineConfig({
       sandboxUrl,
     })
   } catch (error) {
-    console.error('Error starting sandbox:', error)
+    console.error('Error starting sandbox:')
     return NextResponse.json(
       {
         error: 'Failed to start sandbox',

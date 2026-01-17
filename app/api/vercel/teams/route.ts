@@ -43,7 +43,7 @@ export async function GET() {
 
     return NextResponse.json({ scopes })
   } catch (error) {
-    console.error('Error fetching Vercel teams:', error)
+    console.error('Error fetching Vercel teams:')
     return NextResponse.json({ error: 'Failed to fetch Vercel teams' }, { status: 500 })
   }
 }

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ own
 
     return NextResponse.json({ commits })
   } catch (error) {
-    console.error('Error fetching commits:', error)
+    console.error('Error fetching commits:')
     return NextResponse.json({ error: 'Failed to fetch commits' }, { status: 500 })
   }
 }

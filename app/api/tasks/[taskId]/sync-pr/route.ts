@@ -74,7 +74,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     })
   } catch (error) {
-    console.error('Error syncing pull request status:', error)
+    console.error('Error syncing pull request status:')
     return NextResponse.json({ error: 'Failed to sync pull request status' }, { status: 500 })
   }
 }

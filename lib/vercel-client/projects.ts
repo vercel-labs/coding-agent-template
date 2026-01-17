@@ -63,7 +63,7 @@ export async function createProject(
     console.log('Successfully created Vercel project')
     return response as unknown as CreateProjectResponse
   } catch (error) {
-    console.error('Error creating Vercel project:', error)
+    console.error('Error creating Vercel project')
 
     // Check for permission errors
     if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 403) {

@@ -92,7 +92,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       comments: allComments,
     })
   } catch (error) {
-    console.error('Error fetching PR comments:', error)
+    console.error('Error fetching PR comments:')
     return NextResponse.json({ success: false, error: 'Failed to fetch PR comments' }, { status: 500 })
   }
 }

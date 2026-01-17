@@ -70,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (statusResult.exitCode !== 0) {
       const stderr = await statusResult.stderr()
-      console.error('Failed to check status:', stderr)
+      console.error('Failed to check status:')
       return NextResponse.json({ success: false, error: 'Failed to check status' }, { status: 500 })
     }
 
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       })
       if (addResult.exitCode !== 0) {
         const stderr = await addResult.stderr()
-        console.error('Failed to add changes:', stderr)
+        console.error('Failed to add changes:')
         return NextResponse.json({ success: false, error: 'Failed to add changes' }, { status: 500 })
       }
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       })
       if (commitResult.exitCode !== 0) {
         const stderr = await commitResult.stderr()
-        console.error('Failed to commit changes:', stderr)
+        console.error('Failed to commit changes:')
         return NextResponse.json({ success: false, error: 'Failed to commit changes' }, { status: 500 })
       }
     }
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         if (fetchResult.exitCode !== 0) {
           const stderr = await fetchResult.stderr()
-          console.error('Failed to fetch from remote:', stderr)
+          console.error('Failed to fetch from remote:')
           return NextResponse.json({ success: false, error: 'Failed to fetch from remote' }, { status: 500 })
         }
 
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (resetResult.exitCode !== 0) {
       const stderr = await resetResult.stderr()
-      console.error('Failed to reset:', stderr)
+      console.error('Failed to reset:')
       return NextResponse.json({ success: false, error: 'Failed to reset changes' }, { status: 500 })
     }
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (cleanResult.exitCode !== 0) {
       const stderr = await cleanResult.stderr()
-      console.error('Failed to clean:', stderr)
+      console.error('Failed to clean:')
       // Don't fail the operation if clean fails
     }
 
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       hadLocalChanges: hasChanges,
     })
   } catch (error) {
-    console.error('Error resetting changes:', error)
+    console.error('Error resetting changes:')
 
     // Check if it's a 410 error (sandbox not running)
     if (error && typeof error === 'object' && 'status' in error && error.status === 410) {

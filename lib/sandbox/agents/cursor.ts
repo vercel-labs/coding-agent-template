@@ -386,7 +386,7 @@ EOF`
                       db.update(taskMessages)
                         .set({ content: accumulatedContent })
                         .where(eq(taskMessages.id, agentMessageId))
-                        .catch((err: Error) => console.error('Failed to update message:', err))
+                        .catch((err: Error) => console.error('Failed to update message'))
                     }
                   }
                 } else if (parsed.type === 'assistant' && parsed.message?.content) {
@@ -402,7 +402,7 @@ EOF`
                     db.update(taskMessages)
                       .set({ content: accumulatedContent })
                       .where(eq(taskMessages.id, agentMessageId))
-                      .catch((err: Error) => console.error('Failed to update message:', err))
+                      .catch((err: Error) => console.error('Failed to update message'))
                   }
                 }
               }

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
           })
         }
       } catch (error) {
-        console.error('Failed to revoke GitHub token:', error)
+        console.error('Failed to revoke GitHub token:')
       }
     } else {
       // Revoke Vercel token - fetch from database
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
           })
         }
       } catch (error) {
-        console.error('Failed to revoke Vercel token:', error)
+        console.error('Failed to revoke Vercel token:')
       }
     }
   }

@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
       username,
     })
   } catch (error) {
-    console.error('Error fetching user repositories:', error)
+    console.error('Error fetching user repositories:')
     return NextResponse.json({ error: 'Failed to fetch repositories' }, { status: 500 })
   }
 }

@@ -52,7 +52,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           token: sandboxToken,
         })
       } catch (error) {
-        console.error('Failed to reconnect to sandbox:', error)
+        console.error('Failed to reconnect to sandbox:')
         return NextResponse.json({ error: 'Failed to connect to sandbox' }, { status: 500 })
       }
     }
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       files: [],
     })
   } catch (error) {
-    console.error('Error in project-files API:', error)
+    console.error('Error in project-files API:')
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 },

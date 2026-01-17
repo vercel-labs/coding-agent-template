@@ -24,8 +24,8 @@ export async function pushChangesToBranch(
     if (!addResult.success) {
       await logger.info('Failed to add changes')
       if (addResult.error) {
-        console.error('Git add error details:', addResult.error)
-        await logger.error(`Git add failed: ${addResult.error}`)
+        console.error('Git add error details')
+        await logger.error('Git add failed')
       }
       return { success: false }
     }
@@ -36,8 +36,8 @@ export async function pushChangesToBranch(
     if (!commitResult.success) {
       await logger.info('Failed to commit changes')
       if (commitResult.error) {
-        console.error('Commit error details:', commitResult.error)
-        await logger.error(`Commit failed: ${commitResult.error}`)
+        console.error('Commit error details')
+        await logger.error('Commit failed')
       }
       return { success: false }
     }

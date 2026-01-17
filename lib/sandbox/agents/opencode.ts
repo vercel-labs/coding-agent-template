@@ -88,7 +88,7 @@ export async function executeOpenCodeInSandbox(
       installResult = await runAndLogCommand(sandbox, 'npm', ['install', '-g', 'opencode-ai'], logger)
 
       if (!installResult.success) {
-        console.error('OpenCode CLI installation failed:', { error: installResult.error })
+        console.error('OpenCode CLI installation failed')
         return {
           success: false,
           error: `Failed to install OpenCode CLI: ${installResult.error || 'Unknown error'}`,
@@ -430,7 +430,7 @@ EOF`
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to execute OpenCode in sandbox'
-    console.error('OpenCode execution error:', error)
+    console.error('OpenCode execution error')
 
     if (logger) {
       await logger.error(errorMessage)

@@ -34,7 +34,7 @@ export function useTask(taskId: string) {
         errorOccurred = true
       }
     } catch (err) {
-      console.error('Error fetching task:', err)
+      console.error('Error fetching task:')
       setError('Failed to fetch task')
       errorOccurred = true
     } finally {

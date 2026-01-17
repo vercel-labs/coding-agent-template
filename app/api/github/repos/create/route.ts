@@ -58,7 +58,7 @@ async function copyFilesRecursively(
             content: Buffer.from(content).toString('base64'),
           })
         } catch (error) {
-          console.error('Error copying file:', error)
+          console.error('Error copying file:')
           // Continue with other files even if one fails
         }
       } else if (item.type === 'dir') {
@@ -67,7 +67,7 @@ async function copyFilesRecursively(
       }
     }
   } catch (error) {
-    console.error('Error processing directory:', error)
+    console.error('Error processing directory:')
     // Continue even if one directory fails
   }
 }
@@ -98,7 +98,7 @@ async function populateRepoFromTemplate(octokit: Octokit, repoOwner: string, rep
       '', // Root path
     )
   } catch (error) {
-    console.error('Error populating repository from template:', error)
+    console.error('Error populating repository from template:')
     throw error
   }
 }
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
         try {
           await populateRepoFromTemplate(octokit, repo.data.owner.login, repo.data.name, template as RepoTemplate)
         } catch (error) {
-          console.error('Error populating repository from template:', error)
+          console.error('Error populating repository from template:')
           // Don't fail the entire operation if template population fails
           // The repository was created successfully, just without template files
         }
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
         private: repo.data.private,
       })
     } catch (error: unknown) {
-      console.error('GitHub API error:', error)
+      console.error('GitHub API error:')
 
       // Handle specific GitHub API errors
       if (error && typeof error === 'object' && 'status' in error) {
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
       throw error
     }
   } catch (error) {
-    console.error('Error creating repository:', error)
+    console.error('Error creating repository:')
     return NextResponse.json({ error: 'Failed to create repository' }, { status: 500 })
   }
 }
