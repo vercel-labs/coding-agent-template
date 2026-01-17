@@ -63,17 +63,18 @@ In Claude Code, Claude invokes subagents using the Task tool with three paramete
    - **skills** (optional): Auto-load specified skill names
 5. Write specialized system prompt
 6. **Direct Implementation**: Implement the subagent by **directly writing/editing the file** in `.claude/agents/`. Do not just propose the markdown; use the `Write` or `Edit` tools to apply the changes.
-7. **Registry Update**: After creation or refinement, you **MUST** update @CLAUDE_AGENTS.md to keep the central registry accurate.
+7. **Registry Update**: After creation or refinement, you **MUST** update @CLAUDE.md (in the "Delegating to Specialized Subagents" section) to keep the central registry accurate.
 8. Save and invoke (manually or auto-delegate)
 
 ### Registry Maintenance
 
-**All subagents must be registered in @CLAUDE_AGENTS.md.**
+**All subagents must be registered in @CLAUDE.md** (in the "Delegating to Specialized Subagents" section).
 
 When adding or refining an agent:
-1. Update the **Quick Reference Table** with correct triggers and primary use.
-2. Update the **Agent Details** section with the refined mission, tools, and examples.
-3. Ensure the **Registry Sync** rules are followed to maintain project-wide visibility of agent capabilities.
+1. Update the **Subagent List** in @CLAUDE.md with the agent name and description.
+2. Organize the agent under the appropriate category (Core Infrastructure, Security, Frontend, etc.)
+3. Ensure descriptions are clear and concise, indicating the agent's primary responsibilities and use cases.
+4. Keep the registry synchronized to maintain project-wide visibility of agent capabilities.
 
 ### File Structure
 

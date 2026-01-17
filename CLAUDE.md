@@ -4,17 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a multi-agent AI coding assistant platform built with Next.js 15 and React 19. It enables users to execute automated coding tasks through various AI agents (Claude, Codex, Copilot, Cursor, Gemini, OpenCode) running in isolated Vercel sandboxes. The app supports multi-user authentication, task management, MCP server integration, and GitHub repository access.
+This is a multi-agent AI coding assistant platform built with Next.js 16 and React 19. It enables users to execute automated coding tasks through various AI agents (Claude, Codex, Copilot, Cursor, Gemini, OpenCode) running in isolated Vercel sandboxes. The app supports multi-user authentication, task management, MCP server integration, and GitHub repository access.
 
 ## Core Architecture
 
 ### Technology Stack
-- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, shadcn/ui
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Streamdown (markdown rendering)
 - **Backend**: Next.js API routes, Drizzle ORM, PostgreSQL (Supabase)
 - **AI**: Vercel AI SDK 5, multiple AI agent CLIs (Claude Code, Codex, Copilot, Cursor, Gemini, OpenCode)
 - **Execution**: Vercel Sandbox (isolated container environments)
 - **Auth**: OAuth (GitHub, Vercel), encrypted session tokens (JWE)
 - **Database**: PostgreSQL (Supabase) with Drizzle ORM
+- **MCP**: Model Context Protocol (MCP Handler 1.25.2) for agent tool integration
 
 ### Key Directories
 - `app/` - Next.js App Router pages and API routes
@@ -195,13 +196,33 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 **When working on this codebase, proactively delegate tasks to specialized subagents to improve efficiency and code quality.** This project includes custom Claude Code subagents (located in `.claude/agents/`) that are expert in specific domains of this platform. Using subagents keeps the main conversation focused while allowing deep, specialized work to happen in isolated contexts with appropriate tool access and validation patterns.
 
 **Available Custom Subagents:**
-- **api-route-architect** - Generate production-ready Next.js 15 API routes with session validation, rate limiting, Zod schemas, and static-string logging
-- **database-schema-optimizer** - Design tables, generate Drizzle migrations, create type-safe query helpers, validate relationships and encryption
-- **security-logging-enforcer** - Audit code for vulnerabilities, enforce static-string logging, validate encryption coverage, prevent data leakage
-- **sandbox-agent-manager** - Unify agent implementations, standardize sandbox lifecycle, handle error recovery, manage session persistence
-- **react-component-builder** - Create type-safe, accessible React 19 components with shadcn/ui, Zod validation, and WCAG 2.1 AA compliance
 
-**When to Delegate:** Use subagents for focused, domain-specific work that benefits from specialized expertise and isolated context. For example: delegate API route creation to `api-route-architect`, database changes to `database-schema-optimizer`, security audits to `security-logging-enforcer`, agent refactoring to `sandbox-agent-manager`, and UI component development to `react-component-builder`. Additionally, consider using other available subagents from Claude Code's built-in library or user-installed plugins when their capabilities match the task at hand.
+**Core Infrastructure & API:**
+- **api-route-architect** - Generate production-ready Next.js 16 API routes with session validation, rate limiting, Zod schemas, and static-string logging
+- **database-schema-optimizer** - Design tables, generate Drizzle migrations, create type-safe query helpers, validate relationships and encryption
+- **sandbox-agent-manager** - Unify agent implementations, standardize sandbox lifecycle, handle error recovery, manage session persistence
+
+**Security & Code Quality:**
+- **security-logging-enforcer** - Audit code for vulnerabilities, enforce static-string logging, validate encryption coverage, prevent data leakage
+- **security-expert** - Deep security analysis, threat modeling, cryptographic validation, and access control review
+- **senior-code-reviewer** - Architectural review, code quality standards enforcement, pattern validation, and refactoring guidance
+
+**Frontend & UI:**
+- **react-component-builder** - Create type-safe, accessible React 19 components with shadcn/ui, Zod validation, and WCAG 2.1 AA compliance
+- **react-expert** - React 19 patterns, hooks optimization, performance tuning, and component architecture design
+- **shadcn-ui-expert** - shadcn/ui component integration, theming, customization, and design consistency
+- **tailwind-expert** - Tailwind CSS styling, responsive design patterns, utility optimization, and design system implementation
+- **ui-engineer** - Complete UI/UX implementation, responsive layouts, accessibility compliance, and visual design execution
+
+**Backend & Data:**
+- **supabase-expert** - PostgreSQL schema design, Supabase integrations, RLS policies, and database optimization
+- **docs-maintainer** - Documentation accuracy, consistency across guides, broken link detection, and content organization
+
+**Development & Research:**
+- **agent-expert** - AI agent architecture, prompt engineering, model selection, and agentic workflow design
+- **research-search-expert** - Codebase exploration, pattern discovery, dependency analysis, and architectural research
+
+**When to Delegate:** Use subagents for focused, domain-specific work that benefits from specialized expertise and isolated context. For example: delegate API route creation to `api-route-architect`, database changes to `database-schema-optimizer`, security audits to `security-logging-enforcer` or `security-expert`, agent refactoring to `sandbox-agent-manager`, UI component development to `react-component-builder`, and documentation updates to `docs-maintainer`. Additionally, consider using other available subagents from Claude Code's built-in library or user-installed plugins when their capabilities match the task at hand.
 
 **How Subagents Help:** Subagents provide specialized system prompts, enforce domain-specific patterns, maintain isolated context for high-volume operations, and reduce main conversation clutter. They ensure consistency (all API routes follow the same pattern), enforce security requirements (static logging, encryption), and accelerate development (automated boilerplate, type-safe generation). After a subagent completes its work, it returns results to the main conversation where you can integrate findings, apply changes, or proceed with dependent tasks.
 
