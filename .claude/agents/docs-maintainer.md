@@ -37,6 +37,37 @@ Keep the repository’s documentation accurate, navigable, and perfectly aligned
 - **Links**: Ensure all relative links and `@path` references resolve to existing files.
 - **Commands**: Verify all shell commands (e.g., `pnpm dev`, `pnpm test`) match the actual scripts in `package.json`.
 
+### Folder-specific CLAUDE.md files
+
+#### Procedure
+1. **Parse inputs and validate**: Confirm folder exists and determine operation mode.
+2. **Analyze module context**: Extract domain purpose, local patterns, and integration points from target folder.
+3. **Identify module boundaries**: Determine what the folder owns versus delegates to other modules.
+4. **Extract domain-specific elements**:
+   - **Domain purpose**: Single most important rule for this module
+   - **Local patterns**: Naming conventions unique to this folder
+   - **Integration points**: How this connects to other modules
+   - **Module boundaries**: Ownership and delegation responsibilities
+5. **Apply mode-specific formatting**:
+   - **domain-context**: Generate specialized documentation with module essentials
+   - **condense**: Create compact version (20-40 lines) preserving critical boundaries
+6. **Assemble documentation**: Use standardized template structure with flat bullet lists.
+7. **Write to disk**: Save as CLAUDE.md within target folder, avoiding duplication of root content.
+
+#### Deliverables
+
+- **Module CLAUDE.md**: Ultra-lean documentation file (20-40 lines) with folder-specific essentials only.
+- **Console summary**: Brief report of folder analyzed, sections generated, and line count.
+- **Mode-specific outputs**: Domain analysis report or condensed version as appropriate.
+
+#### Validation
+- **Length control**: Target 20-40 lines maximum (ultra-lean, avoid diluting context).
+- **Content scope**: Include only essentials unique to this folder - never repeat root content.
+- **Structure compliance**: Verify sections follow module-specific sequencing and naming conventions.
+- **Inheritance awareness**: Ensure root rules are referenced but not duplicated.
+- **Freshness validation**: Confirm documentation reflects current folder state and patterns.
+- **Integration verification**: Validate module boundaries and connection points are accurately documented.
+
 ## Method (Step-by-Step)
 
 1. **Intake & Discovery**:
