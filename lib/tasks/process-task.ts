@@ -194,10 +194,18 @@ export async function generateTaskTitleAsync(
 }
 
 /**
- * Wait for AI-generated branch name with timeout
+ * Wait for AI-generated branch name with exponential backoff
+ *
+ * Polls the database with increasing intervals to check if the branch name
+ * has been generated. Uses exponential backoff to reduce database load.
+ *
+ * @param taskId - The task ID to check
+ * @param maxWaitMs - Maximum time to wait in milliseconds (default: 10000)
+ * @returns The branch name if generated within timeout, null otherwise
  */
 async function waitForBranchName(taskId: string, maxWaitMs: number = 10000): Promise<string | null> {
   const startTime = Date.now()
+  let waitMs = 1000 // Start with 1 second
 
   while (Date.now() - startTime < maxWaitMs) {
     try {
@@ -209,7 +217,8 @@ async function waitForBranchName(taskId: string, maxWaitMs: number = 10000): Pro
       console.error('Error checking for branch name')
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, waitMs))
+    waitMs = Math.min(waitMs * 1.5, 3000) // Exponential backoff, max 3s
   }
 
   return null
@@ -260,6 +269,25 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
       const timeoutLogger = createTaskLogger(input.taskId)
       await timeoutLogger.error('Task execution timed out')
       await timeoutLogger.updateStatus('error', 'Task execution timed out. The operation took too long to complete.')
+
+      // Clean up sandbox on timeout to prevent resource leaks
+      try {
+        const [task] = await db.select().from(tasks).where(eq(tasks.id, input.taskId)).limit(1)
+        if (task?.sandboxId && !input.keepAlive) {
+          const { Sandbox } = await import('@vercel/sandbox')
+          const sandbox = await Sandbox.get({
+            sandboxId: task.sandboxId,
+            teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
+            projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
+            token: process.env.SANDBOX_VERCEL_TOKEN!,
+          })
+          await shutdownSandbox(sandbox)
+          unregisterSandbox(input.taskId)
+          await timeoutLogger.info('Sandbox cleaned up after timeout')
+        }
+      } catch (cleanupError) {
+        console.error('Failed to cleanup sandbox after timeout')
+      }
     } else {
       throw error
     }

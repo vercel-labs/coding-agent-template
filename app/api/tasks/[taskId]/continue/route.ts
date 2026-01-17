@@ -198,7 +198,7 @@ async function continueTask(
 
       // Detect the appropriate port for the project
       const port = await detectPortFromRepo(repoUrl, githubToken)
-      console.log(`Detected port ${port} for project`)
+      console.log('Port detection completed for project')
 
       // Create sandbox and checkout the existing branch
       const sandboxResult = await createSandbox(
