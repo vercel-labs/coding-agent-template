@@ -1,83 +1,31 @@
-# app/api/auth - OAuth & Session Management
+# app/api/auth
 
-Handles user authentication flows (OAuth callbacks, sign-in/sign-out), session encryption, and GitHub account linking.
+OAuth sign-in/connect flows, session creation, account merging, sign-out cleanup.
 
 ## Domain Purpose
-Manage user authentication lifecycle: OAuth flows with GitHub/Vercel, JWE session token creation, account merging, token encryption, sign-out cleanup.
+- Create JWE sessions from GitHub/Vercel OAuth tokens
+- Handle GitHub account linking to existing users (account merging)
+- Validate OAuth state parameter to prevent authorization code interception
+
+## Local Patterns
+- **OAuth state validation**: `cookieStore.get('github_auth_state')?.value` must match callback state parameter
+- **Account merging**: When GitHub account linked to another user, transfer all data (tasks, connectors, keys) to new userId
+- **Routes detect flow type**: Sign-in vs connect via cookies (`github_auth_mode`)
 
 ## Routes
-
-### OAuth Sign-In Flows
-- **`signin/github`**, **`signin/vercel`** - Redirect to provider OAuth
-- **`callback/vercel`** - Vercel OAuth callback, creates session
-- **`github/callback`** - GitHub OAuth callback (sign-in or connect flow)
-  - Detects flow type via cookies (`github_auth_mode`)
-  - Sign-in: Creates new user session
-  - Connect: Adds GitHub account to existing Vercel user
-  - Account merging: Transfers tasks/connectors/keys between users if needed
-
-### Session Management
-- **`signout`** - Destroy JWE session token (cookie deletion)
-- **`info`** - Get current user info from session
-- **`github/status`** - Check if GitHub connected (via `accounts` table)
-- **`github/disconnect`** - Remove GitHub account from user
-- **`rate-limit`** - Current user's rate limit status
-
-## Key Patterns
-
-### OAuth State Validation
-```typescript
-const storedState = cookieStore.get('github_auth_state')?.value
-const storedRedirectTo = cookieStore.get('github_auth_redirect_to')?.value
-if (storedState !== state || !storedRedirectTo) return 400 // Invalid
-```
-
-### Session Creation
-- GitHub: `createGitHubSession()` → `saveSession(response, session)` → JWE cookie
-- Vercel: Similar flow, encrypts access token in `users` table
-- Session token: Encrypted with `JWE_SECRET` env var
-
-### Account Merging (GitHub Connect Flow)
-When connecting GitHub account already linked to another user:
-```typescript
-// Transfer all data from old user to new user
-await db.update(tasks).set({ userId: newUserId }).where(...)
-await db.update(connectors).set({ userId: newUserId }).where(...)
-await db.delete(users).where(eq(users.id, oldUserId))
-```
-
-### Encryption Requirements
-- OAuth access tokens: Encrypted before storing in `users`/`accounts` tables
-- Method: `encrypt(token)` from `@/lib/crypto`
-- Decryption on use via: `decrypt(user.accessToken)`
-
-## Database Tables
-
-### users
-- `id`, `email`, `name`, `image`
-- `primaryProvider` - OAuth provider (github, vercel)
-- `accessToken` (encrypted), `scope`
-- GitHub/Vercel credentials stored here
-
-### accounts
-- Linked OAuth accounts (one GitHub + one Vercel per user possible)
-- `provider`, `externalUserId`, `accessToken` (encrypted), `username`
-- Enables user to have GitHub + Vercel linked
-
-## Error Handling
-- Invalid OAuth state: `400 Bad Request`
-- Missing client credentials: `500 Server Error`
-- Token exchange failure: Log error, return `400`
-- Static error messages (no token/user ID exposure)
+- `signin/github`, `signin/vercel` - Redirect to provider OAuth
+- `callback/vercel` - Creates JWE session from token
+- `github/callback` - Sign-in or connect flow (state-validated)
+- `signout` - Destroy session cookie
+- `info`, `github/status`, `github/disconnect`, `rate-limit` - Session queries
 
 ## Integration Points
-- **Crypto**: `@/lib/crypto` (encrypt/decrypt)
-- **Session**: `@/lib/session/create-github` (session creation)
-- **Database**: `users`, `accounts`, `tasks`, `connectors`, `keys` tables
-- **GitHub/Vercel APIs**: OAuth token exchange endpoints
+- **Crypto**: `@/lib/crypto` (encrypt/decrypt OAuth tokens)
+- **Session**: `@/lib/session/create-github` (JWE session creation)
+- **Database**: `users`, `accounts` (OAuth token storage), `tasks`, `connectors`, `keys` (merging data)
+- **GitHub/Vercel OAuth**: Token exchange endpoints
 
-## Security Notes
-- All OAuth tokens encrypted at rest
-- Session tokens JWE-encrypted (non-reversible without secret)
-- Cookie SameSite=Strict for CSRF protection
-- State parameter validation prevents authorization code interception
+## Key Files
+- `signin/github/route.ts`, `signin/vercel/route.ts` - OAuth redirects with state cookie
+- `github/callback/route.ts` - Handles merging and session creation
+- OAuth tokens encrypted before storing in database
