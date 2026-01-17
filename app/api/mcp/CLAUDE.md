@@ -13,7 +13,7 @@ MCP protocol HTTP handler exposing 5 task management tools to Claude Desktop, Cu
 - **Rate limit**: Same as web UI (20/day users, 100/day admins)
 
 ## Tools Registered
-1. `create-task` - Prompt, repoUrl, agent, model, installDependencies, keepAlive → taskId
+1. `create-task` - Prompt, repoUrl, agent, model, installDependencies, keepAlive → taskId (requires GitHub connection)
 2. `get-task` - taskId → full task object
 3. `continue-task` - taskId, message → confirmation
 4. `list-tasks` - limit, status filter → task array
@@ -31,7 +31,8 @@ MCP protocol HTTP handler exposing 5 task management tools to Claude Desktop, Cu
 - Tool handlers: `@/lib/mcp/tools/`
 - Schemas: `@/lib/mcp/schemas.ts`
 
-## Configuration
+## Configuration & Key Behaviors
 - Claude Desktop: `~/.config/Claude/claude.json` → mcpServers → url with ?apikey=
 - HTTPS required (token in query param)
+- **GitHub requirement**: `create-task` requires GitHub connection (verified before task creation)
 - Error codes: 401 (auth), 429 (rate limit), 400 (invalid input), 404 (not found)

@@ -21,6 +21,7 @@
 - Utils: Diff, deployment, check-runs, terminal, LSP, autocomplete
 
 ## Integration Points
+- **Task processing**: `@/lib/tasks/process-task.ts` (processTaskWithTimeout - sandbox creation, agent execution, Git ops)
 - **Sandbox**: `@/lib/sandbox/creation`, `executeAgentInSandbox`
 - **Git**: Branch name generation, push, PR operations
 - **Agents**: `lib/sandbox/agents/` (claude, codex, etc.)
@@ -29,6 +30,6 @@
 - **Crypto**: Decrypt user API keys before after() block
 
 ## Key Files
-- `route.ts` - Task CRUD with rate limiting
+- `route.ts` - Task CRUD (POST uses after() to call processTaskWithTimeout)
 - `[taskId]/route.ts` - Get/stop task
 - Subdirectories handle domain-specific routes (sandbox, files, pr, etc.)
