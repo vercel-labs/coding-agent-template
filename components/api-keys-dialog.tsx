@@ -248,6 +248,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
 
   // MCP Server configuration examples
   const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'https://code.agenticassets.ai'
+  const mcpUrl = `${apiUrl}/api/mcp?apikey=${displayToken}`
 
   const claudeDesktopConfig = `{
   "mcpServers": {
@@ -480,6 +481,24 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
           <div>
             <h3 className="text-sm font-medium">MCP Server</h3>
             <p className="text-xs text-muted-foreground">Connect AI assistants via Model Context Protocol</p>
+          </div>
+
+          {/* MCP Server URL */}
+          <div className="space-y-2 min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">MCP Server URL</span>
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(mcpUrl)} className="h-6 px-2 text-xs">
+                <Copy className="h-3 w-3 mr-1" />
+                Copy
+              </Button>
+            </div>
+            <div className="rounded-md bg-muted/50 p-2 sm:p-2.5 overflow-hidden">
+              <div className="overflow-x-auto">
+                <pre className="text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground whitespace-pre w-max">
+                  <code>{mcpUrl}</code>
+                </pre>
+              </div>
+            </div>
           </div>
 
           {/* Conditional rendering: Only show if user has tokens */}
