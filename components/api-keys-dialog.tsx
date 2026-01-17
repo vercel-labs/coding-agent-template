@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -576,14 +577,9 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
               {/* Documentation Link */}
               <div className="text-xs text-muted-foreground">
                 See{' '}
-                <a
-                  href="https://github.com/agenticassets/AA-coding-agent/blob/main/docs/MCP_SERVER.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
+                <Link href="/docs/mcp-server" className="text-primary hover:underline">
                   full documentation
-                </a>{' '}
+                </Link>{' '}
                 for more configuration options.
               </div>
             </div>
