@@ -238,19 +238,21 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
+  // Use full token only when just created, otherwise use placeholder
+  const displayToken = newToken || 'YOUR_API_KEY'
+
   const curlExample = `curl -X POST ${typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app'}/api/tasks \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Authorization: Bearer ${displayToken}" \\
   -H "Content-Type: application/json" \\
   -d '{"instruction": "Fix the bug", "repoUrl": "https://github.com/owner/repo", "selectedAgent": "claude"}'`
 
   // MCP Server configuration examples
   const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'https://code.agenticassets.ai'
-  const exampleToken = newToken || (tokens.length > 0 ? `${tokens[0].tokenPrefix}...` : 'YOUR_TOKEN')
 
   const claudeDesktopConfig = `{
   "mcpServers": {
     "coding-agent": {
-      "url": "${apiUrl}/api/mcp?apikey=${exampleToken}"
+      "url": "${apiUrl}/api/mcp?apikey=${displayToken}"
     }
   }
 }`
@@ -258,7 +260,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
   const cursorConfig = `{
   "mcpServers": {
     "coding-agent": {
-      "url": "${apiUrl}/api/mcp?apikey=${exampleToken}"
+      "url": "${apiUrl}/api/mcp?apikey=${displayToken}"
     }
   }
 }`
@@ -266,7 +268,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
   const genericMcpConfig = `{
   "mcpServers": {
     "coding-agent": {
-      "url": "${apiUrl}/api/mcp?apikey=${exampleToken}"
+      "url": "${apiUrl}/api/mcp?apikey=${displayToken}"
     }
   }
 }`
