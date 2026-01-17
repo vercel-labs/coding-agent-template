@@ -600,9 +600,30 @@ async function processTask(
 
     console.log('Agent execution completed')
 
-    // Update agent session ID if provided (for Cursor agent resumption)
+    // Validate agent result
+    if (!agentResult.success && !agentResult.error) {
+      agentResult.error = 'Agent execution failed without specific error'
+    }
+
+    // Log agent completion status
+    console.log('Agent execution completed:', {
+      success: agentResult.success,
+      hasSessionId: !!agentResult.sessionId,
+      hasError: !!agentResult.error,
+    })
+
+    // Store session ID if available
     if (agentResult.sessionId) {
-      await db.update(tasks).set({ agentSessionId: agentResult.sessionId }).where(eq(tasks.id, taskId))
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentResult.sessionId)
+      if (isValidUUID) {
+        await db.update(tasks).set({ agentSessionId: agentResult.sessionId }).where(eq(tasks.id, taskId))
+        await logger.info('Session ID stored successfully')
+      } else {
+        console.log('Invalid session ID format, not storing:', agentResult.sessionId?.substring(0, 20))
+        await logger.info('Session ID validation failed')
+      }
+    } else {
+      await logger.info('No session ID returned from agent')
     }
 
     if (agentResult.success) {
