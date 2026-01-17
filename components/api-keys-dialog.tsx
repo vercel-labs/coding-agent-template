@@ -243,6 +243,34 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
   -H "Content-Type: application/json" \\
   -d '{"instruction": "Fix the bug", "repoUrl": "https://github.com/owner/repo", "selectedAgent": "claude"}'`
 
+  // MCP Server configuration examples
+  const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'https://code.agenticassets.ai'
+  const exampleToken = newToken || (tokens.length > 0 ? `${tokens[0].tokenPrefix}...` : 'YOUR_TOKEN')
+
+  const claudeDesktopConfig = `{
+  "mcpServers": {
+    "coding-agent": {
+      "url": "${apiUrl}/api/mcp?apikey=${exampleToken}"
+    }
+  }
+}`
+
+  const cursorConfig = `{
+  "mcpServers": {
+    "coding-agent": {
+      "url": "${apiUrl}/api/mcp?apikey=${exampleToken}"
+    }
+  }
+}`
+
+  const genericMcpConfig = `{
+  "mcpServers": {
+    "coding-agent": {
+      "url": "${apiUrl}/api/mcp?apikey=${exampleToken}"
+    }
+  }
+}`
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
@@ -440,6 +468,111 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t my-4" />
+
+        {/* MCP Server Configuration Section */}
+        <div className="space-y-3 min-w-0">
+          <div>
+            <h3 className="text-sm font-medium">MCP Server</h3>
+            <p className="text-xs text-muted-foreground">Connect AI assistants via Model Context Protocol</p>
+          </div>
+
+          {/* Conditional rendering: Only show if user has tokens */}
+          {tokens.length > 0 && (
+            <div className="space-y-3 min-w-0">
+              {/* Claude Desktop Configuration */}
+              <div className="space-y-2 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Claude Desktop Configuration</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(claudeDesktopConfig)}
+                    className="h-6 px-2 text-xs"
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+                <div className="rounded-md bg-muted/50 p-2 sm:p-2.5 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <pre className="text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground whitespace-pre w-max">
+                      <code>{claudeDesktopConfig}</code>
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cursor Configuration */}
+              <div className="space-y-2 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Cursor Configuration</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(cursorConfig)}
+                    className="h-6 px-2 text-xs"
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+                <div className="rounded-md bg-muted/50 p-2 sm:p-2.5 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <pre className="text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground whitespace-pre w-max">
+                      <code>{cursorConfig}</code>
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Generic MCP Configuration */}
+              <div className="space-y-2 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Generic MCP Client</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(genericMcpConfig)}
+                    className="h-6 px-2 text-xs"
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+                <div className="rounded-md bg-muted/50 p-2 sm:p-2.5 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <pre className="text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground whitespace-pre w-max">
+                      <code>{genericMcpConfig}</code>
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Documentation Link */}
+              <div className="text-xs text-muted-foreground">
+                See{' '}
+                <a
+                  href="https://github.com/agenticassets/AA-coding-agent/blob/main/docs/MCP_SERVER.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  full documentation
+                </a>{' '}
+                for more configuration options.
+              </div>
+            </div>
+          )}
+
+          {tokens.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Create an API token above to get started with MCP server configuration.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
