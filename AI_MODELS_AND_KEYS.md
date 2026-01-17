@@ -67,7 +67,8 @@ export const keys = pgTable(
 The system implements a **user-first, fallback-to-env** strategy:
 
 ```typescript
-// From lib/api-keys/user-keys.ts (lines 9-61)
+// From lib/api-keys/user-keys.ts
+// Note: getServerSession is from lib/session/get-server-session.ts
 export async function getUserApiKey(provider: Provider): Promise<string | undefined> {
   const session = await getServerSession()
 
@@ -172,8 +173,17 @@ const AGENT_MODELS = {
     { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
 
     // AI Gateway Alternative Models (use AI_GATEWAY_API_KEY)
-    // Z.ai / Zhipu AI
-    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
+    // Z.ai / Zhipu AI (updated 2026)
+    { value: 'glm-4.7', label: 'GLM-4.7' },
+
+    // MiniMax (updated 2026)
+    { value: 'minimax/minimax-m2.1', label: 'MiniMax-M2.1' },
+
+    // DeepSeek (updated 2026)
+    { value: 'deepseek/deepseek-v3.2-exp', label: 'DeepSeek-V3.2' },
+
+    // Xiaomi (updated 2026)
+    { value: 'xiaomi/mimo-v2-flash', label: 'MiMo-V2-Flash' },
 
     // Google Gemini 3
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
@@ -370,10 +380,16 @@ const AGENT_MODELS = {
 ```typescript
 const AGENT_MODELS = {
   opencode: [
-    // Z.ai / Zhipu AI (New)
+    // Z.ai / Zhipu AI (updated 2026)
     { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
 
-    // Google Gemini 3 (New)
+    // MiniMax (updated 2026)
+    { value: 'minimax/minimax-m2.1', label: 'MiniMax-M2.1' },
+
+    // DeepSeek (updated 2026)
+    { value: 'deepseek/deepseek-v3.2-exp', label: 'DeepSeek-V3.2' },
+
+    // Google Gemini 3
     { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
     { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
 
@@ -814,11 +830,14 @@ const AGENT_MODELS = {
     // Standard Anthropic Models (use ANTHROPIC_API_KEY)
     { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
     // ADD NEW MODEL HERE
-    { value: 'claude-new-model-20260101', label: 'New Model Label' },
+    { value: 'claude-new-model-20260115', label: 'New Model Label' },
 
     // AI Gateway Alternative Models (use AI_GATEWAY_API_KEY)
-    { value: 'glm-4.7', label: 'GLM-4.7 (Coding Flagship)' },
-    // ...
+    { value: 'glm-4.7', label: 'GLM-4.7' },
+    { value: 'minimax/minimax-m2.1', label: 'MiniMax-M2.1' },
+    { value: 'deepseek/deepseek-v3.2-exp', label: 'DeepSeek-V3.2' },
+    { value: 'xiaomi/mimo-v2-flash', label: 'MiMo-V2-Flash' },
+    // ... other models ...
   ],
   // ...
 }
@@ -1373,10 +1392,12 @@ const AGENT_MODELS = {
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | Jan 2026 | Added MiniMax-M2.1, DeepSeek-V3.2, Xiaomi MiMo-V2-Flash models; fixed session module path references |
 | 1.1 | Jan 2025 | Added Claude AI Gateway support documentation |
 | 1.0 | Jan 2025 | Initial comprehensive documentation |
 
 ---
 
-**Last Updated**: January 15, 2025
+**Last Updated**: January 17, 2026
 **Maintained By**: Agentic Assets Team
+**Changes in 2026**: Added MiniMax-M2.1, DeepSeek-V3.2, and Xiaomi MiMo-V2-Flash models to Claude and OpenCode agents

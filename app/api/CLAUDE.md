@@ -14,15 +14,17 @@ REST interface for platform: authentication, user-scoped data access, rate limit
 - Return `401 Unauthorized` if not authenticated
 
 ## Route Subdirectories
-- `auth/` (7) - OAuth, session creation, GitHub connect, sign-out
-- `tasks/` (31) - Task CRUD, sandbox control, file ops, PR management, follow-ups
-- `github/` (7) - GitHub API proxy (user, repos, orgs, verify, create)
-- `repos/` (5) - Repository metadata (commits, issues, pull-requests)
+- `auth/` (10) - OAuth, session creation, GitHub connect, disconnect, sign-out, rate-limit info
+- `tasks/` (32) - Task CRUD, sandbox control, file ops, PR management, follow-ups, messages
+- `github/` (6) - GitHub API proxy (user, repos, orgs, verify, create)
+- `repos/` (5) - Repository metadata (commits, issues, pull-requests with check/close)
 - `connectors/` (1) - MCP server CRUD with encrypted env vars
 - `mcp/` (1) - MCP protocol HTTP handler with Bearer auth
-- `api-keys/` (2) - User API key management
-- `tokens/` (2) - External API token generation & revocation
-- `sandboxes/`, `vercel/`, `github-stars/` - Utilities
+- `api-keys/` (2) - User API key management (list/create and check availability)
+- `tokens/` (2) - External API token generation, listing, revocation
+- `sandboxes/` (1) - Sandbox metadata and control
+- `vercel/` (1) - Vercel-specific operations (teams)
+- `github-stars/` (1) - GitHub stars utility endpoint
 
 ## Integration Points
 - **Database**: `@/lib/db/client` (Drizzle + PostgreSQL)

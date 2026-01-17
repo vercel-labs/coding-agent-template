@@ -15,6 +15,7 @@ User API key management for AI providers (OpenAI, Gemini, Cursor, Anthropic, AI 
 
 ## Routes
 - `GET /api/api-keys` - List user's keys (decrypted providers + createdAt, no values exposed)
+- `GET /api/api-keys/check` - Check availability of API keys (returns object with provider booleans)
 - `POST /api/api-keys` - Create or update key for provider (upsert pattern)
 - `DELETE /api/api-keys?provider=X` - Delete key for provider
 

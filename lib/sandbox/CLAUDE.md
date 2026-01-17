@@ -26,3 +26,7 @@ Orchestrate Vercel sandbox lifecycle: creation, environment setup, dependency de
 - `creation.ts` - Main `createSandbox()` function (700+ lines)
 - `commands.ts` - Sandbox command execution wrappers
 - `package-manager.ts` - npm/pnpm/yarn detection and installation
+- `git.ts` - `pushChangesToBranch()`, `shutdownSandbox()` for post-agent Git operations
+- `sandbox-registry.ts` - `registerSandbox()`, `unregisterSandbox()`, `getSandbox()`, `killSandbox()` for lifecycle tracking
+- `types.ts` - AgentExecutionResult, CancellationCheckFn type definitions
+- `config.ts`, `port-detection.ts` - Configuration and port detection utilities

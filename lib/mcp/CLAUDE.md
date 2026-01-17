@@ -24,4 +24,5 @@ Model Context Protocol server over HTTP: 5 tools (create-task, get-task, continu
 
 ## Key Files
 - `schemas.ts` - Zod validation schemas for all 5 tools
+- `types.ts` - `McpAuthInfo`, `McpToolContext`, and other tool handler type definitions
 - `tools/create-task.ts`, `get-task.ts`, `continue-task.ts`, `list-tasks.ts`, `stop-task.ts` - Tool implementations

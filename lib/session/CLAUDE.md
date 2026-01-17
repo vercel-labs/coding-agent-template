@@ -25,3 +25,7 @@ JWE session cookie lifecycle: creation, decryption, caching; OAuth token encrypt
 - `get-server-session.ts` - Exported `getServerSession()` with cache wrapper
 - `create.ts` - Create JWE cookie with user data
 - `create-github.ts` - GitHub OAuth flow session creation
+- `server.ts` - `getSessionFromCookie()`, `getSessionFromReq()` helper functions
+- `get-oauth-token.ts` - `getOAuthToken()` retrieves encrypted OAuth tokens (GitHub/Vercel)
+- `types.ts` - `Session`, `SessionUserInfo`, `Tokens`, `User` interfaces
+- `constants.ts` - `SESSION_COOKIE_NAME` and other session constants

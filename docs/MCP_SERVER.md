@@ -30,6 +30,9 @@ The MCP server provides programmatic access to the AA Coding Agent platform via 
 - **Methods**: GET, POST, DELETE
 - **Content Type**: `application/json`
 - **Authentication**: Required (API token)
+- **Implementation**: Uses `mcp-handler` library v1.0.7 with experimental auth middleware
+
+**Note:** The MCP server uses experimental authentication features that may evolve. Ensure your MCP clients are compatible with HTTP-based MCP transport.
 
 ## Authentication Setup
 
@@ -214,6 +217,11 @@ Send a follow-up message to continue a task with additional instructions.
 - Task must have a branch created
 - Sandbox must still be alive (if keepAlive was enabled)
 
+**Behavior:**
+- The message is saved immediately and the task status is reset to `processing`
+- The actual task continuation execution happens asynchronously in the background
+- Use `get-task` to monitor the task status and logs
+
 **Input Schema:**
 
 ```json
@@ -288,6 +296,8 @@ List all tasks for the authenticated user with optional filters.
   "count": 1
 }
 ```
+
+**Note:** Prompts in the list response are truncated to 200 characters. Use `get-task` to retrieve the full prompt text.
 
 ### 5. stop-task
 
@@ -459,7 +469,7 @@ All errors return an MCP response with `isError: true`:
   "content": [
     {
       "type": "text",
-      "text": "{\"error\":\"GitHub not connected\",\"message\":\"GitHub access is required for repository operations. Please connect your GitHub account via the web UI settings page.\",\"hint\":\"Sign in to the web application and connect GitHub under Settings > Accounts\"}"
+      "text": "{\"error\":\"GitHub not connected\",\"message\":\"GitHub access is required for repository operations.\",\"hint\":\"Visit /settings in the web UI to connect your GitHub account.\"}"
     }
   ],
   "isError": true

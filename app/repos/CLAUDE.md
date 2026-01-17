@@ -15,12 +15,14 @@ Repository browser with nested routing: commits, issues, pull-requests tabs. Pub
 
 ## Directory Structure
 ```
-app/repos/[owner]/[repo]/
-├── layout.tsx            # Shared layout + RepoLayout component
-├── page.tsx              # Redirect to commits
-├── commits/page.tsx      # Component: RepoCommits
-├── issues/page.tsx       # Component: RepoIssues
-└── pull-requests/page.tsx # Component: RepoPullRequests
+app/repos/
+├── new/page.tsx                      # Create new repository page
+└── [owner]/[repo]/
+    ├── layout.tsx                   # Shared layout + RepoLayout component
+    ├── page.tsx                     # Redirect to commits
+    ├── commits/page.tsx             # Component: RepoCommits
+    ├── issues/page.tsx              # Component: RepoIssues
+    └── pull-requests/page.tsx       # Component: RepoPullRequests
 ```
 
 ## Integration Points
@@ -36,6 +38,7 @@ app/repos/[owner]/[repo]/
 4. Add to `tabs` array in `components/repo-layout.tsx`
 
 ## Key Files
-- `layout.tsx` - Renders RepoLayout (tab bar) + children
+- `new/page.tsx` - Create new repository page (shows repo templates)
+- `[owner]/[repo]/layout.tsx` - Renders RepoLayout (tab bar) + children
 - `[owner]/[repo]/page.tsx` - Redirect to commits
 - Each tab imports data from `/api/repos/[owner]/[repo]/[tab]/`
