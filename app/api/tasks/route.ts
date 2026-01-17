@@ -212,9 +212,10 @@ export async function POST(request: NextRequest) {
     })
 
     // Get user's API keys, GitHub token, and GitHub user info BEFORE entering after() block (where session is not accessible)
-    const userApiKeys = await getUserApiKeys()
-    const userGithubToken = await getUserGitHubToken()
-    const githubUser = await getGitHubUser()
+    // Pass user.id directly to support both session-based and API token-based authentication
+    const userApiKeys = await getUserApiKeys(user.id)
+    const userGithubToken = await getUserGitHubToken(user.id)
+    const githubUser = await getGitHubUser(user.id)
     // Get max sandbox duration for this user (user-specific > global > env var)
     const maxSandboxDuration = await getMaxSandboxDuration(user.id)
 
@@ -596,6 +597,7 @@ async function processTask(
       undefined, // sessionId
       taskId, // taskId for streaming updates
       agentMessageId, // agentMessageId for streaming updates
+      githubToken ?? undefined, // githubToken for agent MCP external access
     )
 
     console.log('Agent execution completed')

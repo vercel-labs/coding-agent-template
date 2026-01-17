@@ -5,12 +5,14 @@ import { getUserGitHubToken } from './user-token'
  * Create an Octokit instance for the currently authenticated user
  * Returns an Octokit instance with the user's GitHub token if connected, otherwise without authentication
  * Calling code should check octokit.auth to verify user has connected GitHub
+ *
+ * @param userId - Optional userId for API token authentication (bypasses session lookup)
  */
-export async function getOctokit(): Promise<Octokit> {
-  const userToken = await getUserGitHubToken()
+export async function getOctokit(userId?: string): Promise<Octokit> {
+  const userToken = await getUserGitHubToken(userId)
 
   if (!userToken) {
-    console.warn('No user GitHub token available. User needs to connect their GitHub account.')
+    console.warn('No user GitHub token available')
   }
 
   return new Octokit({
@@ -21,14 +23,16 @@ export async function getOctokit(): Promise<Octokit> {
 /**
  * Get the authenticated GitHub user's information
  * Returns null if no GitHub account is connected
+ *
+ * @param userId - Optional userId for API token authentication (bypasses session lookup)
  */
-export async function getGitHubUser(): Promise<{
+export async function getGitHubUser(userId?: string): Promise<{
   username: string
   name: string | null
   email: string | null
 } | null> {
   try {
-    const octokit = await getOctokit()
+    const octokit = await getOctokit(userId)
 
     if (!octokit.auth) {
       return null
@@ -42,7 +46,7 @@ export async function getGitHubUser(): Promise<{
       email: data.email,
     }
   } catch (error) {
-    console.error('Error getting GitHub user:', error)
+    console.error('Error getting GitHub user')
     return null
   }
 }

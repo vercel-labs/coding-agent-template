@@ -86,9 +86,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
       .where(eq(tasks.id, taskId))
 
     // Get user's API keys, GitHub token, and GitHub user info
-    const userApiKeys = await getUserApiKeys()
-    const userGithubToken = await getUserGitHubToken()
-    const githubUser = await getGitHubUser()
+    // Pass user.id directly to support both session-based and API token-based authentication
+    const userApiKeys = await getUserApiKeys(user.id)
+    const userGithubToken = await getUserGitHubToken(user.id)
+    const githubUser = await getGitHubUser(user.id)
     // Get max sandbox duration for this user (user-specific > global > env var)
     const maxSandboxDuration = await getMaxSandboxDuration(user.id)
 
@@ -350,6 +351,7 @@ async function continueTask(
       validSessionId, // Use validated session ID
       taskId, // taskId for streaming updates
       agentMessageId, // agentMessageId for streaming updates
+      githubToken ?? undefined, // githubToken for agent MCP external access
     )
 
     console.log('Agent execution completed')
