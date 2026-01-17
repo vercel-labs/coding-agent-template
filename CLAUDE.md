@@ -412,6 +412,83 @@ Uses Vercel AI SDK 5 + AI Gateway in `lib/actions/generate-branch-name.ts`:
 - **Drizzle ORM** - https://orm.drizzle.team/docs/overview
 - **shadcn/ui** - https://ui.shadcn.com/
 
+## MCP Server
+
+The platform exposes its functionality via a Model Context Protocol (MCP) server, allowing external MCP clients (like Claude Desktop, Cursor, or Windsurf) to programmatically create and manage coding tasks.
+
+### Overview
+
+- **Endpoint**: `/api/mcp`
+- **Protocol**: MCP over HTTP (Streamable HTTP transport)
+- **Authentication**: API tokens via query parameter or Authorization header
+- **Transport**: HTTP POST/GET/DELETE (no SSE)
+
+### Authentication
+
+MCP clients authenticate using API tokens generated in the Settings page:
+
+**Query Parameter Method** (recommended for Claude Desktop):
+```
+https://your-domain.com/api/mcp?apikey=YOUR_API_TOKEN
+```
+
+**Authorization Header Method**:
+```
+Authorization: Bearer YOUR_API_TOKEN
+```
+
+### Available Tools
+
+1. **create-task** - Create a new coding task
+   - Input: `prompt`, `repoUrl`, `selectedAgent`, `selectedModel`, `installDependencies`, `keepAlive`
+   - Returns: `taskId`, `status`, `createdAt`
+
+2. **get-task** - Retrieve task details
+   - Input: `taskId`
+   - Returns: Full task details including logs, status, PR info
+
+3. **continue-task** - Send follow-up message to a task
+   - Input: `taskId`, `message`
+   - Returns: Confirmation of message queued
+
+4. **list-tasks** - List user's tasks
+   - Input: `limit`, `status` (optional filter)
+   - Returns: Array of tasks with essential fields
+
+5. **stop-task** - Stop a running task
+   - Input: `taskId`
+   - Returns: Confirmation of task stopped
+
+### Client Configuration
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "aa-coding-agent": {
+      "url": "https://your-domain.com/api/mcp?apikey=YOUR_API_TOKEN"
+    }
+  }
+}
+```
+
+See `docs/MCP_SERVER.md` for complete documentation including Cursor and Windsurf configuration.
+
+### Security Notes
+
+- API tokens appear in URLs when using query parameter authentication - **always use HTTPS**
+- Tokens are hashed (SHA256) before storage and cannot be recovered
+- Rate limiting applies to MCP requests (same limits as web UI)
+- All tools enforce user-scoped access control
+- Rotate tokens regularly from Settings page
+
+### Implementation
+
+- Route handler: `app/api/mcp/route.ts`
+- Tool implementations: `lib/mcp/tools/`
+- Schemas: `lib/mcp/schemas.ts`
+- Uses `mcp-handler` package for MCP protocol support
+
 ## Important Reminders
 
 1. **Never log dynamic values** - Use static strings in all logger/console statements
