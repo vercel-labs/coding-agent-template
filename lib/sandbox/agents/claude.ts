@@ -385,16 +385,16 @@ export async function executeClaudeInSandbox(
 
     // Add --resume flag for follow-up messages in kept-alive sandboxes
     if (isResumed) {
-      if (sessionId) {
+      // Only use --resume with a valid session ID (UUID format)
+      const isValidSessionId =
+        sessionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)
+      if (isValidSessionId) {
         fullCommand += ` --resume "${sessionId}"`
-        if (logger) {
-          await logger.info('Resuming specific Claude chat session')
-        }
+        await logger.info('Resuming with session ID')
       } else {
-        fullCommand += ` --resume`
-        if (logger) {
-          await logger.info('Resuming previous Claude conversation')
-        }
+        // Fall back to --continue for most recent session in this directory
+        fullCommand += ` --continue`
+        await logger.info('Using continue flag for session resumption')
       }
     }
 
@@ -501,8 +501,14 @@ export async function executeClaudeInSandbox(
                 }
               }
 
+              // Track session ID from any source
+              if (!extractedSessionId && parsed.session_id) {
+                extractedSessionId = parsed.session_id
+                console.log('Extracted session ID from', parsed.type, ':', extractedSessionId)
+              }
+
               // Extract session ID and mark as completed from result chunks
-              else if (parsed.type === 'result') {
+              if (parsed.type === 'result') {
                 console.log('Result chunk received:', JSON.stringify(parsed).substring(0, 300))
                 if (parsed.session_id) {
                   extractedSessionId = parsed.session_id
@@ -542,12 +548,38 @@ export async function executeClaudeInSandbox(
 
     await logger.info('Claude command started with output capture, monitoring for completion...')
 
-    // Wait for completion - let sandbox timeout handle the hard limit
+    // Wait for completion with timeout
+    const MAX_WAIT_TIME = 5 * 60 * 1000 // 5 minutes
+    const startWaitTime = Date.now()
     while (!isCompleted) {
-      await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait 1 second
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const elapsed = Date.now() - startWaitTime
+      if (elapsed > MAX_WAIT_TIME) {
+        await logger.info('Agent wait timeout reached')
+        // Force completion after timeout - check if process produced any output
+        break
+      }
+      // Log progress every 30 seconds
+      if (elapsed % 30000 < 1000) {
+        await logger.info('Waiting for agent completion')
+      }
     }
 
     await logger.info('Claude completed successfully')
+
+    // Better completion detection - check if agent actually ran
+    const fullStdout = agentMessageId ? accumulatedContent : capturedOutput
+    const hasOutput = fullStdout.length > 100 // Minimal expected output
+    if (!hasOutput && !isCompleted) {
+      await logger.error('Agent produced minimal output')
+      return {
+        success: false,
+        error: 'Agent execution failed - no output received',
+        cliName: 'claude',
+        changesDetected: false,
+        sessionId: extractedSessionId,
+      }
+    }
 
     // Check if any files were modified
     const gitStatusCheck = await runAndLogCommand(sandbox, 'git', ['status', '--porcelain'], logger)

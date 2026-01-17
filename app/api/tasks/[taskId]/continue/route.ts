@@ -265,9 +265,9 @@ async function continueTask(
       .replace(/^-/gm, ' -') // Prefix lines starting with dash to avoid CLI option parsing
 
     let promptWithContext = sanitizedPrompt
-    // Only add conversation history if NOT using a resumed sandbox
-    // When using --resume, the agent already has access to the full conversation history
-    if (contextMessages.length > 0 && !isResumedSandbox) {
+    // Always add conversation history as context backup
+    // Even when using --resume, Claude may not have access to previous context if session expired
+    if (contextMessages.length > 0) {
       let conversationHistory = '\n\n---\n\nFor context, here is the conversation history from this session:\n\n'
       contextMessages.forEach((msg) => {
         const role = msg.role === 'user' ? 'User' : 'A'
@@ -322,6 +322,21 @@ async function continueTask(
     // Generate agent message ID for streaming updates
     const agentMessageId = generateId()
 
+    // Validate session ID format before using
+    const sessionId = currentTask.agentSessionId
+    const validSessionId =
+      sessionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)
+        ? sessionId
+        : undefined
+
+    // Log session state for debugging
+    await logger.info('Executing follow-up agent')
+    console.log('Session state:', {
+      hasSessionId: !!sessionId,
+      isResumedSandbox,
+      sandboxId: sandbox?.sandboxId?.substring(0, 8),
+    })
+
     const agentResult = await executeAgentInSandbox(
       sandbox,
       promptWithContext,
@@ -331,8 +346,8 @@ async function continueTask(
       mcpServers,
       undefined,
       apiKeys,
-      isResumedSandbox, // Pass whether this is a resumed sandbox
-      currentTask.agentSessionId || undefined, // Pass agent session ID for resumption
+      isResumedSandbox && !!validSessionId, // Only set isResumed if we have valid session
+      validSessionId, // Use validated session ID
       taskId, // taskId for streaming updates
       agentMessageId, // agentMessageId for streaming updates
     )
