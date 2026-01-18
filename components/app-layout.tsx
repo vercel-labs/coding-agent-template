@@ -241,6 +241,10 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       prNumber: null,
       prStatus: null,
       prMergeCommitSha: null,
+      // Sub-agent tracking fields
+      subAgentActivity: null,
+      currentSubAgent: null,
+      lastHeartbeat: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       completedAt: null,

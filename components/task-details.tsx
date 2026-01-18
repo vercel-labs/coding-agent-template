@@ -86,6 +86,7 @@ import PlaywrightIcon from '@/components/icons/playwright-icon'
 import SupabaseIcon from '@/components/icons/supabase-icon'
 import VercelIcon from '@/components/icons/vercel-icon'
 import { PRStatusIcon } from '@/components/pr-status-icon'
+import { SubAgentIndicator } from '@/components/sub-agent-indicator'
 
 interface TaskDetailsProps {
   task: Task
@@ -1700,6 +1701,16 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             </Button>
           </div>
         </div>
+
+        {/* Sub-Agent Activity Indicator - Show when task is processing or has sub-agent history */}
+        {(currentStatus === 'processing' || (task.subAgentActivity && task.subAgentActivity.length > 0)) && (
+          <SubAgentIndicator
+            currentSubAgent={task.currentSubAgent}
+            subAgentActivity={task.subAgentActivity}
+            lastHeartbeat={task.lastHeartbeat}
+            className="mt-3"
+          />
+        )}
       </div>
 
       {/* Changes Section - Only show when a branch exists */}

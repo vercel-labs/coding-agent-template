@@ -238,32 +238,157 @@ export async function isTaskStopped(taskId: string): Promise<boolean> {
 }
 
 /**
- * Process a task with timeout wrapper
+ * Check if task has active sub-agents and recent heartbeat activity
+ * Only selects necessary fields to minimize database query payload
+ */
+async function checkTaskActivity(
+  taskId: string,
+): Promise<{ hasActiveSubAgents: boolean; lastHeartbeat: Date | null; currentSubAgent: string | null }> {
+  try {
+    // Select only the fields needed for timeout checking (avoids fetching large logs array)
+    const [task] = await db
+      .select({
+        subAgentActivity: tasks.subAgentActivity,
+        lastHeartbeat: tasks.lastHeartbeat,
+        currentSubAgent: tasks.currentSubAgent,
+      })
+      .from(tasks)
+      .where(eq(tasks.id, taskId))
+      .limit(1)
+
+    if (!task) {
+      return { hasActiveSubAgents: false, lastHeartbeat: null, currentSubAgent: null }
+    }
+
+    // Consider "starting" sub-agents as active only if recently started (< 5 min)
+    // This prevents infinite timeout extension from stuck "starting" states
+    const STARTING_TIMEOUT_MS = 5 * 60 * 1000
+    const activeSubAgents = (task.subAgentActivity || []).filter((sa) => {
+      if (sa.status === 'running') return true
+      if (sa.status === 'starting') {
+        const startAge = Date.now() - new Date(sa.startedAt).getTime()
+        return startAge < STARTING_TIMEOUT_MS
+      }
+      return false
+    })
+
+    return {
+      hasActiveSubAgents: activeSubAgents.length > 0,
+      lastHeartbeat: task.lastHeartbeat,
+      currentSubAgent: task.currentSubAgent,
+    }
+  } catch {
+    return { hasActiveSubAgents: false, lastHeartbeat: null, currentSubAgent: null }
+  }
+}
+
+/**
+ * Process a task with timeout wrapper that respects heartbeat activity
+ * The timeout will be extended if there's recent heartbeat activity (sub-agents running)
  */
 export async function processTaskWithTimeout(input: TaskProcessingInput): Promise<void> {
   const TASK_TIMEOUT_MS = input.maxDuration * 60 * 1000
+  const HEARTBEAT_GRACE_PERIOD_MS = 5 * 60 * 1000 // 5 minute grace period for active sub-agents
+  const HEARTBEAT_CHECK_INTERVAL_MS = 30 * 1000 // Check every 30 seconds
 
-  const warningTimeMs = Math.max(TASK_TIMEOUT_MS - 60 * 1000, 0)
-  const warningTimeout = setTimeout(async () => {
-    try {
-      const warningLogger = createTaskLogger(input.taskId)
-      await warningLogger.info('Task is approaching timeout, will complete soon')
-    } catch (error) {
-      console.error('Failed to add timeout warning')
-    }
-  }, warningTimeMs)
+  let isTimedOut = false
+  let warningLogged = false
 
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Task execution timed out after ${input.maxDuration} minutes`))
-    }, TASK_TIMEOUT_MS)
+  // Create a timeout controller
+  const timeoutController = {
+    shouldStop: false,
+    interval: null as NodeJS.Timeout | null,
+  }
+
+  const taskStartTime = Date.now()
+
+  // Start heartbeat-aware timeout monitoring
+  const monitorPromise = new Promise<never>((_, reject) => {
+    timeoutController.interval = setInterval(async () => {
+      const elapsedMs = Date.now() - taskStartTime
+
+      // Check for early timeout (no sub-agents)
+      if (elapsedMs >= TASK_TIMEOUT_MS) {
+        const { hasActiveSubAgents, lastHeartbeat } = await checkTaskActivity(input.taskId)
+
+        // If there's recent heartbeat activity and active sub-agents, grant grace period
+        if (hasActiveSubAgents && lastHeartbeat) {
+          const heartbeatAge = Date.now() - new Date(lastHeartbeat).getTime()
+          if (heartbeatAge < HEARTBEAT_GRACE_PERIOD_MS) {
+            // Still within grace period, continue
+            if (!warningLogged) {
+              const warningLogger = createTaskLogger(input.taskId)
+              await warningLogger.info(`Sub-agent is active - extending timeout grace period`)
+              warningLogged = true
+            }
+            return
+          }
+        }
+
+        // Check absolute maximum (max duration + grace period)
+        if (elapsedMs >= TASK_TIMEOUT_MS + HEARTBEAT_GRACE_PERIOD_MS) {
+          // Check if task already completed before timing out (race condition prevention)
+          const [currentTask] = await db
+            .select({ status: tasks.status })
+            .from(tasks)
+            .where(eq(tasks.id, input.taskId))
+            .limit(1)
+          if (
+            currentTask?.status === 'completed' ||
+            currentTask?.status === 'error' ||
+            currentTask?.status === 'stopped'
+          ) {
+            return // Task already finished, don't timeout
+          }
+          isTimedOut = true
+          reject(new Error('Task execution timed out'))
+          return
+        }
+
+        // Original timeout reached without recent activity
+        if (!hasActiveSubAgents || !lastHeartbeat) {
+          // Check if task already completed before timing out (race condition prevention)
+          const [currentTask] = await db
+            .select({ status: tasks.status })
+            .from(tasks)
+            .where(eq(tasks.id, input.taskId))
+            .limit(1)
+          if (
+            currentTask?.status === 'completed' ||
+            currentTask?.status === 'error' ||
+            currentTask?.status === 'stopped'
+          ) {
+            return // Task already finished, don't timeout
+          }
+          isTimedOut = true
+          reject(new Error('Task execution timed out'))
+          return
+        }
+      }
+
+      // Log warning 1 minute before timeout
+      if (!warningLogged && elapsedMs >= TASK_TIMEOUT_MS - 60 * 1000) {
+        const { currentSubAgent } = await checkTaskActivity(input.taskId)
+        const warningLogger = createTaskLogger(input.taskId)
+        if (currentSubAgent) {
+          await warningLogger.info(`Task approaching timeout. Sub-agent running, timeout may be extended.`)
+        } else {
+          await warningLogger.info('Task is approaching timeout, will complete soon')
+        }
+        warningLogged = true
+      }
+    }, HEARTBEAT_CHECK_INTERVAL_MS)
   })
 
   try {
-    await Promise.race([processTask(input), timeoutPromise])
-    clearTimeout(warningTimeout)
+    await Promise.race([processTask(input), monitorPromise])
+    if (timeoutController.interval) {
+      clearInterval(timeoutController.interval)
+    }
   } catch (error: unknown) {
-    clearTimeout(warningTimeout)
+    if (timeoutController.interval) {
+      clearInterval(timeoutController.interval)
+    }
     if (error instanceof Error && error.message?.includes('timed out after')) {
       console.error('Task timed out')
       const timeoutLogger = createTaskLogger(input.taskId)

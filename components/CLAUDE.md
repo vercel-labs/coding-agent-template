@@ -24,7 +24,25 @@
 - **Delegates**: API logic to @app/api/, database to Drizzle ORM, server state to @app pages, atoms definitions to @lib/atoms/
 - **Parent handles**: Routing (@app), server-side rendering, authentication logic
 
+## Sub-Agent Display
+- **sub-agent-indicator.tsx** - Collapsible UI showing sub-agent activity
+  - `SubAgentIndicator` - Full display with active/completed sub-agents, status badges, duration
+  - `SubAgentIndicatorCompact` - Minimal badge for logs pane header
+  - Shows sub-agent name, status (starting/running/completed/error), elapsed time
+  - Color-coded by status: amber (starting), blue (running), green (completed), red (error)
+  - Displays last heartbeat timestamp via tooltip (indicates timeout extension activity)
+  - Accessed via props: `currentSubAgent`, `subAgentActivity`, `lastHeartbeat`
+
+## Log Filtering
+- **logs-pane.tsx** - Enhanced log display with sub-agent filtering
+  - Filter types: 'all', 'platform', 'server', 'subagent'
+  - Sub-agent logs show agent source badge with name
+  - `SubAgentIndicatorCompact` displayed in logs pane header when sub-agents active
+  - Tabs: 'logs' (filtered task logs) and 'terminal' (raw terminal output)
+
 ## Key Files
 - **task-form.tsx** - Agent/model selector, prompt input, sandbox options (790 lines)
 - **api-keys-dialog.tsx** - API key management, token creation, MCP configuration (597 lines)
 - **app-layout.tsx** - Main layout with resizable sidebar, TasksContext and ConnectorsProvider (374 lines)
+- **sub-agent-indicator.tsx** - Sub-agent activity display with collapsible details (293 lines)
+- **logs-pane.tsx** - Resizable logs panel with sub-agent badges and filtering (350+ lines)
