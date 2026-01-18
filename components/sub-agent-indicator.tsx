@@ -18,9 +18,9 @@ interface SubAgentIndicatorProps {
 const STATUS_CONFIG = {
   starting: {
     icon: Loader2,
-    color: 'text-yellow-500',
-    bgColor: 'bg-yellow-500/10',
-    borderColor: 'border-yellow-500/30',
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/30',
     animate: true,
     label: 'Starting',
   },
@@ -118,9 +118,13 @@ export function SubAgentIndicator({
     : activeSubAgents[0]
 
   return (
-    <div className={cn('rounded-lg border', className)}>
+    <div className={cn('rounded-lg border', className)} role="region" aria-label="Sub-agent activity">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <CollapsibleTrigger className="w-full">
+        <CollapsibleTrigger
+          className="w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+          aria-label="Toggle sub-agent activity details"
+          aria-expanded={isExpanded}
+        >
           <div
             className={cn(
               'flex items-center justify-between px-3 py-2 rounded-lg transition-colors',
@@ -210,7 +214,13 @@ function SubAgentRow({ activity }: { activity: SubAgentActivity }) {
   const Icon = config.icon
 
   return (
-    <div className={cn('flex items-center justify-between p-2 rounded-md border', config.bgColor, config.borderColor)}>
+    <div
+      className={cn(
+        'flex items-center justify-between p-3 rounded-md border min-h-[44px]',
+        config.bgColor,
+        config.borderColor,
+      )}
+    >
       <div className="flex items-center gap-2">
         <Icon className={cn('h-4 w-4', config.color, config.animate && 'animate-spin')} />
         <div>
@@ -265,6 +275,8 @@ export function SubAgentIndicatorCompact({
               config.borderColor,
               'border',
             )}
+            role="status"
+            aria-label={`Sub-agent ${currentActivity.name} is running`}
           >
             <Icon className={cn('h-3 w-3', config.color, config.animate && 'animate-spin')} />
             <span className="font-medium">{currentActivity.name}</span>

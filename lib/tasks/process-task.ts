@@ -348,15 +348,41 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
 
         // Check absolute maximum (max duration + grace period)
         if (elapsedMs >= TASK_TIMEOUT_MS + HEARTBEAT_GRACE_PERIOD_MS) {
+          // Check if task already completed before timing out (race condition prevention)
+          const [currentTask] = await db
+            .select({ status: tasks.status })
+            .from(tasks)
+            .where(eq(tasks.id, input.taskId))
+            .limit(1)
+          if (
+            currentTask?.status === 'completed' ||
+            currentTask?.status === 'error' ||
+            currentTask?.status === 'stopped'
+          ) {
+            return // Task already finished, don't timeout
+          }
           isTimedOut = true
-          reject(new Error(`Task execution timed out after ${input.maxDuration} minutes`))
+          reject(new Error('Task execution timed out'))
           return
         }
 
         // Original timeout reached without recent activity
         if (!hasActiveSubAgents || !lastHeartbeat) {
+          // Check if task already completed before timing out (race condition prevention)
+          const [currentTask] = await db
+            .select({ status: tasks.status })
+            .from(tasks)
+            .where(eq(tasks.id, input.taskId))
+            .limit(1)
+          if (
+            currentTask?.status === 'completed' ||
+            currentTask?.status === 'error' ||
+            currentTask?.status === 'stopped'
+          ) {
+            return // Task already finished, don't timeout
+          }
           isTimedOut = true
-          reject(new Error(`Task execution timed out after ${input.maxDuration} minutes`))
+          reject(new Error('Task execution timed out'))
           return
         }
       }

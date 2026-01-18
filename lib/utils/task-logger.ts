@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client'
 import { tasks, SubAgentActivity } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import {
   createInfoLog,
   createCommandLog,
@@ -68,15 +68,12 @@ export class TaskLogger {
           logEntry = createInfoLog(message, source)
       }
 
-      // Get current task to preserve existing logs
-      const currentTask = await db.select().from(tasks).where(eq(tasks.id, this.taskId)).limit(1)
-      const existingLogs = currentTask[0]?.logs || []
-
-      // Append the new log entry and update heartbeat
+      // Atomically append the new log entry using PostgreSQL JSONB concatenation
+      // This prevents race conditions by avoiding read-modify-write patterns
       await db
         .update(tasks)
         .set({
-          logs: [...existingLogs, logEntry],
+          logs: sql`COALESCE(${tasks.logs}, '[]'::jsonb) || ${JSON.stringify([logEntry])}::jsonb`,
           lastHeartbeat: new Date(),
           updatedAt: new Date(),
         })
@@ -133,11 +130,6 @@ export class TaskLogger {
     }
 
     try {
-      // Get current task
-      const currentTask = await db.select().from(tasks).where(eq(tasks.id, this.taskId)).limit(1)
-      const existingActivity = currentTask[0]?.subAgentActivity || []
-      const existingLogs = currentTask[0]?.logs || []
-
       // Create log entry for sub-agent start
       const logEntry = createSubAgentLog(
         `Sub-agent started: ${name}${description ? ` - ${description}` : ''}`,
@@ -146,13 +138,13 @@ export class TaskLogger {
         subAgentId,
       )
 
-      // Update task with new sub-agent activity
+      // Atomically append sub-agent activity and log entry using PostgreSQL JSONB concatenation
       await db
         .update(tasks)
         .set({
-          subAgentActivity: [...existingActivity, activity],
+          subAgentActivity: sql`COALESCE(${tasks.subAgentActivity}, '[]'::jsonb) || ${JSON.stringify([activity])}::jsonb`,
           currentSubAgent: name,
-          logs: [...existingLogs, logEntry],
+          logs: sql`COALESCE(${tasks.logs}, '[]'::jsonb) || ${JSON.stringify([logEntry])}::jsonb`,
           lastHeartbeat: new Date(),
           updatedAt: new Date(),
         })
@@ -170,17 +162,20 @@ export class TaskLogger {
    */
   async subAgentRunning(subAgentId: string): Promise<void> {
     try {
-      const currentTask = await db.select().from(tasks).where(eq(tasks.id, this.taskId)).limit(1)
-      const existingActivity = currentTask[0]?.subAgentActivity || []
-
-      const updatedActivity = existingActivity.map((sa) =>
-        sa.id === subAgentId ? { ...sa, status: 'running' as const } : sa,
-      )
-
+      // Atomically update specific array element using PostgreSQL JSONB functions
       await db
         .update(tasks)
         .set({
-          subAgentActivity: updatedActivity,
+          subAgentActivity: sql`(
+            SELECT jsonb_agg(
+              CASE
+                WHEN elem->>'id' = ${subAgentId}
+                THEN jsonb_set(elem, '{status}', '"running"')
+                ELSE elem
+              END
+            )
+            FROM jsonb_array_elements(COALESCE(${tasks.subAgentActivity}, '[]'::jsonb)) elem
+          )`,
           lastHeartbeat: new Date(),
           updatedAt: new Date(),
         })
@@ -195,25 +190,15 @@ export class TaskLogger {
    */
   async completeSubAgent(subAgentId: string, success: boolean = true): Promise<void> {
     try {
+      // Read once to get sub-agent details and check for other running agents
       const currentTask = await db.select().from(tasks).where(eq(tasks.id, this.taskId)).limit(1)
       const existingActivity = currentTask[0]?.subAgentActivity || []
-      const existingLogs = currentTask[0]?.logs || []
 
       const subAgent = existingActivity.find((sa) => sa.id === subAgentId)
       if (!subAgent) return
 
-      const updatedActivity = existingActivity.map((sa) =>
-        sa.id === subAgentId
-          ? {
-              ...sa,
-              status: success ? ('completed' as const) : ('error' as const),
-              completedAt: new Date(),
-            }
-          : sa,
-      )
-
-      // Check if there are other running sub-agents
-      const otherRunning = updatedActivity.find(
+      // Check if there are other running sub-agents (after this one completes)
+      const otherRunning = existingActivity.find(
         (sa) => sa.id !== subAgentId && (sa.status === 'running' || sa.status === 'starting'),
       )
 
@@ -225,12 +210,29 @@ export class TaskLogger {
         subAgentId,
       )
 
+      const completedAt = new Date().toISOString()
+      const newStatus = success ? 'completed' : 'error'
+
+      // Atomically update sub-agent status and append log entry
       await db
         .update(tasks)
         .set({
-          subAgentActivity: updatedActivity,
+          subAgentActivity: sql`(
+            SELECT jsonb_agg(
+              CASE
+                WHEN elem->>'id' = ${subAgentId}
+                THEN jsonb_set(
+                  jsonb_set(elem, '{status}', ${JSON.stringify(newStatus)}),
+                  '{completedAt}',
+                  ${JSON.stringify(completedAt)}
+                )
+                ELSE elem
+              END
+            )
+            FROM jsonb_array_elements(COALESCE(${tasks.subAgentActivity}, '[]'::jsonb)) elem
+          )`,
           currentSubAgent: otherRunning?.name || null,
-          logs: [...existingLogs, logEntry],
+          logs: sql`COALESCE(${tasks.logs}, '[]'::jsonb) || ${JSON.stringify([logEntry])}::jsonb`,
           lastHeartbeat: new Date(),
           updatedAt: new Date(),
         })
@@ -265,16 +267,13 @@ export class TaskLogger {
     try {
       const logEntry = createInfoLog(message)
 
-      // Get current task to preserve existing logs
-      const currentTask = await db.select().from(tasks).where(eq(tasks.id, this.taskId)).limit(1)
-      const existingLogs = currentTask[0]?.logs || []
-
-      // Update both progress and logs
+      // Atomically update progress and append log entry
       await db
         .update(tasks)
         .set({
           progress,
-          logs: [...existingLogs, logEntry],
+          logs: sql`COALESCE(${tasks.logs}, '[]'::jsonb) || ${JSON.stringify([logEntry])}::jsonb`,
+          lastHeartbeat: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(tasks.id, this.taskId))
@@ -291,23 +290,28 @@ export class TaskLogger {
    */
   async updateStatus(status: 'pending' | 'processing' | 'completed' | 'error', message?: string): Promise<void> {
     try {
-      const updates: {
-        status: 'pending' | 'processing' | 'completed' | 'error'
-        updatedAt: Date
-        logs?: LogEntry[]
-      } = {
-        status,
-        updatedAt: new Date(),
-      }
-
       if (message) {
         const logEntry = createInfoLog(message)
-        const currentTask = await db.select().from(tasks).where(eq(tasks.id, this.taskId)).limit(1)
-        const existingLogs = currentTask[0]?.logs || []
-        updates.logs = [...existingLogs, logEntry]
-      }
 
-      await db.update(tasks).set(updates).where(eq(tasks.id, this.taskId))
+        // Atomically update status and append log entry
+        await db
+          .update(tasks)
+          .set({
+            status,
+            logs: sql`COALESCE(${tasks.logs}, '[]'::jsonb) || ${JSON.stringify([logEntry])}::jsonb`,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, this.taskId))
+      } else {
+        // No log message, just update status
+        await db
+          .update(tasks)
+          .set({
+            status,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, this.taskId))
+      }
 
       // Task status: ${status}
     } catch {
