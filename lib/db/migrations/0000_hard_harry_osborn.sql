@@ -12,6 +12,9 @@ CREATE TABLE "tasks" (
 	"instructions" text,
 	"branch_name" text,
 	"sandbox_url" text,
+	"sub_agent_activity" jsonb,
+	"current_sub_agent" text,
+	"last_heartbeat" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"completed_at" timestamp
