@@ -84,13 +84,15 @@ export function redactSensitiveInfo(message: string): string {
 export function createLogEntry(
   type: LogEntry['type'],
   message: string,
-  timestamp?: Date,
+  timestamp?: Date | string,
   agentSource?: AgentSource,
 ): LogEntry {
+  // Convert Date to ISO string for JSONB storage
+  const timestampValue = timestamp instanceof Date ? timestamp.toISOString() : timestamp || new Date().toISOString()
   return {
     type,
     message: redactSensitiveInfo(message),
-    timestamp: timestamp || new Date(),
+    timestamp: timestampValue,
     agentSource: agentSource
       ? {
           name: agentSource.name,

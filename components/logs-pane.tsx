@@ -385,7 +385,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
               }
             }
 
-            const formatTime = (timestamp: Date) => {
+            const formatTime = (timestamp: Date | string) => {
               return new Date(timestamp).toLocaleTimeString('en-US', {
                 hour12: false,
                 hour: '2-digit',

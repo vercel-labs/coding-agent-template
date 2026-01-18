@@ -3,30 +3,32 @@ import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
 
 // Sub-agent activity schema for tracking spawned sub-agents
+// Length limits prevent database bloat from malicious/buggy agents
 export const subAgentActivitySchema = z.object({
-  id: z.string(), // Unique sub-agent instance ID
-  name: z.string(), // Sub-agent name (e.g., "Explore", "Plan", "general-purpose")
-  type: z.string().optional(), // Sub-agent type classification
+  id: z.string().min(1).max(36), // CUID2 is ~21 chars, allow up to 36
+  name: z.string().min(1).max(100), // Sub-agent name (e.g., "Explore", "Plan", "general-purpose")
+  type: z.string().max(50).optional(), // Sub-agent type classification
   status: z.enum(['starting', 'running', 'completed', 'error']),
-  startedAt: z.date(),
-  completedAt: z.date().optional(),
-  description: z.string().optional(), // Short description of what the sub-agent is doing
+  startedAt: z.string().datetime(), // ISO string format from JSONB
+  completedAt: z.string().datetime().optional(), // ISO string format from JSONB
+  description: z.string().max(500).optional(), // Short description of what the sub-agent is doing
 })
 
 export type SubAgentActivity = z.infer<typeof subAgentActivitySchema>
 
 // Log entry types - extended with agent source tracking
+// Length limits prevent database bloat from overly long messages
 export const logEntrySchema = z.object({
   type: z.enum(['info', 'command', 'error', 'success', 'subagent']), // Added 'subagent' type
-  message: z.string(),
-  timestamp: z.date().optional(),
+  message: z.string().max(2000), // Reasonable message length limit
+  timestamp: z.string().datetime().optional(), // ISO string format from JSONB
   // Agent source tracking for sub-agent visibility
   agentSource: z
     .object({
-      name: z.string(), // Primary agent or sub-agent name
+      name: z.string().max(100), // Primary agent or sub-agent name
       isSubAgent: z.boolean().default(false),
-      parentAgent: z.string().optional(), // Parent agent name if this is a sub-agent
-      subAgentId: z.string().optional(), // ID linking to SubAgentActivity
+      parentAgent: z.string().max(100).optional(), // Parent agent name if this is a sub-agent
+      subAgentId: z.string().max(36).optional(), // ID linking to SubAgentActivity
     })
     .optional(),
 })

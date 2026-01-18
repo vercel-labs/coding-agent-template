@@ -33,6 +33,10 @@ This is a multi-agent AI coding assistant platform built with Next.js 16 and Rea
 - **keys** - User-specific API keys (Anthropic, OpenAI, Cursor, Gemini, AI Gateway)
 - **apiTokens** - External API tokens for programmatic access (hashed storage)
 - **tasks** - Coding tasks with logs, status, PR info, sandbox IDs
+  - `logs` - JSONB array of LogEntry with agent source tracking
+  - `subAgentActivity` - JSONB array of SubAgentActivity (sub-agent execution history)
+  - `currentSubAgent` - Currently active sub-agent name (for UI display)
+  - `lastHeartbeat` - Last activity timestamp (for timeout extension)
 - **taskMessages** - Chat messages between users and agents
 - **connectors** - MCP server configurations
 - **settings** - User-specific settings (key-value pairs)
@@ -185,6 +189,34 @@ Task execution is centralized in `lib/tasks/process-task.ts` with `processTaskWi
 6. **Cleanup** - Shutdown sandbox unless keepAlive is enabled
 
 Works for both REST API and MCP task creation with same execution path.
+
+#### Sub-Agent Activity Tracking
+Tasks can spawn sub-agents with tracking via `TaskLogger`:
+- **startSubAgent(name, description?)** - Create and track a new sub-agent (returns sub-agent ID)
+- **subAgentRunning(subAgentId)** - Mark sub-agent as actively running
+- **completeSubAgent(subAgentId, success)** - Mark sub-agent as completed or errored
+- **heartbeat()** - Send activity heartbeat for timeout extension
+
+Sub-agent activity is stored in task table as JSONB array with fields:
+- `id` - Unique sub-agent instance ID
+- `name` - Sub-agent name (e.g., "Explore", "Plan", "general-purpose")
+- `status` - One of: 'starting', 'running', 'completed', 'error'
+- `startedAt` - ISO timestamp of start
+- `completedAt` - ISO timestamp of completion (optional)
+- `description` - Short description of sub-agent task
+
+The UI displays sub-agents via `SubAgentIndicator` component with collapsible details.
+
+#### Heartbeat-Based Timeout Extension
+Task timeout is extended based on sub-agent activity:
+- **Base timeout** - Configurable per task (default 300 minutes)
+- **Grace period** - 5 minutes of activity for active sub-agents
+- **Absolute maximum** - Base timeout + grace period
+- **Mechanism** - Each log operation updates `lastHeartbeat` timestamp
+- **Check frequency** - Every 30 seconds during execution
+- **Extension logic** - If sub-agents are running AND heartbeat is recent (< 5min), timeout is extended
+
+Warning logged at T-1min before timeout if sub-agents are inactive.
 
 ### MCP Server Support (Claude Only)
 MCP servers extend Claude Code with additional tools. Configured in `connectors` table with:
@@ -386,14 +418,28 @@ Central task processing logic at `lib/tasks/process-task.ts` handles both REST A
 - Accepts `TaskProcessingInput` with githubToken and githubUser for authenticated execution
 
 ### Task Logging with TaskLogger
-Use `lib/utils/task-logger.ts` for structured, real-time task logs:
+Use `lib/utils/task-logger.ts` for structured, real-time task logs with agent context tracking:
 ```typescript
 const logger = new TaskLogger(taskId)
 await logger.info('Operation started')
 await logger.updateProgress(50, 'Processing')
 await logger.success('Completed')
 await logger.error('Failed')
+
+// Sub-agent tracking
+const subAgentId = await logger.startSubAgent('Explore', 'Exploring repository')
+await logger.subAgentRunning(subAgentId)
+await logger.completeSubAgent(subAgentId, true)
+
+// Send heartbeat to extend timeout during long operations
+await logger.heartbeat()
+
+// Create logger with agent context
+const contextLogger = logger.withAgentContext({ name: 'claude', isSubAgent: false })
+await contextLogger.info('Logged with Claude agent context')
 ```
+
+All log operations automatically update `lastHeartbeat` for timeout extension.
 
 ### AI Branch Name Generation
 Uses Vercel AI SDK 5 + AI Gateway in `lib/utils/branch-name-generator.ts`:

@@ -50,7 +50,7 @@ const STATUS_CONFIG = {
   },
 }
 
-function formatDuration(startDate: Date, endDate?: Date): string {
+function formatDuration(startDate: Date | string, endDate?: Date | string): string {
   const start = new Date(startDate).getTime()
   const end = endDate ? new Date(endDate).getTime() : Date.now()
   const durationMs = end - start
@@ -68,7 +68,7 @@ function formatDuration(startDate: Date, endDate?: Date): string {
   return `${seconds}s`
 }
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date | string): string {
   const now = Date.now()
   const then = new Date(date).getTime()
   const diffMs = now - then

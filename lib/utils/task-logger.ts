@@ -125,7 +125,7 @@ export class TaskLogger {
       id: subAgentId,
       name,
       status: 'starting',
-      startedAt: new Date(),
+      startedAt: new Date().toISOString(),
       description,
     }
 
@@ -187,10 +187,23 @@ export class TaskLogger {
 
   /**
    * Mark a sub-agent as completed
+   *
+   * NOTE: There is a minor race condition when determining currentSubAgent.
+   * If multiple sub-agents complete simultaneously, the read of existing activity
+   * may be stale by the time the atomic update runs. This could result in
+   * currentSubAgent briefly showing an incorrect value. This is acceptable
+   * because:
+   * 1. The sub-agent status updates are atomic and always correct
+   * 2. The UI will self-correct on the next log append/heartbeat
+   * 3. Timeout extension logic checks actual sub-agent statuses, not currentSubAgent
+   *
+   * A fully atomic solution would require complex SQL to compute currentSubAgent
+   * within the UPDATE statement, which adds significant complexity for minimal benefit.
    */
   async completeSubAgent(subAgentId: string, success: boolean = true): Promise<void> {
     try {
       // Read once to get sub-agent details and check for other running agents
+      // NOTE: This read may be slightly stale under high concurrency (see method docs)
       const currentTask = await db.select().from(tasks).where(eq(tasks.id, this.taskId)).limit(1)
       const existingActivity = currentTask[0]?.subAgentActivity || []
 
