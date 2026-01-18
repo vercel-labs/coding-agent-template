@@ -1,6 +1,14 @@
-import { LogEntry } from '@/lib/db/schema'
+import { LogEntry, SubAgentActivity } from '@/lib/db/schema'
 
-export type { LogEntry }
+export type { LogEntry, SubAgentActivity }
+
+// Agent source context for log entries
+export interface AgentSource {
+  name: string // Primary agent or sub-agent name
+  isSubAgent?: boolean
+  parentAgent?: string // Parent agent name if this is a sub-agent
+  subAgentId?: string // ID linking to SubAgentActivity
+}
 
 // Redact sensitive information from log messages
 export function redactSensitiveInfo(message: string): string {
@@ -73,27 +81,57 @@ export function redactSensitiveInfo(message: string): string {
   return redacted
 }
 
-export function createLogEntry(type: LogEntry['type'], message: string, timestamp?: Date): LogEntry {
+export function createLogEntry(
+  type: LogEntry['type'],
+  message: string,
+  timestamp?: Date,
+  agentSource?: AgentSource,
+): LogEntry {
   return {
     type,
     message: redactSensitiveInfo(message),
     timestamp: timestamp || new Date(),
+    agentSource: agentSource
+      ? {
+          name: agentSource.name,
+          isSubAgent: agentSource.isSubAgent ?? false,
+          parentAgent: agentSource.parentAgent,
+          subAgentId: agentSource.subAgentId,
+        }
+      : undefined,
   }
 }
 
-export function createInfoLog(message: string): LogEntry {
-  return createLogEntry('info', message)
+export function createInfoLog(message: string, agentSource?: AgentSource): LogEntry {
+  return createLogEntry('info', message, undefined, agentSource)
 }
 
-export function createCommandLog(command: string, args?: string[]): LogEntry {
+export function createCommandLog(command: string, args?: string[], agentSource?: AgentSource): LogEntry {
   const fullCommand = args ? `${command} ${args.join(' ')}` : command
-  return createLogEntry('command', `$ ${fullCommand}`)
+  return createLogEntry('command', `$ ${fullCommand}`, undefined, agentSource)
 }
 
-export function createErrorLog(message: string): LogEntry {
-  return createLogEntry('error', message)
+export function createErrorLog(message: string, agentSource?: AgentSource): LogEntry {
+  return createLogEntry('error', message, undefined, agentSource)
 }
 
-export function createSuccessLog(message: string): LogEntry {
-  return createLogEntry('success', message)
+export function createSuccessLog(message: string, agentSource?: AgentSource): LogEntry {
+  return createLogEntry('success', message, undefined, agentSource)
+}
+
+/**
+ * Create a sub-agent log entry for tracking sub-agent lifecycle events
+ */
+export function createSubAgentLog(
+  message: string,
+  subAgentName: string,
+  parentAgent: string,
+  subAgentId?: string,
+): LogEntry {
+  return createLogEntry('subagent', message, undefined, {
+    name: subAgentName,
+    isSubAgent: true,
+    parentAgent,
+    subAgentId,
+  })
 }

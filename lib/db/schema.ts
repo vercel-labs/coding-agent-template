@@ -2,11 +2,33 @@ import { pgTable, text, timestamp, integer, jsonb, boolean, uniqueIndex, index }
 import { createId } from '@paralleldrive/cuid2'
 import { z } from 'zod'
 
-// Log entry types
+// Sub-agent activity schema for tracking spawned sub-agents
+export const subAgentActivitySchema = z.object({
+  id: z.string(), // Unique sub-agent instance ID
+  name: z.string(), // Sub-agent name (e.g., "Explore", "Plan", "general-purpose")
+  type: z.string().optional(), // Sub-agent type classification
+  status: z.enum(['starting', 'running', 'completed', 'error']),
+  startedAt: z.date(),
+  completedAt: z.date().optional(),
+  description: z.string().optional(), // Short description of what the sub-agent is doing
+})
+
+export type SubAgentActivity = z.infer<typeof subAgentActivitySchema>
+
+// Log entry types - extended with agent source tracking
 export const logEntrySchema = z.object({
-  type: z.enum(['info', 'command', 'error', 'success']),
+  type: z.enum(['info', 'command', 'error', 'success', 'subagent']), // Added 'subagent' type
   message: z.string(),
   timestamp: z.date().optional(),
+  // Agent source tracking for sub-agent visibility
+  agentSource: z
+    .object({
+      name: z.string(), // Primary agent or sub-agent name
+      isSubAgent: z.boolean().default(false),
+      parentAgent: z.string().optional(), // Parent agent name if this is a sub-agent
+      subAgentId: z.string().optional(), // ID linking to SubAgentActivity
+    })
+    .optional(),
 })
 
 export type LogEntry = z.infer<typeof logEntrySchema>
@@ -107,6 +129,10 @@ export const tasks = pgTable('tasks', {
   }),
   prMergeCommitSha: text('pr_merge_commit_sha'),
   mcpServerIds: jsonb('mcp_server_ids').$type<string[]>(),
+  // Sub-agent tracking for visibility and timeout handling
+  subAgentActivity: jsonb('sub_agent_activity').$type<SubAgentActivity[]>(),
+  currentSubAgent: text('current_sub_agent'), // Name of currently active sub-agent
+  lastHeartbeat: timestamp('last_heartbeat'), // Last activity timestamp for timeout extension
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
@@ -139,6 +165,10 @@ export const insertTaskSchema = z.object({
   prStatus: z.enum(['open', 'closed', 'merged']).optional(),
   prMergeCommitSha: z.string().optional(),
   mcpServerIds: z.array(z.string()).optional(),
+  // Sub-agent tracking fields
+  subAgentActivity: z.array(subAgentActivitySchema).optional(),
+  currentSubAgent: z.string().optional(),
+  lastHeartbeat: z.date().optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   completedAt: z.date().optional(),
@@ -170,6 +200,10 @@ export const selectTaskSchema = z.object({
   prStatus: z.enum(['open', 'closed', 'merged']).nullable(),
   prMergeCommitSha: z.string().nullable(),
   mcpServerIds: z.array(z.string()).nullable(),
+  // Sub-agent tracking fields
+  subAgentActivity: z.array(subAgentActivitySchema).nullable(),
+  currentSubAgent: z.string().nullable(),
+  lastHeartbeat: z.date().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
   completedAt: z.date().nullable(),

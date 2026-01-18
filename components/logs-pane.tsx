@@ -2,7 +2,7 @@
 
 import { Task, LogEntry } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
-import { Copy, Check, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { Copy, Check, ChevronDown, ChevronUp, Trash2, Bot } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -10,6 +10,8 @@ import { useTasks } from '@/components/app-layout'
 import { getLogsPaneHeight, setLogsPaneHeight, getLogsPaneCollapsed, setLogsPaneCollapsed } from '@/lib/utils/cookies'
 import { Terminal, TerminalRef } from '@/components/terminal'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SubAgentIndicatorCompact } from '@/components/sub-agent-indicator'
+import { Badge } from '@/components/ui/badge'
 
 interface LogsPaneProps {
   task: Task
@@ -17,7 +19,7 @@ interface LogsPaneProps {
 }
 
 type TabType = 'logs' | 'terminal'
-type LogFilterType = 'all' | 'platform' | 'server'
+type LogFilterType = 'all' | 'platform' | 'server' | 'subagent'
 
 export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const [copiedLogs, setCopiedLogs] = useState(false)
@@ -161,8 +163,10 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const getFilteredLogs = (filter: LogFilterType) => {
     return (task.logs || []).filter((log) => {
       const isServerLog = log.message.startsWith('[SERVER]')
+      const isSubAgentLog = log.type === 'subagent' || log.agentSource?.isSubAgent
       if (filter === 'server') return isServerLog
-      if (filter === 'platform') return !isServerLog
+      if (filter === 'platform') return !isServerLog && !isSubAgentLog
+      if (filter === 'subagent') return isSubAgentLog
       return true
     })
   }
@@ -294,6 +298,10 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
           </div>
           {activeTab === 'logs' && (
             <div className="flex items-center gap-1.5 mr-3" onClick={(e) => e.stopPropagation()}>
+              <SubAgentIndicatorCompact
+                currentSubAgent={task.currentSubAgent}
+                subAgentActivity={task.subAgentActivity}
+              />
               <Select value={logFilter} onValueChange={(value) => setLogFilter(value as LogFilterType)}>
                 <SelectTrigger size="sm" className="h-6 text-xs px-2 py-0 min-w-[90px] border-0 shadow-none">
                   <SelectValue />
@@ -302,6 +310,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="platform">Platform</SelectItem>
                   <SelectItem value="server">Server</SelectItem>
+                  <SelectItem value="subagent">Sub-agents</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -357,6 +366,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
         >
           {getFilteredLogs(logFilter).map((log, index) => {
             const isServerLog = log.message.startsWith('[SERVER]')
+            const isSubAgentLog = log.type === 'subagent' || log.agentSource?.isSubAgent
             const messageContent = isServerLog ? log.message.substring(9) : log.message // Remove '[SERVER] '
 
             const getLogColor = (logType: LogEntry['type']) => {
@@ -367,6 +377,8 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                   return 'text-red-400'
                 case 'success':
                   return 'text-green-400'
+                case 'subagent':
+                  return 'text-violet-400'
                 case 'info':
                 default:
                   return 'text-white'
@@ -384,8 +396,26 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
             }
 
             return (
-              <div key={index} className={cn('flex gap-1.5 leading-tight')}>
+              <div
+                key={index}
+                className={cn(
+                  'flex gap-1.5 leading-tight',
+                  isSubAgentLog && 'bg-violet-500/5 -mx-2 px-2 py-0.5 border-l-2 border-violet-500/30',
+                )}
+              >
                 <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
+                {/* Agent source badge */}
+                {log.agentSource && (
+                  <span
+                    className={cn(
+                      'text-[9px] px-1 py-0.5 rounded shrink-0 font-medium',
+                      log.agentSource.isSubAgent ? 'bg-violet-500/20 text-violet-300' : 'bg-blue-500/20 text-blue-300',
+                    )}
+                  >
+                    {log.agentSource.isSubAgent && <Bot className="inline h-2.5 w-2.5 mr-0.5 -mt-0.5" />}
+                    {log.agentSource.name}
+                  </span>
+                )}
                 <span className={cn('flex-1', getLogColor(log.type))}>
                   {isServerLog && <span className="text-purple-400">[SERVER]</span>}
                   {isServerLog && ' '}
