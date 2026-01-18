@@ -14,6 +14,7 @@ import { unregisterSandbox, isSandboxHealthy } from '@/lib/sandbox/sandbox-regis
 import { decrypt } from '@/lib/crypto'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getGitHubUser } from '@/lib/github/client'
+import { validateGitHubToken } from '@/lib/github/validate-token'
 import { getUserApiKeys } from '@/lib/api-keys/user-keys'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { getMaxSandboxDuration } from '@/lib/db/settings'
@@ -92,6 +93,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
     const githubUser = await getGitHubUser(user.id)
     // Get max sandbox duration for this user (user-specific > global > env var)
     const maxSandboxDuration = await getMaxSandboxDuration(user.id)
+
+    // Validate GitHub token if task requires repository access
+    if (task.repoUrl) {
+      // Check if token exists
+      if (!userGithubToken) {
+        return NextResponse.json(
+          { error: 'GitHub token was revoked or expired. Please reconnect your GitHub account.' },
+          { status: 401 },
+        )
+      }
+
+      // Validate token with GitHub API
+      const validationResult = await validateGitHubToken(userGithubToken)
+
+      if (!validationResult.valid) {
+        return NextResponse.json(
+          { error: validationResult.error || 'GitHub token validation failed. Please reconnect your GitHub account.' },
+          { status: 401 },
+        )
+      }
+    }
 
     // Process the continuation asynchronously
     after(async () => {

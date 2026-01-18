@@ -132,6 +132,24 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
       await logger.info('Repository cloned successfully')
 
+      // Update remote URL to include authentication for push operations
+      // Git strips credentials from remote URL after clone, so we need to re-add them
+      if (config.githubToken) {
+        const updateUrlResult = await runInProject(sandbox, 'git', [
+          'remote',
+          'set-url',
+          'origin',
+          authenticatedRepoUrl,
+        ])
+
+        if (!updateUrlResult.success) {
+          await logger.error('Failed to configure git remote authentication')
+          throw new Error('Failed to configure git authentication for push operations')
+        }
+
+        await logger.info('Git remote URL configured with authentication')
+      }
+
       // Call progress callback after sandbox creation
       if (config.onProgress) {
         await config.onProgress(30, 'Repository cloned, installing dependencies...')
@@ -495,6 +513,25 @@ fi
     const gitEmail = config.gitAuthorEmail || 'agent@example.com'
     await runInProject(sandbox, 'git', ['config', 'user.name', gitName])
     await runInProject(sandbox, 'git', ['config', 'user.email', gitEmail])
+
+    // Configure git credential helper for authenticated pushes (only if GitHub token exists)
+    if (config.githubToken) {
+      await logger.info('Configuring git credential helper')
+
+      // Use in-memory credential caching (secure, auto-cleanup on sandbox shutdown)
+      // Cache timeout: 1 hour (3600 seconds) - sufficient for task execution
+      const credentialResult = await runInProject(sandbox, 'git', [
+        'config',
+        'credential.helper',
+        'cache --timeout=3600',
+      ])
+
+      if (!credentialResult.success) {
+        await logger.info('Warning: Could not configure credential caching, continuing anyway')
+      } else {
+        await logger.info('Git credential helper configured')
+      }
+    }
 
     // Verify we're in a Git repository
     const gitRepoCheck = await runInProject(sandbox, 'git', ['rev-parse', '--git-dir'])

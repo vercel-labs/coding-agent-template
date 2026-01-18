@@ -20,6 +20,7 @@ import { generateTaskTitle, createFallbackTitle } from '@/lib/utils/title-genera
 import { generateCommitMessage, createFallbackCommitMessage } from '@/lib/utils/commit-message-generator'
 import { decrypt } from '@/lib/crypto'
 import { generateId } from '@/lib/utils/id'
+import { validateGitHubToken } from '@/lib/github/validate-token'
 
 /**
  * Validate GitHub repository URL format
@@ -472,17 +473,38 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
   try {
     console.log('Starting task processing')
 
-    // Re-validate GitHub token if repo access is needed
-    if (repoUrl && !githubToken) {
-      await logger.error('GitHub access no longer available')
-      await db
-        .update(tasks)
-        .set({
-          status: 'error',
-          error: 'GitHub token was revoked or expired. Please reconnect GitHub.',
-        })
-        .where(eq(tasks.id, taskId))
-      return
+    // Validate GitHub token if repo access is needed
+    if (repoUrl) {
+      // Check if token exists
+      if (!githubToken) {
+        await logger.error('GitHub access no longer available')
+        await db
+          .update(tasks)
+          .set({
+            status: 'error',
+            error: 'GitHub token was revoked or expired. Please reconnect GitHub.',
+          })
+          .where(eq(tasks.id, taskId))
+        return
+      }
+
+      // Validate token with GitHub API
+      await logger.info('Validating GitHub access')
+      const validationResult = await validateGitHubToken(githubToken)
+
+      if (!validationResult.valid) {
+        await logger.error('GitHub token validation failed')
+        await db
+          .update(tasks)
+          .set({
+            status: 'error',
+            error: validationResult.error || 'GitHub token validation failed. Please reconnect GitHub.',
+          })
+          .where(eq(tasks.id, taskId))
+        return
+      }
+
+      await logger.info('GitHub token validated successfully')
     }
 
     await logger.updateStatus('processing', 'Task created, preparing to start...')
