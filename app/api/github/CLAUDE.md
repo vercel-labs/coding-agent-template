@@ -13,13 +13,13 @@ GitHub API proxy: user info, repositories, organizations, verification, repo cre
   - Fallback: Legacy `GITHUB_TOKEN` env var (if configured)
 - **Error response**: Always static message, no token/user ID exposure
 
-## Routes
-- `user/` - Authenticated GitHub user info (login, name, avatar_url)
-- `user-repos/` - User's repos with pagination
-- `repos/` - Search/filter repos
-- `repos/create/` - Create new repository
-- `verify-repo/` - Verify access to specific repo
-- `orgs/` - User's organizations
+## Routes (6 total)
+- `GET /user` - Authenticated GitHub user info (login, name, avatar_url)
+- `GET /user-repos` - User's repos with pagination
+- `GET /repos` - Search/filter repos
+- `POST /repos/create` - Create new repository
+- `GET /verify-repo` - Verify access to specific repo
+- `GET /orgs` - User's organizations
 
 ## Integration Points
 - **GitHub API**: `https://api.github.com` (REST v3)

@@ -12,12 +12,17 @@ OAuth sign-in/connect flows, session creation, account merging, sign-out cleanup
 - **Account merging**: When GitHub account linked to another user, transfer all data (tasks, connectors, keys) to new userId
 - **Routes detect flow type**: Sign-in vs connect via cookies (`github_auth_mode`)
 
-## Routes
-- `signin/github`, `signin/vercel` - Redirect to provider OAuth
-- `callback/vercel` - Creates JWE session from token
-- `github/callback` - Sign-in or connect flow (state-validated)
-- `signout` - Destroy session cookie
-- `info`, `github/status`, `github/disconnect`, `rate-limit` - Session queries
+## Routes (10 total)
+- `GET/POST /signin/github` - Initiate GitHub OAuth (stores state for validation)
+- `GET/POST /signin/vercel` - Initiate Vercel OAuth
+- `GET /callback/vercel` - Vercel OAuth callback (creates JWE session)
+- `GET /github/callback` - GitHub OAuth callback (sign-in or connect flow, state-validated)
+- `GET /github/signin` - Alternative GitHub sign-in initiation
+- `GET /info` - Current authenticated user info
+- `GET /github/status` - GitHub connection status
+- `GET /github/disconnect` - Disconnect GitHub account
+- `GET /rate-limit` - Current rate limit status
+- `GET /signout` - Destroy session cookie
 
 ## Integration Points
 - **Crypto**: `@/lib/crypto` (encrypt/decrypt OAuth tokens)

@@ -23,3 +23,4 @@ Vercel API HTTP client wrapper: user/team lookups, project management, and billi
 - `types.ts` - TypeScript interfaces: VercelUser, VercelTeam, Billing, BillingPlan
 - `user.ts` - `fetchUser()` (v2/www fallback)
 - `teams.ts`, `projects.ts` - Team and project endpoints
+- `utils.ts` - `getHighestAccountLevel()` determines user's highest account tier (hobby/pro/enterprise)

@@ -24,3 +24,4 @@ Jotai client-side state atoms: user session, GitHub cache, task state, UI dialog
 - `task.ts` - Current task state during execution
 - `github-cache.ts`, `github-connection.ts` - GitHub repository and auth state
 - `agent-selection.ts`, `multi-repo.ts`, `connector-dialog.ts`, `file-browser.ts` - UI state atoms
+- `newly-created-repo.ts` - Tracks repos created during task execution

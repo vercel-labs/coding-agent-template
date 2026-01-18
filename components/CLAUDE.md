@@ -8,7 +8,8 @@
 - **Organization**: `ui/` (shadcn primitives), `icons/`, `logos/`, `auth/`, `connectors/`, `providers/`, root (feature components)
 - **State Layers**: Jotai atoms from @lib/atoms/ via useAtom(), React Context (TasksContext, ConnectorsContext), local useState
 - **Dialog Pattern**: `{ open, onOpenChange }` props passed to Dialog component
-- **Provider Hierarchy**: JotaiProvider → SessionProvider → ConnectorsProvider → AppLayout → Theme (app-layout-wrapper.tsx)
+- **Provider Hierarchy**: JotaiProvider → ThemeProvider → (SessionProvider + AppLayoutWrapper in parallel) → ConnectorsProvider (inside AppLayout)
+- **Context Layers**: TasksContext (from AppLayout) for task/sidebar state, ConnectorsContext for MCP server list
 - **Responsive Design**: Mobile-first Tailwind, lg breakpoint (1024px) for desktop/mobile split, `hidden lg:block` patterns
 - **Keyboard Shortcuts**: Ctrl/Cmd+B (sidebar toggle), Enter (form submit), Shift+Enter (newline)
 
@@ -25,5 +26,5 @@
 
 ## Key Files
 - **task-form.tsx** - Agent/model selector, prompt input, sandbox options (790 lines)
-- **api-keys-dialog.tsx** - API key management, token creation, MCP configuration (598 lines)
-- **app-layout.tsx** - Main layout with resizable sidebar, TasksContext provider (374 lines)
+- **api-keys-dialog.tsx** - API key management, token creation, MCP configuration (597 lines)
+- **app-layout.tsx** - Main layout with resizable sidebar, TasksContext and ConnectorsProvider (374 lines)

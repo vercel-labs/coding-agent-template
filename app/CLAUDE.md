@@ -15,9 +15,11 @@ Next.js 16 App Router: UI routing with root layout, providers, and nested page s
 - **Promise-based params**: Use `await params` for route parameters (Next.js 15+)
 
 ## Directory Structure
-- `api/` - REST endpoints (61 routes, see @app/api/CLAUDE.md)
+- `api/` - REST endpoints (62 routes, see @app/api/CLAUDE.md)
 - `tasks/` - Task UI (list page, detail page with [taskId])
 - `repos/` - Repository browser (commits, issues, pull-requests tabs)
+- `new/[owner]/[repo]/` - Repository-specific task creation page
+- `[owner]/[repo]/` - Shared layout for catch-all repo routes
 - `docs/` - Documentation pages (markdown rendering)
 - `layout.tsx` - Root layout with Theme, Session, Jotai, Toaster providers
 - `page.tsx` - Home page (public, task creation form)
@@ -32,8 +34,10 @@ Next.js 16 App Router: UI routing with root layout, providers, and nested page s
 ## Key Behaviors
 - **Auth redirect**: Task pages redirect to home if not authenticated
 - **Public home**: Home page (/) accessible without auth, shows task form
+- **Repo-specific creation**: `/new/[owner]/[repo]/` pre-populates task form with repository (requires auth)
 - **Public repos**: Repo pages viewable without auth (GitHub rate limit: 60/hr unauth, 5000/hr auth)
 - **Nested layouts**: tasks/ and repos/ each have own layout.tsx for tab navigation
+- **Catch-all layout**: `[owner]/[repo]/layout.tsx` provides shared metadata for all owner/repo routes
 
 ## Key Files
 - `layout.tsx` - Providers setup

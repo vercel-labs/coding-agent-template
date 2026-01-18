@@ -66,10 +66,8 @@ git add . && git commit -m "msg" && git push origin <branch>
 
 # Database operations
 pnpm db:generate    # Generate migrations from schema changes
+pnpm db:push        # Push schema changes to database (recommended)
 pnpm db:studio      # Open Drizzle Studio
-
-# Database migrations (requires .env.local → .env workaround)
-cp .env.local .env && DOTENV_CONFIG_PATH=.env pnpm tsx -r dotenv/config node_modules/drizzle-kit/bin.cjs migrate && rm .env
 
 # Code quality
 pnpm format         # Format code with Prettier
@@ -77,6 +75,8 @@ pnpm format:check   # Check formatting
 pnpm type-check     # TypeScript type checking
 pnpm lint           # ESLint linting
 ```
+
+**Note**: For local development with `pnpm db:push`, ensure `POSTGRES_URL` is set in `.env.local`. If using drizzle-kit migrations on Vercel or requiring the older `db:migrate` approach, see the Database Setup section below.
 
 ### CRITICAL: Code Quality Requirements
 **ALWAYS run these commands after editing TypeScript/TSX files:**
@@ -233,19 +233,19 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 ### Authentication Flow
 1. User signs in via OAuth (GitHub or Vercel)
 2. Create/update user record in `users` table with encrypted access token
-3. Create encrypted session token (JWE) stored in HTTP-only cookie
-4. All API routes validate session via `getCurrentUser()` from `lib/auth/session.ts`
+3. Create encrypted session token (JWE) stored in HTTP-only cookie (via `lib/session/create.ts`)
+4. All API routes validate session via `getServerSession()` from `lib/session/get-server-session.ts`
 5. Users can connect additional accounts (e.g., Vercel users connect GitHub) stored in `accounts` table
 
 ### Key API Routes
-- `app/api/auth/` - OAuth callbacks, sign-in/sign-out, GitHub connection
+- `app/api/auth/` - OAuth callbacks, sign-in/sign-out, GitHub connection (uses `lib/session/` for session creation)
 - `app/api/tasks/` - Task CRUD, execution, logs, follow-up messages
 - `app/api/github/` - Repository access, org/repo listing, PR operations
 - `app/api/repos/[owner]/[repo]/` - Commits, issues, pull requests
 - `app/api/connectors/` - MCP server management
 - `app/api/api-keys/` - User API key management
 - `app/api/sandboxes/` - Sandbox creation and management
-- `app/api/tokens/` - External API token management
+- `app/api/tokens/` - External API token management (Bearer token auth)
 
 ### External API Token Authentication
 API tokens enable external applications and MCP clients to call the API without OAuth session cookies.

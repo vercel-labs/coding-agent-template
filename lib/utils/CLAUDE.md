@@ -23,6 +23,9 @@ Cross-cutting utilities: TaskLogger (static-string logging), redaction, rate lim
 
 ## Key Files
 - `task-logger.ts` - TaskLogger class with .info(), .command(), .error(), .success(), .updateProgress()
-- `logging.ts` - redactSensitiveInfo(), createLogEntry()
-- `rate-limit.ts` - checkRateLimit()
-- `id.ts` - generateId() (CUID2)
+- `logging.ts` - redactSensitiveInfo(), createLogEntry() with sensitive data pattern masking
+- `rate-limit.ts` - checkRateLimit() enforcement with UTC date calculations
+- `id.ts` - generateId() (CUID2 format)
+- `branch-name-generator.ts` - generateBranchName(), createFallbackBranchName() with Vercel AI SDK
+- `commit-message-generator.ts` - generateCommitMessage() for auto-generated commit messages
+- `title-generator.ts` - generateTaskTitle() for AI-generated task titles

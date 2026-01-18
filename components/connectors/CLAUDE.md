@@ -21,6 +21,6 @@ UI for MCP connector management: CRUD operations, preset server selection, envir
 - Jotai atoms: `connectorDialogViewAtom`, `selectedConnectorIdAtom`
 
 ## Key Files
-- `manage-connectors.tsx` - Main dialog with 400+ lines covering all CRUD views
+- `manage-connectors.tsx` - Main dialog with 743 lines covering all CRUD views, preset selection, OAuth config, env var management
 - Dialog flow: Add → Select Preset → Configure Env/OAuth → Submit
-- Real-time form validation for required fields
+- Real-time form validation for required fields, toggle visibility for sensitive values

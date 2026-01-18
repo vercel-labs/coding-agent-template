@@ -1,6 +1,6 @@
 # app/api/tasks
 
-31 routes managing full task lifecycle: creation, execution, file ops, PR management, sandbox control.
+32 routes managing full task lifecycle: creation, execution, file ops, PR management, sandbox control.
 
 ## Domain Purpose
 - Task creation triggers non-blocking sandbox setup, agent execution, branch name generation
