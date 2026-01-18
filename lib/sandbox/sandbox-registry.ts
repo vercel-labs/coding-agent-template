@@ -1,4 +1,7 @@
 import { Sandbox } from '@vercel/sandbox'
+import { db } from '@/lib/db/client'
+import { tasks } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
 /**
  * Simplified sandbox registry since we now use Sandbox.get() to reconnect
@@ -61,4 +64,65 @@ export async function killSandbox(taskId: string): Promise<{ success: boolean; e
 
 export function getActiveSandboxCount(): number {
   return activeSandboxes.size
+}
+
+/**
+ * Stop sandbox by fetching sandboxId from database and reconnecting to it
+ * Works across serverless invocations since it queries the DB for sandbox ID
+ */
+export async function stopSandboxFromDB(taskId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 1. Get sandbox ID from database
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+
+    if (!task?.sandboxId) {
+      return { success: false, error: 'No sandbox ID found for task' }
+    }
+
+    // 2. Try to reconnect and stop the sandbox
+    const sandbox = await Sandbox.get({
+      sandboxId: task.sandboxId,
+      teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
+      projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
+      token: process.env.SANDBOX_VERCEL_TOKEN!,
+    })
+
+    // 3. Stop the sandbox
+    await sandbox.stop()
+
+    // 4. Also remove from in-memory registry if present
+    unregisterSandbox(taskId)
+
+    return { success: true }
+  } catch (error) {
+    // Handle 410 Gone - sandbox already expired
+    if (error instanceof Error && (error.message.includes('410') || error.message.includes('Gone'))) {
+      unregisterSandbox(taskId)
+      return { success: true, error: 'Sandbox already expired' }
+    }
+    return { success: false, error: 'Failed to stop sandbox' }
+  }
+}
+
+/**
+ * Check if a sandbox is healthy by running a lightweight command
+ * Returns true if sandbox responds, false if expired (410) or unreachable
+ */
+export async function isSandboxHealthy(sandbox: Sandbox): Promise<boolean> {
+  try {
+    // Run a simple command to verify sandbox is responsive
+    const result = await sandbox.runCommand({
+      cmd: 'true',
+      args: [],
+      sudo: false,
+    })
+    return result.exitCode === 0
+  } catch (error) {
+    // Check for 410 Gone error indicating sandbox expired
+    if (error instanceof Error && (error.message.includes('410') || error.message.includes('Gone'))) {
+      return false
+    }
+    // Other errors also indicate unhealthy sandbox
+    return false
+  }
 }

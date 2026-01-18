@@ -10,7 +10,7 @@ import { Sandbox } from '@vercel/sandbox'
 import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
 import { pushChangesToBranch, shutdownSandbox } from '@/lib/sandbox/git'
-import { unregisterSandbox } from '@/lib/sandbox/sandbox-registry'
+import { unregisterSandbox, isSandboxHealthy } from '@/lib/sandbox/sandbox-registry'
 import { decrypt } from '@/lib/crypto'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 import { getGitHubUser } from '@/lib/github/client'
@@ -180,14 +180,27 @@ async function continueTask(
         })
 
         if (reconnectedSandbox) {
-          await logger.info('Successfully reconnected to existing sandbox')
-          sandbox = reconnectedSandbox
-          isResumedSandbox = true // Mark as resumed
-          await logger.updateProgress(50, 'Executing agent with follow-up message')
+          // Health check before reuse
+          const healthy = await isSandboxHealthy(reconnectedSandbox)
+
+          if (healthy) {
+            await logger.info('Successfully reconnected to existing sandbox')
+            sandbox = reconnectedSandbox
+            isResumedSandbox = true // Mark as resumed
+            await logger.updateProgress(50, 'Executing agent with follow-up message')
+          } else {
+            // Sandbox expired or unhealthy - clear session and create new one
+            await logger.info('Sandbox expired, will create new one')
+            // Clear agent session ID since sandbox is gone
+            await db.update(tasks).set({ agentSessionId: null }).where(eq(tasks.id, taskId))
+            // Don't set sandbox - will fall through to create new one below
+          }
         }
       } catch (error) {
         console.error('Failed to reconnect to sandbox')
         await logger.info('Could not reconnect to sandbox, will create new one')
+        // Clear agent session ID on reconnect failure
+        await db.update(tasks).set({ agentSessionId: null }).where(eq(tasks.id, taskId))
       }
     }
 

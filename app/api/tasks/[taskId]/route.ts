@@ -3,7 +3,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
-import { killSandbox } from '@/lib/sandbox/sandbox-registry'
+import { killSandbox, stopSandboxFromDB } from '@/lib/sandbox/sandbox-registry'
 import { getAuthFromRequest } from '@/lib/auth/api-token'
 
 interface RouteParams {
@@ -84,16 +84,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           .returning()
 
         // Kill the sandbox immediately and aggressively
+        // Try DB-backed method first (works across serverless invocations)
         try {
-          const killResult = await killSandbox(taskId)
-          if (killResult.success) {
-            await logger.success('Sandbox killed successfully')
+          const dbStopResult = await stopSandboxFromDB(taskId)
+          if (dbStopResult.success) {
+            await logger.success('Sandbox terminated successfully')
           } else {
-            await logger.error('Failed to kill sandbox')
+            // Fallback to in-memory kill if DB method failed
+            const killResult = await killSandbox(taskId)
+            if (killResult.success) {
+              await logger.success('Sandbox terminated successfully')
+            } else {
+              await logger.error('Failed to terminate sandbox')
+            }
           }
         } catch (killError) {
           console.error('Failed to kill sandbox during stop')
-          await logger.error('Failed to kill sandbox during stop')
+          await logger.error('Failed to terminate sandbox')
         }
 
         await logger.error('Task execution stopped by user')

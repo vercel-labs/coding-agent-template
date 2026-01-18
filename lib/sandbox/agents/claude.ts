@@ -412,10 +412,13 @@ export async function executeClaudeInSandbox(
     let capturedOutput = ''
     let accumulatedContent = ''
     let isCompleted = false
+    let lastActivityTime = Date.now()
+    const INACTIVITY_TIMEOUT = 2 * 60 * 1000 // 2 minutes of no output = stalled
 
     const captureStdout = new Writable({
       write(chunk, _encoding, callback) {
         const text = chunk.toString()
+        lastActivityTime = Date.now() // Update activity timestamp
 
         // Only accumulate raw output if not streaming to DB
         if (!agentMessageId || !taskId) {
@@ -525,6 +528,7 @@ export async function executeClaudeInSandbox(
     const captureStderr = new Writable({
       write(chunk, _encoding, callback) {
         // Capture stderr for error logging
+        lastActivityTime = Date.now() // Update activity timestamp
         callback()
       },
     })
@@ -545,9 +549,37 @@ export async function executeClaudeInSandbox(
     // Wait for completion with timeout
     const MAX_WAIT_TIME = 5 * 60 * 1000 // 5 minutes
     const startWaitTime = Date.now()
+
+    // Import once before the loop to avoid repeated module resolution overhead
+    const { isTaskStopped } = await import('@/lib/tasks/process-task')
+
     while (!isCompleted) {
       await new Promise((resolve) => setTimeout(resolve, 1000))
       const elapsed = Date.now() - startWaitTime
+      const inactiveTime = Date.now() - lastActivityTime
+
+      // Check for cancellation every iteration
+      if (taskId) {
+        const stopped = await isTaskStopped(taskId)
+        if (stopped) {
+          await logger.info('Task was stopped, terminating agent')
+          return {
+            success: false,
+            error: 'Task was cancelled by user',
+            cliName: 'claude',
+            changesDetected: false,
+          }
+        }
+      }
+
+      // Check for inactivity - no output for too long
+      if (inactiveTime > INACTIVITY_TIMEOUT) {
+        await logger.info('Agent appears stalled due to inactivity')
+        await logger.error('No output received for extended period')
+        // Mark as completed to exit loop - the result will indicate failure
+        break
+      }
+
       if (elapsed > MAX_WAIT_TIME) {
         await logger.info('Agent wait timeout reached')
         // Force completion after timeout - check if process produced any output
@@ -556,6 +588,20 @@ export async function executeClaudeInSandbox(
       // Log progress every 30 seconds
       if (elapsed % 30000 < 1000) {
         await logger.info('Waiting for agent completion')
+      }
+    }
+
+    // Check if we exited due to inactivity
+    if (!isCompleted) {
+      const inactiveTime = Date.now() - lastActivityTime
+      if (inactiveTime > INACTIVITY_TIMEOUT) {
+        return {
+          success: false,
+          error: 'Agent stalled - no output for extended period',
+          cliName: 'claude',
+          changesDetected: false,
+          sessionId: extractedSessionId,
+        }
       }
     }
 

@@ -310,6 +310,8 @@ EOF`
     let capturedOutput = ''
     let capturedError = ''
     let isCompleted = false
+    let lastActivityTime = Date.now()
+    const INACTIVITY_TIMEOUT = 2 * 60 * 1000 // 2 minutes of no output = stalled
 
     // Create custom writable streams to capture the output
     const { Writable } = await import('stream')
@@ -324,6 +326,7 @@ EOF`
     const captureStdout = new Writable({
       write(chunk: Buffer | string, encoding: BufferEncoding, callback: WriteCallback) {
         const data = chunk.toString()
+        lastActivityTime = Date.now() // Update activity timestamp
 
         // Only capture raw output if we're NOT streaming to database
         // When streaming, we build clean content in the database instead
@@ -430,6 +433,7 @@ EOF`
     const captureStderr = new Writable({
       write(chunk: Buffer | string, encoding: BufferEncoding, callback: WriteCallback) {
         capturedError += chunk.toString()
+        lastActivityTime = Date.now() // Update activity timestamp
         callback()
       },
     })
@@ -478,9 +482,37 @@ EOF`
     // Wait for completion - let sandbox timeout handle the hard limit
     let attempts = 0
 
+    // Import once before the loop to avoid repeated module resolution overhead
+    const { isTaskStopped } = await import('@/lib/tasks/process-task')
+
     while (!isCompleted) {
       await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait 1 second
       attempts++
+      const inactiveTime = Date.now() - lastActivityTime
+
+      // Check for cancellation every 5 iterations to reduce DB load
+      if (attempts % 5 === 0 && taskId) {
+        const stopped = await isTaskStopped(taskId)
+        if (stopped) {
+          if (logger) {
+            await logger.info('Task was stopped, terminating agent')
+          }
+          return {
+            success: false,
+            error: 'Task was cancelled by user',
+            cliName: 'cursor-agent',
+            changesDetected: false,
+          }
+        }
+      }
+
+      // Check for inactivity - no output for too long
+      if (inactiveTime > INACTIVITY_TIMEOUT) {
+        if (logger) {
+          await logger.info('Agent appears stalled due to inactivity')
+        }
+        break
+      }
 
       // Safety check: if we've been waiting over 4 minutes, break and check git status
       // (sandbox timeout is 5 minutes, so we leave a buffer)
@@ -489,6 +521,19 @@ EOF`
           await logger.info('Approaching sandbox timeout, checking for changes...')
         }
         break
+      }
+    }
+
+    // Check if we exited due to inactivity
+    if (!isCompleted) {
+      const inactiveTime = Date.now() - lastActivityTime
+      if (inactiveTime > INACTIVITY_TIMEOUT) {
+        return {
+          success: false,
+          error: 'Agent stalled - no output for extended period',
+          cliName: 'cursor',
+          changesDetected: false,
+        }
       }
     }
 
