@@ -227,7 +227,7 @@ async function waitForBranchName(taskId: string, maxWaitMs: number = 10000): Pro
 /**
  * Check if task was stopped
  */
-async function isTaskStopped(taskId: string): Promise<boolean> {
+export async function isTaskStopped(taskId: string): Promise<boolean> {
   try {
     const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
     return task?.status === 'stopped'
@@ -268,22 +268,51 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
       console.error('Task timed out')
       const timeoutLogger = createTaskLogger(input.taskId)
       await timeoutLogger.error('Task execution timed out')
+
+      // CRITICAL: Mark task as error in database FIRST
+      // This will cause any running agent loops to exit on next cancellation check
+      try {
+        await db
+          .update(tasks)
+          .set({
+            status: 'error',
+            error: 'Task execution timed out',
+            completedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, input.taskId))
+      } catch (dbError) {
+        console.error('Failed to update task status after timeout')
+      }
+
       await timeoutLogger.updateStatus('error', 'Task execution timed out. The operation took too long to complete.')
 
-      // Clean up sandbox on timeout to prevent resource leaks
+      // Clean up sandbox on timeout - use the DB-backed stop function
       try {
-        const [task] = await db.select().from(tasks).where(eq(tasks.id, input.taskId)).limit(1)
-        if (task?.sandboxId && !input.keepAlive) {
-          const { Sandbox } = await import('@vercel/sandbox')
-          const sandbox = await Sandbox.get({
-            sandboxId: task.sandboxId,
-            teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
-            projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
-            token: process.env.SANDBOX_VERCEL_TOKEN!,
-          })
-          await shutdownSandbox(sandbox)
+        // Import the DB-backed sandbox stop function
+        const { stopSandboxFromDB } = await import('@/lib/sandbox/sandbox-registry')
+        const stopResult = await stopSandboxFromDB(input.taskId)
+
+        if (stopResult.success) {
+          await timeoutLogger.info('Sandbox terminated after timeout')
+        } else {
+          // Fallback to direct cleanup if stopSandboxFromDB failed
+          const [task] = await db.select().from(tasks).where(eq(tasks.id, input.taskId)).limit(1)
+          if (task?.sandboxId && !input.keepAlive) {
+            const { Sandbox } = await import('@vercel/sandbox')
+            try {
+              const sandbox = await Sandbox.get({
+                sandboxId: task.sandboxId,
+                teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
+                projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
+                token: process.env.SANDBOX_VERCEL_TOKEN!,
+              })
+              await shutdownSandbox(sandbox)
+            } catch (sandboxError) {
+              // Sandbox may already be gone - that's OK
+            }
+          }
           unregisterSandbox(input.taskId)
-          await timeoutLogger.info('Sandbox cleaned up after timeout')
         }
       } catch (cleanupError) {
         console.error('Failed to cleanup sandbox after timeout')

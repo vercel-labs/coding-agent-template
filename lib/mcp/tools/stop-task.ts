@@ -9,7 +9,7 @@ import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { createTaskLogger } from '@/lib/utils/task-logger'
-import { killSandbox } from '@/lib/sandbox/sandbox-registry'
+import { killSandbox, stopSandboxFromDB } from '@/lib/sandbox/sandbox-registry'
 import { McpToolHandler } from '../types'
 import { StopTaskInput } from '../schemas'
 
@@ -64,12 +64,19 @@ export const stopTaskHandler: McpToolHandler<StopTaskInput> = async (input, cont
       .returning()
 
     // Kill the sandbox
+    // Try DB-backed method first (works across serverless invocations)
     try {
-      const killResult = await killSandbox(input.taskId)
-      if (killResult.success) {
+      const dbStopResult = await stopSandboxFromDB(input.taskId)
+      if (dbStopResult.success) {
         await logger.success('Sandbox terminated successfully')
       } else {
-        await logger.error('Failed to terminate sandbox')
+        // Fallback to in-memory kill if DB method failed
+        const killResult = await killSandbox(input.taskId)
+        if (killResult.success) {
+          await logger.success('Sandbox terminated successfully')
+        } else {
+          await logger.error('Failed to terminate sandbox')
+        }
       }
     } catch (killError) {
       console.error('Failed to kill sandbox during stop')
