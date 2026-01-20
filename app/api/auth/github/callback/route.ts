@@ -131,7 +131,12 @@ export async function GET(req: NextRequest): Promise<Response> {
       })
 
       // Save session to cookie
-      await saveSession(response, session)
+      try {
+        await saveSession(response, session)
+      } catch {
+        console.error('Session creation failed')
+        return new Response('Failed to complete sign in', { status: 500 })
+      }
 
       // Clean up cookies
       cookieStore.delete(`github_auth_state`)

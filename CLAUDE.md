@@ -408,8 +408,12 @@ import { encrypt, decrypt } from '@/lib/crypto'
 const encryptedToken = encrypt(token)
 await db.insert(users).values({ accessToken: encryptedToken })
 
-// Retrieving
+// Retrieving (decrypt returns null on failure - ENCRYPTION_KEY missing or invalid data)
 const decryptedToken = decrypt(user.accessToken)
+if (decryptedToken === null) {
+  // Handle gracefully - fall back to env vars, skip key, or return null
+  return null
+}
 ```
 
 ### API Key Priority (User > Global)

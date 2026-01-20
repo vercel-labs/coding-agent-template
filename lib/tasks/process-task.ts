@@ -651,7 +651,15 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
 
         mcpServers = userConnectors.map((connector: Connector) => ({
           ...connector,
-          env: connector.env ? JSON.parse(decrypt(connector.env)) : null,
+          env: (() => {
+            if (!connector.env) return null
+            try {
+              const decrypted = decrypt(connector.env)
+              return decrypted ? JSON.parse(decrypted) : null
+            } catch {
+              return null
+            }
+          })(),
           oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
         }))
 

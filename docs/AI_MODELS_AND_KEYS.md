@@ -23,10 +23,11 @@ The AA Coding Agent platform supports multiple AI providers, each with specific 
 
 ### Key Concepts
 
-- **Encryption at Rest**: All API keys are encrypted using AES-256-GCM before storage in the database
+- **Encryption at Rest**: All API keys are encrypted using AES-256-CBC before storage in the database
 - **Decryption on Retrieval**: Keys are decrypted when retrieved for agent execution or display
-- **Fallback to System Keys**: If a user hasn't configured a key, the system falls back to environment variables
-- **User Override**: User-provided keys always take precedence over system environment variables
+- **Graceful Failure**: `decrypt()` returns `null` on failure; never throws exceptions
+- **Fallback to System Keys**: If a user hasn't configured a key, or decryption fails, the system falls back to environment variables
+- **User Override**: User-provided keys always take precedence over system environment variables (when decryption succeeds)
 - **Dual Authentication**: API endpoints support both session cookies and Bearer API tokens
 
 ---
@@ -254,7 +255,8 @@ console.log(keys.OPENAI_API_KEY)  // Returns user's key or env var fallback
 - If `userId` is provided, fetches from database for that user
 - If `userId` is not provided, attempts to get from session; falls back to system env vars
 - Returns system keys if user has no keys configured
-- Silently catches and logs decryption errors; returns env vars as fallback
+- `decrypt()` returns `null` on failure (invalid format, corrupted data, missing ENCRYPTION_KEY); falls back to env vars automatically
+- Decryption errors are logged but don't throw; system env vars serve as fallback
 
 ### getUserApiKey()
 
@@ -674,6 +676,10 @@ Token management endpoints (`GET`, `DELETE` on `/api/tokens`) are not rate-limit
 2. Wait until midnight UTC for limits to reset
 3. Contact admin if you need higher limits
 4. Optimize usage by batching operations
+
+#### Decryption Failures (Silent Fallback)
+
+**Note:** If a stored API key fails to decrypt (corrupted data, invalid format, or missing ENCRYPTION_KEY), the system automatically falls back to the environment variable value. No error is raised to the user. Decryption failures are logged server-side and should be reported to administrators if persistent.
 
 ### HTTP Status Codes
 

@@ -367,7 +367,7 @@ These API keys can be set globally (fallback for all users) or left unset to req
 **Claude Agent**:
 - `AI_GATEWAY_API_KEY` (priority 1) - For alternative models (Gemini, GPT, GLM) and branch name generation
 - `ANTHROPIC_API_KEY` (priority 2) - For native Claude models (claude-opus-4-5-*, claude-sonnet-*, etc.)
-- If both are unset, Claude agent will fail with error "No API keys configured"
+- If both are unset, the Claude agent will fail at runtime when attempting to execute the task
 
 **Other Agents**:
 - `CURSOR_API_KEY`: For Cursor agent support (users can override in their profile)
@@ -380,9 +380,9 @@ These API keys can be set globally (fallback for all users) or left unset to req
 > **Note**: Users can provide their own API keys in their profile settings (`/settings` → API Keys), which take precedence over global environment variables. This allows each user to use their own API keys without needing admin configuration.
 
 **API Key Priority Logic**:
-1. Check user-provided key in their profile
+1. Check user-provided key in their profile (with graceful fallback if decryption fails)
 2. Fall back to global environment variable
-3. Return error if neither is available (task may fail at runtime)
+3. Return error if neither is available (task will fail at runtime when agent executes)
 
 #### GitHub Repository Access
 
@@ -546,6 +546,9 @@ vercel inspect <deployment-url> --wait
 - **Vercel Sandbox**: Sandboxes are isolated but ensure you're not exposing sensitive data in logs or outputs.
 - **User Authentication**: Each user uses their own GitHub token for repository access - no shared credentials
 - **Encryption**: All sensitive data (tokens, API keys) is encrypted at rest using per-user encryption
+  - If `ENCRYPTION_KEY` is missing, encrypted data cannot be retrieved and system falls back to environment variable defaults
+  - If `JWE_SECRET` is missing, session cookies cannot be validated - users will need to re-authenticate
+  - See [AGENTS.md](AGENTS.md) for detailed error handling patterns in the codebase
 
 ## Changelog
 

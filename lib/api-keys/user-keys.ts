@@ -37,6 +37,8 @@ async function _fetchKeysFromDatabase(userId: string): Promise<{
 
     userKeys.forEach((key) => {
       const decryptedValue = decrypt(key.value)
+      // Skip keys that fail to decrypt (keeps env var fallback)
+      if (decryptedValue === null) return
 
       switch (key.provider) {
         case 'openai':
@@ -159,7 +161,9 @@ export async function getUserApiKey(provider: Provider, userId?: string): Promis
       .limit(1)
 
     if (userKey[0]?.value) {
-      return decrypt(userKey[0].value)
+      const decrypted = decrypt(userKey[0].value)
+      // Only return if decryption succeeded, otherwise fall back to system key
+      if (decrypted !== null) return decrypted
     }
   } catch (error) {
     console.error('Error fetching user API key')

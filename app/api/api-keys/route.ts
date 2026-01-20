@@ -25,11 +25,14 @@ export async function GET(req: NextRequest) {
       .from(keys)
       .where(eq(keys.userId, session.user.id))
 
-    // Decrypt the keys for display
-    const decryptedKeys = userKeys.map((key) => ({
-      ...key,
-      value: decrypt(key.value),
-    }))
+    // Decrypt the keys for display, filtering out any that fail to decrypt
+    const decryptedKeys = userKeys
+      .map((key) => {
+        const decryptedValue = decrypt(key.value)
+        if (decryptedValue === null) return null
+        return { ...key, value: decryptedValue }
+      })
+      .filter((key): key is NonNullable<typeof key> => key !== null)
 
     return NextResponse.json({
       success: true,

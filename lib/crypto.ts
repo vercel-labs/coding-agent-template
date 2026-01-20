@@ -34,18 +34,18 @@ export const encrypt = (text: string): string => {
   return `${iv.toString('hex')}:${encrypted.toString('hex')}`
 }
 
-export const decrypt = (encryptedText: string): string => {
-  if (!encryptedText) return encryptedText
+export const decrypt = (encryptedText: string): string | null => {
+  if (!encryptedText) return null
 
   const ENCRYPTION_KEY = getEncryptionKey()
   if (!ENCRYPTION_KEY) {
-    throw new Error(
-      'ENCRYPTION_KEY environment variable is required for MCP decryption. Generate one with: openssl rand -hex 32',
-    )
+    console.error('Decryption service unavailable')
+    return null
   }
 
   if (!encryptedText.includes(':')) {
-    throw new Error('Invalid encrypted text format')
+    console.error('Invalid encrypted format detected')
+    return null
   }
 
   try {
@@ -57,7 +57,8 @@ export const decrypt = (encryptedText: string): string => {
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()])
 
     return decrypted.toString('utf8')
-  } catch (error) {
-    throw new Error('Failed to decrypt: ' + (error instanceof Error ? error.message : 'unknown error'))
+  } catch {
+    console.error('Decryption failed')
+    return null
   }
 }

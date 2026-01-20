@@ -1,4 +1,4 @@
-import type { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import type { Session, SessionUserInfo, Tokens } from '@/lib/session/types'
 import { createSession, saveSession } from '@/lib/session/create'
 import { saveSession as saveGitHubSession } from '@/lib/session/create-github'
@@ -30,9 +30,7 @@ export async function GET(req: NextRequest) {
       session = undefined
     }
 
-    const response = new Response(JSON.stringify(await getData(session)), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    const response = NextResponse.json(await getData(session))
 
     // Use the appropriate saveSession function based on auth provider
     // Wrap in try-catch since encryptJWE can throw if JWE_SECRET is missing
@@ -50,10 +48,7 @@ export async function GET(req: NextRequest) {
     return response
   } catch (error) {
     console.error('Error in auth info route')
-    return new Response(JSON.stringify({ user: undefined, error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return NextResponse.json({ user: undefined, error: 'Internal server error' }, { status: 500 })
   }
 }
 

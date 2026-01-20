@@ -334,7 +334,15 @@ async function continueTask(
           .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
 
         mcpServers = userConnectors.map((connector: Connector) => {
-          const decryptedEnv = connector.env ? JSON.parse(decrypt(connector.env)) : null
+          const decryptedEnv = (() => {
+            if (!connector.env) return null
+            try {
+              const decrypted = decrypt(connector.env)
+              return decrypted ? JSON.parse(decrypted) : null
+            } catch {
+              return null
+            }
+          })()
           return {
             ...connector,
             env: decryptedEnv,
