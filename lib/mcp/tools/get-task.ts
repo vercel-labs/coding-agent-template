@@ -49,6 +49,7 @@ export const getTaskHandler: McpToolHandler<GetTaskInput> = async (input, contex
             title: task.title,
             repoUrl: task.repoUrl,
             branchName: task.branchName,
+            sourceBranch: task.sourceBranch,
             selectedAgent: task.selectedAgent,
             selectedModel: task.selectedModel,
             sandboxUrl: task.sandboxUrl,

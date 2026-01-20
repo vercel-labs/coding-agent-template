@@ -1,1 +1,1 @@
-ALTER TABLE "tasks" ADD COLUMN "source_branch" text;
+ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "source_branch" text;

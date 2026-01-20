@@ -14,7 +14,7 @@ interface ApiKeysDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
+type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway' | 'github'
 
 interface Token {
   id: string
@@ -31,6 +31,7 @@ const PROVIDERS = [
   { id: 'openai' as Provider, name: 'OpenAI', placeholder: 'sk-...' },
   { id: 'gemini' as Provider, name: 'Gemini', placeholder: 'AIza...' },
   { id: 'cursor' as Provider, name: 'Cursor', placeholder: 'cur_...' },
+  { id: 'github' as Provider, name: 'GitHub', placeholder: 'ghp_...' },
 ]
 
 export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
@@ -41,6 +42,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     cursor: '',
     anthropic: '',
     aigateway: '',
+    github: '',
   })
   const [savedKeys, setSavedKeys] = useState<Set<Provider>>(new Set())
   const [clearedKeys, setClearedKeys] = useState<Set<Provider>>(new Set())
@@ -50,6 +52,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     cursor: false,
     anthropic: false,
     aigateway: false,
+    github: false,
   })
   const [loading, setLoading] = useState(false)
 
@@ -101,6 +104,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
           cursor: '',
           anthropic: '',
           aigateway: '',
+          github: '',
         }
         data.apiKeys.forEach((key: { provider: Provider; value: string }) => {
           saved.add(key.provider)
@@ -245,7 +249,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
   const curlExample = `curl -X POST ${typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app'}/api/tasks \\
   -H "Authorization: Bearer ${displayToken}" \\
   -H "Content-Type: application/json" \\
-  -d '{"instruction": "Fix the bug", "repoUrl": "https://github.com/owner/repo", "selectedAgent": "claude"}'`
+  -d '{"prompt": "Fix the bug", "repoUrl": "https://github.com/owner/repo", "selectedAgent": "claude", "sourceBranch": "main"}'`
 
   // MCP Server configuration examples
   const apiUrl = typeof window !== 'undefined' ? window.location.origin : 'https://code.agenticassets.ai'
