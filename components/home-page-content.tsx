@@ -42,6 +42,7 @@ export function HomePageContent({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedOwner, setSelectedOwnerState] = useState(initialSelectedOwner)
   const [selectedRepo, setSelectedRepoState] = useState(initialSelectedRepo)
+  const [selectedBranch, setSelectedBranchState] = useState('')
   const [showSignInDialog, setShowSignInDialog] = useState(false)
   const [loadingVercel, setLoadingVercel] = useState(false)
   const [loadingGitHub, setLoadingGitHub] = useState(false)
@@ -119,6 +120,11 @@ export function HomePageContent({
   const handleRepoChange = (repo: string) => {
     setSelectedRepoState(repo)
     setSelectedRepo(repo)
+    setSelectedBranchState('') // Reset branch when repo changes
+  }
+
+  const handleBranchChange = (branch: string) => {
+    setSelectedBranchState(branch)
   }
 
   const handleTaskSubmit = async (data: {
@@ -183,6 +189,7 @@ export function HomePageContent({
           installDependencies: data.installDependencies,
           maxDuration: data.maxDuration,
           keepAlive: data.keepAlive,
+          sourceBranch: selectedBranch || undefined,
         }
       })
 
@@ -256,6 +263,7 @@ export function HomePageContent({
           installDependencies: data.installDependencies,
           maxDuration: data.maxDuration,
           keepAlive: data.keepAlive,
+          sourceBranch: selectedBranch || undefined,
         }
       })
 
@@ -309,7 +317,11 @@ export function HomePageContent({
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ ...data, id }), // Include the pre-generated ID
+          body: JSON.stringify({
+            ...data,
+            id,
+            sourceBranch: selectedBranch || undefined,
+          }), // Include the pre-generated ID
         })
 
         if (response.ok) {
@@ -350,8 +362,10 @@ export function HomePageContent({
         <HomePageHeader
           selectedOwner={selectedOwner}
           selectedRepo={selectedRepo}
+          selectedBranch={selectedBranch}
           onOwnerChange={handleOwnerChange}
           onRepoChange={handleRepoChange}
+          onBranchChange={handleBranchChange}
           user={user}
           initialStars={initialStars}
         />

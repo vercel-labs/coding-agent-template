@@ -232,6 +232,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       logs: [],
       error: null,
       branchName: null,
+      sourceBranch: null,
       sandboxId: null,
       agentSessionId: null,
       sandboxUrl: null,

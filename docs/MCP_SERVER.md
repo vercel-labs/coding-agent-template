@@ -110,6 +110,7 @@ Create and immediately execute a new coding task with an AI agent.
 {
   "prompt": "string (required, 1-5000 chars)",
   "repoUrl": "string (required, valid GitHub URL)",
+  "sourceBranch": "string (optional, defaults to repository's default branch)",
   "selectedAgent": "string (optional, default: claude)",
   "selectedModel": "string (optional)",
   "installDependencies": "boolean (optional, default: false)",
@@ -131,6 +132,7 @@ Create and immediately execute a new coding task with an AI agent.
 {
   "prompt": "Add unit tests for the authentication module",
   "repoUrl": "https://github.com/owner/repo",
+  "sourceBranch": "main",
   "selectedAgent": "claude",
   "selectedModel": "claude-sonnet-4-5-20250929",
   "installDependencies": true,
@@ -180,6 +182,7 @@ Retrieve detailed information about a specific task.
   "prompt": "Add unit tests for the authentication module",
   "title": "Add unit tests",
   "repoUrl": "https://github.com/owner/repo",
+  "sourceBranch": "main",
   "branchName": "feature/add-auth-tests-A1b2C3",
   "selectedAgent": "claude",
   "selectedModel": "claude-sonnet-4-5-20250929",
@@ -284,6 +287,7 @@ List all tasks for the authenticated user with optional filters.
       "progress": 100,
       "prompt": "Add unit tests for the authentication module...",
       "repoUrl": "https://github.com/owner/repo",
+      "sourceBranch": "main",
       "branchName": "feature/add-auth-tests-A1b2C3",
       "selectedAgent": "claude",
       "prUrl": "https://github.com/owner/repo/pull/123",

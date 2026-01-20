@@ -241,6 +241,7 @@ export async function POST(request: NextRequest) {
           selectedModel: validatedData.selectedModel,
           installDependencies: validatedData.installDependencies || false,
           keepAlive: validatedData.keepAlive || false,
+          sourceBranch: validatedData.sourceBranch,
           apiKeys: userApiKeys,
           githubToken: userGithubToken,
           githubUser,

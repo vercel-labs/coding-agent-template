@@ -169,6 +169,7 @@ export const createTaskHandler: McpToolHandler<CreateTaskInput> = async (input, 
           id: taskId, // Use our pre-generated ID
           prompt: validatedData.prompt,
           repoUrl: validatedData.repoUrl,
+          sourceBranch: validatedData.sourceBranch,
           selectedAgent: validatedData.selectedAgent,
           selectedModel: validatedData.selectedModel,
           installDependencies: validatedData.installDependencies,

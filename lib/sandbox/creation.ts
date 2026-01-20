@@ -117,20 +117,47 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       }
 
       // Clone the repository with shallow clone
-      const cloneResult = await runCommandInSandbox(sandbox, 'git', [
-        'clone',
-        '--depth',
-        '1',
-        authenticatedRepoUrl,
-        PROJECT_DIR,
-      ])
+      // Build clone arguments
+      const cloneArgs = ['clone', '--depth', '1']
 
-      if (!cloneResult.success) {
-        await logger.error('Failed to clone repository')
-        throw new Error('Failed to clone repository to project directory')
+      // If source branch specified, add --branch flag
+      if (config.sourceBranch) {
+        cloneArgs.push('--branch', config.sourceBranch)
       }
 
-      await logger.info('Repository cloned successfully')
+      cloneArgs.push(authenticatedRepoUrl, PROJECT_DIR)
+
+      const cloneResult = await runCommandInSandbox(sandbox, 'git', cloneArgs)
+
+      // Handle case where specified branch doesn't exist
+      if (!cloneResult.success && config.sourceBranch) {
+        await logger.info('Specified branch not found, falling back to default branch')
+
+        const fallbackResult = await runCommandInSandbox(sandbox, 'git', [
+          'clone',
+          '--depth',
+          '1',
+          authenticatedRepoUrl,
+          PROJECT_DIR,
+        ])
+
+        if (!fallbackResult.success) {
+          await logger.error('Failed to clone repository')
+          throw new Error('Failed to clone repository to project directory')
+        }
+
+        await logger.info('Repository cloned from default branch')
+      } else if (!cloneResult.success) {
+        await logger.error('Failed to clone repository')
+        throw new Error('Failed to clone repository to project directory')
+      } else {
+        // Clone succeeded
+        if (config.sourceBranch) {
+          await logger.info('Repository cloned from specified branch')
+        } else {
+          await logger.info('Repository cloned from default branch')
+        }
+      }
 
       // Update remote URL to include authentication for push operations
       // Git strips credentials from remote URL after clone, so we need to re-add them

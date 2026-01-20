@@ -10,6 +10,7 @@ export const createTaskSchema = z.object({
     .max(5000, 'Prompt must be 5000 characters or less')
     .describe('The task prompt describing what the AI agent should do'),
   repoUrl: z.string().url('Must be a valid repository URL').describe('GitHub repository URL to work on'),
+  sourceBranch: z.string().optional().describe('Specific branch to clone from (defaults to repository default branch)'),
   selectedAgent: z
     .enum(['claude', 'codex', 'copilot', 'cursor', 'gemini', 'opencode'])
     .default('claude')
