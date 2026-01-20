@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { db } from '@/lib/db/client'
-import { users, accounts } from '@/lib/db/schema'
+import { users, accounts, keys } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { getSessionFromReq } from '@/lib/session/server'
@@ -12,15 +12,16 @@ import type { NextRequest } from 'next/server'
  * Get the GitHub access token for a user by their userId.
  * This is the core function that retrieves GitHub tokens.
  *
- * Checks:
- * 1. Connected GitHub account (accounts table)
- * 2. Primary GitHub account (users table if they signed in with GitHub)
+ * Checks (in priority order):
+ * 1. Connected GitHub account (accounts table) - OAuth
+ * 2. Primary GitHub account (users table if they signed in with GitHub) - OAuth
+ * 3. GitHub Personal Access Token (keys table with provider='github') - PAT
  *
  * @param userId - The user's internal ID
  */
 export async function getGitHubTokenByUserId(userId: string): Promise<string | null> {
   try {
-    // First check if user has GitHub as a connected account
+    // First check if user has GitHub as a connected account (OAuth - highest priority)
     const account = await db
       .select({ accessToken: accounts.accessToken })
       .from(accounts)
@@ -31,7 +32,7 @@ export async function getGitHubTokenByUserId(userId: string): Promise<string | n
       return decrypt(account[0].accessToken)
     }
 
-    // Fall back to checking if user signed in with GitHub (primary account)
+    // Second, check if user signed in with GitHub (primary OAuth account)
     const user = await db
       .select({ accessToken: users.accessToken })
       .from(users)
@@ -40,6 +41,18 @@ export async function getGitHubTokenByUserId(userId: string): Promise<string | n
 
     if (user[0]?.accessToken) {
       return decrypt(user[0].accessToken)
+    }
+
+    // Third, check for GitHub Personal Access Token in keys table
+    // This allows MCP users to provide GitHub access without OAuth
+    const githubKey = await db
+      .select({ value: keys.value })
+      .from(keys)
+      .where(and(eq(keys.userId, userId), eq(keys.provider, 'github')))
+      .limit(1)
+
+    if (githubKey[0]?.value) {
+      return decrypt(githubKey[0].value)
     }
 
     return null

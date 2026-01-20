@@ -169,6 +169,13 @@
       "when": 1768775209819,
       "tag": "0023_jazzy_bruce_banner",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1768861200000,
+      "tag": "0024_add_source_branch",
+      "breakpoints": true
     }
   ]
 }
