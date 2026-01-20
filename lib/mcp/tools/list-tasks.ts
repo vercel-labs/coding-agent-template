@@ -47,6 +47,7 @@ export const listTasksHandler: McpToolHandler<ListTasksInput> = async (input, co
       prompt: task.prompt?.substring(0, 200), // Truncate for list view
       repoUrl: task.repoUrl,
       branchName: task.branchName,
+      sourceBranch: task.sourceBranch,
       selectedAgent: task.selectedAgent,
       prUrl: task.prUrl,
       prStatus: task.prStatus,
