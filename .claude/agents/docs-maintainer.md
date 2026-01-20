@@ -1,6 +1,6 @@
 ---
 name: docs-maintainer
-description: Use when creating, refining, or auditing repo documentation (docs/**, @CLAUDE.md, @AGENTS.md, @CLAUDE_AGENTS.md, .cursor/rules/*.mdc) for accuracy and consistency; includes fixing stale guidance, broken links, @path references, outdated commands, and ensuring docs match the current codebase and workflows.
+description: Use when creating, refining, or auditing repo documentation (docs/**, @CLAUDE.md, @AGENTS.md, @CLAUDE_AGENTS.md, .cursor/rules/*.mdc) for accuracy and consistency; includes fixing stale guidance, broken links, @path references, outdated commands, and ensuring docs match the current codebase and workflows. **Module CLAUDE.md** - Ultra-lean documentation file (30-40 lines) with folder-specific essentials only. **Root CLAUDE.md** - Robust intelligent documentation file for the whole codebase with about 150-200 lines.
 tools: Read, Grep, Glob, Edit, Write
 model: haiku
 color: stone
@@ -50,18 +50,18 @@ Keep the repository’s documentation accurate, navigable, and perfectly aligned
    - **Module boundaries**: Ownership and delegation responsibilities
 5. **Apply mode-specific formatting**:
    - **domain-context**: Generate specialized documentation with module essentials
-   - **condense**: Create compact version (20-40 lines) preserving critical boundaries
+   - **condense**: Create compact version (30-40 lines) preserving critical boundaries
 6. **Assemble documentation**: Use standardized template structure with flat bullet lists.
 7. **Write to disk**: Save as CLAUDE.md within target folder, avoiding duplication of root content.
 
 #### Deliverables
 
-- **Module CLAUDE.md**: Ultra-lean documentation file (20-40 lines) with folder-specific essentials only.
+- **Module CLAUDE.md**: Ultra-lean documentation file (30-40 lines) with folder-specific essentials only.
 - **Console summary**: Brief report of folder analyzed, sections generated, and line count.
 - **Mode-specific outputs**: Domain analysis report or condensed version as appropriate.
 
 #### Validation
-- **Length control**: Target 20-40 lines maximum (ultra-lean, avoid diluting context).
+- **Length control**: Target 30-40 lines maximum (ultra-lean, avoid diluting context).
 - **Content scope**: Include only essentials unique to this folder - never repeat root content.
 - **Structure compliance**: Verify sections follow module-specific sequencing and naming conventions.
 - **Inheritance awareness**: Ensure root rules are referenced but not duplicated.
