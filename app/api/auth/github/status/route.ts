@@ -5,18 +5,18 @@ import { users, accounts } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function GET(req: NextRequest) {
-  const session = await getSessionFromReq(req)
-
-  if (!session?.user) {
-    return Response.json({ connected: false })
-  }
-
-  if (!session.user.id) {
-    console.error('GitHub status check: session.user.id is undefined')
-    return Response.json({ connected: false })
-  }
-
   try {
+    const session = await getSessionFromReq(req)
+
+    if (!session?.user) {
+      return Response.json({ connected: false })
+    }
+
+    if (!session.user.id) {
+      console.error('GitHub status check: session.user.id is undefined')
+      return Response.json({ connected: false })
+    }
+
     // Check if user has GitHub as connected account
     const account = await db
       .select({
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     return Response.json({ connected: false })
   } catch (error) {
-    console.error('Error checking GitHub connection status:')
+    console.error('Error checking GitHub connection status')
     return Response.json({ connected: false, error: 'Failed to check status' }, { status: 500 })
   }
 }
