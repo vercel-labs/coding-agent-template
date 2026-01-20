@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-const GITHUB_REPO = 'vercel-labs/coding-agent-template'
+const GITHUB_REPO = 'agenticassets/AA-coding-agent'
 const CACHE_DURATION = 5 * 60 // 5 minutes in seconds
 
 let cachedStars: number | null = null
@@ -19,7 +19,7 @@ export async function GET() {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'coding-agent-template',
+        'User-Agent': 'AA-coding-agent',
       },
       next: { revalidate: CACHE_DURATION },
     })

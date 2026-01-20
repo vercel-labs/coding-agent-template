@@ -86,6 +86,17 @@ Authorization: Bearer YOUR_API_TOKEN
 
 This method is more secure but requires client support for custom headers.
 
+#### Authentication Priority
+
+When both methods could be used:
+1. **Bearer Token** (highest priority) - If `Authorization: Bearer xxx` header present, validates and uses API token auth
+2. **Query Parameter** (transformed) - If `?apikey=xxx` query parameter present, automatically transformed to Bearer header internally
+3. **Session Cookie** (fallback) - If neither token method present, uses session cookie authentication
+
+**Important Note:** Query parameter `?apikey=xxx` is automatically transformed to `Authorization: Bearer xxx` by the MCP auth middleware. This means both methods are functionally equivalent from the server's perspective. Choose based on client capabilities:
+- Use query parameter for MCP clients that don't support custom headers
+- Use Authorization header for better security (tokens don't appear in URL logs)
+
 ## Available Tools
 
 ### 1. create-task
@@ -578,12 +589,25 @@ https://your-domain.com/api/mcp?apikey=YOUR_TOKEN
 http://your-domain.com/api/mcp?apikey=YOUR_TOKEN
 ```
 
-### Token Storage
+### Token Storage and Security Model
 
-- Tokens are **hashed (SHA256)** before storage in the database
-- Raw tokens **cannot be recovered** after creation
-- Lost tokens require generating new ones
-- Maximum **20 tokens per user**
+- **Hashing:** Tokens are **SHA256 hashed** before storage in the database
+  - Raw token: 32 random bytes (shown once at creation)
+  - Stored value: SHA256 hash of raw token
+  - Raw token **never stored** in database
+
+- **Recovery:** Raw tokens **cannot be recovered** after creation
+  - If you lose a token, you must generate a new one
+  - The old token can be deleted from Settings
+
+- **Validation:** When API request includes token:
+  1. Extract token from header/query parameter
+  2. Compute SHA256 hash
+  3. Compare hash with stored hash in database
+  4. Validate expiration date (if set)
+  5. Return 401 if hash doesn't match or token expired
+
+- **Limits:** Maximum **20 tokens per user**
 
 ### Access Control
 
@@ -592,15 +616,63 @@ http://your-domain.com/api/mcp?apikey=YOUR_TOKEN
 - Tasks are filtered by `userId` in all queries
 - No cross-user access is possible
 
+### Token Lifecycle and Rotation
+
+**Token States:**
+1. **Active** - Token is valid and can be used
+2. **Expired** - Token has reached expiration date (if set); returns 401 on use
+3. **Revoked** - Token manually deleted from Settings
+
+**Token Rotation Best Practices:**
+1. Generate new token before old one expires
+2. Update all clients/configurations with new token
+3. Delete old token from Settings
+4. Rotate tokens quarterly (or more frequently for sensitive environments)
+5. Use shorter expiration periods (30-90 days) for temporary access
+
 ### Best Practices
 
 1. **Use Authorization header** when possible (more secure than query params)
+   - Query parameters appear in URL logs and browser history
+   - Authorization headers are not logged by default
+
 2. **Enable HTTPS** for all requests
+   - Especially critical when using query parameter authentication
+   - Prevents token interception in transit
+
 3. **Set token expiration dates** for temporary access
+   - Limit exposure window for automation/CI/CD tokens
+   - Short-lived tokens (30 days) preferred over long-lived
+
 4. **Monitor token usage** from Settings page
+   - Check `lastUsedAt` timestamps
+   - Identify unused tokens for revocation
+
 5. **Revoke compromised tokens** immediately
+   - Delete token from Settings instantly
+   - All active requests with that token will fail
+
 6. **Avoid logging tokens** in client applications
+   - Never print tokens to console
+   - Never include in error messages
+   - Use environment variables or secure vaults
+
 7. **Use separate tokens** for different applications/environments
+   - Development token separate from production
+   - CI/CD pipeline has its own token
+   - Each tool/service gets isolated token
+   - Easier to revoke if one is compromised
+
+8. **Store tokens securely**
+   - Use environment variables or `.env` files (not in code)
+   - Keep `.env` files in `.gitignore`
+   - Never commit tokens to version control
+   - Use CI/CD secret management for automated systems
+
+9. **Validate token periodically**
+   - Test token hasn't been revoked
+   - Check against expiration date
+   - Handle 401 errors gracefully
 
 ## Troubleshooting
 
@@ -701,9 +773,105 @@ If you encounter issues not covered in this guide:
 3. **Generate diagnostics** - Use the `list-tasks` and `get-task` tools to gather information
 4. **Contact support** - Provide your task ID and error messages for assistance
 
+## MCP Tool Implementation Details
+
+### Tool Handler Architecture
+
+MCP tools are implemented in `@lib/mcp/tools/` with the following structure:
+
+**Tool Handler Pattern:**
+```typescript
+export async function toolHandler(
+  params: ToolInputType,
+  context: McpToolContext
+): Promise<McpToolResponse>
+```
+
+Each tool handler:
+1. Validates input parameters against schema
+2. Extracts userId from auth context (API token or session)
+3. Performs user-scoped operations
+4. Returns structured MCP response with content and optional error flag
+
+### User Scoping in MCP Tools
+
+All MCP tools enforce strict user-scoped access control:
+
+- **Task Access:** Users can only access tasks they created (filtered by userId)
+- **API Key Access:** MCP inherits user's stored API keys for agent execution
+- **GitHub Access:** MCP inherits user's GitHub OAuth token for repository operations
+- **Rate Limiting:** Same limits apply as web UI (20/day default, 100/day admin)
+
+### Rate Limiting in MCP
+
+The `create-task` tool enforces rate limits:
+
+```typescript
+// Check rate limit before task creation
+const { remaining, total } = await checkRateLimit(userId)
+if (remaining <= 0) {
+  return errorResponse('Rate limit exceeded', ...)
+}
+// Task counts as 1 against daily limit
+```
+
+Rate limit resets at midnight UTC. Check current limits via `get-task` response headers.
+
+### GitHub Verification in create-task
+
+The `create-task` tool verifies GitHub connection before task creation:
+
+```typescript
+// Verify user has GitHub connected
+const githubToken = await getUserGitHubToken(userId)
+if (!githubToken) {
+  return errorResponse('GitHub not connected', {
+    message: 'GitHub access is required for repository operations',
+    hint: 'Visit /settings in the web UI to connect your GitHub account'
+  })
+}
+```
+
+This ensures tasks can be executed immediately after creation.
+
+### Tool Response Format
+
+All tools return MCP-compliant responses:
+
+**Success Response:**
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Tool output or result JSON"
+    }
+  ],
+  "isError": false
+}
+```
+
+**Error Response:**
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"error\":\"Error message\",\"message\":\"Details\",\"hint\":\"Suggested fix\"}"
+    }
+  ],
+  "isError": true
+}
+```
+
+Note: Error details are JSON-stringified inside the text field.
+
+---
+
 ## Additional Resources
 
 - [API Token Management](../README.md#external-api-access) - Web UI token management
 - [Task Configuration](../README.md#task-configuration) - Understanding task options
-- [AI Models and Keys](../AI_MODELS_AND_KEYS.md) - Configuring AI agent API keys
+- [AI Models and Keys](../AI_MODELS_AND_KEYS.md) - Configuring AI agent API keys, model selection, API key endpoints
+- [CLAUDE.md](../CLAUDE.md) - Overall project architecture and task execution workflow
 - [Model Context Protocol Specification](https://spec.modelcontextprotocol.io/) - Official MCP documentation
