@@ -5,13 +5,18 @@ import { decryptJWE } from '@/lib/jwe/decrypt'
 
 export async function getSessionFromCookie(cookieValue?: string): Promise<Session | undefined> {
   if (cookieValue) {
-    const decrypted = await decryptJWE<Session>(cookieValue)
-    if (decrypted) {
-      return {
-        created: decrypted.created,
-        authProvider: decrypted.authProvider,
-        user: decrypted.user,
+    try {
+      const decrypted = await decryptJWE<Session>(cookieValue)
+      if (decrypted) {
+        return {
+          created: decrypted.created,
+          authProvider: decrypted.authProvider,
+          user: decrypted.user,
+        }
       }
+    } catch {
+      // JWE secret missing or invalid cookie - treat as no session
+      return undefined
     }
   }
 }
