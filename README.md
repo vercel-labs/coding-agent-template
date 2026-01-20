@@ -8,7 +8,7 @@ A template for building AI-powered coding agents that supports Claude Code, Open
 
 You can deploy your own version of the AI Coding Agent to Vercel with one click:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fcoding-agent-template&env=SANDBOX_VERCEL_TEAM_ID,SANDBOX_VERCEL_PROJECT_ID,SANDBOX_VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+AI+coding+agent.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel)+after+deployment.+Optional+API+keys+can+be+added+later.&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&project-name=ai-coding-agent&repository-name=ai-coding-agent)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fagenticassets%2FAA-coding-agent&env=SANDBOX_VERCEL_TEAM_ID,SANDBOX_VERCEL_PROJECT_ID,SANDBOX_VERCEL_TOKEN,JWE_SECRET,ENCRYPTION_KEY&envDescription=Required+environment+variables+for+the+AI+coding+agent.+You+must+also+configure+at+least+one+OAuth+provider+(GitHub+or+Vercel)+after+deployment.+Optional+API+keys+can+be+added+later.&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&project-name=ai-coding-agent&repository-name=ai-coding-agent)
 
 **What happens during deployment:**
 - **Automatic Database Setup**: A Neon Postgres database is automatically created and connected to your project
@@ -44,12 +44,18 @@ For detailed setup instructions, see the [Local Development Setup](#local-develo
 
 Or run locally:
 ```bash
-git clone https://github.com/vercel-labs/coding-agent-template.git
-cd coding-agent-template
+git clone https://github.com/agenticassets/AA-coding-agent.git
+cd AA-coding-agent
 pnpm install
 # Set up .env.local with required variables
-pnpm db:push
-pnpm dev
+# Database setup (drizzle-kit workaround)
+cp .env.local .env
+DOTENV_CONFIG_PATH=.env pnpm tsx -r dotenv/config node_modules/drizzle-kit/bin.cjs migrate
+rm .env
+# Verify your changes
+pnpm build
+pnpm type-check
+pnpm lint
 ```
 
 ## Usage
@@ -202,7 +208,7 @@ curl -X POST https://your-app.vercel.app/api/tasks \
     "selectedAgent": "claude",
     "repositoryUrl": "https://github.com/owner/repo",
     "prompt": "Add unit tests for the auth module",
-    "model": "claude-sonnet-4-5-20250929"
+    "model": "claude-opus-4-5-20251101"
   }'
 ```
 
@@ -265,91 +271,34 @@ The system automatically generates descriptive Git branch names using AI SDK 5 a
 
 Connect MCP Servers to extend Claude Code with additional tools and integrations. **Currently only works with Claude Code agent.**
 
-### Available Preset MCP Servers
+The application includes preset configurations for 10+ popular MCP servers (Browserbase, Context7, Convex, Figma, Hugging Face, Linear, Notion, Orbis, Playwright, Supabase, and more).
 
-The application includes preset configurations for the following MCP servers:
+### Quick Setup
 
-1. **Browserbase** - Web browsing and automation
-   - Type: Local CLI
-   - Requires: `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`
-
-2. **Context7** - Documentation and knowledge base search
-   - Type: Remote HTTP
-   - URL: https://mcp.context7.com/mcp
-
-3. **Convex** - Backend database and real-time sync
-   - Type: Local CLI
-   - URL: https://convex.dev
-
-4. **Figma** - Design and prototyping tool access
-   - Type: Remote HTTP
-   - URL: https://mcp.figma.com/mcp
-
-5. **Hugging Face** - Machine learning models and datasets
-   - Type: Remote HTTP
-   - URL: https://hf.co/mcp
-
-6. **Linear** - Issue tracking and project management
-   - Type: Remote HTTP
-   - URL: https://mcp.linear.app/sse
-
-7. **Notion** - Note-taking and knowledge management
-   - Type: Remote HTTP
-   - URL: https://mcp.notion.com/mcp
-
-8. **Orbis** - AI-powered research and document analysis (via phdai.ai)
-   - Type: Remote HTTP
-   - URL: https://www.phdai.ai/api/mcp/universal
-   - Requires: Bearer token authentication (`Authorization` header)
-   - Note: Obtain API credentials from https://www.phdai.ai
-
-9. **Playwright** - Web automation and browser testing
-   - Type: Local CLI
-   - Documentation: https://playwright.dev/docs/mcp
-
-10. **Supabase** - Open-source Firebase alternative
-    - Type: Remote HTTP
-    - URL: https://mcp.supabase.com/mcp
-
-### How to Add MCP Servers
-
-1. Go to the "Connectors" tab and click "Add MCP Server"
+1. Go to Settings → Connectors → "Add MCP Server"
 2. Select a preset MCP server or configure a custom server
-3. Enter required environment variables or OAuth credentials
-4. Click "Save" to enable the connector
+3. Enter required credentials or API keys
+4. Click "Save" to enable
 
 ### Custom MCP Servers
 
-You can also add custom MCP servers by:
+You can add custom MCP servers (Local CLI or Remote HTTP endpoints). All credentials are encrypted at rest in the database.
 
-1. Clicking "Add MCP Server" then "Custom MCP Server"
-2. Choosing between **Local** (CLI command) or **Remote** (HTTP endpoint)
-3. Providing required authentication credentials
+### Security
 
-**Local MCP Servers:**
-- Requires a CLI command (e.g., `npx @browserbasehq/mcp`)
-- Runs in the same process as Claude Code
-- Suitable for packages and tools available via npm/yarn
+- All API keys and tokens are encrypted at rest
+- `ENCRYPTION_KEY` environment variable is required for MCP servers with authentication
+- Credentials are user-scoped and only accessible to the creator
 
-**Remote MCP Servers:**
-- Requires a remote HTTP endpoint URL
-- Communicates over HTTP/HTTPS
-- Suitable for cloud services or external APIs
-
-### Security Notes
-
-- All API keys and tokens are encrypted at rest in the database
-- `ENCRYPTION_KEY` environment variable is required when using MCP servers with authentication
-- Never commit `.env` files with real credentials to version control
-- Credentials are only accessible to the user who created the connector
+**For complete MCP documentation including all preset servers, custom configuration, and setup examples, see [docs/MCP_SERVER.md](docs/MCP_SERVER.md).**
 
 ## Local Development Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/vercel-labs/coding-agent-template.git
-cd coding-agent-template
+git clone https://github.com/agenticassets/AA-coding-agent.git
+cd AA-coding-agent
 ```
 
 ### 2. Install dependencies
@@ -415,18 +364,25 @@ NEXT_PUBLIC_AUTH_PROVIDERS=github,vercel
 
 These API keys can be set globally (fallback for all users) or left unset to require users to provide their own:
 
-- `ANTHROPIC_API_KEY`: Anthropic API key for Claude agent (users can override in their profile)
-  - Used by Claude agent when selecting Anthropic models (claude-*)
-  - Optional if using AI Gateway for Claude
-- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation, Codex, and Claude alternative models (users can override)
-  - Used by Claude agent when selecting non-Anthropic models (GLM, Gemini, GPT)
-  - Used by OpenCode agent for multi-model support
-  - Used for AI-generated branch names
-- `CURSOR_API_KEY`: For Cursor agent support (users can override)
-- `GEMINI_API_KEY`: For Google Gemini agent support (users can override)
-- `OPENAI_API_KEY`: For Codex and OpenCode agents (users can override)
+**Claude Agent**:
+- `AI_GATEWAY_API_KEY` (priority 1) - For alternative models (Gemini, GPT, GLM) and branch name generation
+- `ANTHROPIC_API_KEY` (priority 2) - For native Claude models (claude-opus-4-5-*, claude-sonnet-*, etc.)
+- If both are unset, the Claude agent will fail at runtime when attempting to execute the task
 
-> **Note**: Users can provide their own API keys in their profile settings, which take precedence over global environment variables.
+**Other Agents**:
+- `CURSOR_API_KEY`: For Cursor agent support (users can override in their profile)
+- `GEMINI_API_KEY`: For Google Gemini agent support (users can override)
+- `OPENAI_API_KEY`: For OpenAI's Codex and OpenCode agents (users can override)
+
+**System Features**:
+- `AI_GATEWAY_API_KEY`: Also used for AI-generated branch names (non-blocking feature)
+
+> **Note**: Users can provide their own API keys in their profile settings (`/settings` → API Keys), which take precedence over global environment variables. This allows each user to use their own API keys without needing admin configuration.
+
+**API Key Priority Logic**:
+1. Check user-provided key in their profile (with graceful fallback if decryption fails)
+2. Fall back to global environment variable
+3. Return error if neither is available (task will fail at runtime when agent executes)
 
 #### GitHub Repository Access
 
@@ -477,20 +433,55 @@ Based on your `NEXT_PUBLIC_AUTH_PROVIDERS` configuration, you'll need to create 
 
 ### 5. Set up the database
 
-Generate and run database migrations:
+The project uses Drizzle ORM with PostgreSQL. Since drizzle-kit doesn't auto-load .env.local, use this workaround:
 
 ```bash
-pnpm db:generate
+# Initial migration setup
+cp .env.local .env
+DOTENV_CONFIG_PATH=.env pnpm tsx -r dotenv/config node_modules/drizzle-kit/bin.cjs migrate
+rm .env  # Clean up temporary file
+
+# For schema updates (recommended)
 pnpm db:push
+
+# Generate new migrations when you modify the schema
+pnpm db:generate
 ```
 
-### 6. Start the development server
+#### Using Local PostgreSQL (Alternative to Supabase)
+
+If you prefer to use a local PostgreSQL database for development:
 
 ```bash
-pnpm dev
+# For Docker:
+docker run --name postgres-dev -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres:latest
+
+# Set environment variable:
+POSTGRES_URL=postgresql://postgres:password@localhost:5432/coding_agent
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Then proceed with the migration steps above. Note that local PostgreSQL doesn't include Supabase's additional features (Auth, Storage, Edge Functions), but is sufficient for local development.
+
+### 6. Deploy your changes
+
+Push your code to trigger automatic deployment:
+
+```bash
+git add .
+git commit -m "Initial setup"
+git push origin main
+```
+
+Visit your Vercel dashboard to monitor the deployment, then open your deployed URL in your browser.
+
+For local testing without deployment:
+```bash
+pnpm build     # Verify build succeeds
+pnpm type-check  # Check TypeScript types
+pnpm lint      # Check code quality
+```
+
+**Note:** Local dev servers (`pnpm dev`) are not recommended per project guidelines. Use Vercel preview deployments for development feedback instead.
 
 ## Development
 
@@ -507,18 +498,37 @@ pnpm db:push
 pnpm db:studio
 ```
 
-### Running the App
+### Code Quality Checks
+
+After making changes, always run these checks:
 
 ```bash
-# Development
-pnpm dev
+# Format code
+pnpm format
 
-# Build for production
+# Check types
+pnpm type-check
+
+# Lint code
+pnpm lint
+
+# Build verification
 pnpm build
-
-# Start production server
-pnpm start
 ```
+
+All checks must pass before committing changes.
+
+### Deployment
+
+```bash
+# Push to Git to trigger deployment
+git push origin your-branch
+
+# Monitor deployment
+vercel inspect <deployment-url> --wait
+```
+
+**Note:** Do not run `pnpm dev` or `pnpm start` locally. Use Vercel preview deployments for development and testing. See [CLAUDE.md](CLAUDE.md) for full development guidelines.
 
 ## Contributing
 
@@ -536,6 +546,9 @@ pnpm start
 - **Vercel Sandbox**: Sandboxes are isolated but ensure you're not exposing sensitive data in logs or outputs.
 - **User Authentication**: Each user uses their own GitHub token for repository access - no shared credentials
 - **Encryption**: All sensitive data (tokens, API keys) is encrypted at rest using per-user encryption
+  - If `ENCRYPTION_KEY` is missing, encrypted data cannot be retrieved and system falls back to environment variable defaults
+  - If `JWE_SECRET` is missing, session cookies cannot be validated - users will need to re-authenticate
+  - See [AGENTS.md](AGENTS.md) for detailed error handling patterns in the codebase
 
 ## Changelog
 
@@ -715,10 +728,11 @@ pnpm install
 
 ##### Step 6: Test Authentication
 
-1. Start the development server: `pnpm dev`
-2. Navigate to `http://localhost:3000`
-3. Sign in with your configured OAuth provider
-4. Verify you can create and view tasks
+1. Build the application: `pnpm build`
+2. Deploy to Vercel or use a preview deployment: `git push origin main`
+3. Navigate to your deployed application
+4. Sign in with your configured OAuth provider
+5. Verify you can create and view tasks
 
 ##### Step 7: Verify Security Fix
 

@@ -220,7 +220,15 @@ export async function POST(request: NextRequest) {
         .where(and(eq(connectors.userId, user.id), eq(connectors.status, 'connected')))
       mcpServers = userConnectors.map((c) => ({
         ...c,
-        env: c.env ? JSON.parse(decrypt(c.env)) : null,
+        env: (() => {
+          if (!c.env) return null
+          try {
+            const decrypted = decrypt(c.env)
+            return decrypted ? JSON.parse(decrypted) : null
+          } catch {
+            return null
+          }
+        })(),
         oauthClientSecret: c.oauthClientSecret ? decrypt(c.oauthClientSecret) : null,
       }))
     } catch {

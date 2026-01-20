@@ -25,7 +25,15 @@ export async function GET(req: NextRequest) {
     const decryptedConnectors = userConnectors.map((connector) => ({
       ...connector,
       oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
-      env: connector.env ? JSON.parse(decrypt(connector.env)) : null,
+      env: (() => {
+        if (!connector.env) return null
+        try {
+          const decrypted = decrypt(connector.env)
+          return decrypted ? JSON.parse(decrypted) : null
+        } catch {
+          return null
+        }
+      })(),
     }))
 
     return NextResponse.json({

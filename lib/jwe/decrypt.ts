@@ -5,7 +5,8 @@ export async function decryptJWE<T extends string | object = string | object>(
   secret: string | undefined = process.env.JWE_SECRET,
 ): Promise<T | undefined> {
   if (!secret) {
-    throw new Error('Missing JWE secret')
+    console.error('Session decryption service unavailable')
+    return undefined
   }
 
   if (typeof cyphertext !== 'string') return

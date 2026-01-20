@@ -155,6 +155,60 @@ If the user explicitly asks you to start a dev server, politely explain why you 
    // This appears in server logs, not user-facing logs
    ```
 
+### Decryption Error Handling
+
+**Decryption functions return null/undefined instead of throwing, enabling graceful fallback patterns.**
+
+**decrypt() - Returns `string | null`** (`lib/crypto.ts` for AES-256-CBC)
+```typescript
+const decrypted = decrypt(encryptedText)
+// Returns string if successful
+// Returns null if: ENCRYPTION_KEY missing, invalid format, decryption fails
+
+// Pattern: Check for null and fall back to system env var
+if (decrypted === null) {
+  return process.env.ANTHROPIC_API_KEY  // Fall back to system key
+}
+return decrypted
+```
+
+**decryptJWE() - Returns `T | undefined`** (`lib/jwe/decrypt.ts` for JWE sessions)
+```typescript
+const session = await decryptJWE<Session>(cookieValue)
+// Returns payload if valid JWE
+// Returns undefined if: JWE_SECRET missing, token expired, malformed, corrupted
+
+// Pattern: Check for undefined (JWE implicitly handles expiration)
+if (!session) {
+  return  // Treat as no session, user not authenticated
+}
+```
+
+**Never throw on decryption errors.** Always return null/undefined and let callers decide on fallback:
+- **API keys**: Fall back to system environment variables (user key > system key)
+- **GitHub tokens**: Return null (no token available, task cannot execute)
+- **Sessions**: Return undefined (no authenticated user, redirect to login)
+
+### API Key Retrieval Pattern (User > System)
+
+When fetching API keys, always apply this priority order - **never mix user key with system key**:
+
+```typescript
+import { decrypt } from '@/lib/crypto'
+import { getUserApiKey } from '@/lib/api-keys/user-keys'
+
+// Pattern from lib/api-keys/user-keys.ts
+const decrypted = decrypt(userKey.value)
+if (decrypted === null) return systemKey  // Skip user key if decryption fails
+return decrypted  // User key takes precedence
+```
+
+**Why this matters:**
+- Decryption failures are silent (returns null), not exceptions
+- If user key decryption fails, fall back to system env var (not an error condition)
+- A null user key means "user didn't provide one" or "it's corrupted" - both cases fall back to system
+- Only log static messages: `'Error fetching user API key'` (never log the actual error or values)
+
 ## Testing Changes
 
 When making changes that involve logging:
@@ -210,7 +264,7 @@ Never expose these in logs or to the client:
 - `ANTHROPIC_API_KEY` - Anthropic/Claude API key
 - `OPENAI_API_KEY` - OpenAI API key
 - `GEMINI_API_KEY` - Google Gemini API key
-- `CURSOR_API_KEY` - Cursor API key
+- `CURSOR_API_KEY` - Cursor agent API key
 - `GH_TOKEN` / `GITHUB_TOKEN` - GitHub personal access token
 - `JWE_SECRET` - Encryption secret
 - `ENCRYPTION_KEY` - Encryption key
@@ -222,6 +276,178 @@ Never expose these in logs or to the client:
 Only these variables should be exposed to the client (via `NEXT_PUBLIC_` prefix):
 - `NEXT_PUBLIC_AUTH_PROVIDERS` - Available auth providers
 - `NEXT_PUBLIC_GITHUB_CLIENT_ID` - GitHub OAuth client ID (public)
+
+## Agent Capabilities Comparison
+
+### MCP Server Support
+
+The following agents support Model Context Protocol (MCP) servers with different configuration formats:
+
+- **Claude**: Full MCP support via `.mcp.json` (JSON format)
+  - Stdio servers: command + args
+  - HTTP servers: baseUrl + headers
+  - OAuth credentials supported
+
+- **Codex**: MCP support via `~/.codex/config.toml` (TOML format)
+  - Stdlib servers: command + args
+  - Bearer token support
+  - Remote servers via experimental flag
+
+- **Copilot**: MCP support via `.copilot/mcp-config.json` (JSON format)
+  - Stdio servers: command + args + env
+  - HTTP servers: headers
+  - Tool selection via "tools": [] array
+
+- **Cursor, Gemini, OpenCode**: No MCP support
+
+### Agent API Key Requirements
+
+Each agent has specific API key requirements:
+
+- **Claude**: Dual authentication
+  - Primary: `AI_GATEWAY_API_KEY` (for alternative models: Gemini, GPT-5.x, etc.)
+  - Fallback: `ANTHROPIC_API_KEY` (for Claude models: claude-sonnet, claude-opus, etc.)
+  - Both keys optional; error if neither available
+  - Uses `lib/crypto.ts` for encryption
+
+- **Codex**: Single required key
+  - Required: `AI_GATEWAY_API_KEY` (no fallback to OPENAI_API_KEY)
+  - Validates key format: must start with `sk-` (OpenAI) or `vck_` (Vercel)
+  - Returns error if key format invalid
+  - Default model: `openai/gpt-4o`
+
+- **Copilot**: GitHub token required
+  - Required: `GH_TOKEN` or `GITHUB_TOKEN`
+  - No AI provider API key needed (uses GitHub's infrastructure)
+  - User's GitHub account must be authenticated via web UI settings
+
+- **Cursor**: API key required
+  - Required: `CURSOR_API_KEY`
+  - Installation method: curl-based script (not npm)
+  - Stores config in `~/.cursor/` directory
+
+- **Gemini**: Google API key required
+  - Required: `GEMINI_API_KEY`
+  - Installation: `npm install -g @google/gemini-cli`
+  - No model validation (selectedModel parameter ignored)
+
+- **OpenCode**: Flexible authentication
+  - Required: Either `OPENAI_API_KEY` OR `ANTHROPIC_API_KEY`
+  - Supports fallback between providers
+  - No default model specified
+
+### Streaming Output Behavior
+
+Agents have different output streaming capabilities:
+
+- **Claude**: Full streaming support
+  - Outputs newline-delimited JSON events in real-time
+  - Updates `taskMessages` table immediately
+  - Extracts session_id from streaming JSON for resumption
+
+- **Copilot**: Text streaming support
+  - Streams text output to `taskMessages` table
+  - Filters diff boxes from output
+  - Real-time UI updates possible
+
+- **Cursor**: Streaming support
+  - StreamOutput parameter available
+  - Real-time message accumulation
+  - Slower UI responsiveness than Claude
+
+- **Codex**: No streaming
+  - Returns output only at completion
+  - UI updates batched at end of execution
+  - Longer wait time for user feedback
+
+- **Gemini**: No streaming
+  - Returns output at completion
+  - No real-time task message updates
+  - Batch output handling
+
+- **OpenCode**: No streaming
+  - Returns output only at completion
+  - No real-time feedback to taskMessages table
+  - Delayed UI updates
+
+### Session Resumption Support
+
+Session resumption allows tasks to continue from previous checkpoints:
+
+- **Claude**: Full resumption support
+  - Uses `--resume "<sessionId>"` with UUID validation
+  - Fallback: `--continue` for most recent session
+  - Extracted from streaming JSON output
+  - Recommended for long-running tasks with keepAlive enabled
+
+- **Codex**: Limited resumption
+  - Uses `--last` flag only (no session ID parameter)
+  - Resumes most recent session automatically
+  - Limited granularity (can't resume specific sessions)
+
+- **Copilot**: Optional resumption
+  - Uses `--resume` flag if sessionId provided
+  - May not work reliably
+  - Not recommended for critical tasks
+
+- **Cursor**: Resumption supported
+  - SessionId parameter available
+  - Implementation details documented in code
+  - Recommended for task continuation
+
+- **Gemini**: No resumption support
+  - isResumed parameter ignored
+  - No session handling code
+  - Each execution is independent
+
+- **OpenCode**: No resumption support
+  - isResumed parameter present but unused
+  - No session extraction or handling
+  - Each execution is independent
+
+### Default Models by Agent
+
+Each agent has default model selections:
+
+- **Claude**: `claude-sonnet-4-5-20250929` (claude.ts line 247)
+- **Codex**: `openai/gpt-4o` (codex.ts line 150)
+- **Copilot**: No default (model is optional)
+- **Cursor**: No documented default
+- **Gemini**: No documented default (parameter ignored)
+- **OpenCode**: No documented default
+
+### Installation Methods
+
+Agents use different installation approaches:
+
+- **Claude**: Pre-installed with Claude Code application
+  - No additional installation needed
+  - Uses local `~/.config/claude/` for configuration
+
+- **Codex**: npm global installation
+  - Command: `npm install -g @openai/codex`
+  - Requires npm/Node.js in sandbox
+  - Detected via `which codex`
+
+- **Copilot**: npm global installation
+  - Command: `npm install -g @github/copilot`
+  - Requires npm/Node.js in sandbox
+  - Detected via `which copilot`
+
+- **Cursor**: curl-based installer
+  - Command: `curl https://cursor.com/install -fsS | bash -s -- --verbose`
+  - Custom installation script (not npm)
+  - Installs to `~/.local/bin/cursor-agent`
+  - Unique among all agents
+
+- **Gemini**: npm global installation
+  - Command: `npm install -g @google/gemini-cli`
+  - Requires npm/Node.js in sandbox
+  - Detected via `which gemini`
+
+- **OpenCode**: npm global installation (implied)
+  - Uses standard npm global approach
+  - Requires npm/Node.js in sandbox
 
 ## API Route References
 

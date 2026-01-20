@@ -1,4 +1,4 @@
-const GITHUB_REPO = 'vercel-labs/coding-agent-template'
+const GITHUB_REPO = 'agenticassets/AA-coding-agent'
 const CACHE_DURATION = 5 * 60 // 5 minutes in seconds
 
 export async function getGitHubStars(): Promise<number> {
@@ -6,7 +6,7 @@ export async function getGitHubStars(): Promise<number> {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'coding-agent-template',
+        'User-Agent': 'AA-coding-agent',
       },
       next: { revalidate: CACHE_DURATION },
     })

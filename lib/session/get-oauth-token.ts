@@ -32,8 +32,10 @@ export async function getOAuthToken(
         .limit(1)
 
       if (account[0]?.accessToken) {
+        const decryptedToken = decrypt(account[0].accessToken)
+        if (!decryptedToken) return null // Decryption failed
         return {
-          accessToken: decrypt(account[0].accessToken),
+          accessToken: decryptedToken,
           refreshToken: account[0].refreshToken ? decrypt(account[0].refreshToken) : null,
           expiresAt: account[0].expiresAt,
         }
@@ -50,8 +52,10 @@ export async function getOAuthToken(
         .limit(1)
 
       if (user[0]?.accessToken) {
+        const decryptedToken = decrypt(user[0].accessToken)
+        if (!decryptedToken) return null // Decryption failed
         return {
-          accessToken: decrypt(user[0].accessToken),
+          accessToken: decryptedToken,
           refreshToken: user[0].refreshToken ? decrypt(user[0].refreshToken) : null,
           expiresAt: null, // Users table doesn't have expiresAt
         }
@@ -68,8 +72,10 @@ export async function getOAuthToken(
         .limit(1)
 
       if (user[0]?.accessToken) {
+        const decryptedToken = decrypt(user[0].accessToken)
+        if (!decryptedToken) return null // Decryption failed
         return {
-          accessToken: decrypt(user[0].accessToken),
+          accessToken: decryptedToken,
           refreshToken: user[0].refreshToken ? decrypt(user[0].refreshToken) : null,
           expiresAt: null, // Users table doesn't have expiresAt
         }

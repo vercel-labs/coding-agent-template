@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { formatAbbreviatedNumber } from '@/lib/utils/format-number'
 
-const GITHUB_REPO_URL = 'https://github.com/vercel-labs/coding-agent-template'
+const GITHUB_REPO_URL = 'https://github.com/agenticassets/AA-coding-agent'
 
 interface GitHubStarsButtonProps {
   initialStars?: number

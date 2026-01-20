@@ -12,7 +12,7 @@ This is a multi-agent AI coding assistant platform built with Next.js 16 and Rea
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Streamdown (markdown rendering)
 - **Backend**: Next.js API routes, Drizzle ORM, PostgreSQL (Supabase)
 - **AI**: Vercel AI SDK 5, multiple AI agent CLIs (Claude Code, Codex, Copilot, Cursor, Gemini, OpenCode)
-- **Execution**: Vercel Sandbox (isolated container environments)
+- **Execution**: Vercel Sandbox v0.0.21 (isolated container environments, default 300-min timeout)
 - **Auth**: OAuth (GitHub, Vercel), encrypted session tokens (JWE)
 - **Database**: PostgreSQL (Supabase) with Drizzle ORM
 - **MCP**: Model Context Protocol (MCP Handler 1.25.2) for agent tool integration
@@ -158,12 +158,17 @@ The Claude agent supports two authentication methods with automatic detection:
   - **Google**: `gemini-3-pro-preview`, `gemini-3-flash-preview`
   - **OpenAI**: `gpt-5.2`, `gpt-5.2-codex`, `gpt-5.1-codex-mini`
   - **Z.ai/Zhipu**: `glm-4.7`
-- Environment setup:
-  ```
+- Environment setup (all three variables required for AI Gateway):
+  ```bash
   ANTHROPIC_BASE_URL="https://ai-gateway.vercel.sh"
   ANTHROPIC_AUTH_TOKEN=<AI_GATEWAY_API_KEY>
-  ANTHROPIC_API_KEY=""
+  ANTHROPIC_API_KEY=""  # Must be empty when using AI Gateway
   ```
+- Configuration notes:
+  - `ANTHROPIC_BASE_URL` redirects Anthropic SDK calls to AI Gateway endpoint
+  - `ANTHROPIC_AUTH_TOKEN` carries the actual AI Gateway API key to the gateway service
+  - Set `ANTHROPIC_API_KEY` to empty string to prevent fallback to direct Anthropic API
+  - Users can store BOTH Anthropic API key AND AI Gateway key simultaneously in database (different provider keys)
 - Works with MCP servers (no configuration changes needed)
 
 **API Key Priority Logic** (`lib/sandbox/agents/claude.ts`):
@@ -194,7 +199,8 @@ Task execution is centralized in `lib/tasks/process-task.ts` with `processTaskWi
 Works for both REST API and MCP task creation with same execution path.
 
 #### Sub-Agent Activity Tracking
-Tasks can spawn sub-agents with tracking via `TaskLogger`:
+Tasks can spawn sub-agents with tracking via `TaskLogger`. See `@lib/db/schema.ts` `subAgentActivitySchema` for definitive schema.
+
 - **startSubAgent(name, description?)** - Create and track a new sub-agent (returns sub-agent ID)
 - **subAgentRunning(subAgentId)** - Mark sub-agent as actively running
 - **completeSubAgent(subAgentId, success)** - Mark sub-agent as completed or errored
@@ -202,11 +208,11 @@ Tasks can spawn sub-agents with tracking via `TaskLogger`:
 
 Sub-agent activity is stored in task table as JSONB array with fields:
 - `id` - Unique sub-agent instance ID
-- `name` - Sub-agent name (e.g., "Explore", "Plan", "general-purpose")
+- `name` - Sub-agent name (max 100 chars, e.g., "Explore", "Plan", "general-purpose")
 - `status` - One of: 'starting', 'running', 'completed', 'error'
 - `startedAt` - ISO timestamp of start
 - `completedAt` - ISO timestamp of completion (optional)
-- `description` - Short description of sub-agent task
+- `description` - Short description of sub-agent task (max 500 chars)
 
 The UI displays sub-agents via `SubAgentIndicator` component with collapsible details.
 
@@ -221,12 +227,26 @@ Task timeout is extended based on sub-agent activity:
 
 Warning logged at T-1min before timeout if sub-agents are inactive.
 
-### MCP Server Support (Claude Only)
-MCP servers extend Claude Code with additional tools. Configured in `connectors` table with:
-- `type: 'local'` - Local CLI command
-- `type: 'remote'` - Remote HTTP endpoint
+### MCP Server Support (Claude, Codex, Copilot)
+MCP servers extend AI agents with additional tools. Support varies by agent:
+
+**Claude**: Full support via `.mcp.json` (JSON format)
+- `type: 'local'` - Local CLI command with args
+- `type: 'remote'` - Remote HTTP endpoint with headers
 - Encrypted environment variables and OAuth credentials
 - Works with both Anthropic API and AI Gateway authentication methods
+
+**Codex**: Support via `~/.codex/config.toml` (TOML format)
+- Stdio servers with command + args
+- Remote servers via experimental flag
+- Bearer token authentication
+
+**Copilot**: Support via `.copilot/mcp-config.json` (JSON format)
+- Stdio servers with command + args + env
+- HTTP servers with headers
+- Tool selection via "tools" array
+
+**Cursor, Gemini, OpenCode**: Not supported
 
 ## Delegating to Specialized Subagents
 
@@ -388,8 +408,12 @@ import { encrypt, decrypt } from '@/lib/crypto'
 const encryptedToken = encrypt(token)
 await db.insert(users).values({ accessToken: encryptedToken })
 
-// Retrieving
+// Retrieving (decrypt returns null on failure - ENCRYPTION_KEY missing or invalid data)
 const decryptedToken = decrypt(user.accessToken)
+if (decryptedToken === null) {
+  // Handle gracefully - fall back to env vars, skip key, or return null
+  return null
+}
 ```
 
 ### API Key Priority (User > Global)
@@ -475,8 +499,8 @@ Uses Vercel AI SDK 5 + AI Gateway in `lib/utils/branch-name-generator.ts`:
 
 ### Adding New API Routes
 1. Create route file in `app/api/[path]/route.ts`
-2. Import session validation: `import { getCurrentUser } from '@/lib/auth/session'`
-3. Validate user: `const user = await getCurrentUser()`
+2. Import session validation: `import { getServerSession } from '@/lib/session/get-server-session'`
+3. Validate user: `const user = await getServerSession()`
 4. Filter queries by `userId`
 5. Use static log messages (no dynamic values)
 
