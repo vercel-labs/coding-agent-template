@@ -6,7 +6,13 @@ import { generateState } from 'arctic'
 
 export async function GET(req: NextRequest): Promise<Response> {
   // Check if user is authenticated with Vercel first
-  const session = await getSessionFromReq(req)
+  let session
+  try {
+    session = await getSessionFromReq(req)
+  } catch {
+    // Session retrieval failed - redirect to home
+    return Response.redirect(new URL('/', req.url))
+  }
   if (!session?.user) {
     return Response.redirect(new URL('/', req.url))
   }
@@ -55,7 +61,12 @@ export async function GET(req: NextRequest): Promise<Response> {
 
 export async function POST(req: NextRequest): Promise<Response> {
   // Check if user is authenticated with Vercel first
-  const session = await getSessionFromReq(req)
+  let session
+  try {
+    session = await getSessionFromReq(req)
+  } catch {
+    return Response.json({ error: 'Not authenticated' }, { status: 401 })
+  }
   if (!session?.user) {
     return Response.json({ error: 'Not authenticated' }, { status: 401 })
   }

@@ -76,18 +76,23 @@ export async function getGitHubTokenByUserId(userId: string): Promise<string | n
 export async function getUserGitHubToken(reqOrUserId?: NextRequest | string): Promise<string | null> {
   let userId: string | undefined
 
-  // Determine how to get the userId based on parameter type
-  if (typeof reqOrUserId === 'string') {
-    // Direct userId provided (e.g., from API token authentication)
-    userId = reqOrUserId
-  } else if (reqOrUserId) {
-    // NextRequest provided - extract session from request
-    const session = await getSessionFromReq(reqOrUserId)
-    userId = session?.user?.id
-  } else {
-    // No parameter - use server session (for server components)
-    const session = await getServerSession()
-    userId = session?.user?.id
+  try {
+    // Determine how to get the userId based on parameter type
+    if (typeof reqOrUserId === 'string') {
+      // Direct userId provided (e.g., from API token authentication)
+      userId = reqOrUserId
+    } else if (reqOrUserId) {
+      // NextRequest provided - extract session from request
+      const session = await getSessionFromReq(reqOrUserId)
+      userId = session?.user?.id
+    } else {
+      // No parameter - use server session (for server components)
+      const session = await getServerSession()
+      userId = session?.user?.id
+    }
+  } catch {
+    // Session retrieval failed - treat as no session
+    return null
   }
 
   if (!userId) {
