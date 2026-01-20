@@ -47,20 +47,31 @@ export async function GET(req: NextRequest): Promise<Response> {
     },
   })
 
-  const session = await createSession({
-    accessToken: tokens.accessToken(),
-    expiresAt: tokens.accessTokenExpiresAt().getTime(),
-    refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : undefined,
-  })
+  let session
+  try {
+    session = await createSession({
+      accessToken: tokens.accessToken(),
+      expiresAt: tokens.accessTokenExpiresAt().getTime(),
+      refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : undefined,
+    })
+  } catch {
+    console.error('Failed to create session')
+    return new Response('Failed to create session', { status: 500 })
+  }
 
   if (!session) {
-    console.error('[Vercel Callback] Failed to create session')
+    console.error('Failed to create session')
     return new Response('Failed to create session', { status: 500 })
   }
 
   // Note: Vercel tokens are already stored in users table by upsertUser() in createSession()
 
-  await saveSession(response, session)
+  try {
+    await saveSession(response, session)
+  } catch {
+    console.error('Failed to save session cookie')
+    return new Response('Failed to save session', { status: 500 })
+  }
 
   cookieStore.delete(`vercel_oauth_state`)
   cookieStore.delete(`vercel_oauth_code_verifier`)

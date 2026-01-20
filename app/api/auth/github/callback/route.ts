@@ -223,11 +223,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       // Redirect back to app
       return Response.redirect(new URL(storedRedirectTo, req.nextUrl.origin))
     }
-  } catch (error) {
-    console.error('[GitHub Callback] OAuth callback error')
-    return new Response(
-      `Failed to complete GitHub authentication: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      { status: 500 },
-    )
+  } catch {
+    console.error('GitHub OAuth callback failed')
+    return new Response('Failed to complete GitHub authentication', { status: 500 })
   }
 }

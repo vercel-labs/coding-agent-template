@@ -6,7 +6,13 @@ import { getSessionFromReq } from '@/lib/session/server'
 
 export async function GET(req: NextRequest): Promise<Response> {
   // Check if user is already authenticated with Vercel
-  const session = await getSessionFromReq(req)
+  let session
+  try {
+    session = await getSessionFromReq(req)
+  } catch {
+    // Session retrieval failed - proceed as new sign-in
+    session = undefined
+  }
 
   const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
   const redirectUri = `${req.nextUrl.origin}/api/auth/github/callback`
