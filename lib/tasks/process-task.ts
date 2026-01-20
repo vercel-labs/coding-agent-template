@@ -57,6 +57,8 @@ export interface TaskProcessingInput {
   selectedModel?: string
   installDependencies?: boolean
   keepAlive?: boolean
+  /** Source branch to clone from (defaults to repository default branch if not specified) */
+  sourceBranch?: string
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -578,6 +580,7 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
         selectedModel,
         installDependencies,
         keepAlive,
+        sourceBranch: input.sourceBranch,
         preDeterminedBranchName: aiBranchName || undefined,
         onProgress: async (progress: number, message: string) => {
           await logger.updateProgress(progress, message)

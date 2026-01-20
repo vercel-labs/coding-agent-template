@@ -12,6 +12,7 @@
 - **Lifecycle states**: pending → processing → completed/error/stopped
 - **Rate limit**: `checkRateLimit({ id: user.id, email })` returns `allowed`, `remaining`, `resetAt`
 - **Soft delete**: Tasks via `deletedAt` timestamp, not hard deletion
+- **Branch Selection**: Optional `sourceBranch` parameter allows cloning from specific branch (defaults to repo's default branch)
 
 ## Route Groups
 - CRUD: Create, list, get, stop, soft-delete tasks

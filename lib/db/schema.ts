@@ -119,7 +119,8 @@ export const tasks = pgTable('tasks', {
   progress: integer('progress').default(0),
   logs: jsonb('logs').$type<LogEntry[]>(),
   error: text('error'),
-  branchName: text('branch_name'),
+  branchName: text('branch_name'), // New branch name created by agent for changes
+  sourceBranch: text('source_branch'), // Source branch to clone from (defaults to repository default branch)
   sandboxId: text('sandbox_id'),
   agentSessionId: text('agent_session_id'),
   sandboxUrl: text('sandbox_url'),
@@ -158,6 +159,7 @@ export const insertTaskSchema = z.object({
   logs: z.array(logEntrySchema).optional(),
   error: z.string().optional(),
   branchName: z.string().optional(),
+  sourceBranch: z.string().optional(),
   sandboxId: z.string().optional(),
   agentSessionId: z.string().optional(),
   sandboxUrl: z.string().optional(),
@@ -193,6 +195,7 @@ export const selectTaskSchema = z.object({
   logs: z.array(logEntrySchema).nullable(),
   error: z.string().nullable(),
   branchName: z.string().nullable(),
+  sourceBranch: z.string().nullable(),
   sandboxId: z.string().nullable(),
   agentSessionId: z.string().nullable(),
   sandboxUrl: z.string().nullable(),

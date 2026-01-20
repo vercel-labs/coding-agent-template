@@ -62,6 +62,20 @@ pnpm dev
 
 ## Task Configuration
 
+### Branch Selection
+
+When creating a task, you can optionally select a specific GitHub branch to work from:
+
+- **Optional field**: If not selected, the repository's default branch (usually `main` or `master`) is used
+- **Source branch**: The selected branch is cloned and checked out before the agent begins work
+- **Feature branch**: The agent creates a new feature branch from your selected source branch
+- **Use cases**:
+  - Work on experimental features in a `develop` branch
+  - Apply changes to a `production` branch
+  - Update multiple feature branches in parallel
+
+The branch selector dropdown appears when you select a repository and is populated with all available branches from that repository.
+
 ### Maximum Duration
 
 The maximum duration setting controls how long the Vercel sandbox will stay alive from the moment it's created. You can select timeouts ranging from 5 minutes to 5 hours.

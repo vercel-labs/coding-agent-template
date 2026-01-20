@@ -34,6 +34,8 @@ This is a multi-agent AI coding assistant platform built with Next.js 16 and Rea
 - **apiTokens** - External API tokens for programmatic access (hashed storage)
 - **tasks** - Coding tasks with logs, status, PR info, sandbox IDs
   - `logs` - JSONB array of LogEntry with agent source tracking
+  - `branchName` - AI-generated branch name (format: {type}/{description}-{hash})
+  - `sourceBranch` - Source branch to clone from (optional, defaults to repo's default branch)
   - `subAgentActivity` - JSONB array of SubAgentActivity (sub-agent execution history)
   - `currentSubAgent` - Currently active sub-agent name (for UI display)
   - `lastHeartbeat` - Last activity timestamp (for timeout extension)
@@ -183,10 +185,11 @@ const getClaudeRequiredKeys = (model: string): Provider[] => {
 Task execution is centralized in `lib/tasks/process-task.ts` with `processTaskWithTimeout()`:
 1. **Validate task** - Check if task was stopped, wait for AI-generated branch name
 2. **Create sandbox** - Provision Vercel sandbox (via `lib/sandbox/creation.ts`)
-3. **Setup environment** - Configure API keys, NPM tokens, MCP servers
-4. **Execute agent** - Run selected AI agent CLI with githubToken and apiKeys
-5. **Git operations** - Commit changes, push to branch
-6. **Cleanup** - Shutdown sandbox unless keepAlive is enabled
+3. **Clone repository** - Clone repo and checkout specified source branch (or repo's default)
+4. **Setup environment** - Configure API keys, NPM tokens, MCP servers
+5. **Execute agent** - Run selected AI agent CLI with githubToken and apiKeys
+6. **Git operations** - Create feature branch from source branch, commit changes, push to branch
+7. **Cleanup** - Shutdown sandbox unless keepAlive is enabled
 
 Works for both REST API and MCP task creation with same execution path.
 
@@ -273,6 +276,7 @@ MCP servers extend Claude Code with additional tools. Configured in `connectors`
 - `app/api/auth/` - OAuth callbacks, sign-in/sign-out, GitHub connection (uses `lib/session/` for session creation)
 - `app/api/tasks/` - Task CRUD, execution, logs, follow-up messages
 - `app/api/github/` - Repository access, org/repo listing, PR operations
+- `app/api/github/branches/` - Fetch repository branches for branch selection
 - `app/api/repos/[owner]/[repo]/` - Commits, issues, pull requests
 - `app/api/connectors/` - MCP server management
 - `app/api/api-keys/` - User API key management
@@ -534,9 +538,10 @@ Authorization: Bearer YOUR_API_TOKEN
 ### Available Tools
 
 1. **create-task** - Create and execute a new coding task
-   - Input: `prompt`, `repoUrl`, `selectedAgent`, `selectedModel`, `installDependencies`, `keepAlive`
+   - Input: `prompt`, `repoUrl`, `sourceBranch` (optional), `selectedAgent`, `selectedModel`, `installDependencies`, `keepAlive`
    - Returns: `taskId`, `status`, `createdAt`
    - **Key behavior**: Verifies GitHub access, retrieves user API keys, and triggers full task execution automatically
+   - `sourceBranch` allows selecting a specific branch to clone from (defaults to repository's default branch)
    - Requires GitHub account connected via web UI settings
 
 2. **get-task** - Retrieve task details

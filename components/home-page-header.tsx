@@ -2,6 +2,7 @@
 
 import { PageHeader } from '@/components/page-header'
 import { RepoSelector } from '@/components/repo-selector'
+import { BranchSelector } from '@/components/branch-selector'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,8 +31,10 @@ import { useTasks as useTasksContext } from '@/components/app-layout'
 interface HomePageHeaderProps {
   selectedOwner: string
   selectedRepo: string
+  selectedBranch: string
   onOwnerChange: (owner: string) => void
   onRepoChange: (repo: string) => void
+  onBranchChange: (branch: string) => void
   user?: Session['user'] | null
   initialStars?: number
 }
@@ -39,8 +42,10 @@ interface HomePageHeaderProps {
 export function HomePageHeader({
   selectedOwner,
   selectedRepo,
+  selectedBranch,
   onOwnerChange,
   onRepoChange,
+  onBranchChange,
   user,
   initialStars = 1200,
 }: HomePageHeaderProps) {
@@ -253,6 +258,18 @@ export function HomePageHeader({
             size="sm"
             onMultiRepoClick={() => setShowMultiRepoDialog(true)}
           />
+          {selectedRepo && (
+            <>
+              <span className="text-muted-foreground text-xs">@</span>
+              <BranchSelector
+                selectedOwner={selectedOwner}
+                selectedRepo={selectedRepo}
+                selectedBranch={selectedBranch}
+                onBranchChange={onBranchChange}
+                size="sm"
+              />
+            </>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" title="More options">
