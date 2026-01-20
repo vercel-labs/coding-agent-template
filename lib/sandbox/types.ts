@@ -26,6 +26,7 @@ export interface SandboxConfig {
   installDependencies?: boolean
   keepAlive?: boolean
   preDeterminedBranchName?: string
+  /** Source branch to clone from (defaults to repository default branch if not specified) */
   sourceBranch?: string
   onProgress?: (progress: number, message: string) => Promise<void>
   onCancellationCheck?: () => Promise<boolean>

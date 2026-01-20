@@ -9,15 +9,30 @@ import { githubBranchesAtomFamily } from '@/lib/atoms/github-cache'
 import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 import { cn } from '@/lib/utils'
 
+/** Props for the BranchSelector component */
 interface BranchSelectorProps {
+  /** Repository owner (GitHub username or organization) */
   selectedOwner: string
+  /** Repository name */
   selectedRepo: string
+  /** Currently selected branch name */
   selectedBranch: string
+  /** Callback fired when user selects a different branch */
   onBranchChange: (branch: string) => void
+  /** Whether the selector is disabled */
   disabled?: boolean
+  /** Size variant for the trigger button */
   size?: 'sm' | 'default'
 }
 
+/**
+ * BranchSelector component
+ *
+ * Dropdown selector for GitHub repository branches with auto-load from API.
+ * Fetches all branches with caching, displays default branch first with indicator,
+ * and shows protection status with shield icon. Auto-selects default branch if none
+ * is currently selected.
+ */
 export function BranchSelector({
   selectedOwner,
   selectedRepo,
@@ -42,7 +57,7 @@ export function BranchSelector({
       // Check if we have cached data
       if (branchData) {
         setLoading(false)
-        // Auto-select default branch if no branch selected
+        // Auto-select default branch from cache if no branch selected
         if (!selectedBranch && branchData.defaultBranch) {
           onBranchChange(branchData.defaultBranch)
         }
@@ -62,7 +77,7 @@ export function BranchSelector({
         const data = await response.json()
         setBranchData(data)
 
-        // Auto-select default branch if no branch selected
+        // Auto-select default branch from fresh API response if no branch selected
         if (!selectedBranch && data.defaultBranch) {
           onBranchChange(data.defaultBranch)
         }

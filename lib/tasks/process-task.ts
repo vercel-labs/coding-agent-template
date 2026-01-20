@@ -57,6 +57,7 @@ export interface TaskProcessingInput {
   selectedModel?: string
   installDependencies?: boolean
   keepAlive?: boolean
+  /** Source branch to clone from (defaults to repository default branch if not specified) */
   sourceBranch?: string
   apiKeys?: {
     OPENAI_API_KEY?: string

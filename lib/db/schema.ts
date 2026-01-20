@@ -119,8 +119,8 @@ export const tasks = pgTable('tasks', {
   progress: integer('progress').default(0),
   logs: jsonb('logs').$type<LogEntry[]>(),
   error: text('error'),
-  branchName: text('branch_name'),
-  sourceBranch: text('source_branch'), // Branch to clone from (default: repo's default branch)
+  branchName: text('branch_name'), // New branch name created by agent for changes
+  sourceBranch: text('source_branch'), // Source branch to clone from (defaults to repository default branch)
   sandboxId: text('sandbox_id'),
   agentSessionId: text('agent_session_id'),
   sandboxUrl: text('sandbox_url'),

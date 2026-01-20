@@ -1,15 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserGitHubToken } from '@/lib/github/user-token'
 
+/** GitHub branch object from API with protection status */
 interface GitHubBranch {
   name: string
   protected: boolean
 }
 
+/** GitHub repository object to extract default branch info */
 interface GitHubRepo {
   default_branch: string
 }
 
+/**
+ * GET /api/github/branches
+ *
+ * Fetch all branches for a GitHub repository with authentication.
+ * Returns branches sorted by default branch first, then alphabetically.
+ *
+ * Query parameters:
+ * - owner: Repository owner/organization
+ * - repo: Repository name
+ *
+ * Returns: { branches: GitHubBranch[], defaultBranch: string }
+ */
 export async function GET(request: NextRequest) {
   try {
     const token = await getUserGitHubToken(request)

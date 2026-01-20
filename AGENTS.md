@@ -34,8 +34,9 @@ console.error('Error occurred:', error)
 #### Sensitive Data That Must NEVER Appear in Logs:
 - Vercel credentials (SANDBOX_VERCEL_TOKEN, SANDBOX_VERCEL_TEAM_ID, SANDBOX_VERCEL_PROJECT_ID)
 - User IDs and personal information
-- File paths and repository URLs
-- Branch names and commit messages
+- File paths and repository URLs (including branch names)
+- Branch names (especially for private repositories with naming conventions)
+- Commit messages and commit SHAs
 - Error details that may contain sensitive context
 - External API tokens (64-character hex strings from `/api/tokens`)
 - Any dynamic values that could reveal system internals
@@ -172,6 +173,32 @@ When making changes that involve logging:
    - Check the logs displayed to users
    - Ensure no sensitive information is visible
 
+## Task Execution Details
+
+### Task Fields and Workflow
+
+When creating a task, the following fields are supported:
+
+- `prompt` (required) - User's coding request
+- `repoUrl` (required) - GitHub repository URL
+- `selectedAgent` (optional) - AI agent to use (default: 'claude')
+- `selectedModel` (optional) - Specific model for the agent
+- `sourceBranch` (optional) - Specific branch to clone from (defaults to repository's default branch)
+- `installDependencies` (optional) - Whether to auto-install dependencies (default: false)
+- `maxDuration` (optional) - Maximum sandbox duration in minutes (default: 300)
+- `keepAlive` (optional) - Whether to keep sandbox alive after task completion (default: false)
+
+#### Source Branch Handling
+
+The `sourceBranch` field allows tasks to clone from a specific branch instead of the repository's default branch:
+
+1. **Branch Selection**: Use `/api/github/branches` to fetch available branches
+2. **Clone Process**: If `sourceBranch` is specified, git clones with `--branch <sourceBranch>`
+3. **Fallback Logic**: If the specified branch doesn't exist, the sandbox automatically falls back to the repository's default branch
+4. **Static Logging**: Branch names must NOT be logged dynamically (use static messages only)
+
+**Important**: Branch names can be sensitive in private repositories and must not appear in user-facing logs.
+
 ## Configuration Security
 
 ### Environment Variables
@@ -195,6 +222,40 @@ Never expose these in logs or to the client:
 Only these variables should be exposed to the client (via `NEXT_PUBLIC_` prefix):
 - `NEXT_PUBLIC_AUTH_PROVIDERS` - Available auth providers
 - `NEXT_PUBLIC_GITHUB_CLIENT_ID` - GitHub OAuth client ID (public)
+
+## API Route References
+
+### GitHub API Routes
+
+The following GitHub API routes are available for managing repositories and branches:
+
+#### Repository Operations
+- `GET /api/github/user` - Authenticated user profile
+- `GET /api/github/user-repos` - User's repositories with pagination
+- `GET /api/github/repos` - Search/filter repositories
+- `POST /api/github/repos/create` - Create new repository
+- `GET /api/github/verify-repo` - Verify access to specific repository
+- `GET /api/github/orgs` - User's organizations
+- `GET /api/github/branches` - List repository branches
+
+#### Branch Selection Endpoint
+
+`GET /api/github/branches?owner=<owner>&repo=<repo>`
+
+Returns available branches for a repository, with the repository's default branch listed first:
+
+```json
+{
+  "branches": [
+    { "name": "main", "protected": false },
+    { "name": "develop", "protected": true },
+    { "name": "feature-x", "protected": false }
+  ],
+  "defaultBranch": "main"
+}
+```
+
+**Usage**: Used for selecting a source branch when creating a task. Branch selection is currently available via MCP create-task tool (optional `sourceBranch` parameter).
 
 ## Architecture Guidelines
 
