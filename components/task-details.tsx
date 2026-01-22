@@ -428,6 +428,20 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }
 
+  const openFileInTabRef = useRef(openFileInTab)
+
+  useEffect(() => {
+    openFileInTabRef.current = openFileInTab
+  }, [openFileInTab])
+
+  const handleFileSelect = useCallback((file: string, isFolder?: boolean) => {
+    void openFileInTabRef.current(file, isFolder)
+  }, [])
+
+  const handleEditorOpenFile = useCallback((filename: string, _lineNumber?: number) => {
+    void openFileInTabRef.current(filename)
+  }, [])
+
   const handleUnsavedChanges = useCallback((filename: string, hasChanges: boolean) => {
     setTabsWithUnsavedChanges((prev) => {
       const newSet = new Set(prev)
@@ -451,6 +465,24 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       return newSet
     })
   }, [])
+
+  const handleSelectedFileUnsavedChanges = useCallback(
+    (hasChanges: boolean) => {
+      if (selectedFile) {
+        handleUnsavedChanges(selectedFile, hasChanges)
+      }
+    },
+    [handleUnsavedChanges, selectedFile],
+  )
+
+  const handleSelectedFileSavingStateChange = useCallback(
+    (isSaving: boolean) => {
+      if (selectedFile) {
+        handleSavingStateChange(selectedFile, isSaving)
+      }
+    },
+    [handleSavingStateChange, selectedFile],
+  )
 
   const handleSaveSuccess = useCallback(() => {
     // When a file is saved in 'all-local' mode, refresh the file browser
@@ -1724,7 +1756,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 taskId={task.id}
                 branchName={task.branchName}
                 repoUrl={task.repoUrl}
-                onFileSelect={openFileInTab}
+                onFileSelect={handleFileSelect}
                 onFilesLoaded={fetchAllDiffs}
                 selectedFile={selectedFile}
                 refreshKey={refreshKey}
@@ -1860,16 +1892,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                       isInitialLoading={Object.keys(diffsCache).length === 0}
                       viewMode={viewMode}
                       taskId={task.id}
-                      onUnsavedChanges={
-                        selectedFile ? (hasChanges) => handleUnsavedChanges(selectedFile, hasChanges) : undefined
-                      }
-                      onSavingStateChange={
-                        selectedFile ? (isSaving) => handleSavingStateChange(selectedFile, isSaving) : undefined
-                      }
-                      onOpenFile={(filename, lineNumber) => {
-                        openFileInTab(filename)
-                        // TODO: Optionally scroll to lineNumber after opening
-                      }}
+                      onUnsavedChanges={handleSelectedFileUnsavedChanges}
+                      onSavingStateChange={handleSelectedFileSavingStateChange}
+                      onOpenFile={handleEditorOpenFile}
                       onSaveSuccess={handleSaveSuccess}
                       onFileLoaded={handleFileLoaded}
                     />
@@ -2085,16 +2110,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                       isInitialLoading={Object.keys(diffsCache).length === 0}
                       viewMode={viewMode}
                       taskId={task.id}
-                      onUnsavedChanges={
-                        selectedFile ? (hasChanges) => handleUnsavedChanges(selectedFile, hasChanges) : undefined
-                      }
-                      onSavingStateChange={
-                        selectedFile ? (isSaving) => handleSavingStateChange(selectedFile, isSaving) : undefined
-                      }
-                      onOpenFile={(filename, lineNumber) => {
-                        openFileInTab(filename)
-                        // TODO: Optionally scroll to lineNumber after opening
-                      }}
+                      onUnsavedChanges={handleSelectedFileUnsavedChanges}
+                      onSavingStateChange={handleSelectedFileSavingStateChange}
+                      onOpenFile={handleEditorOpenFile}
                       onFileLoaded={handleFileLoaded}
                       onSaveSuccess={handleSaveSuccess}
                     />

@@ -1,11 +1,30 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, memo, startTransition } from 'react'
 import { useParams } from 'next/navigation'
 import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import { generateDiffFile } from '@git-diff-view/file'
 import '@git-diff-view/react/styles/diff-view-pure.css'
 import { FileEditor } from '@/components/file-editor'
+
+const DIFF_VIEW_MODE = DiffModeEnum.Unified
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+  webp: 'image/webp',
+  ico: 'image/x-icon',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+}
+
+const getImageMimeType = (filename: string) => {
+  const ext = filename.split('.').pop()?.toLowerCase()
+  return IMAGE_MIME_TYPES[ext || ''] || 'image/png'
+}
 
 interface DiffData {
   filename: string
@@ -30,7 +49,7 @@ interface FileDiffViewerProps {
   onFileLoaded?: (filename: string, content: string) => void
 }
 
-export function FileDiffViewer({
+export const FileDiffViewer = memo(function FileDiffViewer({
   selectedFile,
   diffsCache,
   isInitialLoading,
@@ -49,10 +68,11 @@ export function FileDiffViewer({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const diffViewMode = DiffModeEnum.Unified // Always use unified view
+  const diffViewMode = DIFF_VIEW_MODE
   const [mounted, setMounted] = useState(false)
   // Internal cache for file contents (used for 'all' and 'all-local' modes)
   const internalCacheRef = useRef<Record<string, DiffData>>({})
+  const onFileLoadedRef = useRef(onFileLoaded)
 
   // Detect theme from parent window or system - only on client
   useEffect(() => {
@@ -91,6 +111,18 @@ export function FileDiffViewer({
   }, [])
 
   useEffect(() => {
+    onFileLoadedRef.current = onFileLoaded
+  }, [onFileLoaded])
+
+  const isFilesMode = viewMode === 'all' || viewMode === 'all-local'
+  const isChangesMode = viewMode === 'local' || viewMode === 'remote'
+  const cachedDiffData = useMemo(() => {
+    if (!selectedFile || !diffsCache || !isChangesMode) return null
+    return diffsCache[selectedFile] || null
+  }, [diffsCache, isChangesMode, selectedFile])
+  const diffViewTheme = useMemo(() => (mounted ? theme : 'light'), [mounted, theme])
+
+  useEffect(() => {
     const fetchDiffData = async () => {
       if (!selectedFile || !taskId) {
         setDiffData(null)
@@ -101,17 +133,21 @@ export function FileDiffViewer({
 
       // Check if we have cached data first
       // For changes mode (local/remote), use diffsCache prop
-      if ((viewMode === 'local' || viewMode === 'remote') && diffsCache && diffsCache[selectedFile]) {
-        setDiffData(diffsCache[selectedFile])
-        setError(null)
+      if (isChangesMode && cachedDiffData) {
+        startTransition(() => {
+          setDiffData(cachedDiffData)
+          setError(null)
+        })
         setLoading(false)
         return
       }
 
       // For files mode (all/all-local), use internal cache
-      if ((viewMode === 'all' || viewMode === 'all-local') && internalCacheRef.current[selectedFile]) {
-        setDiffData(internalCacheRef.current[selectedFile])
-        setError(null)
+      if (isFilesMode && internalCacheRef.current[selectedFile]) {
+        startTransition(() => {
+          setDiffData(internalCacheRef.current[selectedFile])
+          setError(null)
+        })
         setLoading(false)
         return
       }
@@ -124,10 +160,7 @@ export function FileDiffViewer({
         params.set('filename', selectedFile)
 
         // In "all" or "all-local" mode, fetch file content; in "local" or "remote" mode, fetch diff
-        const endpoint =
-          viewMode === 'all' || viewMode === 'all-local'
-            ? `/api/tasks/${taskId}/file-content`
-            : `/api/tasks/${taskId}/diff`
+        const endpoint = isFilesMode ? `/api/tasks/${taskId}/file-content` : `/api/tasks/${taskId}/diff`
 
         // For local mode, add a query parameter to get local diff instead of PR diff
         if (viewMode === 'local' || viewMode === 'all-local') {
@@ -141,41 +174,45 @@ export function FileDiffViewer({
         }
 
         // Cache the result for files mode
-        if (viewMode === 'all' || viewMode === 'all-local') {
+        if (isFilesMode) {
           internalCacheRef.current[selectedFile] = result.data
         }
 
-        setDiffData(result.data)
+        startTransition(() => {
+          setDiffData(result.data)
+        })
       } catch (err) {
         console.error('Error fetching file data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch file data')
+        startTransition(() => {
+          setError(err instanceof Error ? err.message : 'Failed to fetch file data')
+        })
       } finally {
         setLoading(false)
       }
     }
 
     fetchDiffData()
-  }, [taskId, selectedFile, diffsCache, viewMode])
+  }, [taskId, selectedFile, cachedDiffData, isFilesMode, isChangesMode, viewMode])
 
   // Call onFileLoaded when diffData is loaded
   useEffect(() => {
-    if (diffData && selectedFile && onFileLoaded) {
+    if (diffData && selectedFile && onFileLoadedRef.current) {
       const content = diffData.newContent || diffData.oldContent || ''
-      onFileLoaded(selectedFile, content)
+      onFileLoadedRef.current(selectedFile, content)
     }
-  }, [diffData, selectedFile, onFileLoaded])
+  }, [diffData, selectedFile])
 
   const diffFile = useMemo(() => {
     if (!diffData) return null
 
     // In "all" or "all-local" mode (Files view), NEVER generate a diff file
     // We always use FileEditor to show the raw file content, not diffs
-    if (viewMode === 'all' || viewMode === 'all-local') {
+    if (isFilesMode) {
       return null
     }
 
     // In "local" or "remote" mode, check if contents are identical - no diff to show
-    if ((viewMode === 'local' || viewMode === 'remote') && diffData.oldContent === diffData.newContent) {
+    if (isChangesMode && diffData.oldContent === diffData.newContent) {
       console.log('File contents are identical - no changes to display')
       return null
     }
@@ -195,7 +232,7 @@ export function FileDiffViewer({
         return null
       }
 
-      file.initTheme(mounted ? theme : 'light')
+      file.initTheme(diffViewTheme)
 
       // Wrap file.init() in try-catch to handle diff parsing errors
       try {
@@ -217,7 +254,7 @@ export function FileDiffViewer({
       console.error('Error generating diff file:', error)
       return null
     }
-  }, [diffData, mounted, theme, viewMode])
+  }, [diffData, diffViewTheme, isChangesMode, isFilesMode])
 
   if (!selectedFile) {
     // Don't show "No file selected" during initial loading
@@ -281,23 +318,6 @@ export function FileDiffViewer({
 
   // Handle image files
   if (diffData.isImage && diffData.newContent) {
-    const getImageMimeType = (filename: string) => {
-      const ext = filename.split('.').pop()?.toLowerCase()
-      const mimeTypes: { [key: string]: string } = {
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        gif: 'image/gif',
-        bmp: 'image/bmp',
-        svg: 'image/svg+xml',
-        webp: 'image/webp',
-        ico: 'image/x-icon',
-        tiff: 'image/tiff',
-        tif: 'image/tiff',
-      }
-      return mimeTypes[ext || ''] || 'image/png'
-    }
-
     const mimeType = getImageMimeType(diffData.filename)
     const imageData = diffData.isBase64
       ? `data:${mimeType};base64,${diffData.newContent}`
@@ -374,7 +394,7 @@ export function FileDiffViewer({
           key={`${selectedFile}-${diffData?.filename}`}
           diffFile={diffFile}
           diffViewMode={diffViewMode}
-          diffViewTheme={mounted ? theme : 'light'}
+          diffViewTheme={diffViewTheme}
           diffViewHighlight={true}
           diffViewWrap={true}
           diffViewFontSize={12}
@@ -392,4 +412,4 @@ export function FileDiffViewer({
       </div>
     )
   }
-}
+})
