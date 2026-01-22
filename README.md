@@ -185,7 +185,9 @@ https://github.com/myorg/myrepo using Claude Sonnet
 - `list-tasks` - List your tasks with filters
 - `stop-task` - Stop running tasks
 
-For complete MCP documentation including Cursor and Windsurf setup, see **[docs/MCP_SERVER.md](docs/MCP_SERVER.md)**.
+**Documentation:**
+- **Getting Started?** See **[docs/MCP_GUIDE.md](docs/MCP_GUIDE.md)** for a friendly, step-by-step guide
+- **Technical Details?** See **[docs/MCP_SERVER.md](docs/MCP_SERVER.md)** for complete API reference, schemas, and advanced configuration
 
 ### REST API
 
