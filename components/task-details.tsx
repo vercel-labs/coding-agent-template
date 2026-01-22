@@ -331,102 +331,105 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   }, [])
 
   // Tab management functions
-  const openFileInTab = async (file: string, isFolder?: boolean) => {
-    // If it's a folder, just update the selected file state (for creating files/folders in that location)
-    if (isFolder) {
-      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
-      setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: true }))
-      return
-    }
+  const openFileInTab = useCallback(
+    async (file: string, isFolder?: boolean) => {
+      // If it's a folder, just update the selected file state (for creating files/folders in that location)
+      if (isFolder) {
+        setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+        setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: true }))
+        return
+      }
 
-    // Mark as not a folder
-    setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: false }))
+      // Mark as not a folder
+      setSelectedItemIsFolderByMode((prev) => ({ ...prev, [viewMode]: false }))
 
-    const currentTabs = openTabsByMode[viewMode]
-    const existingIndex = currentTabs.indexOf(file)
+      const currentTabs = openTabsByMode[viewMode]
+      const existingIndex = currentTabs.indexOf(file)
 
-    // For Changes mode (local or remote), only show one file at a time (no tabs)
-    const isChangesMode = viewMode === 'local' || viewMode === 'remote'
+      // For Changes mode (local or remote), only show one file at a time (no tabs)
+      const isChangesMode = viewMode === 'local' || viewMode === 'remote'
 
-    // Check if file is already loaded and has changed
-    if (existingIndex !== -1 && loadedFileHashes[file]) {
-      try {
-        const params = new URLSearchParams()
-        params.set('filename', file)
+      // Check if file is already loaded and has changed
+      if (existingIndex !== -1 && loadedFileHashes[file]) {
+        try {
+          const params = new URLSearchParams()
+          params.set('filename', file)
 
-        const endpoint =
-          viewMode === 'all' || viewMode === 'all-local'
-            ? `/api/tasks/${task.id}/file-content`
-            : `/api/tasks/${task.id}/diff`
+          const endpoint =
+            viewMode === 'all' || viewMode === 'all-local'
+              ? `/api/tasks/${task.id}/file-content`
+              : `/api/tasks/${task.id}/diff`
 
-        if (viewMode === 'local' || viewMode === 'all-local') {
-          params.set('mode', 'local')
-        }
+          if (viewMode === 'local' || viewMode === 'all-local') {
+            params.set('mode', 'local')
+          }
 
-        const response = await fetch(`${endpoint}?${params.toString()}`)
-        const result = await response.json()
+          const response = await fetch(`${endpoint}?${params.toString()}`)
+          const result = await response.json()
 
-        if (result.success && result.data) {
-          // Create a simple hash of the content
-          const newContent = result.data.newContent || result.data.oldContent || ''
-          const newHash = `${newContent.length}-${newContent.substring(0, 100)}`
+          if (result.success && result.data) {
+            // Create a simple hash of the content
+            const newContent = result.data.newContent || result.data.oldContent || ''
+            const newHash = `${newContent.length}-${newContent.substring(0, 100)}`
 
-          if (loadedFileHashes[file] !== newHash) {
-            // Content has changed, show toast
-            toast.info(`File "${file}" has been updated`, {
-              description: 'The file has new changes. Would you like to reload it?',
-              duration: 10000,
-              action: {
-                label: 'Load Latest',
-                onClick: () => {
-                  // Update hash and force reload by changing selection
-                  setLoadedFileHashes((prev) => ({ ...prev, [file]: newHash }))
-                  // Force reload by briefly deselecting then reselecting
-                  setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: undefined }))
-                  setTimeout(() => {
+            if (loadedFileHashes[file] !== newHash) {
+              // Content has changed, show toast
+              toast.info(`File "${file}" has been updated`, {
+                description: 'The file has new changes. Would you like to reload it?',
+                duration: 10000,
+                action: {
+                  label: 'Load Latest',
+                  onClick: () => {
+                    // Update hash and force reload by changing selection
+                    setLoadedFileHashes((prev) => ({ ...prev, [file]: newHash }))
+                    // Force reload by briefly deselecting then reselecting
+                    setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: undefined }))
+                    setTimeout(() => {
+                      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+                      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+                    }, 10)
+                  },
+                },
+                cancel: {
+                  label: 'Ignore',
+                  onClick: () => {
+                    // Just switch to the tab without reloading
                     setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
                     setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
-                  }, 10)
+                  },
                 },
-              },
-              cancel: {
-                label: 'Ignore',
-                onClick: () => {
-                  // Just switch to the tab without reloading
-                  setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
-                  setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
-                },
-              },
-            })
-            return
+              })
+              return
+            }
           }
+        } catch (err) {
+          console.error('Error checking for file changes:', err)
+          // Continue with normal flow on error
         }
-      } catch (err) {
-        console.error('Error checking for file changes:', err)
-        // Continue with normal flow on error
       }
-    }
 
-    if (isChangesMode) {
-      // Replace the current file (only one file at a time)
-      setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: [file] }))
-      setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: 0 }))
-      setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
-    } else {
-      // Files mode: use tabs
-      if (existingIndex !== -1) {
-        // File already open in this mode, just switch to it
-        setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+      if (isChangesMode) {
+        // Replace the current file (only one file at a time)
+        setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: [file] }))
+        setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: 0 }))
         setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
       } else {
-        // Open new tab in current mode
-        const newTabs = [...currentTabs, file]
-        setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: newTabs }))
-        setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newTabs.length - 1 }))
-        setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+        // Files mode: use tabs
+        if (existingIndex !== -1) {
+          // File already open in this mode, just switch to it
+          setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: existingIndex }))
+          setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+        } else {
+          // Open new tab in current mode
+          const newTabs = [...currentTabs, file]
+          setOpenTabsByMode((prev) => ({ ...prev, [viewMode]: newTabs }))
+          setActiveTabIndexByMode((prev) => ({ ...prev, [viewMode]: newTabs.length - 1 }))
+          setSelectedFileByMode((prev) => ({ ...prev, [viewMode]: file }))
+        }
       }
-    }
-  }
+    },
+    [loadedFileHashes, openTabsByMode, task.id, viewMode],
+  )
 
   const openFileInTabRef = useRef(openFileInTab)
 

@@ -254,7 +254,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
       console.error('Error generating diff file:', error)
       return null
     }
-  }, [diffData, diffViewTheme, isChangesMode, isFilesMode])
+  }, [diffData, diffViewTheme, isChangesMode, isFilesMode, viewMode])
 
   if (!selectedFile) {
     // Don't show "No file selected" during initial loading
