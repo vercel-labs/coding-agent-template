@@ -10,6 +10,7 @@ export default async function Home() {
   const selectedRepo = cookieStore.get('selected-repo')?.value || ''
   const installDependencies = cookieStore.get('install-dependencies')?.value === 'true'
   const keepAlive = cookieStore.get('keep-alive')?.value === 'true'
+  const enableBrowser = cookieStore.get('enable-browser')?.value === 'true'
 
   const session = await getServerSession()
 
@@ -26,6 +27,7 @@ export default async function Home() {
       initialInstallDependencies={installDependencies}
       initialMaxDuration={maxDuration}
       initialKeepAlive={keepAlive}
+      initialEnableBrowser={enableBrowser}
       maxSandboxDuration={maxSandboxDuration}
       user={session?.user ?? null}
       initialStars={stars}

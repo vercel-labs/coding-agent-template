@@ -227,6 +227,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       installDependencies: taskData.installDependencies,
       maxDuration: taskData.maxDuration,
       keepAlive: false,
+      enableBrowser: false,
       status: 'pending',
       progress: 0,
       logs: [],

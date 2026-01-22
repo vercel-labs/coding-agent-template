@@ -15,9 +15,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowUp, Settings, X, Cable, Users } from 'lucide-react'
+import { Loader2, ArrowUp, Settings, X, Cable, Users, Globe } from 'lucide-react'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
-import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
+import { setInstallDependencies, setMaxDuration, setKeepAlive, setEnableBrowser } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 import { toast } from 'sonner'
@@ -46,6 +46,7 @@ interface TaskFormProps {
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
+    enableBrowser: boolean
   }) => void
   isSubmitting: boolean
   selectedOwner: string
@@ -53,6 +54,7 @@ interface TaskFormProps {
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
   initialKeepAlive?: boolean
+  initialEnableBrowser?: boolean
   maxSandboxDuration?: number
 }
 
@@ -164,6 +166,7 @@ export function TaskForm({
   initialInstallDependencies = false,
   initialMaxDuration = 300,
   initialKeepAlive = false,
+  initialEnableBrowser = false,
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
@@ -178,6 +181,7 @@ export function TaskForm({
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [keepAlive, setKeepAliveState] = useState(initialKeepAlive)
+  const [enableBrowser, setEnableBrowserState] = useState(initialEnableBrowser)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
 
   // Connectors state
@@ -200,6 +204,11 @@ export function TaskForm({
   const updateKeepAlive = (value: boolean) => {
     setKeepAliveState(value)
     setKeepAlive(value)
+  }
+
+  const updateEnableBrowser = (value: boolean) => {
+    setEnableBrowserState(value)
+    setEnableBrowser(value)
   }
 
   // Handle keyboard events in textarea
@@ -339,6 +348,7 @@ export function TaskForm({
         installDependencies,
         maxDuration,
         keepAlive,
+        enableBrowser,
       })
       return
     }
@@ -383,6 +393,7 @@ export function TaskForm({
       installDependencies,
       maxDuration,
       keepAlive,
+      enableBrowser,
     })
   }
 
@@ -605,6 +616,26 @@ export function TaskForm({
                 {/* Buttons */}
                 <div className="flex items-center gap-2">
                   <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full h-8 w-8 p-0 relative"
+                          onClick={() => updateEnableBrowser(!enableBrowser)}
+                        >
+                          <Globe className="h-4 w-4" />
+                          {enableBrowser && (
+                            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-green-500" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Browser Automation {enableBrowser ? '(On)' : '(Off)'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
