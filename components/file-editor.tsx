@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { toast } from 'sonner'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import { useTheme } from 'next-themes'
@@ -710,6 +710,38 @@ export function FileEditor({
   const isRemoteFile = viewMode === 'remote' || viewMode === 'all'
   const isReadOnly = isNodeModulesFile || isRemoteFile
 
+  // Memoize editor configuration to prevent unnecessary re-renders
+  const editorLanguage = useMemo(() => (language ? language : getLanguageFromPath(filename)), [language, filename])
+  const editorTheme = useMemo(() => (currentTheme === 'dark' ? 'vercel-dark' : 'vercel-light'), [currentTheme])
+  const editorOptions = useMemo(
+    () => ({
+      readOnly: isReadOnly,
+      minimap: { enabled: false },
+      fontSize: fontSize,
+      fontFamily: 'var(--font-geist-mono), "Geist Mono", Menlo, Monaco, "Courier New", monospace',
+      lineNumbers: 'on' as const,
+      wordWrap: 'on' as const,
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      renderWhitespace: 'selection' as const,
+      tabSize: 2,
+      insertSpaces: true,
+      folding: true,
+      foldingStrategy: 'indentation' as const,
+      showFoldingControls: 'mouseover' as const,
+      matchBrackets: 'always' as const,
+      autoClosingBrackets: 'always' as const,
+      autoClosingQuotes: 'always' as const,
+      suggestOnTriggerCharacters: true,
+      quickSuggestions: true,
+      suggest: {
+        showKeywords: true,
+        showSnippets: true,
+      },
+    }),
+    [isReadOnly, fontSize],
+  )
+
   return (
     <div className="flex flex-col h-full">
       {isNodeModulesFile && (
@@ -724,37 +756,13 @@ export function FileEditor({
       )}
       <Editor
         height="100%"
-        language={getLanguageFromPath(filename)}
+        language={editorLanguage}
         value={content}
         onChange={handleContentChange}
         beforeMount={handleBeforeMount}
         onMount={handleEditorMount}
-        theme={currentTheme === 'dark' ? 'vercel-dark' : 'vercel-light'}
-        options={{
-          readOnly: isReadOnly,
-          minimap: { enabled: false },
-          fontSize: fontSize,
-          fontFamily: 'var(--font-geist-mono), "Geist Mono", Menlo, Monaco, "Courier New", monospace',
-          lineNumbers: 'on',
-          wordWrap: 'on',
-          automaticLayout: true,
-          scrollBeyondLastLine: false,
-          renderWhitespace: 'selection',
-          tabSize: 2,
-          insertSpaces: true,
-          folding: true,
-          foldingStrategy: 'indentation',
-          showFoldingControls: 'mouseover',
-          matchBrackets: 'always',
-          autoClosingBrackets: 'always',
-          autoClosingQuotes: 'always',
-          suggestOnTriggerCharacters: true,
-          quickSuggestions: true,
-          suggest: {
-            showKeywords: true,
-            showSnippets: true,
-          },
-        }}
+        theme={editorTheme}
+        options={editorOptions}
       />
     </div>
   )

@@ -13,8 +13,8 @@ interface LayoutPageProps {
 
 export default async function Layout({ params, children }: LayoutPageProps) {
   const { owner, repo } = await params
-  const session = await getServerSession()
-  const stars = await getGitHubStars()
+  // Fetch session and stars in parallel for better performance
+  const [session, stars] = await Promise.all([getServerSession(), getGitHubStars()])
 
   return (
     <RepoLayout

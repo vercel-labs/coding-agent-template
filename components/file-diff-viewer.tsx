@@ -1,11 +1,32 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, memo } from 'react'
 import { useParams } from 'next/navigation'
 import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import { generateDiffFile } from '@git-diff-view/file'
 import '@git-diff-view/react/styles/diff-view-pure.css'
 import { FileEditor } from '@/components/file-editor'
+
+// Hoisted constants - avoid recreating on every render
+const DIFF_VIEW_MODE = DiffModeEnum.Unified
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+  webp: 'image/webp',
+  ico: 'image/x-icon',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+}
+
+const getImageMimeType = (filename: string): string => {
+  const ext = filename.split('.').pop()?.toLowerCase()
+  return IMAGE_MIME_TYPES[ext || ''] || 'image/png'
+}
 
 interface DiffData {
   filename: string
@@ -30,7 +51,7 @@ interface FileDiffViewerProps {
   onFileLoaded?: (filename: string, content: string) => void
 }
 
-export function FileDiffViewer({
+export const FileDiffViewer = memo(function FileDiffViewer({
   selectedFile,
   diffsCache,
   isInitialLoading,
@@ -49,10 +70,14 @@ export function FileDiffViewer({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const diffViewMode = DiffModeEnum.Unified // Always use unified view
   const [mounted, setMounted] = useState(false)
   // Internal cache for file contents (used for 'all' and 'all-local' modes)
   const internalCacheRef = useRef<Record<string, DiffData>>({})
+
+  // Memoized derived state for better performance
+  const isFilesMode = viewMode === 'all' || viewMode === 'all-local'
+  const isChangesMode = viewMode === 'local' || viewMode === 'remote'
+  const diffViewTheme = useMemo(() => (mounted ? theme : 'light'), [mounted, theme])
 
   // Detect theme from parent window or system - only on client
   useEffect(() => {
@@ -101,7 +126,7 @@ export function FileDiffViewer({
 
       // Check if we have cached data first
       // For changes mode (local/remote), use diffsCache prop
-      if ((viewMode === 'local' || viewMode === 'remote') && diffsCache && diffsCache[selectedFile]) {
+      if (isChangesMode && diffsCache && diffsCache[selectedFile]) {
         setDiffData(diffsCache[selectedFile])
         setError(null)
         setLoading(false)
@@ -109,7 +134,7 @@ export function FileDiffViewer({
       }
 
       // For files mode (all/all-local), use internal cache
-      if ((viewMode === 'all' || viewMode === 'all-local') && internalCacheRef.current[selectedFile]) {
+      if (isFilesMode && internalCacheRef.current[selectedFile]) {
         setDiffData(internalCacheRef.current[selectedFile])
         setError(null)
         setLoading(false)
@@ -124,10 +149,7 @@ export function FileDiffViewer({
         params.set('filename', selectedFile)
 
         // In "all" or "all-local" mode, fetch file content; in "local" or "remote" mode, fetch diff
-        const endpoint =
-          viewMode === 'all' || viewMode === 'all-local'
-            ? `/api/tasks/${taskId}/file-content`
-            : `/api/tasks/${taskId}/diff`
+        const endpoint = isFilesMode ? `/api/tasks/${taskId}/file-content` : `/api/tasks/${taskId}/diff`
 
         // For local mode, add a query parameter to get local diff instead of PR diff
         if (viewMode === 'local' || viewMode === 'all-local') {
@@ -141,13 +163,13 @@ export function FileDiffViewer({
         }
 
         // Cache the result for files mode
-        if (viewMode === 'all' || viewMode === 'all-local') {
+        if (isFilesMode) {
           internalCacheRef.current[selectedFile] = result.data
         }
 
         setDiffData(result.data)
       } catch (err) {
-        console.error('Error fetching file data:', err)
+        console.error('Error fetching file data')
         setError(err instanceof Error ? err.message : 'Failed to fetch file data')
       } finally {
         setLoading(false)
@@ -155,7 +177,7 @@ export function FileDiffViewer({
     }
 
     fetchDiffData()
-  }, [taskId, selectedFile, diffsCache, viewMode])
+  }, [taskId, selectedFile, diffsCache, viewMode, isFilesMode, isChangesMode])
 
   // Call onFileLoaded when diffData is loaded
   useEffect(() => {
@@ -170,13 +192,12 @@ export function FileDiffViewer({
 
     // In "all" or "all-local" mode (Files view), NEVER generate a diff file
     // We always use FileEditor to show the raw file content, not diffs
-    if (viewMode === 'all' || viewMode === 'all-local') {
+    if (isFilesMode) {
       return null
     }
 
     // In "local" or "remote" mode, check if contents are identical - no diff to show
-    if ((viewMode === 'local' || viewMode === 'remote') && diffData.oldContent === diffData.newContent) {
-      console.log('File contents are identical - no changes to display')
+    if (isChangesMode && diffData.oldContent === diffData.newContent) {
       return null
     }
 
@@ -195,7 +216,7 @@ export function FileDiffViewer({
         return null
       }
 
-      file.initTheme(mounted ? theme : 'light')
+      file.initTheme(diffViewTheme)
 
       // Wrap file.init() in try-catch to handle diff parsing errors
       try {
@@ -203,21 +224,16 @@ export function FileDiffViewer({
         file.buildSplitDiffLines()
         file.buildUnifiedDiffLines()
       } catch (initError) {
-        console.error('Error initializing diff file:', initError, {
-          filename: diffData.filename,
-          hasOldContent: !!diffData.oldContent,
-          hasNewContent: !!diffData.newContent,
-          viewMode,
-        })
+        console.error('Error initializing diff file')
         throw initError
       }
 
       return file
     } catch (error) {
-      console.error('Error generating diff file:', error)
+      console.error('Error generating diff file')
       return null
     }
-  }, [diffData, mounted, theme, viewMode])
+  }, [diffData, diffViewTheme, isFilesMode, isChangesMode])
 
   if (!selectedFile) {
     // Don't show "No file selected" during initial loading
@@ -281,23 +297,6 @@ export function FileDiffViewer({
 
   // Handle image files
   if (diffData.isImage && diffData.newContent) {
-    const getImageMimeType = (filename: string) => {
-      const ext = filename.split('.').pop()?.toLowerCase()
-      const mimeTypes: { [key: string]: string } = {
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        gif: 'image/gif',
-        bmp: 'image/bmp',
-        svg: 'image/svg+xml',
-        webp: 'image/webp',
-        ico: 'image/x-icon',
-        tiff: 'image/tiff',
-        tif: 'image/tiff',
-      }
-      return mimeTypes[ext || ''] || 'image/png'
-    }
-
     const mimeType = getImageMimeType(diffData.filename)
     const imageData = diffData.isBase64
       ? `data:${mimeType};base64,${diffData.newContent}`
@@ -328,7 +327,7 @@ export function FileDiffViewer({
   }
 
   // Render FileEditor for "all" or "all-local" mode with text files
-  if ((viewMode === 'all' || viewMode === 'all-local') && diffData && !diffData.isBinary && !diffData.isImage) {
+  if (isFilesMode && diffData && !diffData.isBinary && !diffData.isImage) {
     return (
       <FileEditor
         filename={diffData.filename}
@@ -373,8 +372,8 @@ export function FileDiffViewer({
         <DiffView
           key={`${selectedFile}-${diffData?.filename}`}
           diffFile={diffFile}
-          diffViewMode={diffViewMode}
-          diffViewTheme={mounted ? theme : 'light'}
+          diffViewMode={DIFF_VIEW_MODE}
+          diffViewTheme={diffViewTheme}
           diffViewHighlight={true}
           diffViewWrap={true}
           diffViewFontSize={12}
@@ -382,7 +381,7 @@ export function FileDiffViewer({
       </div>
     )
   } catch (error) {
-    console.error('Error rendering diff:', error)
+    console.error('Error rendering diff')
     return (
       <div className="flex items-center justify-center py-8 md:py-12 p-4">
         <div className="text-center">
@@ -392,4 +391,4 @@ export function FileDiffViewer({
       </div>
     )
   }
-}
+})
