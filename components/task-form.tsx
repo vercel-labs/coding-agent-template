@@ -632,7 +632,7 @@ export function TaskForm({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Browser Automation {enableBrowser ? '(On)' : '(Off)'}</p>
+                        <p>Agent Browser</p>
                       </TooltipContent>
                     </Tooltip>
 
