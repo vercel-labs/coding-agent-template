@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Task } from '@/lib/db/schema'
-import { PageHeader } from '@/components/page-header'
+import { SharedHeader } from '@/components/shared-header'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,13 +19,10 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertCircle, Trash2, Square, StopCircle, CheckSquare, X, Clock } from 'lucide-react'
-import { GitHubStarsButton } from '@/components/github-stars-button'
-import { User } from '@/components/auth/user'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { Session } from '@/lib/session/types'
-import { VERCEL_DEPLOY_URL } from '@/lib/constants'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { PRStatusIcon } from '@/components/pr-status-icon'
 import { PRCheckStatus } from '@/components/pr-check-status'
@@ -274,35 +271,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
   return (
     <div className="flex-1 bg-background flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 p-3">
-        <PageHeader
-          showMobileMenu={true}
-          onToggleMobileMenu={toggleSidebar}
-          title="All Tasks"
-          actions={
-            <div className="flex items-center gap-2 h-8">
-              <GitHubStarsButton initialStars={initialStars} />
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="h-8 sm:px-3 px-0 sm:w-auto w-8 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
-              >
-                <a
-                  href={VERCEL_DEPLOY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5"
-                >
-                  <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
-                    <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-                  </svg>
-                  <span className="hidden sm:inline">Deploy Your Own</span>
-                </a>
-              </Button>
-              <User user={user} authProvider={authProvider} />
-            </div>
-          }
-        />
+        <SharedHeader initialStars={initialStars} />
       </div>
 
       <div className="flex-1 overflow-auto px-4 pb-4">

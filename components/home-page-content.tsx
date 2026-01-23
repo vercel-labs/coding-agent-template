@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { TaskForm } from '@/components/task-form'
-import { HomePageHeader } from '@/components/home-page-header'
+import { SharedHeader } from '@/components/shared-header'
+import { RepoSelector } from '@/components/repo-selector'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTasks } from '@/components/app-layout'
@@ -10,6 +11,14 @@ import { setSelectedOwner, setSelectedRepo } from '@/lib/utils/cookies'
 import type { Session } from '@/lib/session/types'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, RefreshCw, Unlink, Settings, Plus, ExternalLink } from 'lucide-react'
 import { redirectToSignIn } from '@/lib/session/redirect-to-sign-in'
 import { GitHubIcon } from '@/components/icons/github-icon'
 import { getEnabledAuthProviders } from '@/lib/auth/providers'
@@ -17,6 +26,10 @@ import { useSetAtom, useAtom, useAtomValue } from 'jotai'
 import { taskPromptAtom } from '@/lib/atoms/task'
 import { HomePageMobileFooter } from '@/components/home-page-mobile-footer'
 import { multiRepoModeAtom, selectedReposAtom } from '@/lib/atoms/multi-repo'
+import { sessionAtom } from '@/lib/atoms/session'
+import { githubConnectionAtom, githubConnectionInitializedAtom } from '@/lib/atoms/github-connection'
+import { OpenRepoUrlDialog } from '@/components/open-repo-url-dialog'
+import { MultiRepoDialog } from '@/components/multi-repo-dialog'
 
 interface HomePageContentProps {
   initialSelectedOwner?: string
@@ -47,6 +60,9 @@ export function HomePageContent({
   const [showSignInDialog, setShowSignInDialog] = useState(false)
   const [loadingVercel, setLoadingVercel] = useState(false)
   const [loadingGitHub, setLoadingGitHub] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showOpenRepoDialog, setShowOpenRepoDialog] = useState(false)
+  const [showMultiRepoDialog, setShowMultiRepoDialog] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { refreshTasks, addTaskOptimistically } = useTasks()
@@ -55,6 +71,13 @@ export function HomePageContent({
   // Multi-repo mode state
   const multiRepoMode = useAtomValue(multiRepoModeAtom)
   const [selectedRepos, setSelectedRepos] = useAtom(selectedReposAtom)
+
+  // GitHub connection state
+  const session = useAtomValue(sessionAtom)
+  const githubConnection = useAtomValue(githubConnectionAtom)
+  const githubConnectionInitialized = useAtomValue(githubConnectionInitializedAtom)
+  const setGitHubConnection = useSetAtom(githubConnectionAtom)
+  const isGitHubAuthUser = session.authProvider === 'github'
 
   // Check which auth providers are enabled
   const { github: hasGitHub, vercel: hasVercel } = getEnabledAuthProviders()
@@ -122,6 +145,201 @@ export function HomePageContent({
     setSelectedRepoState(repo)
     setSelectedRepo(repo)
   }
+
+  const handleRefreshOwners = async () => {
+    setIsRefreshing(true)
+    try {
+      localStorage.removeItem('github-owners')
+      toast.success('Refreshing owners...')
+      window.location.reload()
+    } catch (error) {
+      console.error('Error refreshing owners:', error)
+      toast.error('Failed to refresh owners')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const handleRefreshRepos = async () => {
+    setIsRefreshing(true)
+    try {
+      if (selectedOwner) {
+        localStorage.removeItem(`github-repos-${selectedOwner}`)
+        toast.success('Refreshing repositories...')
+        window.location.reload()
+      } else {
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('github-repos-')) {
+            localStorage.removeItem(key)
+          }
+        })
+        toast.success('Refreshing all repositories...')
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('Error refreshing repositories:', error)
+      toast.error('Failed to refresh repositories')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const handleDisconnectGitHub = async () => {
+    try {
+      const response = await fetch('/api/auth/github/disconnect', {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        toast.success('GitHub disconnected')
+        localStorage.removeItem('github-owners')
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('github-repos-')) {
+            localStorage.removeItem(key)
+          }
+        })
+        handleOwnerChange('')
+        handleRepoChange('')
+        setGitHubConnection({ connected: false })
+        router.refresh()
+      } else {
+        const error = await response.json()
+        console.error('Failed to disconnect GitHub:', error)
+        toast.error(error.error || 'Failed to disconnect GitHub')
+      }
+    } catch (error) {
+      console.error('Failed to disconnect GitHub:', error)
+      toast.error('Failed to disconnect GitHub')
+    }
+  }
+
+  const handleNewRepo = () => {
+    const url = selectedOwner ? `/repos/new?owner=${selectedOwner}` : '/repos/new'
+    router.push(url)
+  }
+
+  const handleConnectGitHub = () => {
+    window.location.href = '/api/auth/github/signin'
+  }
+
+  const handleReconfigureGitHub = () => {
+    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
+    if (clientId) {
+      window.open(`https://github.com/settings/connections/applications/${clientId}`, '_blank')
+    } else {
+      window.location.href = '/api/auth/github/signin'
+    }
+  }
+
+  const handleOpenRepoUrl = async (repoUrl: string) => {
+    try {
+      if (!user) {
+        toast.error('Sign in required', {
+          description: 'Please sign in to create tasks with custom repository URLs.',
+        })
+        return
+      }
+
+      const taskData = {
+        prompt: 'Work on this repository',
+        repoUrl: repoUrl,
+        selectedAgent: localStorage.getItem('last-selected-agent') || 'claude',
+        selectedModel: localStorage.getItem('last-selected-model-claude') || 'claude-sonnet-4-5',
+        installDependencies: true,
+        maxDuration: 300,
+        keepAlive: false,
+      }
+
+      const { id } = addTaskOptimistically(taskData)
+      router.push(`/tasks/${id}`)
+
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...taskData, id }),
+      })
+
+      if (response.ok) {
+        toast.success('Task created successfully!')
+      } else {
+        const error = await response.json()
+        toast.error(error.message || error.error || 'Failed to create task')
+      }
+    } catch (error) {
+      console.error('Error creating task:', error)
+      toast.error('Failed to create task')
+    }
+  }
+
+  // Build leftActions for the header
+  const headerLeftActions = (
+    <div className="flex items-center gap-1 sm:gap-2 h-8 min-w-0 flex-1">
+      {!githubConnectionInitialized ? null : githubConnection.connected || isGitHubAuthUser ? (
+        <>
+          <RepoSelector
+            selectedOwner={selectedOwner}
+            selectedRepo={selectedRepo}
+            onOwnerChange={handleOwnerChange}
+            onRepoChange={handleRepoChange}
+            size="sm"
+            onMultiRepoClick={() => setShowMultiRepoDialog(true)}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0" title="More options">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={handleNewRepo}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Repo
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowOpenRepoDialog(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Repo URL
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleRefreshOwners} disabled={isRefreshing}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh Owners
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRefreshRepos} disabled={isRefreshing}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh Repos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleReconfigureGitHub}>
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Access
+              </DropdownMenuItem>
+              {!isGitHubAuthUser && (
+                <DropdownMenuItem onClick={handleDisconnectGitHub}>
+                  <Unlink className="h-4 w-4 mr-2" />
+                  Disconnect GitHub
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      ) : user ? (
+        <Button onClick={handleConnectGitHub} variant="outline" size="sm" className="h-8 flex-shrink-0">
+          <GitHubIcon className="h-4 w-4 mr-2" />
+          Connect GitHub
+        </Button>
+      ) : selectedOwner || selectedRepo ? (
+        <RepoSelector
+          selectedOwner={selectedOwner}
+          selectedRepo={selectedRepo}
+          onOwnerChange={handleOwnerChange}
+          onRepoChange={handleRepoChange}
+          size="sm"
+        />
+      ) : null}
+    </div>
+  )
 
   const handleTaskSubmit = async (data: {
     prompt: string
@@ -352,14 +570,7 @@ export function HomePageContent({
   return (
     <div className="flex-1 bg-background flex flex-col">
       <div className="p-3">
-        <HomePageHeader
-          selectedOwner={selectedOwner}
-          selectedRepo={selectedRepo}
-          onOwnerChange={handleOwnerChange}
-          onRepoChange={handleRepoChange}
-          user={user}
-          initialStars={initialStars}
-        />
+        <SharedHeader leftActions={headerLeftActions} initialStars={initialStars} />
       </div>
 
       <div className="flex-1 flex items-center justify-center px-4 pb-20 md:pb-4">
@@ -378,6 +589,10 @@ export function HomePageContent({
 
       {/* Mobile Footer with Stars and Deploy Button - Show when logged in OR when owner/repo are selected */}
       {(user || selectedOwner || selectedRepo) && <HomePageMobileFooter initialStars={initialStars} />}
+
+      {/* Dialogs */}
+      <OpenRepoUrlDialog open={showOpenRepoDialog} onOpenChange={setShowOpenRepoDialog} onSubmit={handleOpenRepoUrl} />
+      <MultiRepoDialog open={showMultiRepoDialog} onOpenChange={setShowMultiRepoDialog} />
 
       {/* Sign In Dialog */}
       <Dialog open={showSignInDialog} onOpenChange={setShowSignInDialog}>

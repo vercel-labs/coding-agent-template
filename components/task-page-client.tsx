@@ -1,17 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTask } from '@/lib/hooks/use-task'
 import { TaskDetails } from '@/components/task-details'
-import { TaskPageHeader } from '@/components/task-page-header'
-import { PageHeader } from '@/components/page-header'
-import { Button } from '@/components/ui/button'
-import { useTasks } from '@/components/app-layout'
+import { SharedHeader } from '@/components/shared-header'
+import { TaskActions } from '@/components/task-actions'
 import { LogsPane } from '@/components/logs-pane'
-import { VERCEL_DEPLOY_URL } from '@/lib/constants'
-import { User } from '@/components/auth/user'
 import type { Session } from '@/lib/session/types'
-import { GitHubStarsButton } from '@/components/github-stars-button'
 
 interface TaskPageClientProps {
   taskId: string
@@ -19,6 +14,23 @@ interface TaskPageClientProps {
   authProvider: Session['authProvider'] | null
   initialStars?: number
   maxSandboxDuration?: number
+}
+
+function parseRepoFromUrl(repoUrl: string | null): { owner: string; repo: string } | null {
+  if (!repoUrl) return null
+  try {
+    const url = new URL(repoUrl)
+    const pathParts = url.pathname.split('/').filter(Boolean)
+    if (pathParts.length >= 2) {
+      return {
+        owner: pathParts[0],
+        repo: pathParts[1].replace(/\.git$/, ''),
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 export function TaskPageClient({
@@ -29,44 +41,23 @@ export function TaskPageClient({
   maxSandboxDuration = 300,
 }: TaskPageClientProps) {
   const { task, isLoading, error } = useTask(taskId)
-  const { toggleSidebar } = useTasks()
   const [logsPaneHeight, setLogsPaneHeight] = useState(40) // Default to collapsed height
+
+  const repoInfo = useMemo(() => parseRepoFromUrl(task?.repoUrl ?? null), [task?.repoUrl])
+
+  const headerLeftActions = repoInfo ? (
+    <div className="flex items-center gap-2 min-w-0">
+      <h1 className="text-lg font-semibold truncate">
+        {repoInfo.owner}/{repoInfo.repo}
+      </h1>
+    </div>
+  ) : null
 
   if (isLoading) {
     return (
       <div className="flex-1 bg-background">
         <div className="p-3">
-          <PageHeader
-            showMobileMenu={true}
-            onToggleMobileMenu={toggleSidebar}
-            actions={
-              <div className="flex items-center gap-2 h-8">
-                <GitHubStarsButton initialStars={initialStars} />
-                {/* Deploy to Vercel Button */}
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="h-8 sm:px-3 px-0 sm:w-auto w-8 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
-                >
-                  <a
-                    href={VERCEL_DEPLOY_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5"
-                  >
-                    <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
-                      <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-                    </svg>
-                    <span className="hidden sm:inline">Deploy Your Own</span>
-                  </a>
-                </Button>
-
-                {/* User Authentication */}
-                <User user={user} authProvider={authProvider} />
-              </div>
-            }
-          />
+          <SharedHeader initialStars={initialStars} />
         </div>
       </div>
     )
@@ -76,36 +67,7 @@ export function TaskPageClient({
     return (
       <div className="flex-1 bg-background">
         <div className="p-3">
-          <PageHeader
-            showMobileMenu={true}
-            onToggleMobileMenu={toggleSidebar}
-            showPlatformName={true}
-            actions={
-              <div className="flex items-center gap-2 h-8">
-                <GitHubStarsButton initialStars={initialStars} />
-                {/* Deploy to Vercel Button */}
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="h-8 sm:px-3 px-0 sm:w-auto w-8 bg-black text-white border-black hover:bg-black/90 dark:bg-white dark:text-black dark:border-white dark:hover:bg-white/90"
-                >
-                  <a
-                    href={VERCEL_DEPLOY_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5"
-                  >
-                    <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
-                      <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-                    </svg>
-                    <span className="hidden sm:inline">Deploy Your Own</span>
-                  </a>
-                </Button>
-                <User user={user} authProvider={authProvider} />
-              </div>
-            }
-          />
+          <SharedHeader initialStars={initialStars} />
         </div>
         <div className="mx-auto p-3">
           <div className="flex items-center justify-center h-64">
@@ -122,7 +84,11 @@ export function TaskPageClient({
   return (
     <div className="flex-1 bg-background relative flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 p-3">
-        <TaskPageHeader task={task} user={user} authProvider={authProvider} initialStars={initialStars} />
+        <SharedHeader
+          leftActions={headerLeftActions}
+          initialStars={initialStars}
+          extraActions={<TaskActions task={task} />}
+        />
       </div>
 
       {/* Task details */}
