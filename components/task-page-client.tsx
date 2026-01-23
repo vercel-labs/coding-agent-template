@@ -83,7 +83,7 @@ export function TaskPageClient({
 
   return (
     <div className="flex-1 bg-background relative flex flex-col h-full overflow-hidden">
-      <div className="flex-shrink-0 p-3">
+      <div className="flex-shrink-0 px-3 py-2 border-b">
         <SharedHeader
           leftActions={headerLeftActions}
           initialStars={initialStars}

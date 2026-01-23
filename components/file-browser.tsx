@@ -1347,9 +1347,9 @@ export function FileBrowser({
   return (
     <div className="flex flex-col h-full">
       {!hideHeader && (
-        <div>
+        <div className="border-b">
           {/* Main Navigation Row */}
-          <div className="py-2 flex items-center justify-between h-[46px]">
+          <div className="py-2 px-3 flex items-center justify-between h-[46px]">
             {/* Changes / Files Navigation */}
             <div className="flex items-center gap-1">
               <button
@@ -1443,7 +1443,7 @@ export function FileBrowser({
             onOpenChange={(open) => !open && setContextMenuFile(null)}
           >
             <div
-              className={`py-2 min-h-full outline-none rounded-sm ${dropTarget === '__root__' ? 'bg-blue-500/10' : ''}`}
+              className={`py-2 px-1 min-h-full outline-none ${dropTarget === '__root__' ? 'bg-blue-500/10' : ''}`}
               onContextMenu={(e) => {
                 if ((viewMode === 'local' || viewMode === 'all-local') && e.target === e.currentTarget) {
                   handleContextMenu(e, '__root__')

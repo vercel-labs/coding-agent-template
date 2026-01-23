@@ -1226,7 +1226,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header Tabs */}
-      <div className="py-2 flex items-center justify-between gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="py-2 px-3 flex items-center justify-between gap-1 flex-shrink-0 h-[46px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setActiveTab('chat')}
@@ -1267,36 +1267,38 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       </div>
 
       {/* Tab Content */}
-      {renderTabContent()}
+      <div className="flex-1 min-h-0 px-3 pt-3 flex flex-col overflow-hidden">{renderTabContent()}</div>
 
       {/* Input Area (only for chat tab) */}
       {activeTab === 'chat' && (
-        <div className="flex-shrink-0 relative">
-          <Textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Send a follow-up message..."
-            className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-base md:text-xs"
-            disabled={isSending}
-          />
-          {task.status === 'processing' || task.status === 'pending' ? (
-            <button
-              onClick={handleStopTask}
-              disabled={isStopping}
-              className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Square className="h-3 w-3" fill="currentColor" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSendMessage}
-              disabled={!newMessage.trim() || isSending}
-              className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
-            </button>
-          )}
+        <div className="flex-shrink-0 px-3 pb-3">
+          <div className="relative">
+            <Textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Send a follow-up message..."
+              className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-base md:text-xs"
+              disabled={isSending}
+            />
+            {task.status === 'processing' || task.status === 'pending' ? (
+              <button
+                onClick={handleStopTask}
+                disabled={isStopping}
+                className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Square className="h-3 w-3" fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSendMessage}
+                disabled={!newMessage.trim() || isSending}
+                className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

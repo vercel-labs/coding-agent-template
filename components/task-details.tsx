@@ -46,6 +46,10 @@ import {
   setShowPreviewPane as saveShowPreviewPane,
   getShowChatPane,
   setShowChatPane as saveShowChatPane,
+  getFilesPaneWidth,
+  setFilesPaneWidth as saveFilesPaneWidth,
+  getChatPaneWidth,
+  setChatPaneWidth as saveChatPaneWidth,
 } from '@/lib/utils/cookies'
 import { FileBrowser } from '@/components/file-browser'
 import { FileDiffViewer } from '@/components/file-diff-viewer'
@@ -211,6 +215,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [showPreviewPane, setShowPreviewPane] = useState(() => getShowPreviewPane())
   const [showChatPane, setShowChatPane] = useState(() => getShowChatPane())
   const [previewKey, setPreviewKey] = useState(0)
+
+  // Pane widths for resizing
+  const [filesPaneWidth, setFilesPaneWidth] = useState(() => getFilesPaneWidth())
+  const [chatPaneWidth, setChatPaneWidth] = useState(() => getChatPaneWidth())
+  const [resizingPane, setResizingPane] = useState<'files' | 'chat' | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false)
   const [isRestartingDevServer, setIsRestartingDevServer] = useState(false)
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false)
@@ -980,6 +990,56 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }, [showFileDropdown])
 
+  // Handle pane resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingPane || !containerRef.current) return
+
+      const containerRect = containerRef.current.getBoundingClientRect()
+
+      if (resizingPane === 'files') {
+        const newWidth = e.clientX - containerRect.left
+        const minWidth = 150
+        const maxWidth = 500
+
+        if (newWidth >= minWidth && newWidth <= maxWidth) {
+          setFilesPaneWidth(newWidth)
+        }
+      } else if (resizingPane === 'chat') {
+        const newWidth = containerRect.right - e.clientX
+        const minWidth = 200
+        const maxWidth = 500
+
+        if (newWidth >= minWidth && newWidth <= maxWidth) {
+          setChatPaneWidth(newWidth)
+        }
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (resizingPane === 'files') {
+        saveFilesPaneWidth(filesPaneWidth)
+      } else if (resizingPane === 'chat') {
+        saveChatPaneWidth(chatPaneWidth)
+      }
+      setResizingPane(null)
+    }
+
+    if (resizingPane) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [resizingPane, filesPaneWidth, chatPaneWidth])
+
   // Keyboard shortcuts for pane toggles and tab management
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1327,7 +1387,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overview Section */}
-      <div className="space-y-2 md:space-y-3 pb-3 md:pb-6 border-b pl-3 md:pl-6 pr-3 flex-shrink-0">
+      <div className="space-y-2 md:space-y-3 py-2 md:py-3 border-b px-3 flex-shrink-0">
         {/* Prompt */}
         <div className="flex items-center gap-2">
           {currentStatus === 'processing' ? (
@@ -1666,9 +1726,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       {task.branchName && task.branchName.trim().length > 0 ? (
         <>
           {/* Desktop Layout */}
-          <div className="hidden md:flex flex-1 gap-3 md:gap-4 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
+          <div ref={containerRef} className="hidden md:flex flex-1 min-h-0 overflow-hidden">
             {/* File Browser - Always rendered but hidden with CSS to ensure files are loaded */}
-            <div className={cn('w-1/4 h-auto overflow-y-auto min-h-0 flex-shrink-0', !showFilesPane && 'hidden')}>
+            <div
+              className={cn('h-auto overflow-y-auto min-h-0 flex-shrink-0', !showFilesPane && 'hidden')}
+              style={{ width: showFilesPane ? `${filesPaneWidth}px` : 0 }}
+            >
               <FileBrowser
                 taskId={task.id}
                 branchName={task.branchName}
@@ -1682,12 +1745,22 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               />
             </div>
 
+            {/* Resize Handle - Files/Code */}
+            {showFilesPane && (
+              <div
+                className="w-3 cursor-col-resize flex-shrink-0 relative group"
+                onMouseDown={() => setResizingPane('files')}
+              >
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/50 transition-colors" />
+              </div>
+            )}
+
             {/* Code Viewer */}
             {showCodePane && (
               <div className="flex-1 min-h-0 min-w-0">
-                <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
+                <div className="overflow-hidden h-full flex flex-col">
                   {/* Tabs and Search Bar */}
-                  <div className="flex flex-col border-b bg-muted/50 flex-shrink-0">
+                  <div className="flex flex-col border-b flex-shrink-0">
                     {/* Tabs Row */}
                     {openTabs.length > 0 && (viewMode === 'all' || viewMode === 'all-local') && (
                       <div
@@ -1754,7 +1827,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     )}
 
                     {/* Search Bar */}
-                    <div ref={fileSearchRef} className="relative flex items-center gap-2 px-3 py-2">
+                    <div ref={fileSearchRef} className="relative flex items-center gap-2 px-3 h-[46px]">
                       <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <input
                         type="text"
@@ -1827,12 +1900,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </div>
             )}
 
+            {/* Resize Handle - Code/Preview */}
+            {showPreviewPane && (showCodePane || showFilesPane) && (
+              <div className="w-3 cursor-col-resize flex-shrink-0 relative group">
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/50 transition-colors" />
+              </div>
+            )}
+
             {/* Preview */}
             {showPreviewPane && (
               <div className={cn('flex-1 min-h-0 min-w-0', isPreviewFullscreen && 'fixed inset-0 z-50 bg-background')}>
-                <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
+                <div className="overflow-hidden h-full flex flex-col">
                   {/* Preview Toolbar */}
-                  <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
+                  <div className="flex items-center gap-2 px-3 border-b flex-shrink-0 h-[46px]">
                     <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     {task.sandboxUrl && sandboxHealth !== 'stopped' ? (
                       <a
@@ -2014,9 +2094,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </div>
             )}
 
+            {/* Resize Handle - Preview/Chat or Code/Chat */}
+            {showChatPane && (showPreviewPane || showCodePane || showFilesPane) && (
+              <div
+                className="w-3 cursor-col-resize flex-shrink-0 relative group"
+                onMouseDown={() => setResizingPane('chat')}
+              >
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/50 transition-colors" />
+              </div>
+            )}
+
             {/* Chat */}
             {showChatPane && (
-              <div className="w-1/4 h-auto min-h-0 flex-shrink-0">
+              <div className="h-auto min-h-0 flex-shrink-0" style={{ width: `${chatPaneWidth}px` }}>
                 <TaskChat taskId={task.id} task={task} />
               </div>
             )}
@@ -2029,7 +2119,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               {/* Code Tab */}
               <div className={cn('relative h-full', activeTab !== 'code' && 'hidden')}>
                 {/* Current File Path Bar */}
-                <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background border-b">
+                <div className="px-3 flex items-center gap-2 bg-background border-b h-[46px]">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -2044,7 +2134,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 </div>
 
                 {/* Diff Viewer */}
-                <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-41px)]">
+                <div className="overflow-hidden h-[calc(100%-46px)]">
                   <div className="overflow-y-auto h-full">
                     <FileDiffViewer
                       selectedFile={selectedItemIsFolder ? undefined : selectedFile}
@@ -2070,7 +2160,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </div>
 
               {/* Chat Tab */}
-              <div className={cn('h-full px-3 pb-3', activeTab !== 'chat' && 'hidden')}>
+              <div className={cn('h-full', activeTab !== 'chat' && 'hidden')}>
                 <TaskChat taskId={task.id} task={task} />
               </div>
 
@@ -2082,9 +2172,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   isPreviewFullscreen && 'fixed inset-0 z-50 bg-background',
                 )}
               >
-                <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
+                <div className="overflow-hidden h-full flex flex-col">
                   {/* Preview Toolbar */}
-                  <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
+                  <div className="flex items-center gap-2 px-3 border-b flex-shrink-0 h-[46px]">
                     <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     {task.sandboxUrl ? (
                       <a
