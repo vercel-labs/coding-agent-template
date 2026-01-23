@@ -9,6 +9,7 @@ export function useTask(taskId: string) {
   const [error, setError] = useState<string | null>(null)
   const attemptCountRef = useRef(0)
   const hasFoundTaskRef = useRef(false)
+  const pendingSandboxRefetchRef = useRef(false)
 
   const fetchTask = useCallback(async () => {
     let errorOccurred = false
@@ -80,6 +81,26 @@ export function useTask(taskId: string) {
       return () => clearInterval(interval)
     }
   }, [fetchTask, isLoading])
+
+  // Watch for sandbox URL becoming available - trigger immediate refetch when logs indicate it's ready
+  useEffect(() => {
+    if (!task || task.sandboxUrl) {
+      pendingSandboxRefetchRef.current = false
+      return
+    }
+
+    // Check if logs indicate dev server is running but we don't have sandboxUrl yet
+    const logs = task.logs || []
+    const hasDevServerLog = logs.some(
+      (log) => log.message === 'Development server is running' || log.message === 'Development server started',
+    )
+
+    if (hasDevServerLog && !pendingSandboxRefetchRef.current) {
+      pendingSandboxRefetchRef.current = true
+      // Trigger an immediate refetch to get the sandboxUrl
+      setTimeout(() => fetchTask(), 500)
+    }
+  }, [task, fetchTask])
 
   return { task, isLoading, error, refetch: fetchTask }
 }

@@ -25,6 +25,7 @@ export interface SandboxConfig {
   selectedModel?: string
   installDependencies?: boolean
   keepAlive?: boolean
+  enableBrowser?: boolean
   preDeterminedBranchName?: string
   onProgress?: (progress: number, message: string) => Promise<void>
   onCancellationCheck?: () => Promise<boolean>

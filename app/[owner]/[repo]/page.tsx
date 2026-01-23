@@ -17,6 +17,7 @@ export default async function OwnerRepoPage({ params }: OwnerRepoPageProps) {
   const cookieStore = await cookies()
   const installDependencies = cookieStore.get('install-dependencies')?.value === 'true'
   const keepAlive = cookieStore.get('keep-alive')?.value === 'true'
+  const enableBrowser = cookieStore.get('enable-browser')?.value === 'true'
 
   const session = await getServerSession()
 
@@ -33,6 +34,7 @@ export default async function OwnerRepoPage({ params }: OwnerRepoPageProps) {
       initialInstallDependencies={installDependencies}
       initialMaxDuration={maxDuration}
       initialKeepAlive={keepAlive}
+      initialEnableBrowser={enableBrowser}
       maxSandboxDuration={maxSandboxDuration}
       user={session?.user ?? null}
       initialStars={stars}

@@ -13,6 +13,7 @@ const SHOW_FILES_PANE_COOKIE = 'show-files-pane'
 const SHOW_CODE_PANE_COOKIE = 'show-code-pane'
 const SHOW_PREVIEW_PANE_COOKIE = 'show-preview-pane'
 const SHOW_CHAT_PANE_COOKIE = 'show-chat-pane'
+const ENABLE_BROWSER_COOKIE = 'enable-browser'
 const DEFAULT_SIDEBAR_WIDTH = 288
 const DEFAULT_SIDEBAR_OPEN = false // Default to false to avoid hydration issues
 const DEFAULT_LOGS_PANE_HEIGHT = 200
@@ -24,6 +25,7 @@ const DEFAULT_SHOW_FILES_PANE = true
 const DEFAULT_SHOW_CODE_PANE = true
 const DEFAULT_SHOW_PREVIEW_PANE = false
 const DEFAULT_SHOW_CHAT_PANE = true
+const DEFAULT_ENABLE_BROWSER = false
 
 export function getSidebarWidth(): number {
   if (typeof window === 'undefined') {
@@ -373,6 +375,29 @@ export function setShowChatPane(show: boolean): void {
   if (typeof window === 'undefined') return
 
   Cookies.set(SHOW_CHAT_PANE_COOKIE, show.toString(), {
+    expires: 365, // 1 year
+    sameSite: 'strict',
+  })
+}
+
+// Browser toggle functions
+export function getEnableBrowser(): boolean {
+  if (typeof window === 'undefined') {
+    return DEFAULT_ENABLE_BROWSER
+  }
+
+  const cookieValue = Cookies.get(ENABLE_BROWSER_COOKIE)
+  if (cookieValue !== undefined) {
+    return cookieValue === 'true'
+  }
+
+  return DEFAULT_ENABLE_BROWSER
+}
+
+export function setEnableBrowser(enable: boolean): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(ENABLE_BROWSER_COOKIE, enable.toString(), {
     expires: 365, // 1 year
     sameSite: 'strict',
   })

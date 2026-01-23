@@ -231,6 +231,7 @@ export async function POST(request: NextRequest) {
           validatedData.selectedModel,
           validatedData.installDependencies || false,
           validatedData.keepAlive || false,
+          validatedData.enableBrowser || false,
           userApiKeys,
           userGithubToken,
           githubUser,
@@ -257,6 +258,7 @@ async function processTaskWithTimeout(
   selectedModel?: string,
   installDependencies: boolean = false,
   keepAlive: boolean = false,
+  enableBrowser: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -301,6 +303,7 @@ async function processTaskWithTimeout(
         selectedModel,
         installDependencies,
         keepAlive,
+        enableBrowser,
         apiKeys,
         githubToken,
         githubUser,
@@ -369,6 +372,7 @@ async function processTask(
   selectedModel?: string,
   installDependencies: boolean = false,
   keepAlive: boolean = false,
+  enableBrowser: boolean = false,
   apiKeys?: {
     OPENAI_API_KEY?: string
     GEMINI_API_KEY?: string
@@ -458,6 +462,7 @@ async function processTask(
         selectedModel,
         installDependencies,
         keepAlive,
+        enableBrowser,
         preDeterminedBranchName: aiBranchName || undefined,
         onProgress: async (progress: number, message: string) => {
           // Use real-time logger for progress updates

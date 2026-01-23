@@ -15,9 +15,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowUp, Settings, X, Cable, Users } from 'lucide-react'
+import { Loader2, ArrowUp, Settings, X, Cable, Users, Globe } from 'lucide-react'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
-import { setInstallDependencies, setMaxDuration, setKeepAlive } from '@/lib/utils/cookies'
+import { setInstallDependencies, setMaxDuration, setKeepAlive, setEnableBrowser } from '@/lib/utils/cookies'
 import { useConnectors } from '@/components/connectors-provider'
 import { ConnectorDialog } from '@/components/connectors/manage-connectors'
 import { toast } from 'sonner'
@@ -46,6 +46,7 @@ interface TaskFormProps {
     installDependencies: boolean
     maxDuration: number
     keepAlive: boolean
+    enableBrowser: boolean
   }) => void
   isSubmitting: boolean
   selectedOwner: string
@@ -53,6 +54,7 @@ interface TaskFormProps {
   initialInstallDependencies?: boolean
   initialMaxDuration?: number
   initialKeepAlive?: boolean
+  initialEnableBrowser?: boolean
   maxSandboxDuration?: number
 }
 
@@ -70,11 +72,9 @@ const CODING_AGENTS = [
 // Model options for each agent
 const AGENT_MODELS = {
   claude: [
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-opus-4-5-20250201', label: 'Opus 4.5' },
-    { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+    { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+    { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
   codex: [
     { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
@@ -114,15 +114,15 @@ const AGENT_MODELS = {
     { value: 'gpt-5-mini', label: 'GPT-5 mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+    { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+    { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
 } as const
 
 // Default models for each agent
 const DEFAULT_MODELS = {
-  claude: 'claude-sonnet-4-5-20250929',
+  claude: 'claude-sonnet-4-5',
   codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
@@ -164,6 +164,7 @@ export function TaskForm({
   initialInstallDependencies = false,
   initialMaxDuration = 300,
   initialKeepAlive = false,
+  initialEnableBrowser = false,
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
@@ -178,6 +179,7 @@ export function TaskForm({
   const [installDependencies, setInstallDependenciesState] = useState(initialInstallDependencies)
   const [maxDuration, setMaxDurationState] = useState(initialMaxDuration)
   const [keepAlive, setKeepAliveState] = useState(initialKeepAlive)
+  const [enableBrowser, setEnableBrowserState] = useState(initialEnableBrowser)
   const [showMcpServersDialog, setShowMcpServersDialog] = useState(false)
 
   // Connectors state
@@ -200,6 +202,11 @@ export function TaskForm({
   const updateKeepAlive = (value: boolean) => {
     setKeepAliveState(value)
     setKeepAlive(value)
+  }
+
+  const updateEnableBrowser = (value: boolean) => {
+    setEnableBrowserState(value)
+    setEnableBrowser(value)
   }
 
   // Handle keyboard events in textarea
@@ -339,6 +346,7 @@ export function TaskForm({
         installDependencies,
         maxDuration,
         keepAlive,
+        enableBrowser,
       })
       return
     }
@@ -383,6 +391,7 @@ export function TaskForm({
       installDependencies,
       maxDuration,
       keepAlive,
+      enableBrowser,
     })
   }
 
@@ -605,6 +614,26 @@ export function TaskForm({
                 {/* Buttons */}
                 <div className="flex items-center gap-2">
                   <TooltipProvider delayDuration={1500} skipDelayDuration={1500}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full h-8 w-8 p-0 relative"
+                          onClick={() => updateEnableBrowser(!enableBrowser)}
+                        >
+                          <Globe className="h-4 w-4" />
+                          {enableBrowser && (
+                            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-green-500" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Agent Browser</p>
+                      </TooltipContent>
+                    </Tooltip>
+
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button

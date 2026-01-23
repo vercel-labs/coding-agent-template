@@ -1,4 +1,5 @@
 import { Sandbox } from '@vercel/sandbox'
+import { Writable } from 'stream'
 import { validateEnvironmentVariables, createAuthenticatedRepoUrl } from './config'
 import { runCommandInSandbox, runInProject, PROJECT_DIR } from './commands'
 import { generateId } from '@/lib/utils/id'
@@ -331,7 +332,9 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       const packageJsonRead = await runInProject(sandbox, 'cat', ['package.json'])
       if (packageJsonRead.success && packageJsonRead.output) {
         try {
-          const packageJson = JSON.parse(packageJsonRead.output)
+          // Trim the output to remove any extra whitespace/newlines
+          const packageJsonContent = packageJsonRead.output.trim()
+          const packageJson = JSON.parse(packageJsonContent)
           const hasDevScript = packageJson?.scripts?.dev
 
           // Detect Vite projects (use port 5173)
@@ -416,9 +419,6 @@ fi
             // Start dev server in detached mode (runs in background) with log capture
             const fullDevCommand = devArgs.length > 0 ? `${devCommand} ${devArgs.join(' ')}` : devCommand
 
-            // Import Writable for stream capture
-            const { Writable } = await import('stream')
-
             const captureServerStdout = new Writable({
               write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
                 const lines = chunk
@@ -461,7 +461,9 @@ fi
             await logger.info('Development server is running')
           }
         } catch (parseError) {
-          // If package.json parsing fails, just continue without starting dev server
+          // If package.json parsing fails, log the error details and continue without starting dev server
+          const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error'
+          console.error('Failed to parse package.json:', errorMessage)
           await logger.info('Could not parse package.json, skipping auto-start of dev server')
         }
       }
@@ -498,6 +500,275 @@ fi
     if (config.onCancellationCheck && (await config.onCancellationCheck())) {
       await logger.info('Task was cancelled before Git configuration')
       return { success: false, cancelled: true }
+    }
+
+    // Install agent-browser if enabled
+    if (config.enableBrowser) {
+      await logger.info('Installing agent-browser for browser automation...')
+
+      if (config.onProgress) {
+        await config.onProgress(42, 'Installing browser dependencies...')
+      }
+
+      // Install system dependencies for Chromium (Fedora-based sandbox)
+      await logger.info('Installing system dependencies for Chromium...')
+
+      // Clean dnf cache first to avoid corruption issues
+      await runCommandInSandbox(sandbox, 'sh', ['-c', 'sudo dnf clean all 2>&1'])
+
+      // Critical packages for Chromium - install in groups to be resilient
+      const criticalDeps = ['nss', 'nspr']
+      const displayDeps = ['libxkbcommon', 'atk', 'at-spi2-atk', 'at-spi2-core']
+      const xDeps = [
+        'libXcomposite',
+        'libXdamage',
+        'libXrandr',
+        'libXfixes',
+        'libXcursor',
+        'libXi',
+        'libXtst',
+        'libXScrnSaver',
+        'libXext',
+      ]
+      const graphicsDeps = ['mesa-libgbm', 'libdrm', 'mesa-libGL', 'mesa-libEGL']
+      const otherDeps = ['cups-libs', 'alsa-lib', 'pango', 'cairo', 'gtk3', 'dbus-libs']
+
+      // Install critical deps first
+      const criticalResult = await runCommandInSandbox(sandbox, 'sh', [
+        '-c',
+        `sudo dnf install -y ${criticalDeps.join(' ')} 2>&1`,
+      ])
+      if (!criticalResult.success) {
+        await runCommandInSandbox(sandbox, 'sh', [
+          '-c',
+          `sudo dnf install -y --allowerasing ${criticalDeps.join(' ')} 2>&1`,
+        ])
+      }
+
+      // Install other deps with --skip-broken
+      const allOtherDeps = [...displayDeps, ...xDeps, ...graphicsDeps, ...otherDeps]
+      await runCommandInSandbox(sandbox, 'sh', [
+        '-c',
+        `sudo dnf install -y --skip-broken ${allOtherDeps.join(' ')} 2>&1`,
+      ])
+
+      // Run ldconfig to update library cache
+      await runCommandInSandbox(sandbox, 'sh', ['-c', 'sudo ldconfig 2>&1'])
+
+      await logger.info('System dependencies installed')
+
+      // Install agent-browser globally
+      if (config.onProgress) {
+        await config.onProgress(44, 'Installing agent-browser...')
+      }
+
+      const agentBrowserInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'agent-browser'])
+
+      if (!agentBrowserInstall.success) {
+        await logger.info('Warning: Failed to install agent-browser globally')
+      } else {
+        await logger.info('agent-browser installed globally')
+
+        // Download Chromium for agent-browser
+        await logger.info('Downloading Chromium for agent-browser...')
+        const chromiumInstall = await runCommandInSandbox(sandbox, 'agent-browser', ['install'])
+
+        if (!chromiumInstall.success) {
+          await logger.info('Warning: Failed to download Chromium for agent-browser')
+        } else {
+          await logger.info('Chromium downloaded successfully for agent-browser')
+        }
+
+        // Create the agent-browser skill file based on the selected agent
+        await logger.info('Creating agent-browser skill for coding agent...')
+
+        const agentType = config.selectedAgent || 'claude'
+
+        // Skill content with YAML front matter (Claude format)
+        const claudeSkillContent = `---
+name: agent-browser
+description: Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, test web applications, or extract information from web pages.
+allowed-tools: Bash(agent-browser:*)
+---
+
+# Browser Automation with agent-browser
+
+## Quick start
+
+\`\`\`bash
+agent-browser open <url>        # Navigate to page
+agent-browser snapshot -i       # Get interactive elements with refs
+agent-browser click @e1         # Click element by ref
+agent-browser fill @e2 "text"   # Fill input by ref
+agent-browser close             # Close browser
+\`\`\`
+
+## Core workflow
+
+1. Navigate: \`agent-browser open <url>\`
+2. Snapshot: \`agent-browser snapshot -i\` (returns elements with refs like \`@e1\`, \`@e2\`)
+3. Interact using refs from the snapshot
+4. Re-snapshot after navigation or significant DOM changes
+
+## Commands
+
+### Navigation
+\`\`\`bash
+agent-browser open <url>      # Navigate to URL
+agent-browser back            # Go back
+agent-browser forward         # Go forward
+agent-browser reload          # Reload page
+agent-browser close           # Close browser
+\`\`\`
+
+### Snapshot (page analysis)
+\`\`\`bash
+agent-browser snapshot            # Full accessibility tree
+agent-browser snapshot -i         # Interactive elements only (recommended)
+agent-browser snapshot -c         # Compact output
+\`\`\`
+
+### Interactions (use @refs from snapshot)
+\`\`\`bash
+agent-browser click @e1           # Click
+agent-browser fill @e2 "text"     # Clear and type
+agent-browser type @e2 "text"     # Type without clearing
+agent-browser press Enter         # Press key
+agent-browser hover @e1           # Hover
+agent-browser check @e1           # Check checkbox
+agent-browser select @e1 "value"  # Select dropdown option
+agent-browser scroll down 500     # Scroll page
+agent-browser upload @e1 file.pdf # Upload files
+\`\`\`
+
+### Get information
+\`\`\`bash
+agent-browser get text @e1        # Get element text
+agent-browser get value @e1       # Get input value
+agent-browser get title           # Get page title
+agent-browser get url             # Get current URL
+\`\`\`
+
+### Screenshots
+\`\`\`bash
+agent-browser screenshot          # Screenshot to stdout
+agent-browser screenshot path.png # Save to file
+agent-browser screenshot --full   # Full page
+\`\`\`
+
+### Wait
+\`\`\`bash
+agent-browser wait @e1            # Wait for element
+agent-browser wait 2000           # Wait milliseconds
+\`\`\`
+
+## Example: Form submission
+\`\`\`bash
+agent-browser open https://example.com/form
+agent-browser snapshot -i
+agent-browser fill @e1 "user@example.com"
+agent-browser fill @e2 "password123"
+agent-browser click @e3
+agent-browser wait 2000
+agent-browser snapshot -i  # Check result
+\`\`\`
+`
+
+        // Generic instructions content (for agents without skill file support)
+        const genericInstructions = `You have access to the agent-browser CLI for browser automation.
+
+Quick start:
+- agent-browser open <url>        # Navigate to page
+- agent-browser snapshot -i       # Get interactive elements with refs
+- agent-browser click @e1         # Click element by ref
+- agent-browser fill @e2 "text"   # Fill input by ref
+
+Workflow: open URL -> snapshot -i -> interact with @refs -> re-snapshot after changes
+
+Key commands: open, snapshot -i, click, fill, type, press, get text/value/title/url, screenshot, wait`
+
+        let skillInstalled = false
+
+        if (agentType === 'claude') {
+          // Claude: Use .claude/skills directory
+          const skillDir = '/home/vercel-sandbox/.claude/skills/agent-browser'
+          const createSkillDir = await runCommandInSandbox(sandbox, 'mkdir', ['-p', skillDir])
+          if (createSkillDir.success) {
+            const writeSkillCmd = `cat > ${skillDir}/SKILL.md << 'SKILL_EOF'
+${claudeSkillContent}
+SKILL_EOF`
+            const writeSkill = await runCommandInSandbox(sandbox, 'sh', ['-c', writeSkillCmd])
+            skillInstalled = writeSkill.success
+          }
+        } else if (agentType === 'gemini') {
+          // Gemini: Use .gemini directory with AGENTS.md
+          const geminiDir = '/home/vercel-sandbox/.gemini'
+          const createDir = await runCommandInSandbox(sandbox, 'mkdir', ['-p', geminiDir])
+          if (createDir.success) {
+            const writeCmd = `cat > ${geminiDir}/AGENTS.md << 'SKILL_EOF'
+# Browser Automation Skill
+
+${genericInstructions}
+SKILL_EOF`
+            const writeSkill = await runCommandInSandbox(sandbox, 'sh', ['-c', writeCmd])
+            skillInstalled = writeSkill.success
+          }
+        } else if (agentType === 'cursor') {
+          // Cursor: Use .cursor/rules directory
+          const cursorDir = '/home/vercel-sandbox/.cursor/rules'
+          const createDir = await runCommandInSandbox(sandbox, 'mkdir', ['-p', cursorDir])
+          if (createDir.success) {
+            const writeCmd = `cat > ${cursorDir}/agent-browser.mdc << 'SKILL_EOF'
+---
+description: Browser automation with agent-browser CLI
+globs: ["**/*"]
+alwaysApply: true
+---
+
+${genericInstructions}
+SKILL_EOF`
+            const writeSkill = await runCommandInSandbox(sandbox, 'sh', ['-c', writeCmd])
+            skillInstalled = writeSkill.success
+          }
+        } else if (agentType === 'codex') {
+          // Codex: Use AGENTS.md in home directory
+          const writeCmd = `cat > /home/vercel-sandbox/AGENTS.md << 'SKILL_EOF'
+# Browser Automation
+
+${genericInstructions}
+SKILL_EOF`
+          const writeSkill = await runCommandInSandbox(sandbox, 'sh', ['-c', writeCmd])
+          skillInstalled = writeSkill.success
+        } else if (agentType === 'copilot') {
+          // Copilot: Use .github/copilot-instructions.md
+          const ghDir = '/home/vercel-sandbox/.github'
+          const createDir = await runCommandInSandbox(sandbox, 'mkdir', ['-p', ghDir])
+          if (createDir.success) {
+            const writeCmd = `cat > ${ghDir}/copilot-instructions.md << 'SKILL_EOF'
+# Browser Automation
+
+${genericInstructions}
+SKILL_EOF`
+            const writeSkill = await runCommandInSandbox(sandbox, 'sh', ['-c', writeCmd])
+            skillInstalled = writeSkill.success
+          }
+        } else if (agentType === 'opencode') {
+          // OpenCode: Use AGENTS.md in home directory
+          const writeCmd = `cat > /home/vercel-sandbox/AGENTS.md << 'SKILL_EOF'
+# Browser Automation
+
+${genericInstructions}
+SKILL_EOF`
+          const writeSkill = await runCommandInSandbox(sandbox, 'sh', ['-c', writeCmd])
+          skillInstalled = writeSkill.success
+        }
+
+        if (skillInstalled) {
+          await logger.info('agent-browser skill created successfully')
+        } else {
+          await logger.info('Warning: Failed to create agent-browser skill file')
+        }
+      }
     }
 
     // Configure Git user

@@ -1144,7 +1144,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           )
         })}
 
-        {/* Show "Awaiting response..." or "Awaiting response..." if task is processing and latest message is from user without response */}
+        {/* Show sandbox setup progress or "Awaiting response..." if task is processing and latest message is from user without response */}
         {(task.status === 'processing' || task.status === 'pending') &&
           displayMessages.length > 0 &&
           (() => {
@@ -1154,13 +1154,59 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               // Check if this is the first user message (sandbox initialization)
               const userMessages = displayMessages.filter((m) => m.role === 'user')
               const isFirstMessage = userMessages.length === 1
-              const placeholderText = isFirstMessage ? 'Awaiting response...' : 'Awaiting response...'
 
+              // Get the latest logs to show progress (filter out server logs)
+              const setupLogs = (task.logs || []).filter((log) => !log.message.startsWith('[SERVER]')).slice(-8) // Show last 8 logs
+
+              // If first message and we have logs, show sandbox setup progress
+              if (isFirstMessage && setupLogs.length > 0) {
+                return (
+                  <div className="mt-4">
+                    <div className="text-xs px-2">
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground font-medium mb-2 flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Setting up sandbox...
+                        </div>
+                        <div className="space-y-0.5 pl-5">
+                          {setupLogs.map((log, idx) => {
+                            const isLatest = idx === setupLogs.length - 1
+                            return (
+                              <div
+                                key={idx}
+                                className={`truncate ${
+                                  isLatest
+                                    ? 'text-foreground'
+                                    : log.type === 'error'
+                                      ? 'text-red-500/60'
+                                      : log.type === 'success'
+                                        ? 'text-green-500/60'
+                                        : 'text-muted-foreground/60'
+                                }`}
+                              >
+                                {log.message}
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div className="text-right font-mono text-muted-foreground/50 mt-2">
+                          {formatDuration(lastMessage.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              // Otherwise show simple awaiting response
               return (
                 <div className="mt-4">
                   <div className="text-xs text-muted-foreground px-2">
                     <div className="opacity-50">
-                      <div className="italic">{placeholderText}</div>
+                      <div className="italic flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Awaiting response...
+                      </div>
                       <div className="text-right font-mono opacity-70 mt-1">
                         {formatDuration(lastMessage.createdAt)}
                       </div>

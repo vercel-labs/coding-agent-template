@@ -158,7 +158,7 @@ export function HomePageHeader({
         prompt: 'Work on this repository',
         repoUrl: repoUrl,
         selectedAgent: localStorage.getItem('last-selected-agent') || 'claude',
-        selectedModel: localStorage.getItem('last-selected-model-claude') || 'claude-sonnet-4-5-20250929',
+        selectedModel: localStorage.getItem('last-selected-model-claude') || 'claude-sonnet-4-5',
         installDependencies: true,
         maxDuration: 300,
         keepAlive: false,

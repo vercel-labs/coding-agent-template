@@ -110,10 +110,9 @@ const CODING_AGENTS = [
 
 const AGENT_MODELS = {
   claude: [
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+    { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+    { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
   codex: [
     { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
@@ -152,14 +151,14 @@ const AGENT_MODELS = {
     { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+    { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+    { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
 } as const
 
 const DEFAULT_MODELS = {
-  claude: 'claude-sonnet-4-5-20250929',
+  claude: 'claude-sonnet-4-5',
   codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
@@ -186,6 +185,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [tryAgainInstallDeps, setTryAgainInstallDeps] = useState(task.installDependencies || false)
   const [tryAgainMaxDuration, setTryAgainMaxDuration] = useState(task.maxDuration || maxSandboxDuration)
   const [tryAgainKeepAlive, setTryAgainKeepAlive] = useState(task.keepAlive || false)
+  const [tryAgainEnableBrowser, setTryAgainEnableBrowser] = useState(task.enableBrowser || false)
   const [deploymentUrl, setDeploymentUrl] = useState<string | null>(task.previewUrl || null)
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const [showPRDialog, setShowPRDialog] = useState(false)
@@ -680,10 +680,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   // Model mappings for all agents
   const AGENT_MODELS: Record<string, Array<{ value: string; label: string }>> = {
     claude: [
-      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-      { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
-      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+      { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+      { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+      { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
     ],
     codex: [
       { value: 'openai/gpt-5', label: 'GPT-5' },
@@ -718,9 +717,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       { value: 'gpt-5-mini', label: 'GPT-5 mini' },
       { value: 'gpt-5-nano', label: 'GPT-5 nano' },
       { value: 'gpt-4.1', label: 'GPT-4.1' },
-      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+      { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+      { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+      { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
     ],
   }
 
@@ -1209,6 +1208,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           installDependencies: tryAgainInstallDeps,
           maxDuration: tryAgainMaxDuration,
           keepAlive: tryAgainKeepAlive,
+          enableBrowser: tryAgainEnableBrowser,
         }),
       })
 
@@ -1928,8 +1928,23 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {task.sandboxUrl && (
+                          <>
+                            <DropdownMenuItem onClick={() => window.open(task.sandboxUrl!, '_blank')}>
+                              Open in New Tab
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigator.clipboard.writeText(task.sandboxUrl!)
+                              }}
+                            >
+                              Copy URL
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {task.keepAlive && (
                           <>
+                            {task.sandboxUrl && <DropdownMenuSeparator />}
                             {sandboxHealth === 'stopped' || !task.sandboxUrl ? (
                               <DropdownMenuItem onClick={handleStartSandbox} disabled={isStartingSandbox}>
                                 {isStartingSandbox ? (
@@ -1956,16 +1971,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           </>
                         )}
                         {sandboxHealth === 'running' && (
-                          <DropdownMenuItem onClick={handleRestartDevServer} disabled={isRestartingDevServer}>
-                            {isRestartingDevServer ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Restarting...
-                              </>
-                            ) : (
-                              'Restart Dev Server'
-                            )}
-                          </DropdownMenuItem>
+                          <>
+                            {(task.sandboxUrl || task.keepAlive) && <DropdownMenuSeparator />}
+                            <DropdownMenuItem onClick={handleRestartDevServer} disabled={isRestartingDevServer}>
+                              {isRestartingDevServer ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Restarting...
+                                </>
+                              ) : (
+                                'Restart Dev Server'
+                              )}
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -2160,8 +2178,23 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {task.sandboxUrl && (
+                          <>
+                            <DropdownMenuItem onClick={() => window.open(task.sandboxUrl!, '_blank')}>
+                              Open in New Tab
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigator.clipboard.writeText(task.sandboxUrl!)
+                              }}
+                            >
+                              Copy URL
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {task.keepAlive && (
                           <>
+                            {task.sandboxUrl && <DropdownMenuSeparator />}
                             {task.sandboxUrl ? (
                               <DropdownMenuItem onClick={handleStopSandbox} disabled={isStoppingSandbox}>
                                 {isStoppingSandbox ? (
@@ -2187,19 +2220,21 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                             )}
                           </>
                         )}
-                        <DropdownMenuItem
-                          onClick={handleRestartDevServer}
-                          disabled={isRestartingDevServer || !task.sandboxUrl}
-                        >
-                          {isRestartingDevServer ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Restarting...
-                            </>
-                          ) : (
-                            'Restart Dev Server'
-                          )}
-                        </DropdownMenuItem>
+                        {task.sandboxUrl && (
+                          <>
+                            {task.keepAlive && <DropdownMenuSeparator />}
+                            <DropdownMenuItem onClick={handleRestartDevServer} disabled={isRestartingDevServer}>
+                              {isRestartingDevServer ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Restarting...
+                                </>
+                              ) : (
+                                'Restart Dev Server'
+                              )}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -2496,6 +2531,20 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     Keep Alive ({maxSandboxDuration} minutes max)
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="try-again-enable-browser"
+                    checked={tryAgainEnableBrowser}
+                    onCheckedChange={(checked) => setTryAgainEnableBrowser(!!checked)}
+                  />
+                  <Label
+                    htmlFor="try-again-enable-browser"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Enable Browser Automation
                   </Label>
                 </div>
               </div>

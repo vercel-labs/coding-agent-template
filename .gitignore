@@ -58,3 +58,6 @@ logs/
 .DS_Store
 Thumbs.db
 .pnpm-store
+
+# opensrc - source code for packages
+opensrc/
