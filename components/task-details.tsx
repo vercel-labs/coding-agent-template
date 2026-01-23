@@ -186,6 +186,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [tryAgainInstallDeps, setTryAgainInstallDeps] = useState(task.installDependencies || false)
   const [tryAgainMaxDuration, setTryAgainMaxDuration] = useState(task.maxDuration || maxSandboxDuration)
   const [tryAgainKeepAlive, setTryAgainKeepAlive] = useState(task.keepAlive || false)
+  const [tryAgainEnableBrowser, setTryAgainEnableBrowser] = useState(task.enableBrowser || false)
   const [deploymentUrl, setDeploymentUrl] = useState<string | null>(task.previewUrl || null)
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const [showPRDialog, setShowPRDialog] = useState(false)
@@ -1209,6 +1210,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           installDependencies: tryAgainInstallDeps,
           maxDuration: tryAgainMaxDuration,
           keepAlive: tryAgainKeepAlive,
+          enableBrowser: tryAgainEnableBrowser,
         }),
       })
 
@@ -2496,6 +2498,20 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     Keep Alive ({maxSandboxDuration} minutes max)
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="try-again-enable-browser"
+                    checked={tryAgainEnableBrowser}
+                    onCheckedChange={(checked) => setTryAgainEnableBrowser(!!checked)}
+                  />
+                  <Label
+                    htmlFor="try-again-enable-browser"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Enable Browser Automation
                   </Label>
                 </div>
               </div>
