@@ -1761,7 +1761,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             </div>
 
             {/* Resize Handle - Files/Code */}
-            {showFilesPane && (
+            {showFilesPane && showCodePane && (
               <div
                 className="w-3 cursor-col-resize flex-shrink-0 relative group"
                 onMouseDown={() => setResizingPane('files')}
