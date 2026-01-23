@@ -1588,21 +1588,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             </TooltipProvider>
           )}
 
-          {/* Preview Deployment */}
-          {!loadingDeployment && deploymentUrl && (
-            <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-              <VercelIcon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground" />
-              <a
-                href={deploymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground truncate"
-              >
-                Preview
-              </a>
-            </div>
-          )}
-
           {/* Desktop Pane Toggles - Only show on desktop */}
           <div className="hidden md:flex items-center gap-1 ml-auto">
             <Button
