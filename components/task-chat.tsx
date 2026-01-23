@@ -1156,9 +1156,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               const isFirstMessage = userMessages.length === 1
 
               // Get the latest logs to show progress (filter out server logs)
-              const setupLogs = (task.logs || [])
-                .filter((log) => !log.message.startsWith('[SERVER]'))
-                .slice(-8) // Show last 8 logs
+              const setupLogs = (task.logs || []).filter((log) => !log.message.startsWith('[SERVER]')).slice(-8) // Show last 8 logs
 
               // If first message and we have logs, show sandbox setup progress
               if (isFirstMessage && setupLogs.length > 0) {
