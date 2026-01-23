@@ -110,10 +110,9 @@ const CODING_AGENTS = [
 
 const AGENT_MODELS = {
   claude: [
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+    { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+    { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+    { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
   codex: [
     { value: 'openai/gpt-5.1', label: 'GPT-5.1' },
@@ -152,14 +151,14 @@ const AGENT_MODELS = {
     { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
     { value: 'gpt-5-nano', label: 'GPT-5 Nano' },
     { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-    { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-    { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+    { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+    { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+    { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
 } as const
 
 const DEFAULT_MODELS = {
-  claude: 'claude-sonnet-4-5-20250929',
+  claude: 'claude-sonnet-4-5',
   codex: 'openai/gpt-5.1',
   copilot: 'claude-sonnet-4.5',
   cursor: 'auto',
@@ -681,10 +680,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   // Model mappings for all agents
   const AGENT_MODELS: Record<string, Array<{ value: string; label: string }>> = {
     claude: [
-      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-      { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
-      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
-      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
+      { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+      { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+      { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
     ],
     codex: [
       { value: 'openai/gpt-5', label: 'GPT-5' },
@@ -719,9 +717,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       { value: 'gpt-5-mini', label: 'GPT-5 mini' },
       { value: 'gpt-5-nano', label: 'GPT-5 nano' },
       { value: 'gpt-4.1', label: 'GPT-4.1' },
-      { value: 'claude-sonnet-4-5-20250929', label: 'Sonnet 4.5' },
-      { value: 'claude-sonnet-4-20250514', label: 'Sonnet 4' },
-      { value: 'claude-opus-4-1-20250805', label: 'Opus 4.1' },
+      { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
+      { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+      { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
     ],
   }
 
