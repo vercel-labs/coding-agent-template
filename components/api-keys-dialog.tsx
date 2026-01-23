@@ -137,10 +137,37 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     }
   }
 
-  const handleClear = (provider: Provider) => {
-    // Mark as cleared locally, no DB changes
-    setClearedKeys((prev) => new Set(prev).add(provider))
-    setApiKeys((prev) => ({ ...prev, [provider]: '' }))
+  const handleClear = async (provider: Provider) => {
+    // Delete the key from the database
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/api-keys?provider=${provider}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success(`${PROVIDERS.find((p) => p.id === provider)?.name} API key cleared`)
+        setSavedKeys((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(provider)
+          return newSet
+        })
+        setClearedKeys((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(provider)
+          return newSet
+        })
+        setApiKeys((prev) => ({ ...prev, [provider]: '' }))
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to clear API key')
+      }
+    } catch (error) {
+      console.error('Error clearing API key:', error)
+      toast.error('Failed to clear API key')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const toggleShowKey = (provider: Provider) => {
