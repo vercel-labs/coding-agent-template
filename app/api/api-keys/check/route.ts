@@ -5,7 +5,7 @@ type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
 
 // Map agents to their required providers
 const AGENT_PROVIDER_MAP: Record<string, Provider | null> = {
-  claude: 'anthropic',
+  claude: 'aigateway', // Claude uses Vercel AI Gateway
   codex: 'aigateway', // Codex uses Vercel AI Gateway
   copilot: null, // Copilot uses user's GitHub token from their account
   cursor: 'cursor',
