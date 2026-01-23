@@ -505,10 +505,61 @@ fi
       await logger.info('Installing agent-browser for browser automation...')
 
       if (config.onProgress) {
-        await config.onProgress(42, 'Installing agent-browser...')
+        await config.onProgress(42, 'Installing browser dependencies...')
       }
 
+      // Install system dependencies for Chromium (Fedora-based sandbox)
+      await logger.info('Installing system dependencies for Chromium...')
+
+      // Clean dnf cache first to avoid corruption issues
+      await runCommandInSandbox(sandbox, 'sh', ['-c', 'sudo dnf clean all 2>&1'])
+
+      // Critical packages for Chromium - install in groups to be resilient
+      const criticalDeps = ['nss', 'nspr']
+      const displayDeps = ['libxkbcommon', 'atk', 'at-spi2-atk', 'at-spi2-core']
+      const xDeps = [
+        'libXcomposite',
+        'libXdamage',
+        'libXrandr',
+        'libXfixes',
+        'libXcursor',
+        'libXi',
+        'libXtst',
+        'libXScrnSaver',
+        'libXext',
+      ]
+      const graphicsDeps = ['mesa-libgbm', 'libdrm', 'mesa-libGL', 'mesa-libEGL']
+      const otherDeps = ['cups-libs', 'alsa-lib', 'pango', 'cairo', 'gtk3', 'dbus-libs']
+
+      // Install critical deps first
+      const criticalResult = await runCommandInSandbox(sandbox, 'sh', [
+        '-c',
+        `sudo dnf install -y ${criticalDeps.join(' ')} 2>&1`,
+      ])
+      if (!criticalResult.success) {
+        await runCommandInSandbox(sandbox, 'sh', [
+          '-c',
+          `sudo dnf install -y --allowerasing ${criticalDeps.join(' ')} 2>&1`,
+        ])
+      }
+
+      // Install other deps with --skip-broken
+      const allOtherDeps = [...displayDeps, ...xDeps, ...graphicsDeps, ...otherDeps]
+      await runCommandInSandbox(sandbox, 'sh', [
+        '-c',
+        `sudo dnf install -y --skip-broken ${allOtherDeps.join(' ')} 2>&1`,
+      ])
+
+      // Run ldconfig to update library cache
+      await runCommandInSandbox(sandbox, 'sh', ['-c', 'sudo ldconfig 2>&1'])
+
+      await logger.info('System dependencies installed')
+
       // Install agent-browser globally
+      if (config.onProgress) {
+        await config.onProgress(44, 'Installing agent-browser...')
+      }
+
       const agentBrowserInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', 'agent-browser'])
 
       if (!agentBrowserInstall.success) {
@@ -634,14 +685,15 @@ agent-browser get text @e1
 - Use \`--headed\` to see the browser window for debugging
 `
 
-        // Create the .claude/skills/agent-browser directory and skill file
-        const createSkillDir = await runInProject(sandbox, 'mkdir', ['-p', '.claude/skills/agent-browser'])
+        // Create the skill file in user home directory (not project dir)
+        const skillDir = '/home/vercel-sandbox/.claude/skills/agent-browser'
+        const createSkillDir = await runCommandInSandbox(sandbox, 'mkdir', ['-p', skillDir])
         if (createSkillDir.success) {
           // Write the skill file using heredoc
-          const writeSkillCmd = `cat > .claude/skills/agent-browser/SKILL.md << 'SKILL_EOF'
+          const writeSkillCmd = `cat > ${skillDir}/SKILL.md << 'SKILL_EOF'
 ${skillContent}
 SKILL_EOF`
-          const writeSkill = await runInProject(sandbox, 'sh', ['-c', writeSkillCmd])
+          const writeSkill = await runCommandInSandbox(sandbox, 'sh', ['-c', writeSkillCmd])
 
           if (writeSkill.success) {
             await logger.info('agent-browser skill created successfully')
