@@ -250,9 +250,7 @@ export async function executeClaudeInSandbox(
     // Log what we're trying to do
     const modelToUse = selectedModel || 'claude-sonnet-4-5'
     if (logger) {
-      await logger.info(
-        `Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`,
-      )
+      await logger.info('Attempting to execute Claude CLI...')
     }
 
     // Check MCP configuration status
@@ -369,8 +367,6 @@ export async function executeClaudeInSandbox(
                       const pattern = input.pattern || input.regex || input.search || 'pattern'
                       statusMsg = `Grep: ${pattern}`
                     } else {
-                      // For debugging, log the tool name and input to console
-                      console.log('Unknown Claude tool:', toolName, 'Input:', JSON.stringify(input))
                       // Skip logging generic tool uses to reduce noise
                       statusMsg = ''
                     }
@@ -393,12 +389,8 @@ export async function executeClaudeInSandbox(
 
               // Extract session ID and mark as completed from result chunks
               else if (parsed.type === 'result') {
-                console.log('Result chunk received:', JSON.stringify(parsed).substring(0, 300))
                 if (parsed.session_id) {
                   extractedSessionId = parsed.session_id
-                  console.log('Extracted session ID:', extractedSessionId)
-                } else {
-                  console.log('No session_id in result chunk')
                 }
                 isCompleted = true
               }
@@ -452,8 +444,6 @@ export async function executeClaudeInSandbox(
       await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logger)
       await runAndLogCommand(sandbox, 'ls', ['-la'], logger)
     }
-
-    console.log('Claude execution completed, returning sessionId:', extractedSessionId)
 
     return {
       success: true,
