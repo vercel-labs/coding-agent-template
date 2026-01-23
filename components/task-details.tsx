@@ -2223,10 +2223,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         {task.sandboxUrl && (
                           <>
                             {task.keepAlive && <DropdownMenuSeparator />}
-                            <DropdownMenuItem
-                              onClick={handleRestartDevServer}
-                              disabled={isRestartingDevServer}
-                            >
+                            <DropdownMenuItem onClick={handleRestartDevServer} disabled={isRestartingDevServer}>
                               {isRestartingDevServer ? (
                                 <>
                                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

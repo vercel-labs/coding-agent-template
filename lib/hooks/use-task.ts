@@ -92,8 +92,7 @@ export function useTask(taskId: string) {
     // Check if logs indicate dev server is running but we don't have sandboxUrl yet
     const logs = task.logs || []
     const hasDevServerLog = logs.some(
-      (log) =>
-        log.message === 'Development server is running' || log.message === 'Development server started'
+      (log) => log.message === 'Development server is running' || log.message === 'Development server started',
     )
 
     if (hasDevServerLog && !pendingSandboxRefetchRef.current) {
