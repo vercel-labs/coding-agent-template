@@ -990,6 +990,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }, [showFileDropdown])
 
+  // Refs to track latest width values for resize handler (avoids stale closure)
+  const filesPaneWidthRef = useRef(filesPaneWidth)
+  const chatPaneWidthRef = useRef(chatPaneWidth)
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    filesPaneWidthRef.current = filesPaneWidth
+  }, [filesPaneWidth])
+
+  useEffect(() => {
+    chatPaneWidthRef.current = chatPaneWidth
+  }, [chatPaneWidth])
+
   // Handle pane resize
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -1004,6 +1017,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
         if (newWidth >= minWidth && newWidth <= maxWidth) {
           setFilesPaneWidth(newWidth)
+          filesPaneWidthRef.current = newWidth
         }
       } else if (resizingPane === 'chat') {
         const newWidth = containerRect.right - e.clientX
@@ -1012,15 +1026,16 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
         if (newWidth >= minWidth && newWidth <= maxWidth) {
           setChatPaneWidth(newWidth)
+          chatPaneWidthRef.current = newWidth
         }
       }
     }
 
     const handleMouseUp = () => {
       if (resizingPane === 'files') {
-        saveFilesPaneWidth(filesPaneWidth)
+        saveFilesPaneWidth(filesPaneWidthRef.current)
       } else if (resizingPane === 'chat') {
-        saveChatPaneWidth(chatPaneWidth)
+        saveChatPaneWidth(chatPaneWidthRef.current)
       }
       setResizingPane(null)
     }
@@ -1038,7 +1053,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
-  }, [resizingPane, filesPaneWidth, chatPaneWidth])
+  }, [resizingPane])
 
   // Keyboard shortcuts for pane toggles and tab management
   useEffect(() => {

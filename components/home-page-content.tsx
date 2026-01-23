@@ -146,42 +146,27 @@ export function HomePageContent({
     setSelectedRepo(repo)
   }
 
-  const handleRefreshOwners = async () => {
+  const handleRefreshOwners = () => {
     setIsRefreshing(true)
-    try {
-      localStorage.removeItem('github-owners')
-      toast.success('Refreshing owners...')
-      window.location.reload()
-    } catch (error) {
-      console.error('Error refreshing owners:', error)
-      toast.error('Failed to refresh owners')
-    } finally {
-      setIsRefreshing(false)
-    }
+    localStorage.removeItem('github-owners')
+    toast.success('Refreshing owners...')
+    window.location.reload()
   }
 
-  const handleRefreshRepos = async () => {
+  const handleRefreshRepos = () => {
     setIsRefreshing(true)
-    try {
-      if (selectedOwner) {
-        localStorage.removeItem(`github-repos-${selectedOwner}`)
-        toast.success('Refreshing repositories...')
-        window.location.reload()
-      } else {
-        Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith('github-repos-')) {
-            localStorage.removeItem(key)
-          }
-        })
-        toast.success('Refreshing all repositories...')
-        window.location.reload()
-      }
-    } catch (error) {
-      console.error('Error refreshing repositories:', error)
-      toast.error('Failed to refresh repositories')
-    } finally {
-      setIsRefreshing(false)
+    if (selectedOwner) {
+      localStorage.removeItem(`github-repos-${selectedOwner}`)
+      toast.success('Refreshing repositories...')
+    } else {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('github-repos-')) {
+          localStorage.removeItem(key)
+        }
+      })
+      toast.success('Refreshing all repositories...')
     }
+    window.location.reload()
   }
 
   const handleDisconnectGitHub = async () => {
