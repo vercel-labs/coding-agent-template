@@ -1,4 +1,5 @@
 import { Sandbox } from '@vercel/sandbox'
+import { Writable } from 'stream'
 import { validateEnvironmentVariables, createAuthenticatedRepoUrl } from './config'
 import { runCommandInSandbox, runInProject, PROJECT_DIR } from './commands'
 import { generateId } from '@/lib/utils/id'
@@ -331,7 +332,9 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       const packageJsonRead = await runInProject(sandbox, 'cat', ['package.json'])
       if (packageJsonRead.success && packageJsonRead.output) {
         try {
-          const packageJson = JSON.parse(packageJsonRead.output)
+          // Trim the output to remove any extra whitespace/newlines
+          const packageJsonContent = packageJsonRead.output.trim()
+          const packageJson = JSON.parse(packageJsonContent)
           const hasDevScript = packageJson?.scripts?.dev
 
           // Detect Vite projects (use port 5173)
@@ -416,9 +419,6 @@ fi
             // Start dev server in detached mode (runs in background) with log capture
             const fullDevCommand = devArgs.length > 0 ? `${devCommand} ${devArgs.join(' ')}` : devCommand
 
-            // Import Writable for stream capture
-            const { Writable } = await import('stream')
-
             const captureServerStdout = new Writable({
               write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
                 const lines = chunk
@@ -461,7 +461,9 @@ fi
             await logger.info('Development server is running')
           }
         } catch (parseError) {
-          // If package.json parsing fails, just continue without starting dev server
+          // If package.json parsing fails, log the error details and continue without starting dev server
+          const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error'
+          console.error('Failed to parse package.json:', errorMessage)
           await logger.info('Could not parse package.json, skipping auto-start of dev server')
         }
       }

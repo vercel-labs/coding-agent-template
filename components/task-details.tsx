@@ -1928,8 +1928,23 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {task.sandboxUrl && (
+                          <>
+                            <DropdownMenuItem onClick={() => window.open(task.sandboxUrl!, '_blank')}>
+                              Open in New Tab
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigator.clipboard.writeText(task.sandboxUrl!)
+                              }}
+                            >
+                              Copy URL
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {task.keepAlive && (
                           <>
+                            {task.sandboxUrl && <DropdownMenuSeparator />}
                             {sandboxHealth === 'stopped' || !task.sandboxUrl ? (
                               <DropdownMenuItem onClick={handleStartSandbox} disabled={isStartingSandbox}>
                                 {isStartingSandbox ? (
@@ -1956,16 +1971,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           </>
                         )}
                         {sandboxHealth === 'running' && (
-                          <DropdownMenuItem onClick={handleRestartDevServer} disabled={isRestartingDevServer}>
-                            {isRestartingDevServer ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Restarting...
-                              </>
-                            ) : (
-                              'Restart Dev Server'
-                            )}
-                          </DropdownMenuItem>
+                          <>
+                            {(task.sandboxUrl || task.keepAlive) && <DropdownMenuSeparator />}
+                            <DropdownMenuItem onClick={handleRestartDevServer} disabled={isRestartingDevServer}>
+                              {isRestartingDevServer ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Restarting...
+                                </>
+                              ) : (
+                                'Restart Dev Server'
+                              )}
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -2160,8 +2178,23 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {task.sandboxUrl && (
+                          <>
+                            <DropdownMenuItem onClick={() => window.open(task.sandboxUrl!, '_blank')}>
+                              Open in New Tab
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigator.clipboard.writeText(task.sandboxUrl!)
+                              }}
+                            >
+                              Copy URL
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {task.keepAlive && (
                           <>
+                            {task.sandboxUrl && <DropdownMenuSeparator />}
                             {task.sandboxUrl ? (
                               <DropdownMenuItem onClick={handleStopSandbox} disabled={isStoppingSandbox}>
                                 {isStoppingSandbox ? (
@@ -2187,19 +2220,24 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                             )}
                           </>
                         )}
-                        <DropdownMenuItem
-                          onClick={handleRestartDevServer}
-                          disabled={isRestartingDevServer || !task.sandboxUrl}
-                        >
-                          {isRestartingDevServer ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Restarting...
-                            </>
-                          ) : (
-                            'Restart Dev Server'
-                          )}
-                        </DropdownMenuItem>
+                        {task.sandboxUrl && (
+                          <>
+                            {task.keepAlive && <DropdownMenuSeparator />}
+                            <DropdownMenuItem
+                              onClick={handleRestartDevServer}
+                              disabled={isRestartingDevServer}
+                            >
+                              {isRestartingDevServer ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Restarting...
+                                </>
+                              ) : (
+                                'Restart Dev Server'
+                              )}
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
