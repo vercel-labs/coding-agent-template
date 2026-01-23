@@ -46,6 +46,10 @@ import {
   setShowPreviewPane as saveShowPreviewPane,
   getShowChatPane,
   setShowChatPane as saveShowChatPane,
+  getFilesPaneWidth,
+  setFilesPaneWidth as saveFilesPaneWidth,
+  getChatPaneWidth,
+  setChatPaneWidth as saveChatPaneWidth,
 } from '@/lib/utils/cookies'
 import { FileBrowser } from '@/components/file-browser'
 import { FileDiffViewer } from '@/components/file-diff-viewer'
@@ -211,6 +215,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [showPreviewPane, setShowPreviewPane] = useState(() => getShowPreviewPane())
   const [showChatPane, setShowChatPane] = useState(() => getShowChatPane())
   const [previewKey, setPreviewKey] = useState(0)
+
+  // Pane widths for resizing
+  const [filesPaneWidth, setFilesPaneWidth] = useState(() => getFilesPaneWidth())
+  const [chatPaneWidth, setChatPaneWidth] = useState(() => getChatPaneWidth())
+  const [resizingPane, setResizingPane] = useState<'files' | 'chat' | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false)
   const [isRestartingDevServer, setIsRestartingDevServer] = useState(false)
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false)
@@ -980,6 +990,71 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
   }, [showFileDropdown])
 
+  // Refs to track latest width values for resize handler (avoids stale closure)
+  const filesPaneWidthRef = useRef(filesPaneWidth)
+  const chatPaneWidthRef = useRef(chatPaneWidth)
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    filesPaneWidthRef.current = filesPaneWidth
+  }, [filesPaneWidth])
+
+  useEffect(() => {
+    chatPaneWidthRef.current = chatPaneWidth
+  }, [chatPaneWidth])
+
+  // Handle pane resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingPane || !containerRef.current) return
+
+      const containerRect = containerRef.current.getBoundingClientRect()
+
+      if (resizingPane === 'files') {
+        const newWidth = e.clientX - containerRect.left
+        const minWidth = 150
+        const maxWidth = 500
+
+        if (newWidth >= minWidth && newWidth <= maxWidth) {
+          setFilesPaneWidth(newWidth)
+          filesPaneWidthRef.current = newWidth
+        }
+      } else if (resizingPane === 'chat') {
+        const newWidth = containerRect.right - e.clientX
+        const minWidth = 200
+        const maxWidth = 500
+
+        if (newWidth >= minWidth && newWidth <= maxWidth) {
+          setChatPaneWidth(newWidth)
+          chatPaneWidthRef.current = newWidth
+        }
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (resizingPane === 'files') {
+        saveFilesPaneWidth(filesPaneWidthRef.current)
+      } else if (resizingPane === 'chat') {
+        saveChatPaneWidth(chatPaneWidthRef.current)
+      }
+      setResizingPane(null)
+    }
+
+    if (resizingPane) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [resizingPane])
+
   // Keyboard shortcuts for pane toggles and tab management
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1327,7 +1402,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Overview Section */}
-      <div className="space-y-2 md:space-y-3 pb-3 md:pb-6 border-b pl-3 md:pl-6 pr-3 flex-shrink-0">
+      <div className="space-y-2 md:space-y-3 py-2 md:py-3 border-b px-3 flex-shrink-0">
         {/* Prompt */}
         <div className="flex items-center gap-2">
           {currentStatus === 'processing' ? (
@@ -1493,31 +1568,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
 
         {/* Compact info row */}
         <div className="flex items-center gap-2 md:gap-4 md:flex-wrap text-xs md:text-sm overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {/* Repo */}
-          {task.repoUrl && (
-            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-              <svg
-                className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <a
-                href={task.repoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground whitespace-nowrap"
-              >
-                {task.repoUrl.replace('https://github.com/', '').replace(/\.git$/, '')}
-              </a>
-            </div>
-          )}
-
           {/* Branch */}
           {task.branchName && (
             <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
@@ -1613,21 +1663,6 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
             </TooltipProvider>
           )}
 
-          {/* Preview Deployment */}
-          {!loadingDeployment && deploymentUrl && (
-            <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-              <VercelIcon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0 text-muted-foreground" />
-              <a
-                href={deploymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground truncate"
-              >
-                Preview
-              </a>
-            </div>
-          )}
-
           {/* Desktop Pane Toggles - Only show on desktop */}
           <div className="hidden md:flex items-center gap-1 ml-auto">
             <Button
@@ -1706,9 +1741,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
       {task.branchName && task.branchName.trim().length > 0 ? (
         <>
           {/* Desktop Layout */}
-          <div className="hidden md:flex flex-1 gap-3 md:gap-4 pl-3 pr-3 md:pr-6 pt-3 md:pt-6 pb-3 md:pb-6 min-h-0 overflow-hidden">
+          <div ref={containerRef} className="hidden md:flex flex-1 min-h-0 overflow-hidden">
             {/* File Browser - Always rendered but hidden with CSS to ensure files are loaded */}
-            <div className={cn('w-1/4 h-auto overflow-y-auto min-h-0 flex-shrink-0', !showFilesPane && 'hidden')}>
+            <div
+              className={cn('h-auto overflow-y-auto min-h-0 flex-shrink-0', !showFilesPane && 'hidden')}
+              style={{ width: showFilesPane ? `${filesPaneWidth}px` : 0 }}
+            >
               <FileBrowser
                 taskId={task.id}
                 branchName={task.branchName}
@@ -1722,12 +1760,22 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               />
             </div>
 
+            {/* Resize Handle - Files/Code */}
+            {showFilesPane && showCodePane && (
+              <div
+                className="w-3 cursor-col-resize flex-shrink-0 relative group"
+                onMouseDown={() => setResizingPane('files')}
+              >
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/50 transition-colors" />
+              </div>
+            )}
+
             {/* Code Viewer */}
             {showCodePane && (
               <div className="flex-1 min-h-0 min-w-0">
-                <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
+                <div className="overflow-hidden h-full flex flex-col">
                   {/* Tabs and Search Bar */}
-                  <div className="flex flex-col border-b bg-muted/50 flex-shrink-0">
+                  <div className="flex flex-col border-b flex-shrink-0">
                     {/* Tabs Row */}
                     {openTabs.length > 0 && (viewMode === 'all' || viewMode === 'all-local') && (
                       <div
@@ -1794,7 +1842,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     )}
 
                     {/* Search Bar */}
-                    <div ref={fileSearchRef} className="relative flex items-center gap-2 px-3 py-2">
+                    <div ref={fileSearchRef} className="relative flex items-center gap-2 px-3 h-[46px]">
                       <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <input
                         type="text"
@@ -1867,12 +1915,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </div>
             )}
 
+            {/* Resize Handle - Code/Preview */}
+            {showPreviewPane && (showCodePane || showFilesPane) && (
+              <div className="w-3 cursor-col-resize flex-shrink-0 relative group">
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/50 transition-colors" />
+              </div>
+            )}
+
             {/* Preview */}
             {showPreviewPane && (
               <div className={cn('flex-1 min-h-0 min-w-0', isPreviewFullscreen && 'fixed inset-0 z-50 bg-background')}>
-                <div className="bg-card rounded-md border overflow-hidden h-full flex flex-col">
+                <div className="overflow-hidden h-full flex flex-col">
                   {/* Preview Toolbar */}
-                  <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
+                  <div className="flex items-center gap-2 px-3 border-b flex-shrink-0 h-[46px]">
                     <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     {task.sandboxUrl && sandboxHealth !== 'stopped' ? (
                       <a
@@ -2054,9 +2109,19 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </div>
             )}
 
+            {/* Resize Handle - Preview/Chat or Code/Chat */}
+            {showChatPane && (showPreviewPane || showCodePane || showFilesPane) && (
+              <div
+                className="w-3 cursor-col-resize flex-shrink-0 relative group"
+                onMouseDown={() => setResizingPane('chat')}
+              >
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary/50 transition-colors" />
+              </div>
+            )}
+
             {/* Chat */}
             {showChatPane && (
-              <div className="w-1/4 h-auto min-h-0 flex-shrink-0">
+              <div className="h-auto min-h-0 flex-shrink-0" style={{ width: `${chatPaneWidth}px` }}>
                 <TaskChat taskId={task.id} task={task} />
               </div>
             )}
@@ -2069,7 +2134,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               {/* Code Tab */}
               <div className={cn('relative h-full', activeTab !== 'code' && 'hidden')}>
                 {/* Current File Path Bar */}
-                <div className="px-3 pt-3 pb-2 flex items-center gap-2 bg-background border-b">
+                <div className="px-3 flex items-center gap-2 bg-background border-b h-[46px]">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -2084,7 +2149,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                 </div>
 
                 {/* Diff Viewer */}
-                <div className="bg-card md:rounded-md md:border overflow-hidden h-[calc(100%-41px)]">
+                <div className="overflow-hidden h-[calc(100%-46px)]">
                   <div className="overflow-y-auto h-full">
                     <FileDiffViewer
                       selectedFile={selectedItemIsFolder ? undefined : selectedFile}
@@ -2110,7 +2175,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
               </div>
 
               {/* Chat Tab */}
-              <div className={cn('h-full px-3 pb-3', activeTab !== 'chat' && 'hidden')}>
+              <div className={cn('h-full', activeTab !== 'chat' && 'hidden')}>
                 <TaskChat taskId={task.id} task={task} />
               </div>
 
@@ -2122,9 +2187,9 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                   isPreviewFullscreen && 'fixed inset-0 z-50 bg-background',
                 )}
               >
-                <div className="bg-card md:rounded-md md:border overflow-hidden h-full flex flex-col">
+                <div className="overflow-hidden h-full flex flex-col">
                   {/* Preview Toolbar */}
-                  <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/50 flex-shrink-0 min-h-[40px]">
+                  <div className="flex items-center gap-2 px-3 border-b flex-shrink-0 h-[46px]">
                     <Monitor className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     {task.sandboxUrl ? (
                       <a

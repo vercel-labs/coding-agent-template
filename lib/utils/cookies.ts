@@ -402,3 +402,102 @@ export function setEnableBrowser(enable: boolean): void {
     sameSite: 'strict',
   })
 }
+
+// Pane width cookies
+const FILES_PANE_WIDTH_COOKIE = 'files_pane_width'
+const CODE_PANE_WIDTH_COOKIE = 'code_pane_width'
+const PREVIEW_PANE_WIDTH_COOKIE = 'preview_pane_width'
+const CHAT_PANE_WIDTH_COOKIE = 'chat_pane_width'
+
+const DEFAULT_FILES_WIDTH = 250
+const DEFAULT_CODE_WIDTH = 0 // 0 means flex
+const DEFAULT_PREVIEW_WIDTH = 0 // 0 means flex
+const DEFAULT_CHAT_WIDTH = 300
+
+export function getFilesPaneWidth(): number {
+  if (typeof window === 'undefined') return DEFAULT_FILES_WIDTH
+
+  const savedWidth = Cookies.get(FILES_PANE_WIDTH_COOKIE)
+  if (savedWidth) {
+    const width = parseInt(savedWidth, 10)
+    if (!isNaN(width) && width >= 150 && width <= 600) {
+      return width
+    }
+  }
+  return DEFAULT_FILES_WIDTH
+}
+
+export function setFilesPaneWidth(width: number): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(FILES_PANE_WIDTH_COOKIE, width.toString(), {
+    expires: 365,
+    sameSite: 'strict',
+  })
+}
+
+export function getCodePaneWidth(): number {
+  if (typeof window === 'undefined') return DEFAULT_CODE_WIDTH
+
+  const savedWidth = Cookies.get(CODE_PANE_WIDTH_COOKIE)
+  if (savedWidth) {
+    const width = parseInt(savedWidth, 10)
+    if (!isNaN(width) && width >= 0) {
+      return width
+    }
+  }
+  return DEFAULT_CODE_WIDTH
+}
+
+export function setCodePaneWidth(width: number): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(CODE_PANE_WIDTH_COOKIE, width.toString(), {
+    expires: 365,
+    sameSite: 'strict',
+  })
+}
+
+export function getPreviewPaneWidth(): number {
+  if (typeof window === 'undefined') return DEFAULT_PREVIEW_WIDTH
+
+  const savedWidth = Cookies.get(PREVIEW_PANE_WIDTH_COOKIE)
+  if (savedWidth) {
+    const width = parseInt(savedWidth, 10)
+    if (!isNaN(width) && width >= 0) {
+      return width
+    }
+  }
+  return DEFAULT_PREVIEW_WIDTH
+}
+
+export function setPreviewPaneWidth(width: number): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(PREVIEW_PANE_WIDTH_COOKIE, width.toString(), {
+    expires: 365,
+    sameSite: 'strict',
+  })
+}
+
+export function getChatPaneWidth(): number {
+  if (typeof window === 'undefined') return DEFAULT_CHAT_WIDTH
+
+  const savedWidth = Cookies.get(CHAT_PANE_WIDTH_COOKIE)
+  if (savedWidth) {
+    const width = parseInt(savedWidth, 10)
+    if (!isNaN(width) && width >= 200 && width <= 600) {
+      return width
+    }
+  }
+  return DEFAULT_CHAT_WIDTH
+}
+
+export function setChatPaneWidth(width: number): void {
+  if (typeof window === 'undefined') return
+
+  Cookies.set(CHAT_PANE_WIDTH_COOKIE, width.toString(), {
+    expires: 365,
+    sameSite: 'strict',
+  })
+}
