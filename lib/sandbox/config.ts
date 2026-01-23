@@ -12,8 +12,8 @@ export function validateEnvironmentVariables(
   const errors: string[] = []
 
   // Check for required environment variables based on selected agent
-  if (selectedAgent === 'claude' && !apiKeys?.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    errors.push('ANTHROPIC_API_KEY is required for Claude CLI. Please add your API key in your profile.')
+  if (selectedAgent === 'claude' && !apiKeys?.AI_GATEWAY_API_KEY && !process.env.AI_GATEWAY_API_KEY) {
+    errors.push('AI_GATEWAY_API_KEY is required for Claude CLI. Please add your API key in your profile.')
   }
 
   if (selectedAgent === 'cursor' && !apiKeys?.CURSOR_API_KEY && !process.env.CURSOR_API_KEY) {

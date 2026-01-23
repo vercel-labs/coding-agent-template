@@ -83,9 +83,12 @@ export async function installClaudeCLI(
   if (claudeInstall.success) {
     await logger.info('Claude CLI installed successfully')
 
-    // Authenticate Claude CLI with API key
-    if (process.env.ANTHROPIC_API_KEY) {
-      await logger.info('Authenticating Claude CLI...')
+    // Authenticate Claude CLI with API key (using AI Gateway)
+    const apiKey = process.env.AI_GATEWAY_API_KEY
+    const baseUrl = 'https://ai-gateway.vercel.sh'
+
+    if (apiKey) {
+      await logger.info('Authenticating Claude CLI with AI Gateway...')
 
       // Create Claude config directory (use $HOME instead of ~)
       await runCommandInSandbox(sandbox, 'mkdir', ['-p', '$HOME/.config/claude'])
@@ -101,7 +104,7 @@ export async function installClaudeCLI(
 
           if (server.type === 'local') {
             // Local STDIO server - command string contains both executable and args
-            const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
+            const envPrefix = `ANTHROPIC_API_KEY="${apiKey}" ANTHROPIC_BASE_URL="${baseUrl}"`
             let addMcpCmd = `${envPrefix} claude mcp add "${serverName}" -- ${server.command}`
 
             // Add env vars if provided
@@ -122,7 +125,7 @@ export async function installClaudeCLI(
             }
           } else {
             // Remote HTTP/SSE server
-            const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
+            const envPrefix = `ANTHROPIC_API_KEY="${apiKey}" ANTHROPIC_BASE_URL="${baseUrl}"`
             let addMcpCmd = `${envPrefix} claude mcp add --transport http "${serverName}" "${server.baseUrl}"`
 
             if (server.oauthClientSecret) {
@@ -148,7 +151,8 @@ export async function installClaudeCLI(
       const modelToUse = selectedModel || 'claude-sonnet-4-5'
       const configFileCmd = `mkdir -p $HOME/.config/claude && cat > $HOME/.config/claude/config.json << 'EOF'
 {
-  "api_key": "${process.env.ANTHROPIC_API_KEY}",
+  "api_key": "${apiKey}",
+  "api_base_url": "${baseUrl}",
   "default_model": "${modelToUse}"
 }
 EOF`
@@ -163,7 +167,7 @@ EOF`
       // Verify authentication
       const verifyAuth = await runCommandInSandbox(sandbox, 'sh', [
         '-c',
-        `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY} claude --version`,
+        `ANTHROPIC_API_KEY=${apiKey} ANTHROPIC_BASE_URL=${baseUrl} claude --version`,
       ])
       if (verifyAuth.success) {
         await logger.info('Claude CLI authentication verified')
@@ -171,7 +175,7 @@ EOF`
         await logger.info('Warning: Claude CLI authentication could not be verified')
       }
     } else {
-      await logger.info('Warning: ANTHROPIC_API_KEY not found, Claude CLI may not work')
+      await logger.info('Warning: AI_GATEWAY_API_KEY not found, Claude CLI may not work')
     }
 
     return { success: true }
@@ -233,11 +237,11 @@ export async function executeClaudeInSandbox(
       }
     }
 
-    // Check if ANTHROPIC_API_KEY is available
-    if (!process.env.ANTHROPIC_API_KEY) {
+    // Check if AI_GATEWAY_API_KEY is available
+    if (!process.env.AI_GATEWAY_API_KEY) {
       return {
         success: false,
-        error: 'ANTHROPIC_API_KEY environment variable is required but not found',
+        error: 'AI_GATEWAY_API_KEY environment variable is required but not found',
         cliName: 'claude',
         changesDetected: false,
       }
@@ -246,13 +250,13 @@ export async function executeClaudeInSandbox(
     // Log what we're trying to do
     const modelToUse = selectedModel || 'claude-sonnet-4-5'
     if (logger) {
-      await logger.info(
-        `Attempting to execute Claude CLI with model ${modelToUse} and instruction: ${instruction.substring(0, 100)}...`,
-      )
+      await logger.info('Attempting to execute Claude CLI...')
     }
 
     // Check MCP configuration status
-    const envPrefix = `ANTHROPIC_API_KEY="${process.env.ANTHROPIC_API_KEY}"`
+    const aiGatewayKey = process.env.AI_GATEWAY_API_KEY!
+    const aiGatewayBaseUrl = 'https://ai-gateway.vercel.sh'
+    const envPrefix = `ANTHROPIC_API_KEY="${aiGatewayKey}" ANTHROPIC_BASE_URL="${aiGatewayBaseUrl}"`
     const mcpList = await runCommandInSandbox(sandbox, 'sh', ['-c', `${envPrefix} claude mcp list`])
     await logger.info('MCP servers list retrieved')
     if (mcpList.error) {
@@ -295,7 +299,7 @@ export async function executeClaudeInSandbox(
     }
 
     // Log the command we're about to execute (with redacted API key)
-    const redactedCommand = fullCommand.replace(process.env.ANTHROPIC_API_KEY!, '[REDACTED]')
+    const redactedCommand = fullCommand.replace(aiGatewayKey, '[REDACTED]')
     await logger.command(redactedCommand)
 
     // Set up streaming output capture if we have an agent message
@@ -363,8 +367,6 @@ export async function executeClaudeInSandbox(
                       const pattern = input.pattern || input.regex || input.search || 'pattern'
                       statusMsg = `Grep: ${pattern}`
                     } else {
-                      // For debugging, log the tool name and input to console
-                      console.log('Unknown Claude tool:', toolName, 'Input:', JSON.stringify(input))
                       // Skip logging generic tool uses to reduce noise
                       statusMsg = ''
                     }
@@ -387,12 +389,8 @@ export async function executeClaudeInSandbox(
 
               // Extract session ID and mark as completed from result chunks
               else if (parsed.type === 'result') {
-                console.log('Result chunk received:', JSON.stringify(parsed).substring(0, 300))
                 if (parsed.session_id) {
                   extractedSessionId = parsed.session_id
-                  console.log('Extracted session ID:', extractedSessionId)
-                } else {
-                  console.log('No session_id in result chunk')
                 }
                 isCompleted = true
               }
@@ -446,8 +444,6 @@ export async function executeClaudeInSandbox(
       await runAndLogCommand(sandbox, 'find', ['.', '-name', 'README*', '-o', '-name', 'readme*'], logger)
       await runAndLogCommand(sandbox, 'ls', ['-la'], logger)
     }
-
-    console.log('Claude execution completed, returning sessionId:', extractedSessionId)
 
     return {
       success: true,
