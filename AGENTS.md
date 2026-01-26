@@ -8,6 +8,8 @@ This document contains critical rules and guidelines for AI agents working on th
 
 **All log statements MUST use static strings only. NEVER include dynamic values, regardless of severity.**
 
+**Recent Enforcement**: This rule was reinforced on 2026-01-26 with fixes to 8 critical violations in production code. See `CLAUDE.md` "Recent Improvements" for details. Violations will be caught in code review and must be remediated immediately.
+
 #### Bad Examples (DO NOT DO THIS):
 ```typescript
 // BAD - Contains dynamic values
@@ -30,6 +32,7 @@ console.error('Error occurred:', error)
 - **Prevents data leakage**: Dynamic values in logs can expose sensitive information (user IDs, file paths, credentials, etc.) to end users
 - **Security by default**: Logs are displayed directly in the UI and returned in API responses
 - **No exceptions**: This applies to ALL log levels (info, error, success, command, console.log, console.error, console.warn, etc.)
+- **Code review enforcement**: All changes are scanned for logging violations during review
 
 #### Sensitive Data That Must NEVER Appear in Logs:
 - Vercel credentials (SANDBOX_VERCEL_TOKEN, SANDBOX_VERCEL_TEAM_ID, SANDBOX_VERCEL_PROJECT_ID)

@@ -2,8 +2,20 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import Editor, { type OnMount } from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
+import { type OnMount } from '@monaco-editor/react'
 import { useTheme } from 'next-themes'
+
+// Dynamically import Monaco Editor to avoid loading it until needed
+// ssr: false prevents server-side rendering of the editor
+const Editor = dynamic(() => import('@monaco-editor/react').then((mod) => mod.default), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-background">
+      <div className="text-sm text-muted-foreground">Loading editor...</div>
+    </div>
+  ),
+})
 
 // Monaco types for editor and monaco instances
 type MonacoEditor = Parameters<OnMount>[0]

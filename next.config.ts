@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Optimize barrel imports for better bundle size and faster dev/build
+  // Per vercel-react-best-practices: CRITICAL impact for bundle optimization
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
 }
 
 export default nextConfig
