@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch user' }, { status: 401 })
     }
 
-    const user = await userResponse.json()
-    const username = user.login
+    const userPayload = await userResponse.json()
+    const username = userPayload.login
 
     // If there's a search query, use GitHub search API
     if (search.trim()) {

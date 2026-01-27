@@ -1085,6 +1085,10 @@ export function FileBrowser({
               }
             }}
             onContextMenu={(e) => handleContextMenu(e, fullPath)}
+            style={{
+              contentVisibility: 'auto',
+              containIntrinsicSize: '0 32px',
+            }}
           >
             <div className="flex items-center gap-1 flex-shrink-0">
               {isExpanded ? (
@@ -1197,6 +1201,10 @@ export function FileBrowser({
               }
             }}
             onContextMenu={(e) => handleContextMenu(e, node.filename!)}
+            style={{
+              contentVisibility: 'auto',
+              containIntrinsicSize: '0 32px',
+            }}
           >
             <div className="flex items-center gap-1 flex-shrink-0">
               <File className="w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />

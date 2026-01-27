@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db/client'
 import { tasks } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
@@ -20,8 +20,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { taskId } = await params
-    const body = await request.json()
+    // Parse params and body in parallel for efficiency
+    const [{ taskId }, body] = await Promise.all([params, request.json()])
     const { commitTitle, commitMessage, mergeMethod = 'squash' } = body
 
     // Get the task
@@ -53,24 +53,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: result.error || 'Failed to merge pull request' }, { status: 500 })
     }
 
-    // Stop the sandbox if it exists
-    if (task.sandboxId) {
-      try {
-        const sandbox = await Sandbox.get({
-          sandboxId: task.sandboxId,
-          teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
-          projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
-          token: process.env.SANDBOX_VERCEL_TOKEN!,
-        })
-
-        await sandbox.stop()
-        unregisterSandbox(taskId)
-      } catch (sandboxError) {
-        // Log error but don't fail the merge
-        console.error('Error stopping sandbox after merge:')
-      }
-    }
-
     // Update task to mark PR as merged, store merge commit SHA, clear sandbox info, and set completedAt
     await db
       .update(tasks)
@@ -83,6 +65,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
+
+    // Stop the sandbox asynchronously (non-blocking cleanup)
+    if (task.sandboxId) {
+      after(async () => {
+        try {
+          const sandbox = await Sandbox.get({
+            sandboxId: task.sandboxId!,
+            teamId: process.env.SANDBOX_VERCEL_TEAM_ID!,
+            projectId: process.env.SANDBOX_VERCEL_PROJECT_ID!,
+            token: process.env.SANDBOX_VERCEL_TOKEN!,
+          })
+
+          await sandbox.stop()
+          unregisterSandbox(taskId)
+        } catch {
+          console.error('Failed to stop sandbox after PR merge')
+        }
+      })
+    }
 
     return NextResponse.json({
       success: true,

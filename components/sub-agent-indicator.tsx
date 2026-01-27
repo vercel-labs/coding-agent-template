@@ -222,7 +222,13 @@ function SubAgentRow({ activity }: { activity: SubAgentActivity }) {
       )}
     >
       <div className="flex items-center gap-2">
-        <Icon className={cn('h-4 w-4', config.color, config.animate && 'animate-spin')} />
+        {config.animate ? (
+          <div className="animate-spin">
+            <Icon className={cn('h-4 w-4', config.color)} />
+          </div>
+        ) : (
+          <Icon className={cn('h-4 w-4', config.color)} />
+        )}
         <div>
           <div className="text-sm font-medium">{activity.name}</div>
           {activity.description && (
@@ -278,7 +284,13 @@ export function SubAgentIndicatorCompact({
             role="status"
             aria-label={`Sub-agent ${currentActivity.name} is running`}
           >
-            <Icon className={cn('h-3 w-3', config.color, config.animate && 'animate-spin')} />
+            {config.animate ? (
+              <div className="animate-spin">
+                <Icon className={cn('h-3 w-3', config.color)} />
+              </div>
+            ) : (
+              <Icon className={cn('h-3 w-3', config.color)} />
+            )}
             <span className="font-medium">{currentActivity.name}</span>
           </div>
         </TooltipTrigger>

@@ -12,6 +12,7 @@ import { Terminal, TerminalRef } from '@/components/terminal'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SubAgentIndicatorCompact } from '@/components/sub-agent-indicator'
 import { Badge } from '@/components/ui/badge'
+import { useWindowResize } from '@/lib/hooks/use-window-resize'
 
 interface LogsPaneProps {
   task: Task
@@ -39,21 +40,16 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
   const wasAtBottomRef = useRef<boolean>(true)
   const { isSidebarOpen, isSidebarResizing, refreshTasks } = useTasks()
 
-  // Check if we're on desktop
+  // Check if we're on desktop using centralized resize hook
+  useWindowResize(1024, () => {
+    setIsDesktop(window.innerWidth >= 1024)
+  })
+
+  // Delay enabling transitions until after the browser has painted the correct position
   useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024)
-    }
-
-    checkDesktop()
-
-    // Delay enabling transitions until after the browser has painted the correct position
     requestAnimationFrame(() => {
       setHasMounted(true)
     })
-
-    window.addEventListener('resize', checkDesktop)
-    return () => window.removeEventListener('resize', checkDesktop)
   }, [])
 
   // Initialize height and collapsed state from cookies on mount
@@ -128,7 +124,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
       wasAtBottomRef.current = isAtBottom
     }
 
-    logsContainer.addEventListener('scroll', handleScroll)
+    logsContainer.addEventListener('scroll', handleScroll, { passive: true })
     return () => logsContainer.removeEventListener('scroll', handleScroll)
   }, [])
 
@@ -402,6 +398,10 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                   'flex gap-1.5 leading-tight',
                   isSubAgentLog && 'bg-violet-500/5 -mx-2 px-2 py-0.5 border-l-2 border-violet-500/30',
                 )}
+                style={{
+                  contentVisibility: 'auto',
+                  containIntrinsicSize: '0 24px',
+                }}
               >
                 <span className="text-white/40 text-[10px] shrink-0">[{formatTime(log.timestamp || new Date())}]</span>
                 {/* Agent source badge */}

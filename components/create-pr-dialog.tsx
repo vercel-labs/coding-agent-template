@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { useWindowResize } from '@/lib/hooks/use-window-resize'
 
 interface CreatePRDialogProps {
   taskId: string
@@ -36,19 +37,10 @@ export function CreatePRDialog({
   const [title, setTitle] = useState(defaultTitle)
   const [body, setBody] = useState(defaultBody)
   const [isCreating, setIsCreating] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
 
-  useEffect(() => {
-    // Check if the device is mobile
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+  // Use centralized resize hook to detect mobile (breakpoint: 768px)
+  const { isDesktop } = useWindowResize(768)
+  const isMobile = !isDesktop
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

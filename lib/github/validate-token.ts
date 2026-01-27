@@ -1,4 +1,5 @@
 import 'server-only'
+import { LRUCache } from 'lru-cache'
 
 /**
  * GitHub Token Validation Result
@@ -11,18 +12,49 @@ export interface GitHubTokenValidationResult {
 }
 
 /**
+ * LRU cache for GitHub token validation results.
+ * Caches successful validations for 5 minutes to reduce GitHub API calls.
+ * Key: SHA256 hash of token (for security - don't store raw tokens in cache)
+ * Value: Validation result with scopes and username
+ */
+const tokenValidationCache = new LRUCache<string, GitHubTokenValidationResult>({
+  max: 100, // Maximum 100 cached validations
+  ttl: 5 * 60 * 1000, // 5 minutes TTL
+})
+
+/**
+ * Hash a token for use as cache key (avoids storing raw tokens in memory)
+ */
+async function hashToken(token: string): Promise<string> {
+  // Use Web Crypto API for SHA-256 hashing
+  const encoder = new TextEncoder()
+  const data = encoder.encode(token)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
  * Validate a GitHub access token by testing it against the GitHub API.
  *
  * This function:
- * 1. Tests the token with GitHub API /user endpoint
- * 2. Checks if the token has required 'repo' scope
- * 3. Handles rate limiting and network errors gracefully
+ * 1. Checks LRU cache for recent validation (5-minute TTL)
+ * 2. Tests the token with GitHub API /user endpoint
+ * 3. Checks if the token has required 'repo' scope
+ * 4. Handles rate limiting and network errors gracefully
+ * 5. Caches successful validations for 5 minutes
  *
  * @param token - The GitHub access token to validate
  * @returns Validation result with valid status, error message, and scopes
  */
 export async function validateGitHubToken(token: string): Promise<GitHubTokenValidationResult> {
   try {
+    // Check cache first (5-minute TTL for successful validations)
+    const cacheKey = await hashToken(token)
+    const cachedResult = tokenValidationCache.get(cacheKey)
+    if (cachedResult) {
+      return cachedResult
+    }
     // Test token with GitHub API (with 10 second timeout to prevent indefinite hangs)
     const response = await fetch('https://api.github.com/user', {
       headers: {
@@ -85,12 +117,14 @@ export async function validateGitHubToken(token: string): Promise<GitHubTokenVal
       }
     }
 
-    // Token is valid
-    return {
+    // Token is valid - cache the result for 5 minutes
+    const validResult = {
       valid: true,
       scopes,
       username: userData.login,
     }
+    tokenValidationCache.set(cacheKey, validResult)
+    return validResult
   } catch (error) {
     // Handle timeout errors
     if (error instanceof Error && error.name === 'TimeoutError') {

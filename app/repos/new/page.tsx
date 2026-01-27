@@ -149,12 +149,14 @@ export default function NewRepoPage() {
         toast.success('Repository created successfully')
 
         // Store the newly created repo info for selection after redirect
+        const STORAGE_VERSION = 'v1'
         const [owner, repo] = data.full_name.split('/')
-        localStorage.setItem('newly-created-repo', JSON.stringify({ owner, repo }))
+        localStorage.setItem(`app:${STORAGE_VERSION}:newly-created-repo`, JSON.stringify({ owner, repo }))
 
         // Clear repos cache for current owner to force refresh
         if (selectedOwner) {
-          localStorage.removeItem(`github-repos-${selectedOwner}`)
+          const reposCachePrefix = `app:${STORAGE_VERSION}:github-repos-`
+          localStorage.removeItem(`${reposCachePrefix}${selectedOwner}`)
         }
 
         // Redirect to home page

@@ -410,6 +410,10 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
                     }
                     router.push(`/tasks/${task.id}`)
                   }}
+                  style={{
+                    contentVisibility: 'auto',
+                    containIntrinsicSize: '0 120px',
+                  }}
                 >
                   <CardContent className="px-3 py-2">
                     <div className="flex items-start gap-3">

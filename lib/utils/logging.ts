@@ -10,36 +10,37 @@ export interface AgentSource {
   subAgentId?: string // ID linking to SubAgentActivity
 }
 
+// Hoisted regex patterns for redaction (built once at module load, reused in hot path)
+// js-hoist-regexp: Move regex creation outside the function to avoid repeated compilation
+const API_KEY_PATTERNS = [
+  // Anthropic API keys (sk-ant-...)
+  /ANTHROPIC_API_KEY[=\s]*["']?(sk-ant-[a-zA-Z0-9_-]{20,})/gi,
+  // OpenAI API keys (sk-...)
+  /OPENAI_API_KEY[=\s]*["']?([sk-][a-zA-Z0-9_-]{20,})/gi,
+  // GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_)
+  /GITHUB_TOKEN[=\s]*["']?([gh][phosr]_[a-zA-Z0-9_]{20,})/gi,
+  // GitHub tokens in URLs (https://token:x-oauth-basic@github.com or https://token@github.com)
+  /https:\/\/(gh[phosr]_[a-zA-Z0-9_]{20,})(?::x-oauth-basic)?@github\.com/gi,
+  // Generic API key patterns
+  /API_KEY[=\s]*["']?([a-zA-Z0-9_-]{20,})/gi,
+  // Bearer tokens
+  /Bearer\s+([a-zA-Z0-9_-]{20,})/gi,
+  // Generic tokens
+  /TOKEN[=\s]*["']?([a-zA-Z0-9_-]{20,})/gi,
+  // Vercel Team IDs (team_xxxx or alphanumeric strings after SANDBOX_VERCEL_TEAM_ID)
+  /SANDBOX_VERCEL_TEAM_ID[=\s:]*["']?([a-zA-Z0-9_-]{8,})/gi,
+  // Vercel Project IDs (prj_xxxx or alphanumeric strings after SANDBOX_VERCEL_PROJECT_ID)
+  /SANDBOX_VERCEL_PROJECT_ID[=\s:]*["']?([a-zA-Z0-9_-]{8,})/gi,
+  // Vercel tokens (any alphanumeric strings after SANDBOX_VERCEL_TOKEN)
+  /SANDBOX_VERCEL_TOKEN[=\s:]*["']?([a-zA-Z0-9_-]{20,})/gi,
+] as const
+
 // Redact sensitive information from log messages
 export function redactSensitiveInfo(message: string): string {
   let redacted = message
 
-  // Redact API keys - common patterns
-  const apiKeyPatterns = [
-    // Anthropic API keys (sk-ant-...)
-    /ANTHROPIC_API_KEY[=\s]*["']?(sk-ant-[a-zA-Z0-9_-]{20,})/gi,
-    // OpenAI API keys (sk-...)
-    /OPENAI_API_KEY[=\s]*["']?([sk-][a-zA-Z0-9_-]{20,})/gi,
-    // GitHub tokens (ghp_, gho_, ghu_, ghs_, ghr_)
-    /GITHUB_TOKEN[=\s]*["']?([gh][phosr]_[a-zA-Z0-9_]{20,})/gi,
-    // GitHub tokens in URLs (https://token:x-oauth-basic@github.com or https://token@github.com)
-    /https:\/\/(gh[phosr]_[a-zA-Z0-9_]{20,})(?::x-oauth-basic)?@github\.com/gi,
-    // Generic API key patterns
-    /API_KEY[=\s]*["']?([a-zA-Z0-9_-]{20,})/gi,
-    // Bearer tokens
-    /Bearer\s+([a-zA-Z0-9_-]{20,})/gi,
-    // Generic tokens
-    /TOKEN[=\s]*["']?([a-zA-Z0-9_-]{20,})/gi,
-    // Vercel Team IDs (team_xxxx or alphanumeric strings after SANDBOX_VERCEL_TEAM_ID)
-    /SANDBOX_VERCEL_TEAM_ID[=\s:]*["']?([a-zA-Z0-9_-]{8,})/gi,
-    // Vercel Project IDs (prj_xxxx or alphanumeric strings after SANDBOX_VERCEL_PROJECT_ID)
-    /SANDBOX_VERCEL_PROJECT_ID[=\s:]*["']?([a-zA-Z0-9_-]{8,})/gi,
-    // Vercel tokens (any alphanumeric strings after SANDBOX_VERCEL_TOKEN)
-    /SANDBOX_VERCEL_TOKEN[=\s:]*["']?([a-zA-Z0-9_-]{20,})/gi,
-  ]
-
-  // Apply redaction patterns
-  apiKeyPatterns.forEach((pattern) => {
+  // Apply redaction patterns (pre-compiled at module load)
+  API_KEY_PATTERNS.forEach((pattern) => {
     redacted = redacted.replace(pattern, (match, key) => {
       // Special handling for GitHub URL pattern
       if (match.includes('github.com')) {

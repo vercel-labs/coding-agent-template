@@ -6,8 +6,16 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { AppLayoutWrapper } from '@/components/app-layout-wrapper'
 import { SessionProvider } from '@/components/auth/session-provider'
 import { JotaiProvider } from '@/components/providers/jotai-provider'
-import { Analytics } from '@vercel/analytics/next'
-import { SpeedInsights } from '@vercel/speed-insights/next'
+import dynamic from 'next/dynamic'
+
+// Defer Vercel monitoring scripts after hydration to reduce initial bundle blocking
+// These are third-party monitoring tools that don't affect core functionality
+const Analytics = dynamic(() => import('@vercel/analytics/next').then((mod) => mod.Analytics), {
+  ssr: false,
+})
+const SpeedInsights = dynamic(() => import('@vercel/speed-insights/next').then((mod) => mod.SpeedInsights), {
+  ssr: false,
+})
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

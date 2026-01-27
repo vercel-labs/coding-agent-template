@@ -1,7 +1,7 @@
 'use client'
 
 import type { TaskMessage, Task } from '@/lib/db/schema'
-import { useState, useEffect, useRef, useCallback, Children, isValidElement } from 'react'
+import { useState, useEffect, useRef, useCallback, Children, isValidElement, startTransition } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -24,6 +24,7 @@ import { Streamdown } from 'streamdown'
 import { useAtom } from 'jotai'
 import { taskChatInputAtomFamily } from '@/lib/atoms/task'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useWindowResize } from '@/lib/hooks/use-window-resize'
 
 interface TaskChatProps {
   taskId: string
@@ -261,6 +262,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     }
   }, [activeTab, task.prNumber, task.branchName, fetchMessages, fetchPRComments, fetchCheckRuns, fetchDeployment])
 
+  // Consolidate PR number and branch name change handlers to reduce duplicate logic
+  // Extract primitive values to avoid unnecessary recreations
+  const prNumber = task.prNumber
+  const branchName = task.branchName
+
   useEffect(() => {
     fetchMessages(true) // Show loading on initial fetch
 
@@ -273,68 +279,56 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   }, [fetchMessages])
 
   // Auto-refresh for active tab (Comments, Checks, Deployments)
+  // Defer heavy async fetches with startTransition to keep UI responsive
   useEffect(() => {
     if (activeTab === 'chat') return // Chat already has its own refresh
 
     const refreshInterval = 30000 // 30 seconds
 
     const interval = setInterval(() => {
-      switch (activeTab) {
-        case 'comments':
-          if (task.prNumber) {
-            commentsLoadedRef.current = false
-            fetchPRComments(false) // Don't show loading on auto-refresh
-          }
-          break
-        case 'actions':
-          if (task.branchName) {
-            actionsLoadedRef.current = false
-            fetchCheckRuns(false) // Don't show loading on auto-refresh
-          }
-          break
-        case 'deployments':
-          deploymentLoadedRef.current = false
-          fetchDeployment(false) // Don't show loading on auto-refresh
-          break
-      }
+      startTransition(() => {
+        switch (activeTab) {
+          case 'comments':
+            if (prNumber) {
+              commentsLoadedRef.current = false
+              fetchPRComments(false) // Don't show loading on auto-refresh
+            }
+            break
+          case 'actions':
+            if (branchName) {
+              actionsLoadedRef.current = false
+              fetchCheckRuns(false) // Don't show loading on auto-refresh
+            }
+            break
+          case 'deployments':
+            deploymentLoadedRef.current = false
+            fetchDeployment(false) // Don't show loading on auto-refresh
+            break
+        }
+      })
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [activeTab, task.prNumber, task.branchName, fetchPRComments, fetchCheckRuns, fetchDeployment])
+  }, [activeTab, prNumber, branchName, fetchPRComments, fetchCheckRuns, fetchDeployment])
 
-  // Reset cache and refetch when PR number changes (PR created/updated)
+  // Consolidated effect: Fetch data when tab switches OR when required data becomes available
+  // Uses primitive values (prNumber, branchName) to avoid unnecessary re-runs
   useEffect(() => {
-    if (task.prNumber) {
-      commentsLoadedRef.current = false
-      if (activeTab === 'comments') {
-        fetchPRComments()
-      }
+    switch (activeTab) {
+      case 'comments':
+        if (prNumber) {
+          commentsLoadedRef.current = false
+          fetchPRComments()
+        }
+        break
+      case 'actions':
+        if (branchName) {
+          actionsLoadedRef.current = false
+          fetchCheckRuns()
+        }
+        break
     }
-  }, [task.prNumber, activeTab, fetchPRComments])
-
-  // Reset cache and refetch when branch name changes (branch created)
-  useEffect(() => {
-    if (task.branchName) {
-      actionsLoadedRef.current = false
-      if (activeTab === 'actions') {
-        fetchCheckRuns()
-      }
-    }
-  }, [task.branchName, activeTab, fetchCheckRuns])
-
-  // Fetch PR comments when tab switches to comments
-  useEffect(() => {
-    if (activeTab === 'comments' && task.prNumber) {
-      fetchPRComments()
-    }
-  }, [activeTab, task.prNumber, fetchPRComments])
-
-  // Fetch check runs when tab switches to actions
-  useEffect(() => {
-    if (activeTab === 'actions' && task.branchName) {
-      fetchCheckRuns()
-    }
-  }, [activeTab, task.branchName, fetchCheckRuns])
+  }, [activeTab, prNumber, branchName, fetchPRComments, fetchCheckRuns])
 
   // Fetch deployment when tab switches to deployments
   useEffect(() => {
@@ -352,46 +346,45 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       wasAtBottomRef.current = isNearBottom()
     }
 
-    container.addEventListener('scroll', handleScroll)
+    container.addEventListener('scroll', handleScroll, { passive: true })
     return () => container.removeEventListener('scroll', handleScroll)
   }, [])
 
   // Calculate heights for user messages to create proper sticky stacking
-  useEffect(() => {
+  const measureHeights = useCallback(() => {
     const displayMessages = messages.slice(-10)
     const userMessages = displayMessages.filter((m) => m.role === 'user')
 
     if (userMessages.length === 0) return
 
-    const measureHeights = () => {
-      const newHeights: Record<string, number> = {}
-      const newOverflowing = new Set<string>()
+    const newHeights: Record<string, number> = {}
+    const newOverflowing = new Set<string>()
 
-      userMessages.forEach((message) => {
-        const el = messageRefs.current[message.id]
-        const contentEl = contentRefs.current[message.id]
+    userMessages.forEach((message) => {
+      const el = messageRefs.current[message.id]
+      const contentEl = contentRefs.current[message.id]
 
-        if (el) {
-          newHeights[message.id] = el.offsetHeight
-        }
+      if (el) {
+        newHeights[message.id] = el.offsetHeight
+      }
 
-        // Check if content is overflowing the max-height (72px ~ 4 lines)
-        if (contentEl && contentEl.scrollHeight > 72) {
-          newOverflowing.add(message.id)
-        }
-      })
+      // Check if content is overflowing the max-height (72px ~ 4 lines)
+      if (contentEl && contentEl.scrollHeight > 72) {
+        newOverflowing.add(message.id)
+      }
+    })
 
-      setUserMessageHeights(newHeights)
-      setOverflowingMessages(newOverflowing)
-    }
-
-    // Measure after render
-    setTimeout(measureHeights, 0)
-
-    // Remeasure on window resize
-    window.addEventListener('resize', measureHeights)
-    return () => window.removeEventListener('resize', measureHeights)
+    setUserMessageHeights(newHeights)
+    setOverflowingMessages(newOverflowing)
   }, [messages])
+
+  // Use centralized resize hook to trigger height measurement
+  useWindowResize(1024, measureHeights)
+
+  // Initial measure after render
+  useEffect(() => {
+    setTimeout(measureHeights, 0)
+  }, [measureHeights])
 
   // Auto-scroll when messages change if user was at bottom
   useEffect(() => {

@@ -1,14 +1,17 @@
 import { Octokit } from '@octokit/rest'
 import { getUserGitHubToken } from './user-token'
+import { cache } from 'react'
 
 /**
  * Create an Octokit instance for the currently authenticated user
  * Returns an Octokit instance with the user's GitHub token if connected, otherwise without authentication
  * Calling code should check octokit.auth to verify user has connected GitHub
  *
+ * Wrapped with React.cache() to deduplicate Octokit creation within a single request.
+ *
  * @param userId - Optional userId for API token authentication (bypasses session lookup)
  */
-export async function getOctokit(userId?: string): Promise<Octokit> {
+export const getOctokit = cache(async (userId?: string): Promise<Octokit> => {
   const userToken = await getUserGitHubToken(userId)
 
   if (!userToken) {
@@ -18,38 +21,44 @@ export async function getOctokit(userId?: string): Promise<Octokit> {
   return new Octokit({
     auth: userToken || undefined,
   })
-}
+})
 
 /**
  * Get the authenticated GitHub user's information
  * Returns null if no GitHub account is connected
  *
+ * Wrapped with React.cache() to deduplicate API calls within a single request.
+ *
  * @param userId - Optional userId for API token authentication (bypasses session lookup)
  */
-export async function getGitHubUser(userId?: string): Promise<{
-  username: string
-  name: string | null
-  email: string | null
-} | null> {
-  try {
-    const octokit = await getOctokit(userId)
+export const getGitHubUser = cache(
+  async (
+    userId?: string,
+  ): Promise<{
+    username: string
+    name: string | null
+    email: string | null
+  } | null> => {
+    try {
+      const octokit = await getOctokit(userId)
 
-    if (!octokit.auth) {
+      if (!octokit.auth) {
+        return null
+      }
+
+      const { data } = await octokit.rest.users.getAuthenticated()
+
+      return {
+        username: data.login,
+        name: data.name,
+        email: data.email,
+      }
+    } catch (error) {
+      console.error('Error getting GitHub user')
       return null
     }
-
-    const { data } = await octokit.rest.users.getAuthenticated()
-
-    return {
-      username: data.login,
-      name: data.name,
-      email: data.email,
-    }
-  } catch (error) {
-    console.error('Error getting GitHub user')
-    return null
-  }
-}
+  },
+)
 
 /**
  * Parse a GitHub repository URL to extract owner and repo

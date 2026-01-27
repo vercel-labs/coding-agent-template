@@ -185,6 +185,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
   const [loadingMcpServers, setLoadingMcpServers] = useState(false)
+  const previousMcpServerIdsRef = useRef<string[] | null>(null)
   const [diffsCache, setDiffsCache] = useState<Record<string, DiffData>>({})
   const loadingDiffsRef = useRef(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -824,12 +825,24 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   }
 
   // Fetch MCP servers if task has mcpServerIds (only when IDs actually change)
+  // Use ref to detect actual changes rather than JSON.stringify to avoid recreating strings
   useEffect(() => {
     async function fetchMcpServers() {
       if (!task.mcpServerIds || task.mcpServerIds.length === 0) {
         return
       }
 
+      // Check if IDs have actually changed by comparing arrays
+      const idsHaveChanged =
+        !previousMcpServerIdsRef.current ||
+        previousMcpServerIdsRef.current.length !== task.mcpServerIds.length ||
+        !previousMcpServerIdsRef.current.every((id, index) => id === task.mcpServerIds![index])
+
+      if (!idsHaveChanged) {
+        return
+      }
+
+      previousMcpServerIdsRef.current = [...task.mcpServerIds]
       setLoadingMcpServers(true)
 
       try {
@@ -847,9 +860,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
     }
 
     fetchMcpServers()
-    // Use JSON.stringify to create stable dependency - only re-run when IDs actually change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(task.mcpServerIds)])
+  }, [task.id])
 
   // Fetch deployment info when task is completed and has a branch (only if not already cached)
   useEffect(() => {

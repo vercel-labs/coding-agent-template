@@ -18,8 +18,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { taskId } = await params
-    const body = await request.json()
+    // Parse params and body in parallel for efficiency
+    const [{ taskId }, body] = await Promise.all([params, request.json()])
     const { title, body: prBody, baseBranch = 'main' } = body
 
     if (!title) {

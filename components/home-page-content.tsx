@@ -71,7 +71,9 @@ export function HomePageContent({
 
   // Check for newly created repo and select it
   useEffect(() => {
-    const newlyCreatedRepo = localStorage.getItem('newly-created-repo')
+    const STORAGE_VERSION = 'v1'
+    const storageKey = `app:${STORAGE_VERSION}:newly-created-repo`
+    const newlyCreatedRepo = localStorage.getItem(storageKey)
     if (newlyCreatedRepo) {
       try {
         const { owner, repo } = JSON.parse(newlyCreatedRepo)
@@ -83,10 +85,10 @@ export function HomePageContent({
           setSelectedRepo(repo)
         }
       } catch (error) {
-        console.error('Error parsing newly created repo:', error)
+        console.error('Storage parse error')
       } finally {
         // Clear the localStorage item after using it
-        localStorage.removeItem('newly-created-repo')
+        localStorage.removeItem(storageKey)
       }
     }
   }, []) // Run only on mount
