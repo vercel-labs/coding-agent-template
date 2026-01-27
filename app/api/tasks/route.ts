@@ -204,38 +204,14 @@ export async function POST(request: NextRequest) {
 
     // Get user's API keys, GitHub token, and GitHub user info BEFORE entering after() block (where session is not accessible)
     // Pass user.id directly to support both session-based and API token-based authentication
-    // Parallelize these independent async operations with Promise.all() for better performance
-    const [userApiKeys, userGithubToken, githubUser, maxSandboxDuration] = await Promise.all([
+    // Use Promise.all to fetch all user data in parallel for better performance
+    const [userApiKeys, userGithubToken, githubUser, maxSandboxDuration, mcpServers] = await Promise.all([
       getUserApiKeys(user.id),
       getUserGitHubToken(user.id),
       getGitHubUser(user.id),
       getMaxSandboxDuration(user.id),
+      getMcpServersForUser(user.id),
     ])
-
-    // Get MCP servers for this user (must be done before after() block)
-    // Use user.id from dual-auth (supports both session cookies and API tokens)
-    let mcpServers: (typeof connectors.$inferSelect)[] = []
-    try {
-      const userConnectors = await db
-        .select()
-        .from(connectors)
-        .where(and(eq(connectors.userId, user.id), eq(connectors.status, 'connected')))
-      mcpServers = userConnectors.map((c) => ({
-        ...c,
-        env: (() => {
-          if (!c.env) return null
-          try {
-            const decrypted = decrypt(c.env)
-            return decrypted ? JSON.parse(decrypted) : null
-          } catch {
-            return null
-          }
-        })(),
-        oauthClientSecret: c.oauthClientSecret ? decrypt(c.oauthClientSecret) : null,
-      }))
-    } catch {
-      // Continue without MCP servers
-    }
 
     // Process the task asynchronously with timeout
     // CRITICAL: Wrap in after() to ensure Vercel doesn't kill the function after response
@@ -268,6 +244,38 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating task')
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
+  }
+}
+
+// Helper function to get MCP servers for a user with decrypted credentials
+type Connector = typeof connectors.$inferSelect
+
+async function getMcpServersForUser(userId: string): Promise<Connector[]> {
+  try {
+    const userConnectors = await db
+      .select()
+      .from(connectors)
+      .where(and(eq(connectors.userId, userId), eq(connectors.status, 'connected')))
+
+    return userConnectors.map((connector: Connector) => {
+      const decryptedEnv = (() => {
+        if (!connector.env) return null
+        try {
+          const decrypted = decrypt(connector.env)
+          return decrypted ? JSON.parse(decrypted) : null
+        } catch {
+          return null
+        }
+      })()
+
+      return {
+        ...connector,
+        env: decryptedEnv,
+        oauthClientSecret: connector.oauthClientSecret ? decrypt(connector.oauthClientSecret) : null,
+      }
+    })
+  } catch {
+    return []
   }
 }
 

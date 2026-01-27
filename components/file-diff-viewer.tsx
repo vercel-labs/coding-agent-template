@@ -7,6 +7,7 @@ import { generateDiffFile } from '@git-diff-view/file'
 import '@git-diff-view/react/styles/diff-view-pure.css'
 import { FileEditor } from '@/components/file-editor'
 
+// Hoisted constants - avoid recreating on every render
 const DIFF_VIEW_MODE = DiffModeEnum.Unified
 const IMAGE_MIME_TYPES: Record<string, string> = {
   png: 'image/png',
@@ -21,7 +22,7 @@ const IMAGE_MIME_TYPES: Record<string, string> = {
   tif: 'image/tiff',
 }
 
-const getImageMimeType = (filename: string) => {
+const getImageMimeType = (filename: string): string => {
   const ext = filename.split('.').pop()?.toLowerCase()
   return IMAGE_MIME_TYPES[ext || ''] || 'image/png'
 }
@@ -68,7 +69,6 @@ export const FileDiffViewer = memo(function FileDiffViewer({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const diffViewMode = DIFF_VIEW_MODE
   const [mounted, setMounted] = useState(false)
   // Internal cache for file contents (used for 'all' and 'all-local' modes)
   const internalCacheRef = useRef<Record<string, DiffData>>({})
@@ -114,6 +114,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
     onFileLoadedRef.current = onFileLoaded
   }, [onFileLoaded])
 
+  // Memoized derived state for better performance
   const isFilesMode = viewMode === 'all' || viewMode === 'all-local'
   const isChangesMode = viewMode === 'local' || viewMode === 'remote'
   const cachedDiffData = useMemo(() => {
@@ -182,7 +183,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
           setDiffData(result.data)
         })
       } catch (err) {
-        console.error('Error fetching file data:', err)
+        console.error('Error fetching file data')
         startTransition(() => {
           setError(err instanceof Error ? err.message : 'Failed to fetch file data')
         })
@@ -213,7 +214,6 @@ export const FileDiffViewer = memo(function FileDiffViewer({
 
     // In "local" or "remote" mode, check if contents are identical - no diff to show
     if (isChangesMode && diffData.oldContent === diffData.newContent) {
-      console.log('File contents are identical - no changes to display')
       return null
     }
 
@@ -240,18 +240,13 @@ export const FileDiffViewer = memo(function FileDiffViewer({
         file.buildSplitDiffLines()
         file.buildUnifiedDiffLines()
       } catch (initError) {
-        console.error('Error initializing diff file:', initError, {
-          filename: diffData.filename,
-          hasOldContent: !!diffData.oldContent,
-          hasNewContent: !!diffData.newContent,
-          viewMode,
-        })
+        console.error('Error initializing diff file')
         throw initError
       }
 
       return file
     } catch (error) {
-      console.error('Error generating diff file:', error)
+      console.error('Error generating diff file')
       return null
     }
   }, [diffData, diffViewTheme, isChangesMode, isFilesMode, viewMode])
@@ -348,7 +343,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
   }
 
   // Render FileEditor for "all" or "all-local" mode with text files
-  if ((viewMode === 'all' || viewMode === 'all-local') && diffData && !diffData.isBinary && !diffData.isImage) {
+  if (isFilesMode && diffData && !diffData.isBinary && !diffData.isImage) {
     return (
       <FileEditor
         filename={diffData.filename}
@@ -393,7 +388,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
         <DiffView
           key={`${selectedFile}-${diffData?.filename}`}
           diffFile={diffFile}
-          diffViewMode={diffViewMode}
+          diffViewMode={DIFF_VIEW_MODE}
           diffViewTheme={diffViewTheme}
           diffViewHighlight={true}
           diffViewWrap={true}
@@ -402,7 +397,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
       </div>
     )
   } catch (error) {
-    console.error('Error rendering diff:', error)
+    console.error('Error rendering diff')
     return (
       <div className="flex items-center justify-center py-8 md:py-12 p-4">
         <div className="text-center">

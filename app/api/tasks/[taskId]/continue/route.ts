@@ -88,11 +88,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ taskId
 
     // Get user's API keys, GitHub token, and GitHub user info
     // Pass user.id directly to support both session-based and API token-based authentication
-    const userApiKeys = await getUserApiKeys(user.id)
-    const userGithubToken = await getUserGitHubToken(user.id)
-    const githubUser = await getGitHubUser(user.id)
-    // Get max sandbox duration for this user (user-specific > global > env var)
-    const maxSandboxDuration = await getMaxSandboxDuration(user.id)
+    // Use Promise.all to fetch all user data in parallel for better performance
+    const [userApiKeys, userGithubToken, githubUser, maxSandboxDuration] = await Promise.all([
+      getUserApiKeys(user.id),
+      getUserGitHubToken(user.id),
+      getGitHubUser(user.id),
+      getMaxSandboxDuration(user.id),
+    ])
 
     // Validate GitHub token if task requires repository access
     if (task.repoUrl) {
