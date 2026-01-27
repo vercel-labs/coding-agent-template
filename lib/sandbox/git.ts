@@ -74,24 +74,35 @@ export async function pushChangesToBranch(
 
 export async function shutdownSandbox(sandbox?: Sandbox): Promise<{ success: boolean; error?: string }> {
   try {
-    // If we have a sandbox reference, try to kill any running processes
-    if (sandbox) {
-      try {
-        // Try to kill any long-running processes that might be active
-        await runCommandInSandbox(sandbox, 'pkill', ['-f', 'node'])
-        await runCommandInSandbox(sandbox, 'pkill', ['-f', 'python'])
-        await runCommandInSandbox(sandbox, 'pkill', ['-f', 'npm'])
-        await runCommandInSandbox(sandbox, 'pkill', ['-f', 'yarn'])
-        await runCommandInSandbox(sandbox, 'pkill', ['-f', 'pnpm'])
-      } catch {
-        // Best effort - don't fail if we can't kill processes
-        console.log('Best effort process cleanup completed')
-      }
+    if (!sandbox) {
+      return { success: true }
     }
 
-    // Note: Vercel Sandbox automatically shuts down after timeout
-    // No explicit shutdown method available in current SDK
-    // The sandbox will be garbage collected and shut down automatically
+    // 1. Best-effort process cleanup to allow graceful shutdown
+    try {
+      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'node'])
+      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'python'])
+      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'npm'])
+      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'yarn'])
+      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'pnpm'])
+    } catch {
+      // Process cleanup is best-effort, continue to sandbox.stop()
+    }
+
+    // 2. Explicit sandbox.stop() - releases Vercel resources immediately
+    // This is critical for cost control - without it, sandbox continues running
+    // until Vercel's hard timeout, wasting compute resources
+    try {
+      await sandbox.stop()
+    } catch (stopError) {
+      // Handle 410 Gone - sandbox already expired (common and expected)
+      if (stopError instanceof Error && (stopError.message.includes('410') || stopError.message.includes('Gone'))) {
+        return { success: true }
+      }
+      // Log but don't fail - sandbox may auto-terminate
+      console.error('Sandbox stop via SDK failed')
+    }
+
     return { success: true }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to shutdown sandbox'

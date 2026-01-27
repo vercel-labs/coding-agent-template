@@ -22,6 +22,9 @@ import { decrypt } from '@/lib/crypto'
 import { generateId } from '@/lib/utils/id'
 import { validateGitHubToken } from '@/lib/github/validate-token'
 
+// Timeout and cleanup constants
+const KEEPALIVE_MAX_IDLE_MS = 30 * 60 * 1000 // 30 minutes idle = cleanup keepAlive sandbox
+
 /**
  * Validate GitHub repository URL format
  * Ensures URL is a valid GitHub repository before passing to git clone
@@ -293,9 +296,12 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
   const TASK_TIMEOUT_MS = input.maxDuration * 60 * 1000
   const HEARTBEAT_GRACE_PERIOD_MS = 5 * 60 * 1000 // 5 minute grace period for active sub-agents
   const HEARTBEAT_CHECK_INTERVAL_MS = 30 * 1000 // Check every 30 seconds
+  const ABSOLUTE_MAX_TIMEOUT_MS = TASK_TIMEOUT_MS + 15 * 60 * 1000 // maxDuration + 15 minutes hard cap
+  const MAX_HEARTBEAT_EXTENSIONS = 3 // Maximum number of grace period extensions
 
   let isTimedOut = false
   let warningLogged = false
+  let heartbeatExtensionCount = 0
 
   // Create a timeout controller
   const timeoutController = {
@@ -314,22 +320,8 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
       if (elapsedMs >= TASK_TIMEOUT_MS) {
         const { hasActiveSubAgents, lastHeartbeat } = await checkTaskActivity(input.taskId)
 
-        // If there's recent heartbeat activity and active sub-agents, grant grace period
-        if (hasActiveSubAgents && lastHeartbeat) {
-          const heartbeatAge = Date.now() - new Date(lastHeartbeat).getTime()
-          if (heartbeatAge < HEARTBEAT_GRACE_PERIOD_MS) {
-            // Still within grace period, continue
-            if (!warningLogged) {
-              const warningLogger = createTaskLogger(input.taskId)
-              await warningLogger.info(`Sub-agent is active - extending timeout grace period`)
-              warningLogged = true
-            }
-            return
-          }
-        }
-
-        // Check absolute maximum (max duration + grace period)
-        if (elapsedMs >= TASK_TIMEOUT_MS + HEARTBEAT_GRACE_PERIOD_MS) {
+        // Check absolute maximum hard cap first
+        if (elapsedMs >= ABSOLUTE_MAX_TIMEOUT_MS) {
           // Check if task already completed before timing out (race condition prevention)
           const [currentTask] = await db
             .select({ status: tasks.status })
@@ -343,9 +335,62 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
           ) {
             return // Task already finished, don't timeout
           }
+          const absoluteLogger = createTaskLogger(input.taskId)
+          await absoluteLogger.error('Absolute maximum timeout reached')
           isTimedOut = true
           reject(new Error('Task execution timed out'))
           return
+        }
+
+        // Check if maximum extensions reached
+        if (heartbeatExtensionCount >= MAX_HEARTBEAT_EXTENSIONS) {
+          // Check if task already completed before timing out (race condition prevention)
+          const [currentTask] = await db
+            .select({ status: tasks.status })
+            .from(tasks)
+            .where(eq(tasks.id, input.taskId))
+            .limit(1)
+          if (
+            currentTask?.status === 'completed' ||
+            currentTask?.status === 'error' ||
+            currentTask?.status === 'stopped'
+          ) {
+            return // Task already finished, don't timeout
+          }
+          const extensionLogger = createTaskLogger(input.taskId)
+          await extensionLogger.error('Maximum timeout extensions reached')
+          isTimedOut = true
+          reject(new Error('Task execution timed out'))
+          return
+        }
+
+        // If there's recent heartbeat activity and active sub-agents, grant grace period
+        if (hasActiveSubAgents && lastHeartbeat) {
+          const heartbeatAge = Date.now() - new Date(lastHeartbeat).getTime()
+          if (heartbeatAge < HEARTBEAT_GRACE_PERIOD_MS) {
+            // Still within grace period, extend timeout
+            heartbeatExtensionCount++
+
+            // Update database with extension count
+            try {
+              await db
+                .update(tasks)
+                .set({
+                  heartbeatExtensionCount,
+                  updatedAt: new Date(),
+                })
+                .where(eq(tasks.id, input.taskId))
+            } catch (dbError) {
+              console.error('Failed to update heartbeat extension count')
+            }
+
+            if (!warningLogged) {
+              const extensionLogger = createTaskLogger(input.taskId)
+              await extensionLogger.info('Sub-agent is active, extending timeout grace period')
+              warningLogged = true
+            }
+            return
+          }
         }
 
         // Original timeout reached without recent activity
@@ -363,6 +408,8 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
           ) {
             return // Task already finished, don't timeout
           }
+          const timeoutLogger = createTaskLogger(input.taskId)
+          await timeoutLogger.error('Task timeout reached without recent activity')
           isTimedOut = true
           reject(new Error('Task execution timed out'))
           return
@@ -374,7 +421,17 @@ export async function processTaskWithTimeout(input: TaskProcessingInput): Promis
         const { currentSubAgent } = await checkTaskActivity(input.taskId)
         const warningLogger = createTaskLogger(input.taskId)
         if (currentSubAgent) {
-          await warningLogger.info(`Task approaching timeout. Sub-agent running, timeout may be extended.`)
+          const remainingExtensions = MAX_HEARTBEAT_EXTENSIONS - heartbeatExtensionCount
+          const absoluteTimeRemaining = ABSOLUTE_MAX_TIMEOUT_MS - elapsedMs
+
+          // Log with static messages
+          if (remainingExtensions > 0 && absoluteTimeRemaining > 0) {
+            await warningLogger.info('Task approaching timeout, sub-agent running, timeout may be extended')
+          } else if (remainingExtensions === 0) {
+            await warningLogger.info('Task approaching timeout, maximum extensions reached')
+          } else {
+            await warningLogger.info('Task approaching timeout, absolute maximum time nearly reached')
+          }
         } else {
           await warningLogger.info('Task is approaching timeout, will complete soon')
         }
@@ -753,6 +810,66 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
 
       if (keepAlive) {
         await logger.info('Sandbox kept alive for follow-up messages')
+
+        // Schedule auto-cleanup check for idle keepAlive sandboxes
+        setTimeout(async () => {
+          try {
+            // Check if sandbox is still idle after 30 minutes
+            const [currentTask] = await db
+              .select({
+                lastHeartbeat: tasks.lastHeartbeat,
+                sandboxId: tasks.sandboxId,
+                sandboxUrl: tasks.sandboxUrl,
+                status: tasks.status,
+              })
+              .from(tasks)
+              .where(eq(tasks.id, taskId))
+              .limit(1)
+
+            if (!currentTask || !currentTask.sandboxId) {
+              return // Sandbox already cleaned up
+            }
+
+            // If task completed or errored, no need to auto-cleanup (user probably used it)
+            if (currentTask.status === 'completed' || currentTask.status === 'error') {
+              return
+            }
+
+            // Check if there's been any activity in the last 30 minutes
+            if (currentTask.lastHeartbeat) {
+              const idleTime = Date.now() - new Date(currentTask.lastHeartbeat).getTime()
+              if (idleTime < KEEPALIVE_MAX_IDLE_MS) {
+                return // Still active, don't cleanup
+              }
+            }
+
+            // Idle for 30+ minutes, cleanup sandbox
+            const cleanupLogger = createTaskLogger(taskId)
+            await cleanupLogger.info('Auto-cleanup initiated for idle keepAlive sandbox')
+
+            // Stop sandbox using registry function
+            const { stopSandboxFromDB } = await import('@/lib/sandbox/sandbox-registry')
+            const stopResult = await stopSandboxFromDB(taskId)
+
+            if (stopResult.success) {
+              await cleanupLogger.info('Idle sandbox stopped successfully')
+
+              // Clear sandbox fields in database
+              await db
+                .update(tasks)
+                .set({
+                  sandboxId: null,
+                  sandboxUrl: null,
+                  updatedAt: new Date(),
+                })
+                .where(eq(tasks.id, taskId))
+            } else {
+              await cleanupLogger.error('Failed to stop idle sandbox')
+            }
+          } catch (error) {
+            console.error('Error during keepAlive auto-cleanup')
+          }
+        }, KEEPALIVE_MAX_IDLE_MS)
       } else {
         unregisterSandbox(taskId)
         const shutdownResult = await shutdownSandbox(sandbox!)
