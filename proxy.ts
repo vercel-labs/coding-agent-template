@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 /**
- * Middleware to transform query parameter authentication to Bearer token headers.
+ * Proxy to transform query parameter authentication to Bearer token headers.
  * This allows MCP clients to authenticate using ?apikey=xxx query parameters,
  * which are then transformed into Authorization: Bearer xxx headers.
  *
@@ -11,7 +11,7 @@ import type { NextRequest } from 'next/server'
  * Security Note: Query parameters may appear in logs. This is acceptable for
  * development and internal tools, but prefer header-based auth for production.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Only apply to MCP routes
   if (!request.nextUrl.pathname.startsWith('/api/mcp')) {
     return NextResponse.next()
