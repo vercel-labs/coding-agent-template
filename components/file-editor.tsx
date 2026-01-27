@@ -1,9 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from 'react'
 import { toast } from 'sonner'
-import Editor, { type OnMount } from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
+import { type OnMount } from '@monaco-editor/react'
 import { useTheme } from 'next-themes'
+
+// Dynamically import Monaco Editor to avoid loading it until needed
+// ssr: false prevents server-side rendering of the editor
+const Editor = dynamic(() => import('@monaco-editor/react').then((mod) => mod.default), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-background">
+      <div className="text-sm text-muted-foreground">Loading editor...</div>
+    </div>
+  ),
+})
 
 // Monaco types for editor and monaco instances
 type MonacoEditor = Parameters<OnMount>[0]
@@ -68,10 +80,15 @@ export function FileEditor({
 }: FileEditorProps) {
   const { theme, systemTheme } = useTheme()
   const currentTheme = theme === 'system' ? systemTheme : theme
+  const isNodeModulesFile = filename.includes('/node_modules/')
+  const isRemoteFile = viewMode === 'remote' || viewMode === 'all'
+  const isReadOnly = isNodeModulesFile || isRemoteFile
   const [content, setContent] = useState(initialContent)
-  const [isSaving, setIsSaving] = useState(false)
   const [savedContent, setSavedContent] = useState(initialContent)
   const [fontSize, setFontSize] = useState(16) // Default to 16px for mobile
+  const isSavingRef = useRef(false)
+  const savedContentRef = useRef(initialContent)
+  const lastHasChangesRef = useRef(false)
   const editorRef = useRef<MonacoEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
   const onUnsavedChangesRef = useRef(onUnsavedChanges)
@@ -80,11 +97,28 @@ export function FileEditor({
   const onSaveSuccessRef = useRef(onSaveSuccess)
   const handleSaveRef = useRef<(() => Promise<void>) | null>(null)
 
+  const notifyUnsavedChanges = useCallback((nextHasChanges: boolean, force = false) => {
+    if (!onUnsavedChangesRef.current) return
+    if (!force && lastHasChangesRef.current === nextHasChanges) return
+    lastHasChangesRef.current = nextHasChanges
+    startTransition(() => {
+      onUnsavedChangesRef.current?.(nextHasChanges)
+    })
+  }, [])
+
+  const notifySavingState = useCallback((nextIsSaving: boolean) => {
+    if (!onSavingStateChangeRef.current) return
+    startTransition(() => {
+      onSavingStateChangeRef.current?.(nextIsSaving)
+    })
+  }, [])
+
   // Set responsive font size based on screen width
   useEffect(() => {
     const updateFontSize = () => {
       // Use 16px on mobile (< 768px) to prevent zoom, 13px on desktop
-      setFontSize(window.innerWidth < 768 ? 16 : 13)
+      const nextSize = window.innerWidth < 768 ? 16 : 13
+      setFontSize((prev) => (prev === nextSize ? prev : nextSize))
     }
 
     // Set initial font size
@@ -113,63 +147,38 @@ export function FileEditor({
   }, [onSaveSuccess])
 
   useEffect(() => {
-    setContent(initialContent)
-    setSavedContent(initialContent)
-  }, [filename, initialContent])
+    savedContentRef.current = savedContent
+  }, [savedContent])
 
   useEffect(() => {
-    // Don't track unsaved changes for node_modules files (they're read-only)
-    const isNodeModules = filename.includes('/node_modules/')
-    if (!isNodeModules) {
-      const hasChanges = content !== savedContent
-      console.log('[Unsaved Changes] Tracked:', {
-        hasChanges,
-        contentLength: content.length,
-        savedContentLength: savedContent.length,
-        filename,
-        hasCallback: !!onUnsavedChangesRef.current,
-      })
-      if (onUnsavedChangesRef.current) {
-        console.log('[Unsaved Changes] Calling callback with hasChanges:', hasChanges)
-        onUnsavedChangesRef.current(hasChanges)
-      } else {
-        console.log('[Unsaved Changes] No callback available!')
-      }
+    setContent(initialContent)
+    setSavedContent(initialContent)
+    savedContentRef.current = initialContent
+    lastHasChangesRef.current = false
+    if (!isNodeModulesFile) {
+      notifyUnsavedChanges(false, true)
     }
-  }, [content, savedContent, filename])
+  }, [filename, initialContent, isNodeModulesFile, notifyUnsavedChanges])
 
-  const handleContentChange = (newContent: string | undefined) => {
-    if (newContent !== undefined) {
-      console.log('[Content Change] Content changed, length:', newContent.length)
-      setContent(newContent)
-    }
-  }
+  useEffect(() => {
+    if (isNodeModulesFile) return
+    const hasChanges = content !== savedContent
+    notifyUnsavedChanges(hasChanges)
+  }, [content, savedContent, isNodeModulesFile, notifyUnsavedChanges])
+
+  const handleContentChange = useCallback((newContent: string | undefined) => {
+    if (newContent === undefined) return
+    setContent((prev) => (prev === newContent ? prev : newContent))
+  }, [])
 
   const handleSave = useCallback(async () => {
-    console.log('[Save] handleSave called')
     const currentContent = editorRef.current?.getValue()
-    console.log('[Save] Current state:', {
-      hasContent: !!currentContent,
-      isSaving,
-      hasChanges: currentContent !== savedContent,
-      filename,
-    })
-
-    if (!currentContent || isSaving || currentContent === savedContent) {
-      console.log('[Save] Skipping save:', {
-        noContent: !currentContent,
-        isSaving,
-        noChanges: currentContent === savedContent,
-      })
+    if (!currentContent || isSavingRef.current || currentContent === savedContentRef.current) {
       return
     }
 
-    setIsSaving(true)
-    console.log('[Save] Setting isSaving to true, calling callback:', !!onSavingStateChangeRef.current)
-    if (onSavingStateChangeRef.current) {
-      onSavingStateChangeRef.current(true)
-    }
-    console.log('[Save] Starting save...')
+    isSavingRef.current = true
+    notifySavingState(true)
     try {
       const response = await fetch(`/api/tasks/${taskId}/save-file`, {
         method: 'POST',
@@ -183,26 +192,14 @@ export function FileEditor({
       })
 
       const data = await response.json()
-      console.log('[Save] Response:', { ok: response.ok, data })
 
       if (response.ok && data.success) {
-        console.log('[Save] Save successful, updating savedContent')
-        setSavedContent(currentContent)
+        savedContentRef.current = currentContent
+        setSavedContent((prev) => (prev === currentContent ? prev : currentContent))
         // Notify parent component of successful save
         if (onSaveSuccessRef.current) {
           onSaveSuccessRef.current()
         }
-        // Force a re-check of unsaved changes
-        setTimeout(() => {
-          const latestContent = editorRef.current?.getValue()
-          if (latestContent) {
-            console.log('[Save] Post-save check:', {
-              savedLength: currentContent.length,
-              currentLength: latestContent.length,
-              match: latestContent === currentContent,
-            })
-          }
-        }, 100)
       } else {
         toast.error(data.error || 'Failed to save file')
       }
@@ -210,13 +207,10 @@ export function FileEditor({
       console.error('Error saving file:', error)
       toast.error('Failed to save file')
     } finally {
-      setIsSaving(false)
-      console.log('[Save] Setting isSaving to false, calling callback:', !!onSavingStateChangeRef.current)
-      if (onSavingStateChangeRef.current) {
-        onSavingStateChangeRef.current(false)
-      }
+      isSavingRef.current = false
+      notifySavingState(false)
     }
-  }, [isSaving, savedContent, taskId, filename])
+  }, [taskId, filename, notifySavingState])
 
   // Keep handleSave ref updated
   useEffect(() => {
@@ -701,16 +695,6 @@ export function FileEditor({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Check if this is a node_modules file (read-only)
-  const isNodeModulesFile = filename.includes('/node_modules/')
-
-  // Remote files (from GitHub) should be read-only
-  // 'remote' = Changes view showing remote files
-  // 'all' = Files view showing remote files (should also be read-only)
-  const isRemoteFile = viewMode === 'remote' || viewMode === 'all'
-  const isReadOnly = isNodeModulesFile || isRemoteFile
-
-  // Memoize editor configuration to prevent unnecessary re-renders
   const editorLanguage = useMemo(() => (language ? language : getLanguageFromPath(filename)), [language, filename])
   const editorTheme = useMemo(() => (currentTheme === 'dark' ? 'vercel-dark' : 'vercel-light'), [currentTheme])
   const editorOptions = useMemo(
@@ -739,7 +723,7 @@ export function FileEditor({
         showSnippets: true,
       },
     }),
-    [isReadOnly, fontSize],
+    [fontSize, isReadOnly],
   )
 
   return (
