@@ -1,6 +1,6 @@
 'use client'
 
-import { SubAgentActivity } from '@/lib/db/schema'
+import type { SubAgentActivity } from '@/lib/db/schema'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { Loader2, CheckCircle, XCircle, ChevronDown, ChevronUp, Bot, Zap, Clock } from 'lucide-react'

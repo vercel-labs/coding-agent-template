@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Task } from '@/lib/db/schema'
+import type { Task } from '@/lib/db/schema'
 import { PageHeader } from '@/components/page-header'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'

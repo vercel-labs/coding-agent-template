@@ -78,13 +78,15 @@ export async function shutdownSandbox(sandbox?: Sandbox): Promise<{ success: boo
       return { success: true }
     }
 
-    // 1. Best-effort process cleanup to allow graceful shutdown
+    // 1. Best-effort process cleanup to allow graceful shutdown (run in parallel)
     try {
-      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'node'])
-      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'python'])
-      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'npm'])
-      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'yarn'])
-      await runCommandInSandbox(sandbox, 'pkill', ['-f', 'pnpm'])
+      await Promise.allSettled([
+        runCommandInSandbox(sandbox, 'pkill', ['-f', 'node']),
+        runCommandInSandbox(sandbox, 'pkill', ['-f', 'python']),
+        runCommandInSandbox(sandbox, 'pkill', ['-f', 'npm']),
+        runCommandInSandbox(sandbox, 'pkill', ['-f', 'yarn']),
+        runCommandInSandbox(sandbox, 'pkill', ['-f', 'pnpm']),
+      ])
     } catch {
       // Process cleanup is best-effort, continue to sandbox.stop()
     }

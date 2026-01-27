@@ -1,6 +1,6 @@
 'use client'
 
-import { Task, Connector } from '@/lib/db/schema'
+import type { Task, Connector } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -35,6 +35,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
+import dynamic from 'next/dynamic'
 import { Claude, Codex, Copilot, Cursor, Gemini, OpenCode } from '@/components/logos'
 import { useTasks } from '@/components/app-layout'
 import {
@@ -47,11 +48,23 @@ import {
   getShowChatPane,
   setShowChatPane as saveShowChatPane,
 } from '@/lib/utils/cookies'
-import { FileBrowser } from '@/components/file-browser'
-import { FileDiffViewer } from '@/components/file-diff-viewer'
-import { CreatePRDialog } from '@/components/create-pr-dialog'
-import { MergePRDialog } from '@/components/merge-pr-dialog'
-import { TaskChat } from '@/components/task-chat'
+
+// Dynamically import heavy components to reduce initial bundle size
+// FileBrowser: 1,879 lines - loaded when files pane is visible
+const FileBrowser = dynamic(() => import('@/components/file-browser').then((mod) => mod.FileBrowser), { ssr: false })
+// FileDiffViewer: 410 lines + @git-diff-view library - loaded when diff tab is active
+const FileDiffViewer = dynamic(() => import('@/components/file-diff-viewer').then((mod) => mod.FileDiffViewer), {
+  ssr: false,
+})
+// CreatePRDialog/MergePRDialog: only shown when user clicks PR actions
+const CreatePRDialog = dynamic(() => import('@/components/create-pr-dialog').then((mod) => mod.CreatePRDialog), {
+  ssr: false,
+})
+const MergePRDialog = dynamic(() => import('@/components/merge-pr-dialog').then((mod) => mod.MergePRDialog), {
+  ssr: false,
+})
+// TaskChat: 1,258 lines + streamdown - loaded when chat pane is visible
+const TaskChat = dynamic(() => import('@/components/task-chat').then((mod) => mod.TaskChat), { ssr: false })
 import {
   AlertDialog,
   AlertDialogAction,

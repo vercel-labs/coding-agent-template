@@ -1,6 +1,6 @@
 'use client'
 
-import { Task } from '@/lib/db/schema'
+import type { Task } from '@/lib/db/schema'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, Plus, Trash2, GitBranch, Loader2, Search, X } from 'lucide-react'

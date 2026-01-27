@@ -301,10 +301,11 @@ export async function executeClaudeInSandbox(
     const cliCheck = await runAndLogCommand(sandbox, 'which', ['claude'], logger)
 
     if (cliCheck.success) {
-      // Get Claude CLI version for debugging
-      await runAndLogCommand(sandbox, 'claude', ['--version'], logger)
-      // Also try to see what commands are available
-      await runAndLogCommand(sandbox, 'claude', ['--help'], logger)
+      // Get Claude CLI version and help info in parallel for debugging
+      await Promise.all([
+        runAndLogCommand(sandbox, 'claude', ['--version'], logger),
+        runAndLogCommand(sandbox, 'claude', ['--help'], logger),
+      ])
     }
 
     if (!cliCheck.success) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { TaskMessage, Task } from '@/lib/db/schema'
+import type { TaskMessage, Task } from '@/lib/db/schema'
 import { useState, useEffect, useRef, useCallback, Children, isValidElement } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

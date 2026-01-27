@@ -2,7 +2,7 @@
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { TaskSidebar } from '@/components/task-sidebar'
-import { Task } from '@/lib/db/schema'
+import type { Task } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Trash2 } from 'lucide-react'

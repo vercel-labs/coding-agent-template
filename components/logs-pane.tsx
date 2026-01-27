@@ -1,6 +1,6 @@
 'use client'
 
-import { Task, LogEntry } from '@/lib/db/schema'
+import type { Task, LogEntry } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Copy, Check, ChevronDown, ChevronUp, Trash2, Bot } from 'lucide-react'
 import { cn } from '@/lib/utils'
