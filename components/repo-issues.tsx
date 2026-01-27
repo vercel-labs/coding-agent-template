@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import Image from 'next/image'
 import { Label } from '@/components/ui/label'
 import { User, Calendar, MessageSquare, MoreVertical, ListTodo } from 'lucide-react'
 import { toast } from 'sonner'
@@ -275,10 +276,13 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
         {issues.map((issue) => (
           <Card key={issue.number} className="p-4 hover:bg-muted/50 transition-colors">
             <div className="flex items-start gap-3">
-              <img
+              <Image
                 src={issue.user.avatar_url}
                 alt={issue.user.login}
+                width={40}
+                height={40}
                 className="h-10 w-10 rounded-full flex-shrink-0"
+                unoptimized
               />
 
               <div className="flex-1 min-w-0">

@@ -5,7 +5,6 @@ import { keys } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { decrypt } from '@/lib/crypto'
-import { cache } from 'react'
 
 type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
 
@@ -13,72 +12,64 @@ type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
  * Internal helper function to fetch and decrypt API keys from the database.
  * This is a private implementation detail - use getUserApiKeys() or getUserApiKey() instead.
  *
- * Wrapped with React.cache() to deduplicate database queries within a single request.
- *
  * @param userId - The user's internal ID
  * @returns Object with all API keys (user keys override system env vars)
  * @private
  */
-const _fetchKeysFromDatabase = cache(
-  async (
-    userId: string,
-  ): Promise<{
-    OPENAI_API_KEY: string | undefined
-    GEMINI_API_KEY: string | undefined
-    CURSOR_API_KEY: string | undefined
-    ANTHROPIC_API_KEY: string | undefined
-    AI_GATEWAY_API_KEY: string | undefined
-  }> => {
-    // Default to system keys
-    const apiKeys = {
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-      GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-      CURSOR_API_KEY: process.env.CURSOR_API_KEY,
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-      AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
-    }
+async function _fetchKeysFromDatabase(userId: string): Promise<{
+  OPENAI_API_KEY: string | undefined
+  GEMINI_API_KEY: string | undefined
+  CURSOR_API_KEY: string | undefined
+  ANTHROPIC_API_KEY: string | undefined
+  AI_GATEWAY_API_KEY: string | undefined
+}> {
+  // Default to system keys
+  const apiKeys = {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    CURSOR_API_KEY: process.env.CURSOR_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+  }
 
-    try {
-      const userKeys = await db.select().from(keys).where(eq(keys.userId, userId))
+  try {
+    const userKeys = await db.select().from(keys).where(eq(keys.userId, userId))
 
-      userKeys.forEach((key) => {
-        const decryptedValue = decrypt(key.value)
-        // Skip keys that fail to decrypt (keeps env var fallback)
-        if (decryptedValue === null) return
+    userKeys.forEach((key) => {
+      const decryptedValue = decrypt(key.value)
+      // Skip keys that fail to decrypt (keeps env var fallback)
+      if (decryptedValue === null) return
 
-        switch (key.provider) {
-          case 'openai':
-            apiKeys.OPENAI_API_KEY = decryptedValue
-            break
-          case 'gemini':
-            apiKeys.GEMINI_API_KEY = decryptedValue
-            break
-          case 'cursor':
-            apiKeys.CURSOR_API_KEY = decryptedValue
-            break
-          case 'anthropic':
-            apiKeys.ANTHROPIC_API_KEY = decryptedValue
-            break
-          case 'aigateway':
-            apiKeys.AI_GATEWAY_API_KEY = decryptedValue
-            break
-        }
-      })
-    } catch (error) {
-      console.error('Error fetching user API keys')
-      // Fall back to system keys on error
-    }
+      switch (key.provider) {
+        case 'openai':
+          apiKeys.OPENAI_API_KEY = decryptedValue
+          break
+        case 'gemini':
+          apiKeys.GEMINI_API_KEY = decryptedValue
+          break
+        case 'cursor':
+          apiKeys.CURSOR_API_KEY = decryptedValue
+          break
+        case 'anthropic':
+          apiKeys.ANTHROPIC_API_KEY = decryptedValue
+          break
+        case 'aigateway':
+          apiKeys.AI_GATEWAY_API_KEY = decryptedValue
+          break
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching user API keys')
+    // Fall back to system keys on error
+  }
 
-    return apiKeys
-  },
-)
+  return apiKeys
+}
 
 /**
  * Get all API keys for a user.
  * Returns an object containing all available API keys (OpenAI, Gemini, Cursor, Anthropic, AI Gateway).
  * User-provided keys override system environment variables.
- *
- * Wrapped with React.cache() to deduplicate database queries within a single request.
  *
  * @param userId - Optional user ID for API token authentication. If not provided, uses current session.
  * @returns Object with provider names mapped to decrypted API key values (or undefined if not set)
@@ -93,46 +84,40 @@ const _fetchKeysFromDatabase = cache(
  * const keys = await getUserApiKeys('user-123')
  * console.log(keys.OPENAI_API_KEY)
  */
-export const getUserApiKeys = cache(
-  async (
-    userId?: string,
-  ): Promise<{
-    OPENAI_API_KEY: string | undefined
-    GEMINI_API_KEY: string | undefined
-    CURSOR_API_KEY: string | undefined
-    ANTHROPIC_API_KEY: string | undefined
-    AI_GATEWAY_API_KEY: string | undefined
-  }> => {
-    // Default to system keys
-    const systemKeys = {
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-      GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-      CURSOR_API_KEY: process.env.CURSOR_API_KEY,
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-      AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
-    }
+export async function getUserApiKeys(userId?: string): Promise<{
+  OPENAI_API_KEY: string | undefined
+  GEMINI_API_KEY: string | undefined
+  CURSOR_API_KEY: string | undefined
+  ANTHROPIC_API_KEY: string | undefined
+  AI_GATEWAY_API_KEY: string | undefined
+}> {
+  // Default to system keys
+  const systemKeys = {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    CURSOR_API_KEY: process.env.CURSOR_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+  }
 
-    // If userId is provided directly, use it
-    if (userId) {
-      return _fetchKeysFromDatabase(userId)
-    }
+  // If userId is provided directly, use it
+  if (userId) {
+    return _fetchKeysFromDatabase(userId)
+  }
 
-    // Otherwise, try to get userId from session
-    const session = await getServerSession()
-    if (!session?.user?.id) {
-      return systemKeys
-    }
+  // Otherwise, try to get userId from session
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return systemKeys
+  }
 
-    return _fetchKeysFromDatabase(session.user.id)
-  },
-)
+  return _fetchKeysFromDatabase(session.user.id)
+}
 
 /**
  * Get a single API key for a specific provider.
  * More efficient than getUserApiKeys() when you only need one key.
  * User-provided key overrides system environment variable.
- *
- * Wrapped with React.cache() to deduplicate database queries within a single request.
  *
  * @param provider - The API key provider ('openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway')
  * @param userId - Optional user ID for API token authentication. If not provided, uses current session.
@@ -146,7 +131,7 @@ export const getUserApiKeys = cache(
  * // With API token authentication
  * const openaiKey = await getUserApiKey('openai', 'user-123')
  */
-export const getUserApiKey = cache(async (provider: Provider, userId?: string): Promise<string | undefined> => {
+export async function getUserApiKey(provider: Provider, userId?: string): Promise<string | undefined> {
   // Default to system key
   const systemKeys = {
     openai: process.env.OPENAI_API_KEY,
@@ -185,4 +170,4 @@ export const getUserApiKey = cache(async (provider: Provider, userId?: string): 
   }
 
   return systemKeys[provider]
-})
+}

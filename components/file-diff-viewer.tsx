@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef, memo, startTransition } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { DiffView, DiffModeEnum } from '@git-diff-view/react'
 import { generateDiffFile } from '@git-diff-view/file'
@@ -249,7 +250,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
       console.error('Error generating diff file')
       return null
     }
-  }, [diffData, diffViewTheme, isChangesMode, isFilesMode, viewMode])
+  }, [diffData, diffViewTheme, isChangesMode, isFilesMode])
 
   if (!selectedFile) {
     // Don't show "No file selected" during initial loading
@@ -322,10 +323,13 @@ export const FileDiffViewer = memo(function FileDiffViewer({
       <div className="flex items-center justify-center h-full p-4 bg-muted/30">
         <div className="text-center max-w-full">
           <div className="mb-4">
-            <img
+            <Image
               src={imageData}
               alt={diffData.filename}
+              width={1200}
+              height={800}
               className="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg shadow-lg"
+              unoptimized
               onError={(e) => {
                 console.error('Error loading image')
                 e.currentTarget.style.display = 'none'
