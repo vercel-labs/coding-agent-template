@@ -628,6 +628,29 @@ MCP clients can now create and execute tasks with full GitHub integration using 
 - Uses `mcp-handler` package for MCP protocol support
 - Task processing: `lib/tasks/process-task.ts` - Shared logic for REST API and MCP execution
 
+## Recent Improvements (2026-01-26)
+
+### Security Hardening
+Fixed 8 critical logging violations across multiple agent and API files:
+- **@scripts/migrate-production.ts** - Removed dynamic env var and error logging
+- **@lib/vercel-client/user.ts** - Removed API response body logging to prevent data leakage
+- **@lib/sandbox/agents/claude.ts** - Removed error details and tool input logging
+- **@app/api/auth/github/callback/route.ts** - Removed tokenData logging
+- All modified files now use static-string logging only (no dynamic values or error details exposed to users)
+
+### Database Performance Optimization
+- Created migration `lib/db/migrations/0025_add_rate_limit_indexes.sql` with 4 strategic indexes:
+  - `idx_tasks_user_id_created_at` - Optimizes user task counting by date
+  - `idx_tasks_user_id_deleted_at` - Improves soft-delete filtering in rate limit checks
+  - `idx_task_messages_task_id` - Accelerates task-message joins
+  - `idx_task_messages_created_at` - Enables efficient date range filtering
+- Eliminates full table scans during rate limiting queries
+
+### Frontend Performance Optimization
+- **@next.config.ts** - Added `optimizePackageImports` for lucide-react and @radix-ui/react-icons (reduces barrel import overhead)
+- **@components/file-editor.tsx** - Switched to dynamic import of Monaco editor with suspense boundary (~2.5MB bundle reduction)
+- **@app/api/tasks/route.ts** - Converted sequential API calls to Promise.all() for parallel data fetching
+
 ## Important Reminders
 
 1. **Never log dynamic values** - Use static strings in all logger/console statements

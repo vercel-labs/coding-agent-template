@@ -204,11 +204,13 @@ export async function POST(request: NextRequest) {
 
     // Get user's API keys, GitHub token, and GitHub user info BEFORE entering after() block (where session is not accessible)
     // Pass user.id directly to support both session-based and API token-based authentication
-    const userApiKeys = await getUserApiKeys(user.id)
-    const userGithubToken = await getUserGitHubToken(user.id)
-    const githubUser = await getGitHubUser(user.id)
-    // Get max sandbox duration for this user (user-specific > global > env var)
-    const maxSandboxDuration = await getMaxSandboxDuration(user.id)
+    // Parallelize these independent async operations with Promise.all() for better performance
+    const [userApiKeys, userGithubToken, githubUser, maxSandboxDuration] = await Promise.all([
+      getUserApiKeys(user.id),
+      getUserGitHubToken(user.id),
+      getGitHubUser(user.id),
+      getMaxSandboxDuration(user.id),
+    ])
 
     // Get MCP servers for this user (must be done before after() block)
     // Use user.id from dual-auth (supports both session cookies and API tokens)

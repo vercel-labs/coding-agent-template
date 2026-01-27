@@ -8,7 +8,7 @@ export async function fetchUser(accessToken: string): Promise<VercelUser | undef
   })
 
   if (response.status !== 200) {
-    console.error('Failed to fetch user from v2 endpoint', response.status, await response.text())
+    console.error('Failed to fetch user from Vercel API')
 
     // Fallback to www/user endpoint
     response = await fetch('https://vercel.com/api/www/user', {
@@ -17,7 +17,7 @@ export async function fetchUser(accessToken: string): Promise<VercelUser | undef
     })
 
     if (response.status !== 200) {
-      console.error('Failed to fetch user from www endpoint', response.status, await response.text())
+      console.error('Failed to fetch user from Vercel API')
       return undefined
     }
   }

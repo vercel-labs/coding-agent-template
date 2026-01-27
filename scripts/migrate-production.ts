@@ -17,7 +17,7 @@ import { execSync } from 'child_process'
 // Only run migrations in Vercel production environment
 if (process.env.VERCEL_ENV !== 'production') {
   console.log('✓ Skipping database migrations - not in production environment')
-  console.log(`  Current environment: ${process.env.VERCEL_ENV || 'local'}`)
+  console.log('Migration environment check completed')
   process.exit(0)
 }
 
@@ -39,6 +39,6 @@ try {
   console.log('✓ Database migrations completed successfully')
   process.exit(0)
 } catch (error) {
-  console.error('✗ Migration failed:', error)
+  console.error('Migration failed')
   process.exit(1)
 }

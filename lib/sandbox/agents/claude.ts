@@ -199,8 +199,7 @@ MCPEOF`
           await logger.info('MCP config file created successfully')
           await logger.info('MCP servers configured successfully')
         } else {
-          const errorDetail = writeResult.error ? `: ${redactSensitiveInfo(writeResult.error).substring(0, 200)}` : ''
-          await logger.info('Failed to create MCP config file' + errorDetail)
+          await logger.info('Failed to create MCP config file')
         }
       }
 
@@ -239,8 +238,7 @@ MCPEOF`
           await logger.info('MCP config file created successfully')
           await logger.info('MCP servers configured successfully')
         } else {
-          const errorDetail = writeResult.error ? `: ${redactSensitiveInfo(writeResult.error).substring(0, 200)}` : ''
-          await logger.info('Failed to create MCP config file' + errorDetail)
+          await logger.info('Failed to create MCP config file')
         }
       }
 
@@ -477,7 +475,7 @@ export async function executeClaudeInSandbox(
                       statusMsg = `Grep: ${pattern}`
                     } else {
                       // For debugging, log the tool name and input to console
-                      console.log('Unknown Claude tool:', toolName, 'Input:', JSON.stringify(input))
+                      console.log('Unknown Claude tool detected')
                       // Skip logging generic tool uses to reduce noise
                       statusMsg = ''
                     }
