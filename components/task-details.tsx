@@ -738,7 +738,8 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const getModelName = (modelId: string | null, agent: string | null) => {
     if (!modelId || !agent) return modelId
 
-    const agentModels = AGENT_MODELS[agent.toLowerCase()]
+    const agentKey = agent.toLowerCase() as keyof typeof AGENT_MODELS
+    const agentModels = AGENT_MODELS[agentKey]
     if (!agentModels) return modelId
 
     const model = agentModels.find((m) => m.value === modelId)
