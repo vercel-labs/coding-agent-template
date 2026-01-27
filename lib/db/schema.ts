@@ -136,6 +136,7 @@ export const tasks = pgTable('tasks', {
   subAgentActivity: jsonb('sub_agent_activity').$type<SubAgentActivity[]>(),
   currentSubAgent: text('current_sub_agent'), // Name of currently active sub-agent
   lastHeartbeat: timestamp('last_heartbeat'), // Last activity timestamp for timeout extension
+  heartbeatExtensionCount: integer('heartbeat_extension_count').default(0), // Track timeout extensions
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),
@@ -173,6 +174,7 @@ export const insertTaskSchema = z.object({
   subAgentActivity: z.array(subAgentActivitySchema).optional(),
   currentSubAgent: z.string().optional(),
   lastHeartbeat: z.date().optional(),
+  heartbeatExtensionCount: z.number().int().min(0).default(0),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   completedAt: z.date().optional(),
@@ -209,6 +211,7 @@ export const selectTaskSchema = z.object({
   subAgentActivity: z.array(subAgentActivitySchema).nullable(),
   currentSubAgent: z.string().nullable(),
   lastHeartbeat: z.date().nullable(),
+  heartbeatExtensionCount: z.number().int().min(0),
   createdAt: z.date(),
   updatedAt: z.date(),
   completedAt: z.date().nullable(),

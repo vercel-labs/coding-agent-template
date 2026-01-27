@@ -246,6 +246,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
       subAgentActivity: null,
       currentSubAgent: null,
       lastHeartbeat: null,
+      heartbeatExtensionCount: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       completedAt: null,

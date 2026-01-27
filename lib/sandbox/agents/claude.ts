@@ -9,6 +9,8 @@ import { db } from '@/lib/db/client'
 import { eq } from 'drizzle-orm'
 import { generateId } from '@/lib/utils/id'
 
+const MAX_OUTPUT_SIZE_BYTES = 10 * 1024 * 1024 // 10MB output limit
+
 type Connector = typeof connectors.$inferSelect
 
 /**
@@ -290,6 +292,8 @@ export async function executeClaudeInSandbox(
   agentMessageId?: string,
 ): Promise<AgentExecutionResult> {
   let extractedSessionId: string | undefined
+  let totalOutputBytes = 0
+  let outputLimitReached = false
   try {
     // Executing Claude CLI with instruction
 
@@ -417,6 +421,19 @@ export async function executeClaudeInSandbox(
       write(chunk, _encoding, callback) {
         const text = chunk.toString()
         lastActivityTime = Date.now() // Update activity timestamp
+
+        // Track total output size
+        totalOutputBytes += Buffer.byteLength(text, 'utf8')
+        if (totalOutputBytes > MAX_OUTPUT_SIZE_BYTES && !outputLimitReached) {
+          outputLimitReached = true
+          console.log('[Output Limit] Exceeded', MAX_OUTPUT_SIZE_BYTES, 'bytes, stopping accumulation')
+        }
+
+        // Stop accumulating content if limit reached
+        if (outputLimitReached) {
+          callback()
+          return
+        }
 
         // Only accumulate raw output if not streaming to DB
         if (!agentMessageId || !taskId) {
@@ -556,6 +573,12 @@ export async function executeClaudeInSandbox(
       const elapsed = Date.now() - startWaitTime
       const inactiveTime = Date.now() - lastActivityTime
 
+      // Check if output limit was reached
+      if (outputLimitReached) {
+        await logger.info('Output size limit reached')
+        break
+      }
+
       // Check for cancellation every iteration
       if (taskId) {
         const stopped = await isTaskStopped(taskId)
@@ -604,6 +627,17 @@ export async function executeClaudeInSandbox(
     }
 
     await logger.info('Claude completed successfully')
+
+    // Check if output limit caused termination
+    if (outputLimitReached) {
+      return {
+        success: false,
+        error: 'Agent output exceeded size limit',
+        cliName: 'claude',
+        changesDetected: false,
+        sessionId: extractedSessionId,
+      }
+    }
 
     // Better completion detection - check if agent actually ran
     const fullStdout = agentMessageId ? accumulatedContent : capturedOutput
