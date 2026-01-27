@@ -566,8 +566,10 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
       await logger.info('GitHub token validated successfully')
     }
 
-    await logger.updateStatus('processing', 'Task created, preparing to start...')
-    await logger.updateProgress(10, 'Initializing task execution...')
+    await Promise.all([
+      logger.updateStatus('processing', 'Task created, preparing to start...'),
+      logger.updateProgress(10, 'Initializing task execution...'),
+    ])
 
     try {
       await db.insert(taskMessages).values({
@@ -603,6 +605,8 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
       return
     }
 
+    // Start port detection in parallel with branch name wait (independent operations)
+    const portPromise = detectPortFromRepo(repoUrl, githubToken)
     const aiBranchName = await waitForBranchName(taskId, 10000)
 
     if (await isTaskStopped(taskId)) {
@@ -618,7 +622,7 @@ async function processTask(input: TaskProcessingInput): Promise<void> {
 
     await logger.updateProgress(15, 'Creating sandbox environment')
 
-    const port = await detectPortFromRepo(repoUrl, githubToken)
+    const port = await portPromise
 
     const sandboxResult = await createSandbox(
       {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Task } from '@/lib/db/schema'
+import type { Task } from '@/lib/db/schema'
 import { PageHeader } from '@/components/page-header'
 import { useTasks } from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
@@ -409,6 +409,10 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
                       return
                     }
                     router.push(`/tasks/${task.id}`)
+                  }}
+                  style={{
+                    contentVisibility: 'auto',
+                    containIntrinsicSize: '0 120px',
                   }}
                 >
                   <CardContent className="px-3 py-2">

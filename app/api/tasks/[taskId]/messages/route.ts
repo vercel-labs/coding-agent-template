@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ taskId:
       success: true,
       messages,
     })
-  } catch (error) {
+  } catch {
     console.error('Error fetching task messages:')
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
   }

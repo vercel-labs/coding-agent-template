@@ -179,7 +179,19 @@ async function continueTask(
     }
 
     // Fetch task to get sandboxId and keepAlive settings
-    const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+    // Also fetch session and previous messages in parallel for efficiency
+    const [currentTask, previousMessages] = await Promise.all([
+      (async () => {
+        const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+        return task
+      })(),
+      db
+        .select()
+        .from(taskMessages)
+        .where(eq(taskMessages.taskId, taskId))
+        .orderBy(asc(taskMessages.createdAt))
+        .limit(10),
+    ])
 
     if (!currentTask) {
       throw new Error('Task not found')
@@ -283,15 +295,8 @@ async function continueTask(
 
     console.log('Starting agent execution')
 
-    // Fetch the last 5 messages for context (excluding the current message we just saved)
-    const previousMessages = await db
-      .select()
-      .from(taskMessages)
-      .where(eq(taskMessages.taskId, taskId))
-      .orderBy(asc(taskMessages.createdAt))
-      .limit(10) // Get last 10 to ensure we have at least 5 before the current one
-
     // Get the last 5 messages before the current one (which is the last message)
+    // previousMessages was already fetched in parallel above during task fetch
     const contextMessages = previousMessages.slice(-6, -1) // Last 6 excluding the very last one, giving us 5 messages
 
     // Build conversation history context - put the new request FIRST, then context
@@ -459,10 +464,8 @@ async function continueTask(
       const pushResult = await pushChangesToBranch(sandbox, branchName, commitMessage, logger)
 
       // Conditionally shutdown sandbox based on task's keepAlive setting
-      // Get the task to check keepAlive setting
-      const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
-
-      if (currentTask?.keepAlive) {
+      // currentTask was already fetched at the beginning, use that value
+      if (currentTask.keepAlive) {
         // Keep sandbox alive for future follow-up messages
         await logger.info('Sandbox kept alive for follow-up messages')
       } else {
@@ -497,9 +500,14 @@ async function continueTask(
     try {
       if (sandbox) {
         // Check keepAlive setting before shutting down sandbox on error
-        const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1)
+        // Fetch task to get current keepAlive setting
+        const [currentTaskData] = await db
+          .select({ keepAlive: tasks.keepAlive })
+          .from(tasks)
+          .where(eq(tasks.id, taskId))
+          .limit(1)
 
-        if (currentTask?.keepAlive) {
+        if (currentTaskData?.keepAlive) {
           // Keep sandbox alive even on error for potential retry
           await logger.info('Sandbox kept alive despite error')
         } else {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Task } from '@/lib/db/schema'
+import type { Task } from '@/lib/db/schema'
 import { PageHeader } from '@/components/page-header'
 import { TaskActions } from '@/components/task-actions'
 import { useTasks } from '@/components/app-layout'

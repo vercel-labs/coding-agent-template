@@ -73,17 +73,15 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
 
     await logger.info('Starting sandbox')
 
-    // Get GitHub user info for git author configuration
-    const githubUser = await getGitHubUser()
-
-    // Get max sandbox duration - use task's maxDuration if available, otherwise fall back to global setting
-    const maxSandboxDuration = await getMaxSandboxDuration(session.user.id)
+    // Fetch independent user data in parallel for better performance
+    const [githubUser, maxSandboxDuration, githubToken] = await Promise.all([
+      getGitHubUser(),
+      getMaxSandboxDuration(session.user.id),
+      getUserGitHubToken(),
+    ])
     const maxDurationMinutes = task.maxDuration || maxSandboxDuration
 
-    // Get GitHub token for authenticated API access
-    const githubToken = await getUserGitHubToken()
-
-    // Detect the appropriate port for the project
+    // Detect the appropriate port for the project (depends on githubToken)
     const port = task.repoUrl ? await detectPortFromRepo(task.repoUrl, githubToken) : 3000
     console.log('Port detection completed for project')
 
@@ -117,12 +115,16 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     await logger.info('Configuring Git')
     const gitName = githubUser?.name || githubUser?.username || 'Coding Agent'
     const gitEmail = githubUser?.username ? `${githubUser.username}@users.noreply.github.com` : 'agent@example.com'
-    await runInProject(sandbox, 'git', ['config', 'user.name', gitName])
-    await runInProject(sandbox, 'git', ['config', 'user.email', gitEmail])
+    await Promise.all([
+      runInProject(sandbox, 'git', ['config', 'user.name', gitName]),
+      runInProject(sandbox, 'git', ['config', 'user.email', gitEmail]),
+    ])
 
-    // Check for package.json and requirements.txt
-    const packageJsonCheck = await runInProject(sandbox, 'test', ['-f', 'package.json'])
-    const requirementsTxtCheck = await runInProject(sandbox, 'test', ['-f', 'requirements.txt'])
+    // Check for package.json and requirements.txt in parallel
+    const [packageJsonCheck, requirementsTxtCheck] = await Promise.all([
+      runInProject(sandbox, 'test', ['-f', 'package.json']),
+      runInProject(sandbox, 'test', ['-f', 'requirements.txt']),
+    ])
 
     // Install dependencies if package.json exists
     if (packageJsonCheck.success) {

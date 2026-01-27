@@ -10,6 +10,7 @@ import { RefreshCw } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { PageHeader } from '@/components/page-header'
 import { useTasks } from '@/components/app-layout'
 import { User } from '@/components/auth/user'
@@ -149,12 +150,14 @@ export default function NewRepoPage() {
         toast.success('Repository created successfully')
 
         // Store the newly created repo info for selection after redirect
+        const STORAGE_VERSION = 'v1'
         const [owner, repo] = data.full_name.split('/')
-        localStorage.setItem('newly-created-repo', JSON.stringify({ owner, repo }))
+        localStorage.setItem(`app:${STORAGE_VERSION}:newly-created-repo`, JSON.stringify({ owner, repo }))
 
         // Clear repos cache for current owner to force refresh
         if (selectedOwner) {
-          localStorage.removeItem(`github-repos-${selectedOwner}`)
+          const reposCachePrefix = `app:${STORAGE_VERSION}:github-repos-`
+          localStorage.removeItem(`${reposCachePrefix}${selectedOwner}`)
         }
 
         // Redirect to home page
@@ -235,7 +238,14 @@ export default function NewRepoPage() {
                     {session.user && (
                       <SelectItem value={session.user.username}>
                         <div className="flex items-center gap-2">
-                          <img src={session.user.avatar} alt={session.user.username} className="w-5 h-5 rounded-full" />
+                          <Image
+                            src={session.user.avatar}
+                            alt={session.user.username}
+                            width={20}
+                            height={20}
+                            className="w-5 h-5 rounded-full"
+                            unoptimized
+                          />
                           <span>{session.user.username}</span>
                         </div>
                       </SelectItem>
@@ -243,7 +253,14 @@ export default function NewRepoPage() {
                     {organizations.map((org) => (
                       <SelectItem key={org.login} value={org.login}>
                         <div className="flex items-center gap-2">
-                          <img src={org.avatar_url} alt={org.login} className="w-5 h-5 rounded-full" />
+                          <Image
+                            src={org.avatar_url}
+                            alt={org.login}
+                            width={20}
+                            height={20}
+                            className="w-5 h-5 rounded-full"
+                            unoptimized
+                          />
                           <span>{org.login}</span>
                         </div>
                       </SelectItem>
@@ -308,14 +325,18 @@ export default function NewRepoPage() {
                           <File className="w-7 h-7" strokeWidth={1} />
                         ) : (
                           <>
-                            <img
+                            <Image
                               src={template.imageLight}
                               alt={template.name}
+                              width={96}
+                              height={96}
                               className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain dark:hidden"
                             />
-                            <img
+                            <Image
                               src={template.imageDark}
                               alt={template.name}
+                              width={96}
+                              height={96}
                               className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain hidden dark:block"
                             />
                           </>
@@ -353,14 +374,18 @@ export default function NewRepoPage() {
                           <File className="w-12 h-12" strokeWidth={1} />
                         ) : (
                           <>
-                            <img
+                            <Image
                               src={template.imageLight}
                               alt={template.name}
+                              width={160}
+                              height={90}
                               className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain dark:hidden"
                             />
-                            <img
+                            <Image
                               src={template.imageDark}
                               alt={template.name}
+                              width={160}
+                              height={90}
                               className="max-w-[75%] max-h-[75%] w-auto h-auto object-contain hidden dark:block"
                             />
                           </>

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, createContext, useContext, useCallback } from 'react'
+import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react'
 import { TaskSidebar } from '@/components/task-sidebar'
-import { Task } from '@/lib/db/schema'
+import type { Task } from '@/lib/db/schema'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Trash2 } from 'lucide-react'
@@ -10,6 +10,8 @@ import Link from 'next/link'
 import { getSidebarWidth, setSidebarWidth, getSidebarOpen, setSidebarOpen } from '@/lib/utils/cookies'
 import { nanoid } from 'nanoid'
 import { ConnectorsProvider } from '@/components/connectors-provider'
+import { useWindowResize } from '@/lib/hooks/use-window-resize'
+import { useLatest } from '@/lib/hooks/use-latest'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -162,33 +164,30 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
     updateSidebarOpen(!isSidebarOpen)
   }, [isSidebarOpen, updateSidebarOpen])
 
+  const toggleSidebarRef = useLatest(toggleSidebar)
+
   // Handle window resize - close sidebar on mobile and update isDesktop
-  useEffect(() => {
-    const handleResize = () => {
-      const newIsDesktop = window.innerWidth >= 1024
-      setIsDesktop(newIsDesktop)
+  useWindowResize(1024, () => {
+    const newIsDesktop = window.innerWidth >= 1024
+    setIsDesktop(newIsDesktop)
 
-      // On mobile, always close sidebar
-      if (!newIsDesktop && isSidebarOpen) {
-        setIsSidebarOpen(false)
-      }
+    // On mobile, always close sidebar
+    if (!newIsDesktop && isSidebarOpen) {
+      setIsSidebarOpen(false)
     }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [isSidebarOpen])
+  })
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault()
-        toggleSidebar()
+        toggleSidebarRef.current()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [toggleSidebar])
+  }, [toggleSidebarRef])
 
   const fetchTasks = async () => {
     try {

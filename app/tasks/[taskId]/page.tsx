@@ -12,12 +12,13 @@ interface TaskPageProps {
 
 export default async function TaskPage({ params }: TaskPageProps) {
   const { taskId } = await params
+
+  // Start independent fetches in parallel
+  const starsPromise = getGitHubStars()
   const session = await getServerSession()
 
-  // Get max sandbox duration for this user (user-specific > global > env var)
-  const maxSandboxDuration = await getMaxSandboxDuration(session?.user?.id)
-
-  const stars = await getGitHubStars()
+  // getMaxSandboxDuration depends on session, but stars is independent
+  const [maxSandboxDuration, stars] = await Promise.all([getMaxSandboxDuration(session?.user?.id), starsPromise])
 
   return (
     <TaskPageClient

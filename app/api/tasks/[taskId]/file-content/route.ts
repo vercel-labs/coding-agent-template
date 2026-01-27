@@ -158,12 +158,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Decode the filename (handles %40 -> @, etc.)
     const filename = decodeURIComponent(rawFilename)
 
-    // Get task from database and verify ownership (exclude soft-deleted)
-    const [task] = await db
-      .select()
-      .from(tasks)
-      .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
-      .limit(1)
+    // Get task from database and fetch Octokit client in parallel for efficiency
+    const [task, octokit] = await Promise.all([
+      (async () => {
+        const [task] = await db
+          .select()
+          .from(tasks)
+          .where(and(eq(tasks.id, taskId), eq(tasks.userId, session.user.id), isNull(tasks.deletedAt)))
+          .limit(1)
+        return task
+      })(),
+      getOctokit(),
+    ])
 
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
@@ -173,8 +179,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Task does not have branch or repository information' }, { status: 400 })
     }
 
-    // Get user's authenticated GitHub client
-    const octokit = await getOctokit()
+    // Verify GitHub authentication
     if (!octokit.auth) {
       return NextResponse.json(
         {

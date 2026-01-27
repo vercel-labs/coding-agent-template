@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import Image from 'next/image'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -376,7 +377,14 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
 
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <img src={pr.user.avatar_url} alt={pr.user.login} className="h-4 w-4 rounded-full" />
+                      <Image
+                        src={pr.user.avatar_url}
+                        alt={pr.user.login}
+                        width={16}
+                        height={16}
+                        className="h-4 w-4 rounded-full"
+                        unoptimized
+                      />
                       {pr.user.login}
                     </span>
                     {pr.comments > 0 && (

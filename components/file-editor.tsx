@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 import { type OnMount } from '@monaco-editor/react'
 import { useTheme } from 'next-themes'
+import { useWindowResize } from '@/lib/hooks/use-window-resize'
 
 // Dynamically import Monaco Editor to avoid loading it until needed
 // ssr: false prevents server-side rendering of the editor
@@ -114,20 +115,19 @@ export function FileEditor({
   }, [])
 
   // Set responsive font size based on screen width
-  useEffect(() => {
-    const updateFontSize = () => {
-      // Use 16px on mobile (< 768px) to prevent zoom, 13px on desktop
-      const nextSize = window.innerWidth < 768 ? 16 : 13
-      setFontSize((prev) => (prev === nextSize ? prev : nextSize))
-    }
-
-    // Set initial font size
-    updateFontSize()
-
-    // Update on resize
-    window.addEventListener('resize', updateFontSize)
-    return () => window.removeEventListener('resize', updateFontSize)
+  const updateFontSize = useCallback(() => {
+    // Use 16px on mobile (< 768px) to prevent zoom, 13px on desktop
+    const nextSize = window.innerWidth < 768 ? 16 : 13
+    setFontSize((prev) => (prev === nextSize ? prev : nextSize))
   }, [])
+
+  // Use centralized resize hook (breakpoint: 768px for mobile/desktop)
+  useWindowResize(768, updateFontSize)
+
+  // Set initial font size
+  useEffect(() => {
+    updateFontSize()
+  }, [updateFontSize])
 
   // Keep refs updated
   useEffect(() => {
@@ -696,7 +696,7 @@ export function FileEditor({
   }, [])
 
   const editorLanguage = useMemo(() => (language ? language : getLanguageFromPath(filename)), [language, filename])
-  const editorTheme = useMemo(() => (currentTheme === 'dark' ? 'vercel-dark' : 'vercel-light'), [currentTheme])
+  const editorTheme = currentTheme === 'dark' ? 'vercel-dark' : 'vercel-light'
   const editorOptions = useMemo(
     () => ({
       readOnly: isReadOnly,

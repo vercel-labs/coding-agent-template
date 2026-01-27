@@ -213,9 +213,11 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
       await logger.info('Skipping dependency installation as requested by user')
     }
 
-    // Check for project type and install dependencies accordingly
-    const packageJsonCheck = await runInProject(sandbox, 'test', ['-f', 'package.json'])
-    const requirementsTxtCheck = await runInProject(sandbox, 'test', ['-f', 'requirements.txt'])
+    // Check for project type and install dependencies accordingly (parallel file checks)
+    const [packageJsonCheck, requirementsTxtCheck] = await Promise.all([
+      runInProject(sandbox, 'test', ['-f', 'package.json']),
+      runInProject(sandbox, 'test', ['-f', 'requirements.txt']),
+    ])
 
     if (config.installDependencies !== false) {
       if (packageJsonCheck.success) {
@@ -515,9 +517,11 @@ fi
       await logger.info('Python project detected, sandbox ready for development')
       await logger.info('Sandbox available')
 
-      // Check if there's a common Python web framework entry point
-      const flaskAppCheck = await runInProject(sandbox, 'test', ['-f', 'app.py'])
-      const djangoManageCheck = await runInProject(sandbox, 'test', ['-f', 'manage.py'])
+      // Check if there's a common Python web framework entry point (parallel checks)
+      const [flaskAppCheck, djangoManageCheck] = await Promise.all([
+        runInProject(sandbox, 'test', ['-f', 'app.py']),
+        runInProject(sandbox, 'test', ['-f', 'manage.py']),
+      ])
 
       if (flaskAppCheck.success) {
         await logger.info('Flask app.py detected, you can run: python3 app.py')
@@ -535,11 +539,13 @@ fi
       return { success: false, cancelled: true }
     }
 
-    // Configure Git user
+    // Configure Git user (parallel git config commands)
     const gitName = config.gitAuthorName || 'Coding Agent'
     const gitEmail = config.gitAuthorEmail || 'agent@example.com'
-    await runInProject(sandbox, 'git', ['config', 'user.name', gitName])
-    await runInProject(sandbox, 'git', ['config', 'user.email', gitEmail])
+    await Promise.all([
+      runInProject(sandbox, 'git', ['config', 'user.name', gitName]),
+      runInProject(sandbox, 'git', ['config', 'user.email', gitEmail]),
+    ])
 
     // Configure git credential helper for authenticated pushes (only if GitHub token exists)
     if (config.githubToken) {
