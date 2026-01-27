@@ -2,6 +2,7 @@
 
 import type { TaskMessage, Task } from '@/lib/db/schema'
 import { useState, useEffect, useRef, useCallback, Children, isValidElement, startTransition } from 'react'
+import Image from 'next/image'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -756,10 +757,13 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               {prComments.map((comment) => (
                 <div key={comment.id} className="px-2">
                   <div className="flex items-start gap-2 mb-2">
-                    <img
+                    <Image
                       src={comment.user.avatar_url}
                       alt={comment.user.login}
+                      width={24}
+                      height={24}
                       className="w-6 h-6 rounded-full flex-shrink-0"
+                      unoptimized
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">

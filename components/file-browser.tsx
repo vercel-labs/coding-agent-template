@@ -149,13 +149,20 @@ export function FileBrowser({
   }
 
   type ViewModeKey = 'local' | 'remote' | 'all' | 'all-local'
-  const currentViewData = (state[viewMode as ViewModeKey] as ViewModeData | undefined) || {
-    files: [],
-    fileTree: {},
-    expandedFolders: new Set<string>(),
-    fetchAttempted: false,
-    error: null,
-  }
+  const emptyViewData = useMemo<ViewModeData>(
+    () => ({
+      files: [],
+      fileTree: {},
+      expandedFolders: new Set<string>(),
+      fetchAttempted: false,
+      error: null,
+    }),
+    [],
+  )
+  const currentViewData = useMemo(
+    () => (state[viewMode as ViewModeKey] as ViewModeData | undefined) ?? emptyViewData,
+    [emptyViewData, state, viewMode],
+  )
   const { files, fileTree, expandedFolders, fetchAttempted, error } = currentViewData
   const { loading } = state
 

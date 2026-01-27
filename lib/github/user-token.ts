@@ -7,7 +7,6 @@ import { getServerSession } from '@/lib/session/get-server-session'
 import { getSessionFromReq } from '@/lib/session/server'
 import { decrypt } from '@/lib/crypto'
 import type { NextRequest } from 'next/server'
-import { cache } from 'react'
 
 /**
  * Get the GitHub access token for a user by their userId.
@@ -18,11 +17,9 @@ import { cache } from 'react'
  * 2. Primary GitHub account (users table if they signed in with GitHub) - OAuth
  * 3. GitHub Personal Access Token (keys table with provider='github') - PAT
  *
- * Wrapped with React.cache() to deduplicate fetches within a single request.
- *
  * @param userId - The user's internal ID
  */
-export const getGitHubTokenByUserId = cache(async (userId: string): Promise<string | null> => {
+export async function getGitHubTokenByUserId(userId: string): Promise<string | null> {
   try {
     // First check if user has GitHub as a connected account (OAuth - highest priority)
     const account = await db
@@ -63,7 +60,7 @@ export const getGitHubTokenByUserId = cache(async (userId: string): Promise<stri
     console.error('Error fetching GitHub token by userId')
     return null
   }
-})
+}
 
 /**
  * Get the GitHub access token for the currently authenticated user.
@@ -74,11 +71,9 @@ export const getGitHubTokenByUserId = cache(async (userId: string): Promise<stri
  * 2. NextRequest - For API routes with session cookies
  * 3. No parameters - Uses getServerSession() for server components
  *
- * Wrapped with React.cache() to deduplicate fetches within a single request.
- *
  * @param reqOrUserId - Optional NextRequest for API routes, or userId string for API token auth
  */
-export const getUserGitHubToken = cache(async (reqOrUserId?: NextRequest | string): Promise<string | null> => {
+export async function getUserGitHubToken(reqOrUserId?: NextRequest | string): Promise<string | null> {
   let userId: string | undefined
 
   try {
@@ -105,4 +100,4 @@ export const getUserGitHubToken = cache(async (reqOrUserId?: NextRequest | strin
   }
 
   return getGitHubTokenByUserId(userId)
-})
+}

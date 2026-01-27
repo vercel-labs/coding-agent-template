@@ -351,7 +351,7 @@ export function TaskForm({
     }
 
     fetchRepos()
-  }, [selectedOwner, setRepos])
+  }, [selectedOwner, repos, setRepos])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
