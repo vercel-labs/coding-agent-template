@@ -437,7 +437,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
                             {task.prStatus && (
                               <div className="relative">
                                 <PRStatusIcon status={task.prStatus} />
-                                <PRCheckStatus taskId={task.id} prStatus={task.prStatus} />
+                                <PRCheckStatus taskId={task.id} branchName={task.branchName} prStatus={task.prStatus} />
                               </div>
                             )}
                             <span className="truncate">

@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { db } from './client'
 import { settings } from './schema'
 import { eq, and } from 'drizzle-orm'
@@ -63,10 +64,13 @@ export async function getMaxMessagesPerDay(userId?: string): Promise<number> {
  * Get the max sandbox duration (in minutes) for a user.
  * Checks user-specific setting, then falls back to environment variable.
  *
+ * Wrapped in React.cache() for per-request deduplication in Server Components.
+ * Multiple pages call this with the same userId during a single render tree.
+ *
  * @param userId - Optional user ID for user-specific duration
  * @returns The max sandbox duration in minutes
  */
-export async function getMaxSandboxDuration(userId?: string): Promise<number> {
+export const getMaxSandboxDuration = cache(async function getMaxSandboxDuration(userId?: string): Promise<number> {
   const result = await getNumericSetting('maxSandboxDuration', userId, MAX_SANDBOX_DURATION)
   return result ?? MAX_SANDBOX_DURATION
-}
+})

@@ -40,6 +40,19 @@ export async function GET(request: NextRequest) {
       language?: string
     }
 
+    // Determine API URL pattern once before pagination loop
+    let isOrganization = false
+    if (!isAuthenticatedUser) {
+      // Check if it's an organization (only once, not on every page)
+      const orgResponse = await fetch(`https://api.github.com/orgs/${owner}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      })
+      isOrganization = orgResponse.ok
+    }
+
     // Fetch all repositories by paginating through all pages
     const allRepos: GitHubRepo[] = []
     let page = 1
@@ -51,22 +64,12 @@ export async function GET(request: NextRequest) {
       if (isAuthenticatedUser) {
         // Use /user/repos for authenticated user to get all accessible repos (owned, collaborator, org member)
         apiUrl = `https://api.github.com/user/repos?sort=name&direction=asc&per_page=${perPage}&page=${page}&visibility=all&affiliation=owner,collaborator,organization_member`
+      } else if (isOrganization) {
+        // Use /orgs/{org}/repos for organizations to get private repos
+        apiUrl = `https://api.github.com/orgs/${owner}/repos?sort=name&direction=asc&per_page=${perPage}&page=${page}`
       } else {
-        // Check if it's an organization
-        const orgResponse = await fetch(`https://api.github.com/orgs/${owner}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github.v3+json',
-          },
-        })
-
-        if (orgResponse.ok) {
-          // Use /orgs/{org}/repos for organizations to get private repos
-          apiUrl = `https://api.github.com/orgs/${owner}/repos?sort=name&direction=asc&per_page=${perPage}&page=${page}`
-        } else {
-          // Fallback to /users/{owner}/repos (public only)
-          apiUrl = `https://api.github.com/users/${owner}/repos?sort=name&direction=asc&per_page=${perPage}&page=${page}`
-        }
+        // Fallback to /users/{owner}/repos (public only)
+        apiUrl = `https://api.github.com/users/${owner}/repos?sort=name&direction=asc&per_page=${perPage}&page=${page}`
       }
 
       const response = await fetch(apiUrl, {

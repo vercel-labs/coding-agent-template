@@ -1,85 +1,49 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import useSWR from 'swr'
 import { Task } from '@/lib/db/schema'
+import { fetcher } from '@/lib/hooks/use-swr-fetcher'
 
 export function useTask(taskId: string) {
-  const [task, setTask] = useState<Task | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const attemptCountRef = useRef(0)
-  const hasFoundTaskRef = useRef(false)
+  // Conditional fetching: only fetch if taskId is provided
+  const shouldFetch = !!taskId
 
-  const fetchTask = useCallback(async () => {
-    let errorOccurred = false
-    try {
-      const response = await fetch(`/api/tasks/${taskId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setTask(data.task)
-        setError(null)
-        hasFoundTaskRef.current = true
-      } else if (response.status === 404) {
-        // Only set error after multiple failed attempts (to handle race condition on task creation)
-        // Wait for at least 3 attempts (up to ~6 seconds) before showing "Task not found"
-        attemptCountRef.current += 1
-        if (attemptCountRef.current >= 3 || hasFoundTaskRef.current) {
-          setError('Task not found')
-          setTask(null)
-          errorOccurred = true
+  const { data, error, mutate, isLoading } = useSWR<{ task: Task }>(
+    shouldFetch ? `/api/tasks/${taskId}` : null,
+    fetcher,
+    {
+      // Smart polling: stop when task reaches terminal status
+      refreshInterval: (latestData) => {
+        if (!latestData) {
+          // Still loading, poll every 5 seconds
+          return 5000
         }
-        // If we haven't hit the attempt threshold yet, keep loading state
-      } else {
-        setError('Failed to fetch task')
-        errorOccurred = true
-      }
-    } catch (err) {
-      console.error('Error fetching task:')
-      setError('Failed to fetch task')
-      errorOccurred = true
-    } finally {
-      // Only stop loading after we've either found the task or exceeded attempt threshold
-      if (hasFoundTaskRef.current || attemptCountRef.current >= 3 || errorOccurred) {
-        setIsLoading(false)
-      }
-    }
-  }, [taskId])
 
-  // Initial fetch with retry logic
-  useEffect(() => {
-    attemptCountRef.current = 0
-    hasFoundTaskRef.current = false
-    setIsLoading(true)
-    setError(null)
+        // Check if task status is terminal
+        const taskStatus = latestData.task?.status
+        if (taskStatus === 'completed' || taskStatus === 'error' || taskStatus === 'stopped') {
+          // Stop polling for terminal states
+          return 0
+        }
 
-    // Fetch immediately
-    fetchTask()
+        // Active task, poll every 5 seconds
+        return 5000
+      },
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 2000,
+      errorRetryCount: 3,
+      errorRetryInterval: 2000,
+    },
+  )
 
-    // If task isn't found on first try, retry more aggressively initially
-    // This handles the race condition where we navigate to the task page before the DB insert completes
-    const retryInterval = setInterval(() => {
-      if (!hasFoundTaskRef.current && attemptCountRef.current < 3) {
-        fetchTask()
-      } else {
-        clearInterval(retryInterval)
-      }
-    }, 2000) // Check every 2 seconds for the first few attempts
+  const task = data?.task ?? null
+  const errorMessage = error ? 'Failed to fetch task' : null
 
-    return () => clearInterval(retryInterval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId]) // fetchTask is intentionally not in deps to avoid recreating interval on every fetchTask change
-
-  // Poll for updates every 5 seconds after initial load
-  useEffect(() => {
-    // Only start polling after we've found the task or given up
-    if (!isLoading) {
-      const interval = setInterval(() => {
-        fetchTask()
-      }, 5000)
-
-      return () => clearInterval(interval)
-    }
-  }, [fetchTask, isLoading])
-
-  return { task, isLoading, error, refetch: fetchTask }
+  return {
+    task,
+    isLoading,
+    error: errorMessage,
+    refetch: mutate,
+  }
 }

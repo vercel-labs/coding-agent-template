@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useTransition } from 'react'
 import {
   File,
   Folder,
@@ -98,9 +98,9 @@ export function FileBrowser({
   // Use Jotai atom for state management
   const taskStateAtom = useMemo(() => getTaskFileBrowserState(taskId), [taskId])
   const [state, setState] = useAtom(taskStateAtom)
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [isResetting, setIsResetting] = useState(false)
-  const [isStartingSandbox, setIsStartingSandbox] = useState(false)
+  const [isSyncing, startSyncTransition] = useTransition()
+  const [isResetting, startResetTransition] = useTransition()
+  const [isStartingSandbox, startSandboxTransition] = useTransition()
 
   // Clipboard state for cut/copy/paste
   const [clipboardFile, setClipboardFile] = useState<{ filename: string; operation: 'cut' | 'copy' } | null>(null)
@@ -124,14 +124,14 @@ export function FileBrowser({
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false)
   const [newFileName, setNewFileName] = useState('')
   const [newFolderName, setNewFolderName] = useState('')
-  const [isCreatingFile, setIsCreatingFile] = useState(false)
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [isCreatingFile, startCreateFileTransition] = useTransition()
+  const [isCreatingFolder, startCreateFolderTransition] = useTransition()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [fileToDelete, setFileToDelete] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, startDeleteTransition] = useTransition()
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
   const [fileToDiscard, setFileToDiscard] = useState<string | null>(null)
-  const [isDiscarding, setIsDiscarding] = useState(false)
+  const [isDiscarding, startDiscardTransition] = useTransition()
 
   // Detect OS for keyboard shortcuts
   const isMac = useMemo(() => {
@@ -165,6 +165,10 @@ export function FileBrowser({
   )
   const { files, fileTree, expandedFolders, fetchAttempted, error } = currentViewData
   const { loading } = state
+
+  // Memoize expandedFolders as a primitive string for stable dependency array
+  // Convert Set to sorted array then join to create a stable key
+  const expandedFoldersKey = useMemo(() => Array.from(expandedFolders).sort().join(','), [expandedFolders])
 
   // Helper function to recursively collect all folder paths
   const getAllFolderPaths = useCallback(function collectPaths(
@@ -308,167 +312,164 @@ export function FileBrowser({
     getAllFolderPaths,
     files.length,
     fetchAttempted,
-    expandedFolders,
+    expandedFoldersKey,
     selectedFile,
     onFileSelect,
     getFirstFile,
   ])
 
   const handleSyncChanges = useCallback(async () => {
-    if (isSyncing || !branchName) return
+    if (!branchName) return
 
-    setIsSyncing(true)
-    setShowSyncDialog(false)
+    startSyncTransition(async () => {
+      setShowSyncDialog(false)
 
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/sync-changes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          commitMessage: syncCommitMessage || 'Sync local changes',
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to sync changes')
-      }
-
-      toast.success('Changes synced successfully')
-      setSyncCommitMessage('')
-
-      // Refresh the file list in the background without showing loader
       try {
-        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
-        const fetchResponse = await fetch(url)
-        const fetchResult = await fetchResponse.json()
-
-        if (fetchResult.success) {
-          const fetchedFiles = fetchResult.files || []
-          const fetchedFileTree = fetchResult.fileTree || {}
-
-          // Update the specific viewMode data without changing loading state
-          setState({
-            [viewMode]: {
-              files: fetchedFiles,
-              fileTree: fetchedFileTree,
-              expandedFolders: currentViewData.expandedFolders, // Preserve expanded state
-              fetchAttempted: true,
-            },
-          })
-        }
-      } catch (err) {
-        console.error('Error refreshing file list:', err)
-        // Silently fail - the sync operation succeeded
-      }
-    } catch (err) {
-      console.error('Error syncing changes:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to sync changes')
-    } finally {
-      setIsSyncing(false)
-    }
-  }, [isSyncing, branchName, taskId, syncCommitMessage, viewMode, currentViewData, setState])
-
-  const handleResetChanges = useCallback(async () => {
-    if (isResetting || !branchName) return
-
-    setIsResetting(true)
-    setShowCommitMessageDialog(false)
-
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/reset-changes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          commitMessage: commitMessage || 'Reset changes',
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to reset changes')
-      }
-
-      toast.success('Changes reset successfully')
-      setCommitMessage('')
-
-      // Refresh the file list in the background without showing loader
-      try {
-        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
-        const fetchResponse = await fetch(url)
-        const fetchResult = await fetchResponse.json()
-
-        if (fetchResult.success) {
-          const fetchedFiles = fetchResult.files || []
-          const fetchedFileTree = fetchResult.fileTree || {}
-
-          // Update the specific viewMode data without changing loading state
-          setState({
-            [viewMode]: {
-              files: fetchedFiles,
-              fileTree: fetchedFileTree,
-              expandedFolders: currentViewData.expandedFolders, // Preserve expanded state
-              fetchAttempted: true,
-            },
-          })
-        }
-      } catch (err) {
-        console.error('Error refreshing file list:', err)
-        // Silently fail - the reset operation succeeded
-      }
-    } catch (err) {
-      console.error('Error resetting changes:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to reset changes')
-    } finally {
-      setIsResetting(false)
-    }
-  }, [isResetting, branchName, taskId, commitMessage, viewMode, currentViewData, setState])
-
-  const handleStartSandbox = useCallback(async () => {
-    setIsStartingSandbox(true)
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/start-sandbox`, {
-        method: 'POST',
-      })
-
-      if (response.ok) {
-        toast.success('Sandbox started! Loading files...')
-
-        // Clear the error state immediately
-        setState({
-          [viewMode]: {
-            files: [],
-            fileTree: {},
-            expandedFolders: new Set<string>(),
-            fetchAttempted: false,
-            error: null,
+        const response = await fetch(`/api/tasks/${taskId}/sync-changes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          loading: true,
+          body: JSON.stringify({
+            commitMessage: syncCommitMessage || 'Sync local changes',
+          }),
         })
 
-        // Wait for sandbox to be ready and useTask to poll the updated task data
-        // useTask polls every 5 seconds, so wait ~6 seconds to ensure we have latest data
-        await new Promise((resolve) => setTimeout(resolve, 6000))
+        const result = await response.json()
 
-        // Now fetch the files with the updated task data
-        await fetchBranchFiles()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to start sandbox')
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to sync changes')
+        }
+
+        toast.success('Changes synced successfully')
+        setSyncCommitMessage('')
+
+        // Refresh the file list in the background without showing loader
+        try {
+          const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+          const fetchResponse = await fetch(url)
+          const fetchResult = await fetchResponse.json()
+
+          if (fetchResult.success) {
+            const fetchedFiles = fetchResult.files || []
+            const fetchedFileTree = fetchResult.fileTree || {}
+
+            // Update the specific viewMode data without changing loading state
+            setState({
+              [viewMode]: {
+                files: fetchedFiles,
+                fileTree: fetchedFileTree,
+                expandedFolders: currentViewData.expandedFolders, // Preserve expanded state
+                fetchAttempted: true,
+              },
+            })
+          }
+        } catch (err) {
+          console.error('Error refreshing file list:', err)
+          // Silently fail - the sync operation succeeded
+        }
+      } catch (err) {
+        console.error('Error syncing changes:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to sync changes')
       }
-    } catch (error) {
-      console.error('Error starting sandbox:', error)
-      toast.error('Failed to start sandbox')
-    } finally {
-      setIsStartingSandbox(false)
-    }
-  }, [taskId, viewMode, setState, fetchBranchFiles])
+    })
+  }, [branchName, taskId, syncCommitMessage, viewMode, currentViewData, setState, startSyncTransition])
+
+  const handleResetChanges = useCallback(async () => {
+    if (!branchName) return
+
+    startResetTransition(async () => {
+      setShowCommitMessageDialog(false)
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/reset-changes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            commitMessage: commitMessage || 'Reset changes',
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to reset changes')
+        }
+
+        toast.success('Changes reset successfully')
+        setCommitMessage('')
+
+        // Refresh the file list in the background without showing loader
+        try {
+          const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+          const fetchResponse = await fetch(url)
+          const fetchResult = await fetchResponse.json()
+
+          if (fetchResult.success) {
+            const fetchedFiles = fetchResult.files || []
+            const fetchedFileTree = fetchResult.fileTree || {}
+
+            // Update the specific viewMode data without changing loading state
+            setState({
+              [viewMode]: {
+                files: fetchedFiles,
+                fileTree: fetchedFileTree,
+                expandedFolders: currentViewData.expandedFolders, // Preserve expanded state
+                fetchAttempted: true,
+              },
+            })
+          }
+        } catch (err) {
+          console.error('Error refreshing file list:', err)
+          // Silently fail - the reset operation succeeded
+        }
+      } catch (err) {
+        console.error('Error resetting changes:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to reset changes')
+      }
+    })
+  }, [branchName, taskId, commitMessage, viewMode, currentViewData, setState, startResetTransition])
+
+  const handleStartSandbox = useCallback(async () => {
+    startSandboxTransition(async () => {
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/start-sandbox`, {
+          method: 'POST',
+        })
+
+        if (response.ok) {
+          toast.success('Sandbox started! Loading files...')
+
+          // Clear the error state immediately
+          setState({
+            [viewMode]: {
+              files: [],
+              fileTree: {},
+              expandedFolders: new Set<string>(),
+              fetchAttempted: false,
+              error: null,
+            },
+            loading: true,
+          })
+
+          // Wait for sandbox to be ready and useTask to poll the updated task data
+          // useTask polls every 5 seconds, so wait ~6 seconds to ensure we have latest data
+          await new Promise((resolve) => setTimeout(resolve, 6000))
+
+          // Now fetch the files with the updated task data
+          await fetchBranchFiles()
+        } else {
+          const error = await response.json()
+          toast.error(error.error || 'Failed to start sandbox')
+        }
+      } catch (error) {
+        console.error('Error starting sandbox:', error)
+        toast.error('Failed to start sandbox')
+      }
+    })
+  }, [taskId, viewMode, setState, fetchBranchFiles, startSandboxTransition])
 
   const handleCreateFile = useCallback(async () => {
     if (!newFileName.trim()) {
@@ -476,168 +477,18 @@ export function FileBrowser({
       return
     }
 
-    setIsCreatingFile(true)
-    try {
-      // If a folder is selected, prepend its path to the filename
-      const isSelectedItemFolder =
-        selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
-      const filename =
-        isSelectedItemFolder && !newFileName.includes('/')
-          ? `${selectedFile}/${newFileName.trim()}`
-          : newFileName.trim()
-
-      const response = await fetch(`/api/tasks/${taskId}/create-file`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create file')
-      }
-
-      toast.success('File created successfully')
-      setShowNewFileDialog(false)
-      setNewFileName('')
-
-      // Refresh the file list
+    startCreateFileTransition(async () => {
       try {
-        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
-        const fetchResponse = await fetch(url)
-        const fetchResult = await fetchResponse.json()
+        // If a folder is selected, prepend its path to the filename
+        const isSelectedItemFolder =
+          selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
+        const filename =
+          isSelectedItemFolder && !newFileName.includes('/')
+            ? `${selectedFile}/${newFileName.trim()}`
+            : newFileName.trim()
 
-        if (fetchResult.success) {
-          const fetchedFiles = fetchResult.files || []
-          const fetchedFileTree = fetchResult.fileTree || {}
-
-          // Expand the parent folder if the file is nested
-          const newExpandedFolders = new Set(currentViewData.expandedFolders)
-          const parentPath = filename.split('/').slice(0, -1).join('/')
-          if (parentPath) {
-            newExpandedFolders.add(parentPath)
-          }
-
-          setState({
-            [viewMode]: {
-              files: fetchedFiles,
-              fileTree: fetchedFileTree,
-              expandedFolders: newExpandedFolders,
-              fetchAttempted: true,
-            },
-          })
-
-          // Select the newly created file
-          if (onFileSelect) {
-            onFileSelect(filename, false)
-          }
-        }
-      } catch (err) {
-        console.error('Error refreshing file list:', err)
-      }
-    } catch (err) {
-      console.error('Error creating file:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to create file')
-    } finally {
-      setIsCreatingFile(false)
-    }
-  }, [newFileName, taskId, viewMode, currentViewData, setState, onFileSelect, selectedFile, files])
-
-  const handleCreateFolder = useCallback(async () => {
-    if (!newFolderName.trim()) {
-      toast.error('Please enter a folder name')
-      return
-    }
-
-    setIsCreatingFolder(true)
-    try {
-      // If a folder is selected, prepend its path to the foldername
-      const isSelectedItemFolder =
-        selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
-      const foldername =
-        isSelectedItemFolder && !newFolderName.includes('/')
-          ? `${selectedFile}/${newFolderName.trim()}`
-          : newFolderName.trim()
-
-      const response = await fetch(`/api/tasks/${taskId}/create-folder`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          foldername,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create folder')
-      }
-
-      toast.success('Folder created successfully')
-      setShowNewFolderDialog(false)
-      setNewFolderName('')
-
-      // Refresh the file list
-      try {
-        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
-        const fetchResponse = await fetch(url)
-        const fetchResult = await fetchResponse.json()
-
-        if (fetchResult.success) {
-          const fetchedFiles = fetchResult.files || []
-          const fetchedFileTree = fetchResult.fileTree || {}
-
-          // Expand the parent folder and the newly created folder
-          const newExpandedFolders = new Set(currentViewData.expandedFolders)
-          const parentPath = foldername.split('/').slice(0, -1).join('/')
-          if (parentPath) {
-            newExpandedFolders.add(parentPath)
-          }
-          newExpandedFolders.add(foldername)
-
-          setState({
-            [viewMode]: {
-              files: fetchedFiles,
-              fileTree: fetchedFileTree,
-              expandedFolders: newExpandedFolders,
-              fetchAttempted: true,
-            },
-          })
-
-          // Select the newly created folder
-          if (onFileSelect) {
-            onFileSelect(foldername, true)
-          }
-        }
-      } catch (err) {
-        console.error('Error refreshing file list:', err)
-      }
-    } catch (err) {
-      console.error('Error creating folder:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to create folder')
-    } finally {
-      setIsCreatingFolder(false)
-    }
-  }, [newFolderName, taskId, viewMode, currentViewData, setState, selectedFile, files, onFileSelect])
-
-  const handleDelete = useCallback(
-    async (filename: string) => {
-      if (!filename) {
-        toast.error('No file selected for deletion')
-        return
-      }
-
-      setIsDeleting(true)
-      try {
-        const response = await fetch(`/api/tasks/${taskId}/delete-file`, {
-          method: 'DELETE',
+        const response = await fetch(`/api/tasks/${taskId}/create-file`, {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -649,12 +500,12 @@ export function FileBrowser({
         const result = await response.json()
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to delete file')
+          throw new Error(result.error || 'Failed to create file')
         }
 
-        toast.success('File deleted successfully')
-        setShowDeleteConfirm(false)
-        setFileToDelete(null)
+        toast.success('File created successfully')
+        setShowNewFileDialog(false)
+        setNewFileName('')
 
         // Refresh the file list
         try {
@@ -666,26 +517,193 @@ export function FileBrowser({
             const fetchedFiles = fetchResult.files || []
             const fetchedFileTree = fetchResult.fileTree || {}
 
+            // Expand the parent folder if the file is nested
+            const newExpandedFolders = new Set(currentViewData.expandedFolders)
+            const parentPath = filename.split('/').slice(0, -1).join('/')
+            if (parentPath) {
+              newExpandedFolders.add(parentPath)
+            }
+
             setState({
               [viewMode]: {
                 files: fetchedFiles,
                 fileTree: fetchedFileTree,
-                expandedFolders: currentViewData.expandedFolders,
+                expandedFolders: newExpandedFolders,
                 fetchAttempted: true,
               },
             })
+
+            // Select the newly created file
+            if (onFileSelect) {
+              onFileSelect(filename, false)
+            }
           }
         } catch (err) {
           console.error('Error refreshing file list:', err)
         }
       } catch (err) {
-        console.error('Error deleting file:', err)
-        toast.error(err instanceof Error ? err.message : 'Failed to delete file')
-      } finally {
-        setIsDeleting(false)
+        console.error('Error creating file:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to create file')
       }
+    })
+  }, [
+    newFileName,
+    taskId,
+    viewMode,
+    currentViewData,
+    setState,
+    onFileSelect,
+    selectedFile,
+    files,
+    startCreateFileTransition,
+  ])
+
+  const handleCreateFolder = useCallback(async () => {
+    if (!newFolderName.trim()) {
+      toast.error('Please enter a folder name')
+      return
+    }
+
+    startCreateFolderTransition(async () => {
+      try {
+        // If a folder is selected, prepend its path to the foldername
+        const isSelectedItemFolder =
+          selectedFile && files.some((f: FileChange) => f.filename.startsWith(selectedFile + '/'))
+        const foldername =
+          isSelectedItemFolder && !newFolderName.includes('/')
+            ? `${selectedFile}/${newFolderName.trim()}`
+            : newFolderName.trim()
+
+        const response = await fetch(`/api/tasks/${taskId}/create-folder`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            foldername,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to create folder')
+        }
+
+        toast.success('Folder created successfully')
+        setShowNewFolderDialog(false)
+        setNewFolderName('')
+
+        // Refresh the file list
+        try {
+          const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+          const fetchResponse = await fetch(url)
+          const fetchResult = await fetchResponse.json()
+
+          if (fetchResult.success) {
+            const fetchedFiles = fetchResult.files || []
+            const fetchedFileTree = fetchResult.fileTree || {}
+
+            // Expand the parent folder and the newly created folder
+            const newExpandedFolders = new Set(currentViewData.expandedFolders)
+            const parentPath = foldername.split('/').slice(0, -1).join('/')
+            if (parentPath) {
+              newExpandedFolders.add(parentPath)
+            }
+            newExpandedFolders.add(foldername)
+
+            setState({
+              [viewMode]: {
+                files: fetchedFiles,
+                fileTree: fetchedFileTree,
+                expandedFolders: newExpandedFolders,
+                fetchAttempted: true,
+              },
+            })
+
+            // Select the newly created folder
+            if (onFileSelect) {
+              onFileSelect(foldername, true)
+            }
+          }
+        } catch (err) {
+          console.error('Error refreshing file list:', err)
+        }
+      } catch (err) {
+        console.error('Error creating folder:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to create folder')
+      }
+    })
+  }, [
+    newFolderName,
+    taskId,
+    viewMode,
+    currentViewData,
+    setState,
+    selectedFile,
+    files,
+    onFileSelect,
+    startCreateFolderTransition,
+  ])
+
+  const handleDelete = useCallback(
+    async (filename: string) => {
+      if (!filename) {
+        toast.error('No file selected for deletion')
+        return
+      }
+
+      startDeleteTransition(async () => {
+        try {
+          const response = await fetch(`/api/tasks/${taskId}/delete-file`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              filename,
+            }),
+          })
+
+          const result = await response.json()
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to delete file')
+          }
+
+          toast.success('File deleted successfully')
+          setShowDeleteConfirm(false)
+          setFileToDelete(null)
+
+          // Refresh the file list
+          try {
+            const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+            const fetchResponse = await fetch(url)
+            const fetchResult = await fetchResponse.json()
+
+            if (fetchResult.success) {
+              const fetchedFiles = fetchResult.files || []
+              const fetchedFileTree = fetchResult.fileTree || {}
+
+              setState({
+                [viewMode]: {
+                  files: fetchedFiles,
+                  fileTree: fetchedFileTree,
+                  expandedFolders: currentViewData.expandedFolders,
+                  fetchAttempted: true,
+                },
+              })
+            }
+          } catch (err) {
+            console.error('Error refreshing file list:', err)
+          }
+        } catch (err) {
+          console.error('Error deleting file:', err)
+          toast.error(err instanceof Error ? err.message : 'Failed to delete file')
+        }
+      })
     },
-    [taskId, viewMode, currentViewData, setState],
+    [taskId, viewMode, currentViewData, setState, startDeleteTransition],
   )
 
   useEffect(() => {
@@ -834,58 +852,58 @@ export function FileBrowser({
   const handleDiscardChanges = useCallback(async () => {
     if (!fileToDiscard) return
 
-    setIsDiscarding(true)
-
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/discard-file-changes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: fileToDiscard,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to discard changes')
-      }
-
-      toast.success('Changes discarded successfully')
-
-      // Refresh the file list in the background
+    startDiscardTransition(async () => {
       try {
-        const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
-        const fetchResponse = await fetch(url)
-        const fetchResult = await fetchResponse.json()
+        const response = await fetch(`/api/tasks/${taskId}/discard-file-changes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filename: fileToDiscard,
+          }),
+        })
 
-        if (fetchResult.success) {
-          const fetchedFiles = fetchResult.files || []
-          const fetchedFileTree = fetchResult.fileTree || {}
+        const result = await response.json()
 
-          setState({
-            [viewMode]: {
-              files: fetchedFiles,
-              fileTree: fetchedFileTree,
-              expandedFolders: currentViewData.expandedFolders,
-              fetchAttempted: true,
-            },
-          })
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to discard changes')
         }
+
+        toast.success('Changes discarded successfully')
+
+        // Refresh the file list in the background
+        try {
+          const url = `/api/tasks/${taskId}/files?mode=${viewMode}`
+          const fetchResponse = await fetch(url)
+          const fetchResult = await fetchResponse.json()
+
+          if (fetchResult.success) {
+            const fetchedFiles = fetchResult.files || []
+            const fetchedFileTree = fetchResult.fileTree || {}
+
+            setState({
+              [viewMode]: {
+                files: fetchedFiles,
+                fileTree: fetchedFileTree,
+                expandedFolders: currentViewData.expandedFolders,
+                fetchAttempted: true,
+              },
+            })
+          }
+        } catch (err) {
+          console.error('Error refreshing file list:', err)
+        }
+        setShowDiscardConfirm(false)
+        setFileToDiscard(null)
       } catch (err) {
-        console.error('Error refreshing file list:', err)
+        console.error('Error discarding changes:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to discard changes')
+        setShowDiscardConfirm(false)
+        setFileToDiscard(null)
       }
-    } catch (err) {
-      console.error('Error discarding changes:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to discard changes')
-    } finally {
-      setIsDiscarding(false)
-      setShowDiscardConfirm(false)
-      setFileToDiscard(null)
-    }
-  }, [fileToDiscard, taskId, viewMode, currentViewData, setState])
+    })
+  }, [fileToDiscard, taskId, viewMode, currentViewData, setState, startDiscardTransition])
 
   // Drag and drop handlers
   const handleDragStart = useCallback(

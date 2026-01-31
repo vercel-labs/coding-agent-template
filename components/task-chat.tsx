@@ -26,6 +26,8 @@ import { useAtom } from 'jotai'
 import { taskChatInputAtomFamily } from '@/lib/atoms/task'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useWindowResize } from '@/lib/hooks/use-window-resize'
+import { useTaskMessages } from '@/lib/hooks/use-task-messages'
+import { useCheckRuns } from '@/lib/hooks/use-check-runs'
 
 interface TaskChatProps {
   taskId: string
@@ -43,16 +45,6 @@ interface PRComment {
   html_url: string
 }
 
-interface CheckRun {
-  id: number
-  name: string
-  status: string
-  conclusion: string | null
-  html_url: string
-  started_at: string
-  completed_at: string | null
-}
-
 interface DeploymentInfo {
   hasDeployment: boolean
   previewUrl?: string
@@ -61,9 +53,8 @@ interface DeploymentInfo {
 }
 
 export function TaskChat({ taskId, task }: TaskChatProps) {
-  const [messages, setMessages] = useState<TaskMessage[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { messages, isLoading, error, mutate: mutateMessages } = useTaskMessages(taskId)
+  const { checkRuns, isLoading: loadingActions, error: actionsError } = useCheckRuns(taskId, task.branchName)
   const [newMessage, setNewMessage] = useAtom(taskChatInputAtomFamily(taskId))
   const [isSending, setIsSending] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
@@ -78,9 +69,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const [prComments, setPrComments] = useState<PRComment[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
   const [commentsError, setCommentsError] = useState<string | null>(null)
-  const [checkRuns, setCheckRuns] = useState<CheckRun[]>([])
-  const [loadingActions, setLoadingActions] = useState(false)
-  const [actionsError, setActionsError] = useState<string | null>(null)
   const [deployment, setDeployment] = useState<DeploymentInfo | null>(null)
   const [loadingDeployment, setLoadingDeployment] = useState(false)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
@@ -91,7 +79,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
 
   // Track if each tab has been loaded to avoid refetching on tab switch
   const commentsLoadedRef = useRef(false)
-  const actionsLoadedRef = useRef(false)
   const deploymentLoadedRef = useRef(false)
 
   const isNearBottom = () => {
@@ -110,34 +97,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     if (!container) return
     container.scrollTop = container.scrollHeight
   }
-
-  const fetchMessages = useCallback(
-    async (showLoading = true) => {
-      if (showLoading) {
-        setIsLoading(true)
-      }
-      setError(null)
-
-      try {
-        const response = await fetch(`/api/tasks/${taskId}/messages`)
-        const data = await response.json()
-
-        if (response.ok && data.success) {
-          setMessages(data.messages)
-        } else {
-          setError(data.error || 'Failed to fetch messages')
-        }
-      } catch (err) {
-        console.error('Error fetching messages:', err)
-        setError('Failed to fetch messages')
-      } finally {
-        if (showLoading) {
-          setIsLoading(false)
-        }
-      }
-    },
-    [taskId],
-  )
 
   const fetchPRComments = useCallback(
     async (showLoading = true) => {
@@ -171,40 +130,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       }
     },
     [taskId, task.prNumber, task.repoUrl],
-  )
-
-  const fetchCheckRuns = useCallback(
-    async (showLoading = true) => {
-      if (!task.branchName || !task.repoUrl) return
-
-      // Don't refetch if already loaded
-      if (actionsLoadedRef.current && showLoading) return
-
-      if (showLoading) {
-        setLoadingActions(true)
-      }
-      setActionsError(null)
-
-      try {
-        const response = await fetch(`/api/tasks/${taskId}/check-runs`)
-        const data = await response.json()
-
-        if (response.ok && data.success) {
-          setCheckRuns(data.checkRuns || [])
-          actionsLoadedRef.current = true
-        } else {
-          setActionsError(data.error || 'Failed to fetch check runs')
-        }
-      } catch (err) {
-        console.error('Error fetching check runs:', err)
-        setActionsError('Failed to fetch check runs')
-      } finally {
-        if (showLoading) {
-          setLoadingActions(false)
-        }
-      }
-    },
-    [taskId, task.branchName, task.repoUrl],
   )
 
   const fetchDeployment = useCallback(
@@ -242,7 +167,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
   const handleRefresh = useCallback(() => {
     switch (activeTab) {
       case 'chat':
-        fetchMessages(false)
+        mutateMessages()
         break
       case 'comments':
         if (task.prNumber) {
@@ -251,38 +176,25 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
         }
         break
       case 'actions':
-        if (task.branchName) {
-          actionsLoadedRef.current = false
-          fetchCheckRuns()
-        }
+        // Check runs are automatically refreshed by SWR hook
         break
       case 'deployments':
         deploymentLoadedRef.current = false
         fetchDeployment()
         break
     }
-  }, [activeTab, task.prNumber, task.branchName, fetchMessages, fetchPRComments, fetchCheckRuns, fetchDeployment])
+  }, [activeTab, task.prNumber, mutateMessages, fetchPRComments, fetchDeployment])
 
   // Consolidate PR number and branch name change handlers to reduce duplicate logic
   // Extract primitive values to avoid unnecessary recreations
   const prNumber = task.prNumber
   const branchName = task.branchName
 
-  useEffect(() => {
-    fetchMessages(true) // Show loading on initial fetch
-
-    // Poll for new messages every 3 seconds without showing loading state
-    const interval = setInterval(() => {
-      fetchMessages(false) // Don't show loading on polls
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [fetchMessages])
-
-  // Auto-refresh for active tab (Comments, Checks, Deployments)
+  // Auto-refresh for active tab (Comments, Deployments)
   // Defer heavy async fetches with startTransition to keep UI responsive
+  // Note: Actions tab uses SWR hook which handles polling automatically
   useEffect(() => {
-    if (activeTab === 'chat') return // Chat already has its own refresh
+    if (activeTab === 'chat' || activeTab === 'actions') return // Chat and actions have their own refresh
 
     const refreshInterval = 30000 // 30 seconds
 
@@ -295,12 +207,6 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               fetchPRComments(false) // Don't show loading on auto-refresh
             }
             break
-          case 'actions':
-            if (branchName) {
-              actionsLoadedRef.current = false
-              fetchCheckRuns(false) // Don't show loading on auto-refresh
-            }
-            break
           case 'deployments':
             deploymentLoadedRef.current = false
             fetchDeployment(false) // Don't show loading on auto-refresh
@@ -310,26 +216,17 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
     }, refreshInterval)
 
     return () => clearInterval(interval)
-  }, [activeTab, prNumber, branchName, fetchPRComments, fetchCheckRuns, fetchDeployment])
+  }, [activeTab, prNumber, fetchPRComments, fetchDeployment])
 
   // Consolidated effect: Fetch data when tab switches OR when required data becomes available
-  // Uses primitive values (prNumber, branchName) to avoid unnecessary re-runs
+  // Uses primitive values (prNumber) to avoid unnecessary re-runs
+  // Note: Actions tab uses SWR hook which fetches automatically when branchName is available
   useEffect(() => {
-    switch (activeTab) {
-      case 'comments':
-        if (prNumber) {
-          commentsLoadedRef.current = false
-          fetchPRComments()
-        }
-        break
-      case 'actions':
-        if (branchName) {
-          actionsLoadedRef.current = false
-          fetchCheckRuns()
-        }
-        break
+    if (activeTab === 'comments' && prNumber) {
+      commentsLoadedRef.current = false
+      fetchPRComments()
     }
-  }, [activeTab, prNumber, branchName, fetchPRComments, fetchCheckRuns])
+  }, [activeTab, prNumber, fetchPRComments])
 
   // Fetch deployment when tab switches to deployments
   useEffect(() => {
@@ -477,8 +374,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       const data = await response.json()
 
       if (response.ok) {
-        // Refresh messages to show the new user message without loading state
-        await fetchMessages(false)
+        // Revalidate messages to show the new user message
+        await mutateMessages()
         // Message was sent successfully, keep it cleared
       } else {
         toast.error(data.error || 'Failed to send message')
@@ -530,8 +427,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
       const data = await response.json()
 
       if (response.ok) {
-        // Refresh messages to show the new user message without loading state
-        await fetchMessages(false)
+        // Revalidate messages to show the new user message
+        await mutateMessages()
       } else {
         toast.error(data.error || 'Failed to resend message')
       }
@@ -695,7 +592,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
           ) : actionsError ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <p className="text-destructive mb-2 text-xs md:text-sm">{actionsError}</p>
+                <p className="text-destructive mb-2 text-xs md:text-sm">Failed to fetch check runs</p>
               </div>
             </div>
           ) : checkRuns.length === 0 ? (

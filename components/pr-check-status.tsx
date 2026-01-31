@@ -1,51 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Check, Loader2, X } from 'lucide-react'
-
-interface CheckRun {
-  id: number
-  name: string
-  status: string
-  conclusion: string | null
-  html_url: string
-  started_at: string | null
-  completed_at: string | null
-}
+import { Check } from 'lucide-react'
+import { useCheckRuns } from '@/lib/hooks/use-check-runs'
 
 interface PRCheckStatusProps {
   taskId: string
+  branchName: string | null | undefined
   prStatus: 'open' | 'closed' | 'merged'
   isActive?: boolean
   className?: string
 }
 
-export function PRCheckStatus({ taskId, prStatus, isActive = false, className = '' }: PRCheckStatusProps) {
-  const [checkRuns, setCheckRuns] = useState<CheckRun[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchCheckRuns = async () => {
-      try {
-        const response = await fetch(`/api/tasks/${taskId}/check-runs`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success && data.checkRuns) {
-            setCheckRuns(data.checkRuns)
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching check runs:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchCheckRuns()
-    // Refresh every 30 seconds for in-progress checks
-    const interval = setInterval(fetchCheckRuns, 30000)
-    return () => clearInterval(interval)
-  }, [taskId])
+export function PRCheckStatus({ taskId, branchName, prStatus, isActive = false, className = '' }: PRCheckStatusProps) {
+  const { checkRuns, isLoading } = useCheckRuns(taskId, branchName)
 
   // Only show indicator for open PRs
   if (prStatus !== 'open') {
