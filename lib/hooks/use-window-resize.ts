@@ -38,7 +38,7 @@ export function useWindowResize(breakpoint = 1024, callback?: () => void) {
 
   useEffect(() => {
     // Add listener
-    window.addEventListener('resize', handleResize)
+    window.addEventListener('resize', handleResize, { passive: true })
 
     return () => {
       window.removeEventListener('resize', handleResize)

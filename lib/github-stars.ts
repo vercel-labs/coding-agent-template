@@ -1,7 +1,11 @@
+import { cache } from 'react'
+
 const GITHUB_REPO = 'agenticassets/AA-coding-agent'
 const CACHE_DURATION = 5 * 60 // 5 minutes in seconds
 
-export async function getGitHubStars(): Promise<number> {
+// React.cache() deduplicates calls within a single server request/render tree
+// next.revalidate provides cross-request caching (5 minutes)
+export const getGitHubStars = cache(async function getGitHubStars(): Promise<number> {
   try {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}`, {
       headers: {
@@ -21,4 +25,4 @@ export async function getGitHubStars(): Promise<number> {
     console.error('Error fetching GitHub stars')
     return 1200 // Fallback value
   }
-}
+})

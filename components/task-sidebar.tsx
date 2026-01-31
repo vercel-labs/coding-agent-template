@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback, useTransition } from 'react'
 import { toast } from 'sonner'
 import { useTasks } from '@/components/app-layout'
 import { useAtomValue } from 'jotai'
@@ -99,7 +99,7 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
   const { refreshTasks, toggleSidebar } = useTasks()
   const session = useAtomValue(sessionAtom)
   const githubConnection = useAtomValue(githubConnectionAtom)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, startDeleteTransition] = useTransition()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteCompleted, setDeleteCompleted] = useState(true)
   const [deleteFailed, setDeleteFailed] = useState(true)
@@ -108,14 +108,14 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
 
   // State for repos from API
   const [repos, setRepos] = useState<GitHubRepoInfo[]>([])
-  const [reposLoading, setReposLoading] = useState(false)
+  const [reposLoading, startReposTransition] = useTransition()
   const [reposPage, setReposPage] = useState(1)
   const [hasMoreRepos, setHasMoreRepos] = useState(true)
   const [reposInitialized, setReposInitialized] = useState(false)
   const [repoSearchQuery, setRepoSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<GitHubRepoInfo[]>([])
-  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchLoading, startSearchTransition] = useTransition()
   const [searchPage, setSearchPage] = useState(1)
   const [searchHasMore, setSearchHasMore] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement>(null)
@@ -168,31 +168,30 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
       return
     }
 
-    setSearchLoading(true)
-    try {
-      const response = await fetch(
-        `/api/github/user-repos?page=${page}&per_page=25&search=${encodeURIComponent(query)}`,
-      )
+    startSearchTransition(async () => {
+      try {
+        const response = await fetch(
+          `/api/github/user-repos?page=${page}&per_page=25&search=${encodeURIComponent(query)}`,
+        )
 
-      if (!response.ok) {
-        throw new Error('Failed to search repos')
+        if (!response.ok) {
+          throw new Error('Failed to search repos')
+        }
+
+        const data = await response.json()
+
+        if (append) {
+          setSearchResults((prev) => [...prev, ...data.repos])
+        } else {
+          setSearchResults(data.repos)
+        }
+
+        setSearchHasMore(data.has_more)
+        setSearchPage(page)
+      } catch (error) {
+        console.error('Error searching repos')
       }
-
-      const data = await response.json()
-
-      if (append) {
-        setSearchResults((prev) => [...prev, ...data.repos])
-      } else {
-        setSearchResults(data.repos)
-      }
-
-      setSearchHasMore(data.has_more)
-      setSearchPage(page)
-    } catch (error) {
-      console.error('Error searching repos:', error)
-    } finally {
-      setSearchLoading(false)
-    }
+    })
   }, [])
 
   // Fetch search results when debounced query changes
@@ -215,32 +214,31 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
     async (page: number, append: boolean = false) => {
       if (reposLoading) return
 
-      setReposLoading(true)
-      try {
-        const response = await fetch(`/api/github/user-repos?page=${page}&per_page=25`)
+      startReposTransition(async () => {
+        try {
+          const response = await fetch(`/api/github/user-repos?page=${page}&per_page=25`)
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch repos')
+          if (!response.ok) {
+            throw new Error('Failed to fetch repos')
+          }
+
+          const data = await response.json()
+
+          if (append) {
+            setRepos((prev) => [...prev, ...data.repos])
+          } else {
+            setRepos(data.repos)
+          }
+
+          setHasMoreRepos(data.has_more)
+          setReposPage(page)
+          setReposInitialized(true)
+        } catch (error) {
+          console.error('Error fetching repos')
         }
-
-        const data = await response.json()
-
-        if (append) {
-          setRepos((prev) => [...prev, ...data.repos])
-        } else {
-          setRepos(data.repos)
-        }
-
-        setHasMoreRepos(data.has_more)
-        setReposPage(page)
-        setReposInitialized(true)
-      } catch (error) {
-        console.error('Error fetching repos:', error)
-      } finally {
-        setReposLoading(false)
-      }
+      })
     },
-    [reposLoading],
+    [reposLoading, startReposTransition],
   )
 
   // Load repos when switching to repos tab or when GitHub is connected
@@ -303,38 +301,37 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
     fetchSearchResults,
   ])
 
-  const handleDeleteTasks = async () => {
+  const handleDeleteTasks = () => {
     if (!deleteCompleted && !deleteFailed && !deleteStopped) {
       toast.error('Please select at least one task type to delete')
       return
     }
 
-    setIsDeleting(true)
-    try {
-      const actions = []
-      if (deleteCompleted) actions.push('completed')
-      if (deleteFailed) actions.push('failed')
-      if (deleteStopped) actions.push('stopped')
+    startDeleteTransition(async () => {
+      try {
+        const actions = []
+        if (deleteCompleted) actions.push('completed')
+        if (deleteFailed) actions.push('failed')
+        if (deleteStopped) actions.push('stopped')
 
-      const response = await fetch(`/api/tasks?action=${actions.join(',')}`, {
-        method: 'DELETE',
-      })
+        const response = await fetch(`/api/tasks?action=${actions.join(',')}`, {
+          method: 'DELETE',
+        })
 
-      if (response.ok) {
-        const result = await response.json()
-        toast.success(result.message)
-        await refreshTasks()
-        setShowDeleteDialog(false)
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to delete tasks')
+        if (response.ok) {
+          const result = await response.json()
+          toast.success(result.message)
+          await refreshTasks()
+          setShowDeleteDialog(false)
+        } else {
+          const error = await response.json()
+          toast.error(error.error || 'Failed to delete tasks')
+        }
+      } catch (error) {
+        console.error('Error deleting tasks')
+        toast.error('Failed to delete tasks')
       }
-    } catch (error) {
-      console.error('Error deleting tasks:', error)
-      toast.error('Failed to delete tasks')
-    } finally {
-      setIsDeleting(false)
-    }
+    })
   }
 
   const getHumanFriendlyModelName = (agent: string | null, model: string | null) => {
@@ -549,7 +546,12 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
                                 {task.prStatus && (
                                   <div className="relative">
                                     <PRStatusIcon status={task.prStatus} />
-                                    <PRCheckStatus taskId={task.id} prStatus={task.prStatus} isActive={isActive} />
+                                    <PRCheckStatus
+                                      taskId={task.id}
+                                      branchName={task.branchName}
+                                      prStatus={task.prStatus}
+                                      isActive={isActive}
+                                    />
                                   </div>
                                 )}
                                 <span className="truncate">

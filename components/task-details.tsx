@@ -181,6 +181,33 @@ const DEFAULT_MODELS = {
   opencode: 'gpt-5',
 } as const
 
+// Hoisted default state objects to avoid re-creation on every render
+// Per vercel-react-best-practices: rerender-memo-with-default-value
+const INITIAL_OPEN_TABS_BY_MODE = {
+  local: [] as string[],
+  remote: [] as string[],
+  all: [] as string[],
+  'all-local': [] as string[],
+}
+const INITIAL_ACTIVE_TAB_INDEX_BY_MODE = {
+  local: 0,
+  remote: 0,
+  all: 0,
+  'all-local': 0,
+}
+const INITIAL_SELECTED_FILE_BY_MODE = {
+  local: undefined as string | undefined,
+  remote: undefined as string | undefined,
+  all: undefined as string | undefined,
+  'all-local': undefined as string | undefined,
+}
+const INITIAL_SELECTED_ITEM_IS_FOLDER_BY_MODE = {
+  local: false,
+  remote: false,
+  all: false,
+  'all-local': false,
+}
+
 export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps) {
   const [optimisticStatus, setOptimisticStatus] = useState<Task['status'] | null>(null)
   const [mcpServers, setMcpServers] = useState<Connector[]>([])
@@ -264,50 +291,10 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const router = useRouter()
 
   // Tabs state for Code pane - each mode has its own tabs and selection
-  const [openTabsByMode, setOpenTabsByMode] = useState<{
-    local: string[]
-    remote: string[]
-    all: string[]
-    'all-local': string[]
-  }>({
-    local: [],
-    remote: [],
-    all: [],
-    'all-local': [],
-  })
-  const [activeTabIndexByMode, setActiveTabIndexByMode] = useState<{
-    local: number
-    remote: number
-    all: number
-    'all-local': number
-  }>({
-    local: 0,
-    remote: 0,
-    all: 0,
-    'all-local': 0,
-  })
-  const [selectedFileByMode, setSelectedFileByMode] = useState<{
-    local: string | undefined
-    remote: string | undefined
-    all: string | undefined
-    'all-local': string | undefined
-  }>({
-    local: undefined,
-    remote: undefined,
-    all: undefined,
-    'all-local': undefined,
-  })
-  const [selectedItemIsFolderByMode, setSelectedItemIsFolderByMode] = useState<{
-    local: boolean
-    remote: boolean
-    all: boolean
-    'all-local': boolean
-  }>({
-    local: false,
-    remote: false,
-    all: false,
-    'all-local': false,
-  })
+  const [openTabsByMode, setOpenTabsByMode] = useState(INITIAL_OPEN_TABS_BY_MODE)
+  const [activeTabIndexByMode, setActiveTabIndexByMode] = useState(INITIAL_ACTIVE_TAB_INDEX_BY_MODE)
+  const [selectedFileByMode, setSelectedFileByMode] = useState(INITIAL_SELECTED_FILE_BY_MODE)
+  const [selectedItemIsFolderByMode, setSelectedItemIsFolderByMode] = useState(INITIAL_SELECTED_ITEM_IS_FOLDER_BY_MODE)
   const [tabsWithUnsavedChanges, setTabsWithUnsavedChanges] = useState<Set<string>>(new Set())
   const [tabsSaving, setTabsSaving] = useState<Set<string>>(new Set())
   const [showCloseTabDialog, setShowCloseTabDialog] = useState(false)
