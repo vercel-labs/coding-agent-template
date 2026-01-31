@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -220,6 +220,7 @@ export function TaskForm({
 
   // Connectors state
   const { connectors } = useConnectors()
+  const connectedCount = useMemo(() => connectors.filter((c) => c.status === 'connected').length, [connectors])
 
   // Ref for the textarea to focus it programmatically
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -650,12 +651,12 @@ export function TaskForm({
                           onClick={() => setShowMcpServersDialog(true)}
                         >
                           <Cable className="h-4 w-4" />
-                          {connectors.filter((c) => c.status === 'connected').length > 0 && (
+                          {connectedCount > 0 && (
                             <Badge
                               variant="secondary"
                               className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] rounded-full"
                             >
-                              {connectors.filter((c) => c.status === 'connected').length}
+                              {connectedCount}
                             </Badge>
                           )}
                         </Button>
