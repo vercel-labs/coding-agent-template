@@ -315,6 +315,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                 onClick={clearLogs}
                 disabled={isClearingLogs}
                 className="h-5 w-5 p-0 hover:bg-accent"
+                aria-label="Clear logs"
                 title="Clear logs"
               >
                 <Trash2 className="h-3 w-3" />
@@ -324,6 +325,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                 size="sm"
                 onClick={copyLogsToClipboard}
                 className="h-5 w-5 p-0 hover:bg-accent"
+                aria-label="Copy logs to clipboard"
                 title="Copy logs to clipboard"
               >
                 {copiedLogs ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
@@ -337,6 +339,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                 size="sm"
                 onClick={clearTerminal}
                 className="h-5 w-5 p-0 hover:bg-accent"
+                aria-label="Clear terminal"
                 title="Clear terminal"
               >
                 <Trash2 className="h-3 w-3" />
@@ -346,6 +349,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                 size="sm"
                 onClick={copyTerminalToClipboard}
                 className="h-5 w-5 p-0 hover:bg-accent"
+                aria-label="Copy terminal to clipboard"
                 title="Copy terminal to clipboard"
               >
                 {copiedTerminal ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
@@ -416,7 +420,7 @@ export function LogsPane({ task, onHeightChange }: LogsPaneProps) {
                     {log.agentSource.name}
                   </span>
                 )}
-                <span className={cn('flex-1', getLogColor(log.type))}>
+                <span className={cn('flex-1 break-words min-w-0', getLogColor(log.type))}>
                   {isServerLog && <span className="text-purple-400">[SERVER]</span>}
                   {isServerLog && ' '}
                   {messageContent}

@@ -115,8 +115,9 @@ export function RepoLayout({ owner, repo, user, authProvider, initialStars = 120
               size="sm"
               className="h-8 w-8 p-0 -mb-[1px] text-muted-foreground hover:text-foreground"
               title="Create new task with this repository"
+              aria-label="Create new task with this repository"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
             </Button>
           </nav>
         </div>

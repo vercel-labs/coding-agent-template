@@ -317,7 +317,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
       return <SupabaseIcon className="h-8 w-8 flex-shrink-0" />
     }
 
-    return <Server className="h-8 w-8 flex-shrink-0 text-muted-foreground" />
+    return <Server className="h-8 w-8 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
   }
 
   return (
@@ -332,8 +332,9 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                   size="sm"
                   onClick={() => (view === 'form' ? goBackFromForm() : goBackFromPresets())}
                   className="mr-2 -ml-2"
+                  aria-label="Go back"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 </Button>
               )}
               {view === 'list' && 'MCP Servers'}
@@ -387,13 +388,15 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => setEditingConnectorAction(connector)}
+                        aria-label={`Edit ${connector.name}`}
                       >
-                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                        <Pencil className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       </Button>
                       <Switch
                         checked={connector.status === 'connected'}
                         disabled={loadingConnectors.has(connector.id)}
                         onCheckedChange={() => handleToggleConnectorStatus(connector.id, connector.status)}
+                        aria-label={`Toggle ${connector.name} ${connector.status === 'connected' ? 'off' : 'on'}`}
                       />
                     </div>
                   </Card>
@@ -507,8 +510,14 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     <div className="flex-1">
                       <p className="text-sm font-medium">Configuring {selectedPreset.name}</p>
                     </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => clearPreset()}>
-                      <X className="h-4 w-4" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearPreset()}
+                      aria-label="Clear preset selection"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
                 )}
@@ -521,6 +530,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     placeholder="Example MCP Server"
                     defaultValue={editingConnector?.name || selectedPreset?.name || ''}
                     required
+                    autoComplete="off"
                   />
                   {state.errors?.name && <p className="text-sm text-red-600">{state.errors.name}</p>}
                 </div>
@@ -560,6 +570,8 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                         defaultValue={editingConnector?.baseUrl || selectedPreset?.url || ''}
                         required={serverType === 'remote'}
                         disabled={!!selectedPreset}
+                        autoComplete="url"
+                        spellCheck={false}
                       />
                       {state.errors?.baseUrl && <p className="text-sm text-red-600">{state.errors.baseUrl}</p>}
                     </div>
@@ -575,6 +587,8 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                         defaultValue={editingConnector?.command || selectedPreset?.command || ''}
                         required={serverType === 'local'}
                         disabled={!!selectedPreset}
+                        autoComplete="off"
+                        spellCheck={false}
                       />
                       <p className="text-xs text-muted-foreground">Full command including all arguments</p>
                       {state.errors?.command && <p className="text-sm text-red-600">{state.errors.command}</p>}
@@ -591,7 +605,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                         : '(optional)'}
                     </Label>
                     <Button type="button" size="sm" variant="outline" onClick={addEnvVar}>
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                       Add Variable
                     </Button>
                   </div>
@@ -605,14 +619,20 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                             onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
                             disabled={selectedPreset?.envKeys?.includes(envVar.key)}
                             className="flex-1"
+                            aria-label={`Environment variable name ${index + 1}`}
+                            autoComplete="off"
+                            spellCheck={false}
                           />
                           <div className="relative flex-1">
                             <Input
-                              placeholder="value"
+                              placeholder="Value\u2026"
                               type={visibleEnvVars.has(index) ? 'text' : 'password'}
                               value={envVar.value}
                               onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
                               className="pr-10"
+                              aria-label={`Environment variable value ${index + 1}`}
+                              autoComplete="off"
+                              spellCheck={false}
                             />
                             <Button
                               type="button"
@@ -620,17 +640,24 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                               size="icon"
                               className="absolute right-0 top-0 h-full hover:bg-transparent"
                               onClick={() => toggleEnvVarVisibility(index)}
+                              aria-label={visibleEnvVars.has(index) ? 'Hide value' : 'Show value'}
                             >
                               {visibleEnvVars.has(index) ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                <EyeOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                               ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                               )}
                             </Button>
                           </div>
                           {!selectedPreset?.envKeys?.includes(envVar.key) && (
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeEnvVar(index)}>
-                              <X className="h-4 w-4" />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeEnvVar(index)}
+                              aria-label="Remove variable"
+                            >
+                              <X className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           )}
                         </div>
@@ -646,7 +673,13 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                       <AccordionContent className="space-y-4 pt-2">
                         <div className="space-y-2">
                           <Label htmlFor="oauthClientId">OAuth Client ID (optional)</Label>
-                          <Input id="oauthClientId" name="oauthClientId" placeholder="OAuth Client ID (optional)" />
+                          <Input
+                            id="oauthClientId"
+                            name="oauthClientId"
+                            placeholder="OAuth Client ID (optional)"
+                            autoComplete="off"
+                            spellCheck={false}
+                          />
                         </div>
 
                         <div className="space-y-2">
@@ -656,6 +689,7 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                             name="oauthClientSecret"
                             type="password"
                             placeholder="OAuth Client Secret (optional)"
+                            autoComplete="off"
                           />
                         </div>
                       </AccordionContent>
@@ -694,8 +728,8 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                     <Button type="submit" disabled={pending || isDeleting}>
                       {pending ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {isEditing ? 'Saving...' : 'Creating...'}
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                          {isEditing ? 'Saving\u2026' : 'Creating\u2026'}
                         </>
                       ) : isEditing ? (
                         'Save Changes'
@@ -728,8 +762,8 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  Deleting&hellip;
                 </>
               ) : (
                 'Delete'

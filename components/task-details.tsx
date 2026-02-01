@@ -1775,12 +1775,12 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                               <span
                                 onClick={(e) => attemptCloseTab(index, e)}
                                 className={cn(
-                                  'flex items-center justify-center w-4 h-4 rounded transition-all cursor-pointer hover:bg-accent flex-shrink-0',
+                                  'flex items-center justify-center w-4 h-4 rounded transition-opacity cursor-pointer hover:bg-accent flex-shrink-0',
                                   hasUnsavedChanges || isSaving ? '' : 'opacity-0 group-hover:opacity-100',
                                 )}
                                 title={
                                   isSaving
-                                    ? 'Saving...'
+                                    ? 'Saving\u2026'
                                     : hasUnsavedChanges
                                       ? 'Unsaved changes • Click to close'
                                       : 'Close tab'
@@ -1822,7 +1822,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                           setShowFileDropdown(true)
                         }}
                         onFocus={() => setShowFileDropdown(true)}
-                        placeholder="Type to search files..."
+                        placeholder="Type to search files\u2026"
                         className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
                       />
 
@@ -1900,7 +1900,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                         {sandboxHealth === 'stopped'
                           ? 'Sandbox stopped'
                           : currentStatus === 'pending' || currentStatus === 'processing'
-                            ? 'Creating sandbox...'
+                            ? 'Creating sandbox\u2026'
                             : 'Sandbox not running'}
                       </span>
                     )}
@@ -2125,7 +2125,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
                     ) : (
                       <span className="text-sm text-muted-foreground truncate flex-1">
                         {currentStatus === 'pending' || currentStatus === 'processing'
-                          ? 'Creating sandbox...'
+                          ? 'Creating sandbox\u2026'
                           : 'Sandbox not running'}
                       </span>
                     )}
@@ -2508,7 +2508,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleTryAgain} disabled={isTryingAgain}>
-              {isTryingAgain ? 'Creating...' : 'Create Task'}
+              {isTryingAgain ? 'Creating\u2026' : 'Create Task'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2526,7 +2526,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Deleting\u2026' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

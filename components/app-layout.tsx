@@ -69,12 +69,19 @@ function SidebarLoader({ width }: { width: number }) {
             </button>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={true} title="Delete Tasks">
-              <Trash2 className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              disabled={true}
+              title="Delete Tasks"
+              aria-label="Delete Tasks"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Link href="/">
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
-                <Plus className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task" aria-label="New Task">
+                <Plus className="h-4 w-4" aria-hidden="true" />
               </Button>
             </Link>
           </div>
@@ -320,8 +327,23 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
           }
           suppressHydrationWarning
         >
+          {/* Skip to main content link for keyboard/screen reader users */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded-md focus:ring-2 focus:ring-primary"
+          >
+            Skip to main content
+          </a>
           {/* Backdrop - Mobile Only */}
-          {isSidebarOpen && <div className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={closeSidebar} />}
+          {isSidebarOpen && (
+            <button
+              type="button"
+              className="lg:hidden fixed inset-0 bg-black/50 z-30"
+              onClick={closeSidebar}
+              aria-label="Close sidebar"
+              tabIndex={-1}
+            />
+          )}
 
           {/* Sidebar */}
           <div
@@ -364,6 +386,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
 
           {/* Main Content */}
           <div
+            id="main-content"
             className={`flex-1 overflow-auto flex flex-col ${isResizing || !hasMounted ? '' : 'transition-all duration-300 ease-in-out'}`}
             style={{
               marginLeft: isDesktop && isSidebarOpen ? `${sidebarWidth + 4}px` : '0px',

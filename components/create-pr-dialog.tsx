@@ -104,7 +104,7 @@ export function CreatePRDialog({
               <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
-                placeholder="Brief description of the changes"
+                placeholder="Brief description of the changes\u2026"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={isCreating}
@@ -115,7 +115,7 @@ export function CreatePRDialog({
               <Label htmlFor="body">Description</Label>
               <Textarea
                 id="body"
-                placeholder="Detailed description of the changes (optional)"
+                placeholder="Detailed description of the changes (optional)\u2026"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 disabled={isCreating}
@@ -130,7 +130,7 @@ export function CreatePRDialog({
           </Button>
           <Button type="submit" form="create-pr-form" disabled={isCreating || !title.trim()}>
             {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isCreating ? 'Creating...' : 'Create Pull Request'}
+            {isCreating ? 'Creating\u2026' : 'Create Pull Request'}
           </Button>
         </DialogFooter>
       </DialogContent>

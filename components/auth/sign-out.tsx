@@ -175,7 +175,7 @@ export function SignOut({ user, authProvider }: Pick<Session, 'user' | 'authProv
             </>
           ) : (
             <>
-              <svg viewBox="0 0 76 65" className="h-3 w-3 mr-2" fill="currentColor">
+              <svg viewBox="0 0 76 65" className="h-3 w-3 mr-2" fill="currentColor" aria-hidden="true">
                 <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
               </svg>
               Log Out

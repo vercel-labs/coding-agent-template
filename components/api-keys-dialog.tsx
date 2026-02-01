@@ -26,12 +26,12 @@ interface Token {
 }
 
 const PROVIDERS = [
-  { id: 'aigateway' as Provider, name: 'AI Gateway', placeholder: 'gw_...' },
-  { id: 'anthropic' as Provider, name: 'Anthropic', placeholder: 'sk-ant-...' },
-  { id: 'openai' as Provider, name: 'OpenAI', placeholder: 'sk-...' },
-  { id: 'gemini' as Provider, name: 'Gemini', placeholder: 'AIza...' },
-  { id: 'cursor' as Provider, name: 'Cursor', placeholder: 'cur_...' },
-  { id: 'github' as Provider, name: 'GitHub', placeholder: 'ghp_...' },
+  { id: 'aigateway' as Provider, name: 'AI Gateway', placeholder: 'gw_\u2026' },
+  { id: 'anthropic' as Provider, name: 'Anthropic', placeholder: 'sk-ant-\u2026' },
+  { id: 'openai' as Provider, name: 'OpenAI', placeholder: 'sk-\u2026' },
+  { id: 'gemini' as Provider, name: 'Gemini', placeholder: 'AIza\u2026' },
+  { id: 'cursor' as Provider, name: 'Cursor', placeholder: 'cur_\u2026' },
+  { id: 'github' as Provider, name: 'GitHub', placeholder: 'ghp_\u2026' },
 ]
 
 export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
@@ -324,8 +324,13 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                       type="button"
                       disabled={loading}
+                      aria-label={showKeys[provider.id] ? `Hide ${provider.name} key` : `Show ${provider.name} key`}
                     >
-                      {showKeys[provider.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      {showKeys[provider.id] ? (
+                        <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
                     </button>
                   )}
                 </div>
@@ -376,7 +381,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Input value={newToken} readOnly className="font-mono text-xs h-8" />
+                <Input value={newToken} readOnly className="font-mono text-xs h-8" aria-label="New API token" />
                 <Button
                   ref={copyButtonRef}
                   size="sm"
@@ -402,6 +407,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateToken()}
                 className="h-8 text-sm"
                 maxLength={50}
+                aria-label="Token name"
               />
               <Button
                 size="sm"
@@ -430,7 +436,7 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 min-w-0 flex-1">
                     <span className="text-sm truncate">{token.name}</span>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-mono">{token.tokenPrefix}...</span>
+                      <span className="font-mono">{token.tokenPrefix}&hellip;</span>
                       <span className="hidden sm:inline">•</span>
                       <span>Used: {formatDate(token.lastUsedAt)}</span>
                     </div>

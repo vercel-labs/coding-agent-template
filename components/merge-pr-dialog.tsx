@@ -158,7 +158,7 @@ export function MergePRDialog({
             </Button>
             <Button onClick={handleMergePR} disabled={isMerging}>
               {isMerging && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isMerging ? 'Merging...' : 'Merge Pull Request'}
+              {isMerging ? 'Merging\u2026' : 'Merge Pull Request'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -177,7 +177,7 @@ export function MergePRDialog({
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-yellow-500" aria-hidden="true" />
               Merge Conflict Detected
             </DialogTitle>
             <DialogDescription>
@@ -200,7 +200,7 @@ export function MergePRDialog({
             </Button>
             <Button onClick={handleAgentFixConflict} disabled={isSendingMessage}>
               {isSendingMessage && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSendingMessage ? 'Sending Message...' : 'Fix with Agent'}
+              {isSendingMessage ? 'Sending Message\u2026' : 'Fix with Agent'}
             </Button>
           </DialogFooter>
         </DialogContent>

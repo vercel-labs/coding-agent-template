@@ -180,9 +180,11 @@ export function RevertCommitDialog({
         <div className="py-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Agent</label>
+              <Label htmlFor="revert-agent" className="text-sm font-medium mb-2 block">
+                Agent
+              </Label>
               <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="revert-agent" className="w-full">
                   <SelectValue placeholder="Select an agent" />
                 </SelectTrigger>
                 <SelectContent>
@@ -198,9 +200,11 @@ export function RevertCommitDialog({
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Model</label>
+              <Label htmlFor="revert-model" className="text-sm font-medium mb-2 block">
+                Model
+              </Label>
               <Select value={selectedModel} onValueChange={setSelectedModel}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="revert-model" className="w-full">
                   <SelectValue placeholder="Select a model" />
                 </SelectTrigger>
                 <SelectContent>
@@ -274,7 +278,7 @@ export function RevertCommitDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={handleRevert} disabled={isReverting}>
-            {isReverting ? 'Creating...' : 'Create Task'}
+            {isReverting ? 'Creating\u2026' : 'Create Task'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

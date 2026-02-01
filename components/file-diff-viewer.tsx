@@ -277,7 +277,8 @@ export const FileDiffViewer = memo(function FileDiffViewer({
         <div className="text-center">
           <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-2"></div>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Loading {viewMode === 'local' || viewMode === 'remote' ? 'diff' : 'file'}...
+            Loading {viewMode === 'local' || viewMode === 'remote' ? 'diff' : 'file'}
+            {'\u2026'}
           </p>
         </div>
       </div>

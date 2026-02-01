@@ -41,7 +41,7 @@ export function HomePageMobileFooter({ initialStars = 1200 }: HomePageMobileFoot
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2"
           >
-            <svg viewBox="0 0 76 65" className="h-3.5 w-3.5" fill="currentColor">
+            <svg viewBox="0 0 76 65" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
               <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
             </svg>
             <span className="text-sm font-medium">Deploy Your Own</span>

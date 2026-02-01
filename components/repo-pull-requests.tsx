@@ -292,7 +292,7 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-2 text-sm text-muted-foreground">Loading pull requests...</p>
+          <p className="mt-2 text-sm text-muted-foreground">Loading pull requests\u2026</p>
         </div>
       </div>
     )
@@ -431,7 +431,7 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
                       className="text-red-600 dark:text-red-400"
                     >
                       <X className="mr-2 h-4 w-4" />
-                      {closingPR === pr.number ? 'Closing...' : 'Close PR'}
+                      {closingPR === pr.number ? 'Closing\u2026' : 'Close PR'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -547,7 +547,7 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleCreateTask} disabled={isCreatingTask}>
-              {isCreatingTask ? 'Creating...' : 'Create Task'}
+              {isCreatingTask ? 'Creating\u2026' : 'Create Task'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -567,7 +567,7 @@ export function RepoPullRequests({ owner, repo }: RepoPullRequestsProps) {
               Cancel
             </Button>
             <Button variant="destructive" onClick={confirmClosePR} disabled={closingPR !== null}>
-              {closingPR !== null ? 'Closing...' : 'Close PR'}
+              {closingPR !== null ? 'Closing\u2026' : 'Close PR'}
             </Button>
           </DialogFooter>
         </DialogContent>

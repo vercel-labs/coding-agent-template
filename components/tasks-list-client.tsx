@@ -363,6 +363,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
                       size="sm"
                       onClick={() => setShowStopDialog(true)}
                       disabled={isStopping}
+                      aria-label={`Stop ${selectedProcessingTasks.length} task${selectedProcessingTasks.length > 1 ? 's' : ''}`}
                       title={`Stop ${selectedProcessingTasks.length} task${selectedProcessingTasks.length > 1 ? 's' : ''}`}
                     >
                       <StopCircle className="h-4 w-4" />
@@ -373,6 +374,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
                     size="sm"
                     onClick={() => setShowDeleteDialog(true)}
                     disabled={isDeleting}
+                    aria-label={`Delete ${selectedTasks.size} task${selectedTasks.size > 1 ? 's' : ''}`}
                     title={`Delete ${selectedTasks.size} task${selectedTasks.size > 1 ? 's' : ''}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -385,7 +387,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
           {/* Tasks List */}
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-muted-foreground">Loading tasks...</div>
+              <div className="text-muted-foreground">Loading tasks\u2026</div>
             </div>
           ) : filteredTasks.length === 0 ? (
             <Card>
@@ -497,7 +499,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleBulkDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
-              {isDeleting ? 'Deleting...' : 'Delete Tasks'}
+              {isDeleting ? 'Deleting\u2026' : 'Delete Tasks'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -520,7 +522,7 @@ export function TasksListClient({ user, authProvider, initialStars = 1200 }: Tas
               disabled={isStopping}
               className="bg-orange-600 hover:bg-orange-700"
             >
-              {isStopping ? 'Stopping...' : 'Stop Tasks'}
+              {isStopping ? 'Stopping\u2026' : 'Stop Tasks'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

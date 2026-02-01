@@ -37,7 +37,7 @@ export function PRCheckStatus({ taskId, branchName, prStatus, isActive = false, 
   // Note: Check failed first to ensure failures are always visible, even if other checks are in progress
   if (hasFailed) {
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`} aria-hidden="true">
         <div className="w-1 h-1 rounded-full bg-red-500" />
       </div>
     )
@@ -45,7 +45,7 @@ export function PRCheckStatus({ taskId, branchName, prStatus, isActive = false, 
 
   if (hasInProgress) {
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`} aria-hidden="true">
         <div className="w-1 h-1 rounded-full bg-yellow-500 animate-pulse" />
       </div>
     )
@@ -53,7 +53,7 @@ export function PRCheckStatus({ taskId, branchName, prStatus, isActive = false, 
 
   if (hasNeutral) {
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`} aria-hidden="true">
         <div className="w-1 h-1 rounded-full bg-blue-500" />
       </div>
     )
@@ -61,7 +61,7 @@ export function PRCheckStatus({ taskId, branchName, prStatus, isActive = false, 
 
   if (allPassed) {
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`}>
+      <div className={`absolute -bottom-0.5 -right-0.5 ${bgColor} rounded-full p-0.5 ${className}`} aria-hidden="true">
         <Check className="w-1.5 h-1.5 text-green-500" strokeWidth={3} />
       </div>
     )

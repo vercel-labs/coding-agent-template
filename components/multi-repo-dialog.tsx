@@ -154,8 +154,9 @@ export function MultiRepoDialog({ open, onOpenChange }: MultiRepoDialogProps) {
                     <button
                       onClick={() => handleRemoveRepo(repo.full_name)}
                       className="ml-1 rounded-full hover:bg-muted p-0.5"
+                      aria-label={`Remove ${repo.full_name}`}
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </Badge>
                 ))}
@@ -165,10 +166,14 @@ export function MultiRepoDialog({ open, onOpenChange }: MultiRepoDialogProps) {
 
           {/* Search input */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               ref={inputRef}
-              placeholder="Search all repositories..."
+              placeholder="Search all repositories\u2026"
+              aria-label="Search repositories"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -187,7 +192,7 @@ export function MultiRepoDialog({ open, onOpenChange }: MultiRepoDialogProps) {
                 {loadingRepos ? (
                   <div className="p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading repositories...</span>
+                    <span>Loading repositories&hellip;</span>
                   </div>
                 ) : filteredRepos.length === 0 ? (
                   <div className="p-4 text-sm text-muted-foreground text-center">

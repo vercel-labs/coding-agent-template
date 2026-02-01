@@ -407,12 +407,13 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
                 onClick={() => setShowDeleteDialog(true)}
                 disabled={true}
                 title="Delete Tasks"
+                aria-label="Delete Tasks"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
               </Button>
               <Link href="/" onClick={handleLinkClick}>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
-                  <Plus className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task" aria-label="New Task">
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </Link>
             </div>
@@ -478,12 +479,13 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
               onClick={() => setShowDeleteDialog(true)}
               disabled={isDeleting || tasks.length === 0}
               title="Delete Tasks"
+              aria-label="Delete Tasks"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Link href="/" onClick={handleLinkClick}>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task">
-                <Plus className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="New Task" aria-label="New Task">
+                <Plus className="h-4 w-4" aria-hidden="true" />
               </Button>
             </Link>
           </div>
@@ -531,7 +533,7 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
                               >
                                 {(() => {
                                   const displayText = task.title || task.prompt
-                                  return displayText.slice(0, 50) + (displayText.length > 50 ? '...' : '')
+                                  return displayText.slice(0, 50) + (displayText.length > 50 ? '\u2026' : '')
                                 })()}
                               </h3>
                               {task.status === 'error' && (
@@ -623,8 +625,10 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
                 <button
                   onClick={() => setRepoSearchQuery('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                  type="button"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3 w-3" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -642,7 +646,7 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
               <Card>
                 <CardContent className="p-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  {isSearching ? 'Searching...' : 'Loading repositories...'}
+                  {isSearching ? 'Searching\u2026' : 'Loading repositories\u2026'}
                 </CardContent>
               </Card>
             ) : displayedRepos.length === 0 && !isSearching ? (
@@ -717,7 +721,7 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
       )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="overscroll-contain">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Tasks</AlertDialogTitle>
             <AlertDialogDescription>
@@ -774,7 +778,7 @@ export function TaskSidebar({ tasks, width = 288 }: TaskSidebarProps) {
               disabled={isDeleting || (!deleteCompleted && !deleteFailed && !deleteStopped)}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeleting ? 'Deleting...' : 'Delete Tasks'}
+              {isDeleting ? 'Deleting\u2026' : 'Delete Tasks'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

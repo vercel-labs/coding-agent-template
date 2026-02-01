@@ -455,7 +455,8 @@ export function TaskForm({
             <Textarea
               ref={textareaRef}
               id="prompt"
-              placeholder="Describe what you want the AI agent to do..."
+              placeholder="Describe what you want the AI agent to do\u2026"
+              aria-label="Task prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
@@ -528,9 +529,10 @@ export function TaskForm({
                             const fullValue = `${agent.value}:${model.value}`
                             const isSelected = selectedModels.includes(fullValue)
                             return (
-                              <div
+                              <button
+                                type="button"
                                 key={fullValue}
-                                className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:ring-1 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
                                 onClick={(e) => {
                                   e.preventDefault()
                                   setSelectedModels((prev) =>
@@ -551,7 +553,7 @@ export function TaskForm({
                                   )}
                                 </span>
                                 {model.label}
-                              </div>
+                              </button>
                             )
                           })}
                         </div>
@@ -591,12 +593,13 @@ export function TaskForm({
                           variant="ghost"
                           size="sm"
                           className="h-3 w-3 p-0 hover:bg-transparent"
+                          aria-label="Remove skip install option"
                           onClick={(e) => {
                             e.stopPropagation()
                             updateInstallDependencies(true)
                           }}
                         >
-                          <X className="h-2 w-2" />
+                          <X className="h-2 w-2" aria-hidden="true" />
                         </Button>
                       </Badge>
                     )}
@@ -607,12 +610,13 @@ export function TaskForm({
                           variant="ghost"
                           size="sm"
                           className="h-3 w-3 p-0 hover:bg-transparent"
+                          aria-label="Reset duration"
                           onClick={(e) => {
                             e.stopPropagation()
                             updateMaxDuration(maxSandboxDuration)
                           }}
                         >
-                          <X className="h-2 w-2" />
+                          <X className="h-2 w-2" aria-hidden="true" />
                         </Button>
                       </Badge>
                     )}
@@ -623,12 +627,13 @@ export function TaskForm({
                           variant="ghost"
                           size="sm"
                           className="h-3 w-3 p-0 hover:bg-transparent"
+                          aria-label="Remove keep alive option"
                           onClick={(e) => {
                             e.stopPropagation()
                             updateKeepAlive(false)
                           }}
                         >
-                          <X className="h-2 w-2" />
+                          <X className="h-2 w-2" aria-hidden="true" />
                         </Button>
                       </Badge>
                     )}
@@ -649,8 +654,9 @@ export function TaskForm({
                           size="sm"
                           className="rounded-full h-8 w-8 p-0 relative"
                           onClick={() => setShowMcpServersDialog(true)}
+                          aria-label="MCP Servers"
                         >
-                          <Cable className="h-4 w-4" />
+                          <Cable className="h-4 w-4" aria-hidden="true" />
                           {connectedCount > 0 && (
                             <Badge
                               variant="secondary"
@@ -675,8 +681,9 @@ export function TaskForm({
                               variant="ghost"
                               size="sm"
                               className="rounded-full h-8 w-8 p-0 relative"
+                              aria-label="Task options"
                             >
-                              <Settings className="h-4 w-4" />
+                              <Settings className="h-4 w-4" aria-hidden="true" />
                               {(() => {
                                 const customOptionsCount = [
                                   !installDependencies,
@@ -767,8 +774,13 @@ export function TaskForm({
                     disabled={isSubmitting || !prompt.trim()}
                     size="sm"
                     className="rounded-full h-8 w-8 p-0"
+                    aria-label={isSubmitting ? 'Submitting task' : 'Submit task'}
                   >
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                    )}
                   </Button>
                 </div>
               </div>

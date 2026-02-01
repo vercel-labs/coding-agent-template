@@ -13,7 +13,7 @@ const Editor = dynamic(() => import('@monaco-editor/react').then((mod) => mod.de
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-full bg-background">
-      <div className="text-sm text-muted-foreground">Loading editor...</div>
+      <div className="text-sm text-muted-foreground">Loading editor&hellip;</div>
     </div>
   ),
 })
@@ -464,7 +464,7 @@ export function FileEditor({
         }
       }
 
-      const loadingToast = toast.loading('Finding definition...')
+      const loadingToast = toast.loading('Finding definition\u2026')
 
       try {
         // Call the LSP API endpoint

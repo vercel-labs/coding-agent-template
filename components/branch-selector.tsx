@@ -108,7 +108,7 @@ export function BranchSelector({
         {loading ? (
           <div className="flex items-center gap-2">
             <Loader2 className="h-3 w-3 animate-spin" />
-            <span className="hidden sm:inline text-xs">Loading...</span>
+            <span className="hidden sm:inline text-xs">Loading&hellip;</span>
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 text-destructive">

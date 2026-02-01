@@ -78,7 +78,7 @@ export function OpenRepoUrlDialog({ open, onOpenChange, onSubmit }: OpenRepoUrlD
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || !repoUrl.trim()}>
-              {isSubmitting ? 'Opening...' : 'Open Repository'}
+              {isSubmitting ? 'Opening\u2026' : 'Open Repository'}
             </Button>
           </div>
         </form>

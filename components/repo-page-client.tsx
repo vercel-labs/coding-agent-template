@@ -57,7 +57,7 @@ export function RepoPageClient({ owner, repo, user, authProvider, initialStars =
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5"
                   >
-                    <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor">
+                    <svg viewBox="0 0 76 65" className="h-3 w-3" fill="currentColor" aria-hidden="true">
                       <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
                     </svg>
                     <span className="hidden sm:inline">Deploy Your Own</span>
@@ -77,11 +77,11 @@ export function RepoPageClient({ owner, repo, user, authProvider, initialStars =
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <TabsList className="w-fit mb-4">
             <TabsTrigger value="commits" className="flex items-center gap-1.5">
-              <GitBranch className="h-4 w-4" />
+              <GitBranch className="h-4 w-4" aria-hidden="true" />
               Commits
             </TabsTrigger>
             <TabsTrigger value="pull-requests" className="flex items-center gap-1.5">
-              <GitPullRequest className="h-4 w-4" />
+              <GitPullRequest className="h-4 w-4" aria-hidden="true" />
               Pull Requests
             </TabsTrigger>
           </TabsList>

@@ -440,7 +440,7 @@ export function FileBrowser({
         })
 
         if (response.ok) {
-          toast.success('Sandbox started! Loading files...')
+          toast.success('Sandbox started! Loading files\u2026')
 
           // Clear the error state immediately
           setState({

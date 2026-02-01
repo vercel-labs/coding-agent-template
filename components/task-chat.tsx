@@ -616,7 +616,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                       {check.status === 'completed' && check.completed_at
                         ? `Completed ${new Date(check.completed_at).toLocaleString()}`
                         : check.status === 'in_progress'
-                          ? 'In progress...'
+                          ? 'In progress\u2026'
                           : 'Queued'}
                     </div>
                   </div>
@@ -721,8 +721,11 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
-                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                        <button
+                          className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors"
+                          aria-label="Comment actions"
+                        >
+                          <MoreVertical className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -850,17 +853,19 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                       onClick={() => handleRetryMessage(group.userMessage.content)}
                       disabled={isSending}
                       className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center disabled:opacity-20"
+                      aria-label="Retry message"
                     >
-                      <RotateCcw className="h-3 w-3" />
+                      <RotateCcw className="h-3 w-3" aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => handleCopyMessage(group.userMessage.id, group.userMessage.content)}
                       className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
+                      aria-label="Copy message"
                     >
                       {copiedMessageId === group.userMessage.id ? (
-                        <Check className="h-3 w-3" />
+                        <Check className="h-3 w-3" aria-hidden="true" />
                       ) : (
-                        <Copy className="h-3 w-3" />
+                        <Copy className="h-3 w-3" aria-hidden="true" />
                       )}
                     </button>
                   </div>
@@ -876,7 +881,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                         ? (() => {
                             return (
                               <div className="opacity-50">
-                                <div className="italic">Generating response...</div>
+                                <div className="italic">Generating response&hellip;</div>
                                 <div className="text-right font-mono opacity-70 mt-1">
                                   {formatDuration(group.userMessage.createdAt)}
                                 </div>
@@ -1022,11 +1027,12 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
                         <button
                           onClick={() => handleCopyMessage(agentMessage.id, parseAgentMessage(agentMessage.content))}
                           className="h-3.5 w-3.5 opacity-30 hover:opacity-70 flex items-center justify-center"
+                          aria-label="Copy response"
                         >
                           {copiedMessageId === agentMessage.id ? (
-                            <Check className="h-3 w-3" />
+                            <Check className="h-3 w-3" aria-hidden="true" />
                           ) : (
-                            <Copy className="h-3 w-3" />
+                            <Copy className="h-3 w-3" aria-hidden="true" />
                           )}
                         </button>
                       )}
@@ -1048,7 +1054,7 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               // Check if this is the first user message (sandbox initialization)
               const userMessages = displayMessages.filter((m) => m.role === 'user')
               const isFirstMessage = userMessages.length === 1
-              const placeholderText = isFirstMessage ? 'Awaiting response...' : 'Awaiting response...'
+              const placeholderText = isFirstMessage ? 'Awaiting response\u2026' : 'Awaiting response\u2026'
 
               return (
                 <div className="mt-4">
@@ -1109,8 +1115,14 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             Deployments
           </button>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleRefresh} className="h-6 w-6 p-0 flex-shrink-0" title="Refresh">
-          <RefreshCw className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRefresh}
+          className="h-6 w-6 p-0 flex-shrink-0"
+          aria-label="Refresh"
+        >
+          <RefreshCw className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
 
@@ -1124,7 +1136,8 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Send a follow-up message..."
+            placeholder="Send a follow-up message\u2026"
+            aria-label="Follow-up message"
             className="w-full min-h-[60px] max-h-[120px] resize-none pr-12 text-base md:text-xs"
             disabled={isSending}
           />
@@ -1133,16 +1146,22 @@ export function TaskChat({ taskId, task }: TaskChatProps) {
               onClick={handleStopTask}
               disabled={isStopping}
               className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Stop task"
             >
-              <Square className="h-3 w-3" fill="currentColor" />
+              <Square className="h-3 w-3" fill="currentColor" aria-hidden="true" />
             </button>
           ) : (
             <button
               onClick={handleSendMessage}
               disabled={!newMessage.trim() || isSending}
               className="absolute bottom-2 right-2 rounded-full h-5 w-5 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label={isSending ? 'Sending message' : 'Send message'}
             >
-              {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-3 w-3" />}
+              {isSending ? (
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              ) : (
+                <ArrowUp className="h-3 w-3" aria-hidden="true" />
+              )}
             </button>
           )}
         </div>

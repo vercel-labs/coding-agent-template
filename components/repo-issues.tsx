@@ -241,7 +241,7 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-2 text-sm text-muted-foreground">Loading issues...</p>
+          <p className="mt-2 text-sm text-muted-foreground">Loading issues\u2026</p>
         </div>
       </div>
     )
@@ -455,7 +455,7 @@ export function RepoIssues({ owner, repo }: RepoIssuesProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleCreateTask} disabled={isCreatingTask}>
-              {isCreatingTask ? 'Creating...' : 'Create Task'}
+              {isCreatingTask ? 'Creating\u2026' : 'Create Task'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

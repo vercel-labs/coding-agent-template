@@ -492,7 +492,7 @@ export function RepoSelector({
           {showOwnersLoading ? (
             <div className="flex items-center gap-2">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Loading...</span>
+              <span>Loading&hellip;</span>
             </div>
           ) : multiRepoMode ? (
             <div className="flex items-center gap-2">
@@ -567,7 +567,7 @@ export function RepoSelector({
                 {showReposLoading ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    <span>Loading...</span>
+                    <span>Loading&hellip;</span>
                   </div>
                 ) : (
                   <SelectValue placeholder="Repo" />
@@ -580,12 +580,13 @@ export function RepoSelector({
                       ref={filterInputRef}
                       placeholder={
                         (repos?.length || 0) > 50
-                          ? `Filter ${repos?.length || 0} repositories...`
-                          : 'Filter repositories...'
+                          ? `Filter ${repos?.length || 0} repositories\u2026`
+                          : 'Filter repositories\u2026'
                       }
                       value={repoFilter}
                       onChange={(e) => setRepoFilter(e.target.value)}
                       disabled={disabled}
+                      aria-label="Filter repositories"
                       className="text-base md:text-sm h-8"
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
@@ -599,7 +600,7 @@ export function RepoSelector({
                 ) : showReposLoading ? (
                   <div className="p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading repositories...</span>
+                    <span>Loading repositories&hellip;</span>
                   </div>
                 ) : (
                   <>

@@ -36,13 +36,22 @@ export function TaskDuration({ task, hideTitle = false }: TaskDurationProps) {
   }
 
   if (hideTitle) {
-    return <p className="text-sm text-muted-foreground min-w-[40px] inline-block">{formatDuration()}</p>
+    return (
+      <p
+        className="text-sm text-muted-foreground min-w-[40px] inline-block"
+        style={{ fontVariantNumeric: 'tabular-nums' }}
+      >
+        {formatDuration()}
+      </p>
+    )
   }
 
   return (
     <div>
       <h4 className="font-medium mb-1">Duration</h4>
-      <p className="text-sm text-muted-foreground">{formatDuration()}</p>
+      <p className="text-sm text-muted-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        {formatDuration()}
+      </p>
     </div>
   )
 }
