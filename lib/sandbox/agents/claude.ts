@@ -77,7 +77,7 @@ export async function installClaudeCLI(
   } else {
     // Install Claude CLI
     await logger.info('Installing Claude CLI...')
-    claudeInstall = await runCommandInSandbox(sandbox, 'npm', ['install', '-g', '@anthropic-ai/claude-code'])
+    claudeInstall = await runCommandInSandbox(sandbox, 'sh', ['-c', 'curl -fsSL https://claude.ai/install.sh | bash'])
   }
 
   if (claudeInstall.success) {

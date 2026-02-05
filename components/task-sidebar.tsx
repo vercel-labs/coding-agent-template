@@ -33,7 +33,7 @@ import { githubConnectionAtom } from '@/lib/atoms/github-connection'
 const AGENT_MODELS = {
   claude: [
     { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
-    { value: 'claude-opus-4-6', label: 'Opus 4.6' },
+    { value: 'anthropic/claude-opus-4.6', label: 'Opus 4.6' },
     { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
   codex: [
