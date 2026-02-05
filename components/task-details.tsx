@@ -115,7 +115,7 @@ const CODING_AGENTS = [
 const AGENT_MODELS = {
   claude: [
     { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
-    { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+    { value: 'claude-opus-4-6', label: 'Opus 4.6' },
     { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
   ],
   codex: [
@@ -691,7 +691,7 @@ export function TaskDetails({ task, maxSandboxDuration = 300 }: TaskDetailsProps
   const AGENT_MODELS: Record<string, Array<{ value: string; label: string }>> = {
     claude: [
       { value: 'claude-sonnet-4-5', label: 'Sonnet 4.5' },
-      { value: 'claude-opus-4-5', label: 'Opus 4.5' },
+      { value: 'claude-opus-4-6', label: 'Opus 4.6' },
       { value: 'claude-haiku-4-5', label: 'Haiku 4.5' },
     ],
     codex: [
