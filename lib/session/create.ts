@@ -3,23 +3,18 @@ import 'server-only'
 import type { Session, Tokens } from './types'
 import { SESSION_COOKIE_NAME } from './constants'
 import { encryptJWE } from '@/lib/jwe/encrypt'
-import { fetchTeams } from '@/lib/vercel-client/teams'
 import { fetchUser } from '@/lib/vercel-client/user'
-import { getHighestAccountLevel } from '@/lib/vercel-client/utils'
 import { upsertUser } from '@/lib/db/users'
 import { encrypt } from '@/lib/crypto'
 import ms from 'ms'
 
 export async function createSession(tokens: Tokens): Promise<Session | undefined> {
-  const [user, teams] = await Promise.all([fetchUser(tokens.accessToken), fetchTeams(tokens.accessToken)])
+  const user = await fetchUser(tokens.accessToken)
 
   if (!user) {
     console.log('Failed to fetch user')
     return undefined
   }
-
-  // Teams may fail due to permissions - default to hobby plan if unavailable
-  const plan = teams ? getHighestAccountLevel(teams) : { plan: 'hobby' as const, team: null }
 
   // Create or update user in database
   const externalId = user.uid || user.id || ''
