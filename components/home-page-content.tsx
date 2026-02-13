@@ -65,7 +65,7 @@ export function HomePageContent({
   const [showMultiRepoDialog, setShowMultiRepoDialog] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { refreshTasks, addTaskOptimistically } = useTasks()
+  const { refreshTasks, addTaskOptimistically, removeTaskOptimistically } = useTasks()
   const setTaskPrompt = useSetAtom(taskPromptAtom)
 
   // Multi-repo mode state
@@ -528,14 +528,12 @@ export function HomePageContent({
           const error = await response.json()
           // Show detailed message for rate limits, or generic error message
           toast.error(error.message || error.error || 'Failed to create task')
-          // TODO: Remove the optimistic task on error
-          await refreshTasks() // For now, just refresh to remove the optimistic task
+          removeTaskOptimistically(id)
         }
       } catch (error) {
         console.error('Error creating task:', error)
         toast.error('Failed to create task')
-        // TODO: Remove the optimistic task on error
-        await refreshTasks() // For now, just refresh to remove the optimistic task
+        removeTaskOptimistically(id)
       } finally {
         setIsSubmitting(false)
       }

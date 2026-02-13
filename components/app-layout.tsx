@@ -31,6 +31,7 @@ interface TasksContextType {
     installDependencies: boolean
     maxDuration: number
   }) => { id: string; optimisticTask: Task }
+  removeTaskOptimistically: (taskId: string) => void
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined)
@@ -254,6 +255,10 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
     return { id, optimisticTask }
   }
 
+  const removeTaskOptimistically = (taskId: string) => {
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId))
+  }
+
   const closeSidebar = () => {
     updateSidebarOpen(false, false) // Don't save to cookie for mobile backdrop clicks
   }
@@ -303,6 +308,7 @@ export function AppLayout({ children, initialSidebarWidth, initialSidebarOpen, i
         isSidebarOpen,
         isSidebarResizing: isResizing,
         addTaskOptimistically,
+        removeTaskOptimistically,
       }}
     >
       <ConnectorsProvider>
