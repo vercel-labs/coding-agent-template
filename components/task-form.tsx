@@ -168,6 +168,7 @@ export function TaskForm({
   maxSandboxDuration = 300,
 }: TaskFormProps) {
   const [prompt, setPrompt] = useAtom(taskPromptAtom)
+  const isComposing = useRef(false)
   const [savedAgent, setSavedAgent] = useAtom(lastSelectedAgentAtom)
   const [selectedAgent, setSelectedAgent] = useState(savedAgent || 'claude')
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODELS.claude)
@@ -211,7 +212,7 @@ export function TaskForm({
 
   // Handle keyboard events in textarea
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !isComposing.current) {
       // On desktop: Enter submits, Shift+Enter creates new line
       // On mobile: Enter creates new line, must use submit button
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
@@ -430,6 +431,8 @@ export function TaskForm({
               id="prompt"
               placeholder="Describe what you want the AI agent to do..."
               value={prompt}
+              onCompositionStart={() => (isComposing.current = true)}
+              onCompositionEnd={() => (isComposing.current = false)}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleTextareaKeyDown}
               disabled={isSubmitting}
