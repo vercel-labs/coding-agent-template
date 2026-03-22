@@ -1,0 +1,30 @@
+# Nixpacks configuration for Next.js (pnpm)
+# Docs: https://nixpacks.com/docs/reference/configuration
+
+providers = ["node"]
+
+[phases.setup]
+# Use Node 20 and pnpm from nixpkgs for reproducibility
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[variables]
+NEXT_TELEMETRY_DISABLED = "1"
+HUSKY = "0"
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = [
+  "pnpm install --frozen-lockfile"
+]
+# Persist pnpm store between builds for faster installs
+cacheDirectories = ["~/.pnpm-store"]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = [
+  "pnpm run build"
+]
+
+[start]
+# Bind to 0.0.0.0 and use Dokploy-provided $PORT
+cmd = "NODE_ENV=production pnpm run start -- -H 0.0.0.0 -p ${PORT:-3000}"
