@@ -16,11 +16,11 @@ interface ApiKeysDialogProps {
 type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
 
 const PROVIDERS = [
-  { id: 'aigateway' as Provider, name: 'AI Gateway', placeholder: 'gw_...' },
-  { id: 'anthropic' as Provider, name: 'Anthropic', placeholder: 'sk-ant-...' },
+  { id: 'aigateway' as Provider, name: 'AI Gateway', placeholder: 'vck_...' },
   { id: 'openai' as Provider, name: 'OpenAI', placeholder: 'sk-...' },
   { id: 'gemini' as Provider, name: 'Gemini', placeholder: 'AIza...' },
   { id: 'cursor' as Provider, name: 'Cursor', placeholder: 'cur_...' },
+  { id: 'anthropic' as Provider, name: 'Anthropic (legacy)', placeholder: 'sk-ant-...', visibility: 'saved-only' },
 ]
 
 export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
@@ -174,18 +174,23 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
     setShowKeys((prev) => ({ ...prev, [provider]: !prev[provider] }))
   }
 
+  const visibleProviders = PROVIDERS.filter(
+    (provider) => provider.visibility !== 'saved-only' || savedKeys.has(provider.id),
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>API Keys</DialogTitle>
           <DialogDescription>
-            Configure your own API keys. System defaults will be used if not provided.
+            Configure your own API keys. Claude and Codex use AI Gateway in this template. System defaults will be used
+            if not provided.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          {PROVIDERS.map((provider) => {
+          {visibleProviders.map((provider) => {
             const hasSavedKey = savedKeys.has(provider.id)
             const isCleared = clearedKeys.has(provider.id)
             const showSaveButton = !hasSavedKey || isCleared

@@ -63,6 +63,11 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // Claude and Codex always use AI Gateway in this template, even for Claude-family models.
+    if (agent === 'claude' || agent === 'codex') {
+      provider = 'aigateway'
+    }
+
     // Override provider based on model for multi-provider agents
     if (model && (agent === 'cursor' || agent === 'opencode')) {
       if (isAnthropicModel(model)) {

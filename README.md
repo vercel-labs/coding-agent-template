@@ -240,11 +240,11 @@ NEXT_PUBLIC_AUTH_PROVIDERS=github,vercel
 
 These API keys can be set globally (fallback for all users) or left unset to require users to provide their own:
 
-- `ANTHROPIC_API_KEY`: Anthropic API key for Claude agent (users can override in their profile)
-- `AI_GATEWAY_API_KEY`: AI Gateway API key for branch name generation and Codex (users can override)
+- `AI_GATEWAY_API_KEY`: AI Gateway API key for Claude, Codex, branch name generation, title generation, and commit message generation (users can override)
+- `ANTHROPIC_API_KEY`: Optional legacy/direct Anthropic key for agents that talk to Anthropic directly, such as some OpenCode configurations. It is not required for the Claude agent in this template.
 - `CURSOR_API_KEY`: For Cursor agent support (users can override)
 - `GEMINI_API_KEY`: For Google Gemini agent support (users can override)
-- `OPENAI_API_KEY`: For Codex and OpenCode agents (users can override)
+- `OPENAI_API_KEY`: For OpenCode direct OpenAI usage (users can override)
 
 > **Note**: Users can provide their own API keys in their profile settings, which take precedence over global environment variables.
 
@@ -554,4 +554,3 @@ Confirm that:
 - **Users must connect GitHub** (if they signed in with Vercel) to access repositories
 - **API keys** can now be per-user - users can override global API keys in their profile
 - **Breaking API changes**: If you have external integrations calling your API, they'll need to be updated to include authentication
-

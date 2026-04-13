@@ -130,32 +130,6 @@ const DEFAULT_MODELS = {
   opencode: 'gpt-5',
 } as const
 
-// API key requirements for each agent
-const AGENT_API_KEY_REQUIREMENTS: Record<string, Provider[]> = {
-  claude: ['anthropic'],
-  codex: ['aigateway'], // Uses AI Gateway for OpenAI proxy
-  copilot: [], // Uses user's GitHub account token automatically
-  cursor: ['cursor'],
-  gemini: ['gemini'],
-  opencode: [], // Will be determined dynamically based on selected model
-}
-
-type Provider = 'openai' | 'gemini' | 'cursor' | 'anthropic' | 'aigateway'
-
-// Helper to determine which API key is needed for opencode based on model
-const getOpenCodeRequiredKeys = (model: string): Provider[] => {
-  // Check if it's an Anthropic model (claude models)
-  if (model.includes('claude') || model.includes('sonnet') || model.includes('opus')) {
-    return ['anthropic']
-  }
-  // Check if it's an OpenAI/GPT model (uses AI Gateway)
-  if (model.includes('gpt')) {
-    return ['aigateway']
-  }
-  // Fallback to both if we can't determine
-  return ['aigateway', 'anthropic']
-}
-
 export function TaskForm({
   onSubmit,
   isSubmitting,
