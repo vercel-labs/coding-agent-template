@@ -466,7 +466,7 @@ async function processTask(
         preDeterminedBranchName: aiBranchName || undefined,
         onProgress: async (progress: number, message: string) => {
           // Use real-time logger for progress updates
-          await logger.updateProgress(progress, message)
+          await logger.updateProgress(progress, 'Sandbox setup in progress')
         },
         onCancellationCheck: async () => {
           // Check if task was stopped

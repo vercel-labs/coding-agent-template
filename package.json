@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx}\"",
+    "check:task-logs": "tsx scripts/check-task-logger-static.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

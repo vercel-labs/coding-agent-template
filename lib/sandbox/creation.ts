@@ -18,9 +18,7 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   }
 
   const fullCommand = args.length > 0 ? `${command} ${args.map(escapeArg).join(' ')}` : command
-  const redactedCommand = redactSensitiveInfo(fullCommand)
-
-  await logger.command(redactedCommand)
+  await logger.command('Running sandbox setup command')
 
   let result
   if (cwd) {
@@ -32,13 +30,11 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   }
 
   if (result && result.output && result.output.trim()) {
-    const redactedOutput = redactSensitiveInfo(result.output.trim())
-    await logger.info(redactedOutput)
+    await logger.info('Sandbox setup command produced output')
   }
 
   if (result && !result.success && result.error) {
-    const redactedError = redactSensitiveInfo(result.error)
-    await logger.error(redactedError)
+    await logger.error('Sandbox setup command failed')
   }
 
   return result
@@ -149,8 +145,8 @@ export async function createSandbox(config: SandboxConfig, logger: TaskLogger): 
 
       // Check if this is a timeout error
       if (errorMessage?.includes('timeout') || errorCode === 'ETIMEDOUT' || errorName === 'TimeoutError') {
-        await logger.error(`Sandbox creation timed out after 5 minutes`)
-        await logger.error(`This usually happens when the repository is large or has many dependencies`)
+        await logger.error('Sandbox creation timed out')
+        await logger.error('Repository may be large or have many dependencies')
         throw new Error('Sandbox creation timed out. Try with a smaller repository or fewer dependencies.')
       }
 
@@ -426,7 +422,7 @@ fi
                   .split('\n')
                   .filter((line) => line.trim())
                 for (const line of lines) {
-                  logger.info(`[SERVER] ${line}`).catch(() => {})
+                  logger.info('Development server produced output').catch(() => {})
                 }
                 callback()
               },
@@ -439,7 +435,7 @@ fi
                   .split('\n')
                   .filter((line) => line.trim())
                 for (const line of lines) {
-                  logger.info(`[SERVER] ${line}`).catch(() => {})
+                  logger.info('Development server produced output').catch(() => {})
                 }
                 callback()
               },

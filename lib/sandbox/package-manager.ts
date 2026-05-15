@@ -35,7 +35,6 @@ export async function installDependencies(
   logger: TaskLogger,
 ): Promise<{ success: boolean; error?: string }> {
   let installCommand: string[]
-  let logMessage: string
 
   switch (packageManager) {
     case 'pnpm':
@@ -48,19 +47,16 @@ export async function installDependencies(
       }
 
       installCommand = ['pnpm', 'install', '--frozen-lockfile']
-      logMessage = 'Attempting pnpm install'
       break
     case 'yarn':
       installCommand = ['yarn', 'install', '--frozen-lockfile']
-      logMessage = 'Attempting yarn install'
       break
     case 'npm':
       installCommand = ['npm', 'install', '--no-audit', '--no-fund']
-      logMessage = 'Attempting npm install'
       break
   }
 
-  await logger.info(logMessage)
+  await logger.info('Installing Node.js dependencies')
 
   const installResult = await runInProject(sandbox, installCommand[0], installCommand.slice(1))
 

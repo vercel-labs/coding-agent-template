@@ -12,17 +12,16 @@ type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command in sandbox root (for installation checks)
 async function runAndLogCommandRoot(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  await logger.command(redactSensitiveInfo(fullCommand))
+  await logger.command('Running setup command')
 
   const result = await runCommandInSandbox(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
-    await logger.info(redactSensitiveInfo(result.output.trim()))
+    await logger.info('Command produced output')
   }
 
   if (!result.success && result.error) {
-    await logger.error(redactSensitiveInfo(result.error))
+    await logger.error('Command failed')
   }
 
   return result
@@ -30,17 +29,16 @@ async function runAndLogCommandRoot(sandbox: Sandbox, command: string, args: str
 
 // Helper function to run command in project directory (for git operations)
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  await logger.command(redactSensitiveInfo(fullCommand))
+  await logger.command('Running project command')
 
   const result = await runInProject(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
-    await logger.info(redactSensitiveInfo(result.output.trim()))
+    await logger.info('Command produced output')
   }
 
   if (!result.success && result.error) {
-    await logger.error(redactSensitiveInfo(result.error))
+    await logger.error('Command failed')
   }
 
   return result
@@ -114,7 +112,7 @@ export async function executeCursorInSandbox(
       // For now, we'll fail gracefully with a more informative error
       const errorMsg = `Failed to install Cursor CLI: ${cursorInstall.error || 'Installation timed out or failed'}. The Cursor CLI installation script may not be compatible with this sandbox environment.`
       if (logger) {
-        await logger.error(errorMsg)
+        await logger.error('Cursor CLI installation failed')
       }
       return {
         success: false,
@@ -287,7 +285,7 @@ EOF`
     const resumeFlag = isResumed && sessionId ? ` --resume ${sessionId}` : ''
     const logCommand = `cursor-agent -p --force --output-format stream-json${modelFlag}${resumeFlag} "${instruction}"`
     if (logger) {
-      await logger.command(logCommand)
+      await logger.command('Running Cursor CLI')
       if (selectedModel) {
         await logger.info('Executing cursor-agent with model')
       }
@@ -513,12 +511,12 @@ EOF`
     // Skip logging raw output when streaming to database (we've already built clean content there)
     if (result.output && result.output.trim() && !agentMessageId) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
-      await logger.info(redactedOutput)
+      await logger.info('Cursor CLI produced output')
     }
 
     if (result.error && result.error.trim()) {
       const redactedError = redactSensitiveInfo(result.error)
-      await logger.error(redactedError)
+      await logger.error('Cursor CLI produced an error')
     }
 
     // Cursor CLI execution completed

@@ -9,17 +9,16 @@ type Connector = typeof connectors.$inferSelect
 
 // Helper function to run command and log it in project directory
 async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[], logger: TaskLogger) {
-  const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
-  await logger.command(redactSensitiveInfo(fullCommand))
+  await logger.command('Running project command')
 
   const result = await runInProject(sandbox, command, args)
 
   if (result.output && result.output.trim()) {
-    await logger.info(redactSensitiveInfo(result.output.trim()))
+    await logger.info('Command produced output')
   }
 
   if (!result.success && result.error) {
-    await logger.error(redactSensitiveInfo(result.error))
+    await logger.error('Command failed')
   }
 
   return result
@@ -94,7 +93,7 @@ export async function executeCodexInSandbox(
       const errorMsg = `Invalid API key format. Expected to start with "sk-" (OpenAI) or "vck_" (Vercel), but got: "${apiKey?.substring(0, 15) || 'undefined'}"`
 
       if (logger) {
-        await logger.error(errorMsg)
+        await logger.error('Codex CLI authentication failed')
       }
       return {
         success: false,
@@ -293,13 +292,11 @@ url = "${server.baseUrl}"
 
     const logCommand = `${codexCommand} "${instruction}"`
 
-    await logger.command(logCommand)
+    await logger.command('Running Codex CLI')
     if (logger) {
-      await logger.command(logCommand)
+      await logger.command('Running Codex CLI')
       const providerName = isVercelKey ? 'Vercel AI Gateway' : 'OpenAI API'
-      await logger.info(
-        `Executing Codex with model ${modelToUse} via ${providerName} and bypassed sandbox restrictions`,
-      )
+      await logger.info('Executing Codex CLI')
     }
 
     // Use the same pattern as other working agents (Claude, etc.)
@@ -313,17 +310,17 @@ url = "${server.baseUrl}"
     // Log the output and error results (similar to Claude and Cursor)
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
-      await logger.info(redactedOutput)
+      await logger.info('Codex CLI produced output')
       if (logger) {
-        await logger.info(redactedOutput)
+        await logger.info('Codex CLI produced output')
       }
     }
 
     if (!result.success && result.error && result.error.trim()) {
       const redactedError = redactSensitiveInfo(result.error.trim())
-      await logger.error(redactedError)
+      await logger.error('Codex CLI produced an error')
       if (logger) {
-        await logger.error(redactedError)
+        await logger.error('Codex CLI produced an error')
       }
     }
 

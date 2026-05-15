@@ -17,9 +17,9 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
   // Log to both local logs and database if logger is provided
-  await logger.command(redactedCommand)
+  await logger.command('Running project command')
   if (logger) {
-    await logger.command(redactedCommand)
+    await logger.command('Running project command')
   }
 
   const result = await runInProject(sandbox, command, args)
@@ -27,17 +27,17 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
     const redactedOutput = redactSensitiveInfo(result.output.trim())
-    await logger.info(redactedOutput)
+    await logger.info('Command produced output')
     if (logger) {
-      await logger.info(redactedOutput)
+      await logger.info('Command produced output')
     }
   }
 
   if (result && !result.success && result.error) {
     const redactedError = redactSensitiveInfo(result.error)
-    await logger.error(redactedError)
+    await logger.error('Command failed')
     if (logger) {
-      await logger.error(redactedError)
+      await logger.error('Command failed')
     }
   }
 
@@ -300,7 +300,7 @@ export async function executeClaudeInSandbox(
 
     // Log the command we're about to execute (with redacted API key)
     const redactedCommand = fullCommand.replace(aiGatewayKey, '[REDACTED]')
-    await logger.command(redactedCommand)
+    await logger.command('Running Claude CLI')
 
     // Set up streaming output capture if we have an agent message
     let capturedOutput = ''

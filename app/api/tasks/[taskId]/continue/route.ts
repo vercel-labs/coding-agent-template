@@ -219,7 +219,7 @@ async function continueTask(
           installDependencies,
           preDeterminedBranchName: branchName, // Use existing branch
           onProgress: async (progress: number, message: string) => {
-            await logger.updateProgress(progress, message)
+            await logger.updateProgress(progress, 'Sandbox setup in progress')
           },
         },
         logger,

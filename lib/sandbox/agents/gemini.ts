@@ -12,19 +12,19 @@ async function runAndLogCommand(sandbox: Sandbox, command: string, args: string[
   const fullCommand = args.length > 0 ? `${command} ${args.join(' ')}` : command
   const redactedCommand = redactSensitiveInfo(fullCommand)
 
-  await logger.command(redactedCommand)
+  await logger.command('Running project command')
 
   const result = await runInProject(sandbox, command, args)
 
   // Only try to access properties if result is valid
   if (result && result.output && result.output.trim()) {
     const redactedOutput = redactSensitiveInfo(result.output.trim())
-    await logger.info(redactedOutput)
+    await logger.info('Command produced output')
   }
 
   if (result && !result.success && result.error) {
     const redactedError = redactSensitiveInfo(result.error)
-    await logger.error(redactedError)
+    await logger.error('Command failed')
   }
 
   // If result is null/undefined, create a fallback result
@@ -219,7 +219,7 @@ EOF`
     // Log what we're trying to do
     await logger.info('Executing Gemini CLI with authentication')
     const redactedCommand = `gemini ${args.join(' ')} "${instruction.substring(0, 100)}..."`
-    await logger.command(redactedCommand)
+    await logger.command('Running Gemini CLI')
 
     // Build environment variables string for shell command (like other agents)
     const envPrefix = Object.entries(authEnv)
@@ -266,7 +266,7 @@ EOF`
     // Check if result is valid before accessing properties
     if (!result) {
       const errorMsg = 'Gemini CLI execution failed - no result returned'
-      await logger.error(errorMsg)
+      await logger.error('Gemini CLI execution failed')
       return {
         success: false,
         error: errorMsg,
@@ -278,12 +278,12 @@ EOF`
     // Log the output
     if (result.output && result.output.trim()) {
       const redactedOutput = redactSensitiveInfo(result.output.trim())
-      await logger.info(redactedOutput)
+      await logger.info('Gemini CLI produced output')
     }
 
     if (!result.success && result.error) {
       const redactedError = redactSensitiveInfo(result.error)
-      await logger.error(redactedError)
+      await logger.error('Gemini CLI produced an error')
     }
 
     // Log more details for debugging
