@@ -149,11 +149,7 @@ export default mergeConfig(userConfig, defineConfig({
 
     const captureServerStdout = new Writable({
       write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-        const lines = chunk
-          .toString()
-          .split('\n')
-          .filter((line) => line.trim())
-        for (const line of lines) {
+        if (chunk.toString().trim()) {
           logger.info('Development server produced output').catch(() => {})
         }
         callback()
@@ -162,11 +158,7 @@ export default mergeConfig(userConfig, defineConfig({
 
     const captureServerStderr = new Writable({
       write(chunk: Buffer | string, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-        const lines = chunk
-          .toString()
-          .split('\n')
-          .filter((line) => line.trim())
-        for (const line of lines) {
+        if (chunk.toString().trim()) {
           logger.info('Development server produced output').catch(() => {})
         }
         callback()
