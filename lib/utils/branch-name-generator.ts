@@ -10,10 +10,6 @@ export interface BranchNameOptions {
 export async function generateBranchName(options: BranchNameOptions): Promise<string> {
   const { description, repoName, context } = options
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    throw new Error('AI_GATEWAY_API_KEY environment variable is required')
-  }
-
   // Create the prompt for branch name generation
   const prompt = `Generate a concise, descriptive Git branch name for the following task:
 
@@ -37,7 +33,7 @@ Examples of good branch names:
 Return ONLY the branch name, nothing else.`
 
   try {
-    // Generate branch name using AI SDK 5 with AI Gateway
+    // Generate branch name using AI SDK 7 with AI Gateway
     const result = await generateText({
       model: 'openai/gpt-5-nano',
       prompt,
