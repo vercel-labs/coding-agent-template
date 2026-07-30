@@ -9,10 +9,6 @@ export interface TitleGenerationOptions {
 export async function generateTaskTitle(options: TitleGenerationOptions): Promise<string> {
   const { prompt, repoName, context } = options
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    throw new Error('AI_GATEWAY_API_KEY environment variable is required')
-  }
-
   // Create the prompt for title generation
   const systemPrompt = `Generate a concise, descriptive title for the following task:
 
@@ -36,7 +32,7 @@ Examples of good titles:
 Return ONLY the title, nothing else.`
 
   try {
-    // Generate title using AI SDK 5 with AI Gateway
+    // Generate title using AI SDK 7 with AI Gateway
     const result = await generateText({
       model: 'openai/gpt-5-nano',
       prompt: systemPrompt,

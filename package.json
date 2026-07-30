@@ -2,6 +2,9 @@
   "name": "coding-agent-template",
   "version": "2.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --turbopack",
@@ -42,7 +45,7 @@
     "@vercel/sandbox": "^0.0.21",
     "@vercel/sdk": "^1.18.7",
     "@vercel/speed-insights": "^1.3.1",
-    "ai": "5.0.51",
+    "ai": "7.0.34",
     "arctic": "^3.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
