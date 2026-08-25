@@ -60,7 +60,7 @@ pnpm dev
 
 ### Maximum Duration
 
-The maximum duration setting controls how long the Vercel sandbox will stay alive from the moment it's created. You can select timeouts ranging from 5 minutes to 5 hours.
+The maximum duration setting controls how long the Vercel sandbox will stay alive from the moment it's created. The picker offers timeouts ranging from 5 minutes to 5 hours. Vercel Sandbox itself supports sessions of up to 45 minutes on the Hobby plan and up to 24 hours on Pro and Enterprise plans.
 
 - The sandbox is created at the start of the task
 - The timeout begins when the sandbox is created
