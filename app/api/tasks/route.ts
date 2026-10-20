@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { Sandbox } from '@vercel/sandbox'
 import { db } from '@/lib/db/client'
 import { tasks, insertTaskSchema, connectors, taskMessages } from '@/lib/db/schema'
+import { getConnectedConnectors } from '@/lib/db/connectors'
 import { generateId } from '@/lib/utils/id'
 import { createSandbox } from '@/lib/sandbox/creation'
 import { executeAgentInSandbox, AgentType } from '@/lib/sandbox/agents'
@@ -540,10 +541,7 @@ async function processTask(
       const session = await getServerSession()
 
       if (session?.user?.id) {
-        const userConnectors = await db
-          .select()
-          .from(connectors)
-          .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
+        const userConnectors = await getConnectedConnectors(session.user.id)
 
         mcpServers = userConnectors.map((connector: Connector) => {
           // Decrypt sensitive fields

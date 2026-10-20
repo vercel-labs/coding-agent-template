@@ -33,6 +33,7 @@ import NotionIcon from '@/components/icons/notion-icon'
 import PlaywrightIcon from '@/components/icons/playwright-icon'
 import SupabaseIcon from '@/components/icons/supabase-icon'
 import { Card } from '@/components/ui/card'
+import { PARALLEL_SEARCH_NAME, PARALLEL_SEARCH_URL } from '@/lib/connectors/parallel-search'
 import { Switch } from '@/components/ui/switch'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
@@ -108,6 +109,11 @@ const PRESETS: PresetConfig[] = [
     name: 'Notion',
     type: 'remote',
     url: 'https://mcp.notion.com/mcp',
+  },
+  {
+    name: PARALLEL_SEARCH_NAME,
+    type: 'remote',
+    url: PARALLEL_SEARCH_URL,
   },
   {
     name: 'Playwright',
@@ -422,7 +428,9 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                       <PlaywrightIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
                     ) : preset.name === 'Supabase' ? (
                       <SupabaseIcon style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-                    ) : null}
+                    ) : (
+                      <Server className="h-8 w-8 flex-shrink-0" />
+                    )}
                     <span className="text-sm font-medium text-center">{preset.name}</span>
                   </button>
                 ))}
@@ -488,7 +496,9 @@ export function ConnectorDialog({ open, onOpenChange }: ConnectorDialogProps) {
                       <PlaywrightIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
                     ) : selectedPreset.name === 'Supabase' ? (
                       <SupabaseIcon style={{ width: 32, height: 32 }} className="flex-shrink-0" />
-                    ) : null}
+                    ) : (
+                      <Server className="h-8 w-8 flex-shrink-0" />
+                    )}
                     <div className="flex-1">
                       <p className="text-sm font-medium">Configuring {selectedPreset.name}</p>
                     </div>

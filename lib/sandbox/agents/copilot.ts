@@ -1,3 +1,5 @@
+import { writeMcpConfiguration } from '../mcp-config'
+import { parallelSearchHeaders } from '@/lib/connectors/parallel-search'
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
@@ -99,8 +101,8 @@ export async function executeCopilotInSandbox(
       }
     }
 
-    // Configure MCP servers if provided
-    if (mcpServers && mcpServers.length > 0) {
+    // Refresh even an empty selection so disconnected servers do not survive a follow-up.
+    if (mcpServers !== undefined) {
       await logger.info('Configuring MCP servers for GitHub Copilot')
 
       // Create MCP configuration file for Copilot
@@ -143,7 +145,7 @@ export async function executeCopilotInSandbox(
           await logger.info('Added local MCP server')
         } else {
           // Remote HTTP/SSE server
-          const headers: Record<string, string> = {}
+          const headers: Record<string, string> = parallelSearchHeaders(server.baseUrl)
           if (server.oauthClientSecret) {
             headers.Authorization = `Bearer ${server.oauthClientSecret}`
           }
@@ -167,19 +169,19 @@ export async function executeCopilotInSandbox(
         }
       }
 
-      // Write the MCP configuration file (use $HOME instead of ~)
-      const mcpConfigJson = JSON.stringify(mcpConfig, null, 2)
-      const createMcpConfigCmd = `mkdir -p $HOME/.copilot && cat > $HOME/.copilot/mcp-config.json << 'EOF'
-${mcpConfigJson}
-EOF`
-
-      await logger.info('Creating GitHub Copilot MCP configuration file...')
-      const mcpConfigResult = await runCommandInSandbox(sandbox, 'sh', ['-c', createMcpConfigCmd])
+      // Merge current app connectors while preserving native settings and user edits.
+      const mcpConfigResult = await writeMcpConfiguration(sandbox, '~/.copilot/mcp-config.json', mcpConfig)
 
       if (mcpConfigResult.success) {
         await logger.info('MCP configuration file created successfully')
       } else {
-        await logger.info('Warning: Failed to create MCP configuration file')
+        await logger.error('Failed to refresh MCP configuration')
+        return {
+          success: false,
+          error: 'Failed to refresh MCP configuration',
+          cliName: 'copilot',
+          changesDetected: false,
+        }
       }
     }
 

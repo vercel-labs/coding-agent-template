@@ -8,6 +8,7 @@ import { connectors, taskMessages } from '@/lib/db/schema'
 import { db } from '@/lib/db/client'
 import { eq } from 'drizzle-orm'
 import { generateId } from '@/lib/utils/id'
+import { parallelSearchHeaders } from '@/lib/connectors/parallel-search'
 
 type Connector = typeof connectors.$inferSelect
 
@@ -101,6 +102,10 @@ export async function installClaudeCLI(
 
         for (const server of mcpServers) {
           const serverName = server.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+
+          // Parallel is supplied per execution below, so disconnecting it also
+          // takes effect in a resumed sandbox without leaving a saved server.
+          if (server.type === 'remote' && Object.keys(parallelSearchHeaders(server.baseUrl)).length > 0) continue
 
           if (server.type === 'local') {
             // Local STDIO server - command string contains both executable and args
@@ -277,6 +282,27 @@ export async function executeClaudeInSandbox(
     // Build command with stream-json output format for streaming
     let fullCommand = `${envPrefix} claude --model "${modelToUse}" --dangerously-skip-permissions --output-format stream-json --verbose`
 
+    const parallelServers = Object.fromEntries(
+      (mcpServers || [])
+        .filter((server) => server.type === 'remote' && Object.keys(parallelSearchHeaders(server.baseUrl)).length > 0)
+        .map((server) => [
+          server.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          {
+            type: 'http',
+            url: server.baseUrl,
+            headers: {
+              ...parallelSearchHeaders(server.baseUrl),
+              ...(server.oauthClientSecret ? { Authorization: `Bearer ${server.oauthClientSecret}` } : {}),
+              ...(server.oauthClientId ? { 'X-Client-ID': server.oauthClientId } : {}),
+            },
+          },
+        ]),
+    )
+    if (Object.keys(parallelServers).length > 0) {
+      const config = JSON.stringify({ mcpServers: parallelServers }).replace(/'/g, "'\\''")
+      fullCommand += ` --mcp-config '${config}'`
+    }
+
     // Add --resume flag for follow-up messages in kept-alive sandboxes
     if (isResumed) {
       if (sessionId) {
@@ -298,9 +324,8 @@ export async function executeClaudeInSandbox(
       await logger.info('Executing Claude CLI with --dangerously-skip-permissions for automated file changes...')
     }
 
-    // Log the command we're about to execute (with redacted API key)
-    const redactedCommand = fullCommand.replace(aiGatewayKey, '[REDACTED]')
-    await logger.command(redactedCommand)
+    // The command can contain connector credentials as well as the model API key.
+    await logger.command('Executing Claude CLI')
 
     // Set up streaming output capture if we have an agent message
     let capturedOutput = ''

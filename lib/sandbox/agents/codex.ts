@@ -1,9 +1,11 @@
+import { writeCodexConfiguration } from '../codex-config'
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
 import { redactSensitiveInfo } from '@/lib/utils/logging'
 import { TaskLogger } from '@/lib/utils/task-logger'
 import { connectors } from '@/lib/db/schema'
+import { parallelSearchHeaders } from '@/lib/connectors/parallel-search'
 
 type Connector = typeof connectors.$inferSelect
 
@@ -150,16 +152,16 @@ export async function executeCodexInSandbox(
     const modelToUse = selectedModel || 'openai/gpt-4o'
     let configToml
     if (isVercelKey) {
-      // Use Vercel AI Gateway configuration for vck_ keys
-      // Based on the curl example, it uses /chat/completions endpoint, not responses
+      // Current Codex requires Responses, including for its MCP tool loop.
+      // https://vercel.com/docs/ai-gateway/coding-agents/openai-codex
       configToml = `model = "${modelToUse}"
 model_provider = "vercel-ai-gateway"
 
 [model_providers.vercel-ai-gateway]
 name = "Vercel AI Gateway"
-base_url = "https://ai-gateway.vercel.sh/v1"
+base_url = "https://ai-gateway.vercel.sh/codex/v1"
 env_key = "AI_GATEWAY_API_KEY"
-wire_api = "chat"
+wire_api = "responses"
 
 # Debug settings
 [debug]
@@ -168,9 +170,9 @@ log_requests = true
     } else {
       // Use OpenAI direct for sk_ keys
       configToml = `model = "${modelToUse}"
-model_provider = "openai"
+model_provider = "openai-direct"
 
-[model_providers.openai]
+[model_providers.openai-direct]
 name = "OpenAI"
 base_url = "https://api.openai.com/v1"
 env_key = "AI_GATEWAY_API_KEY"
@@ -224,6 +226,12 @@ command = "${executable}"
 [mcp_servers.${serverName}]
 url = "${server.baseUrl}"
 `
+          const headers = parallelSearchHeaders(server.baseUrl)
+          if (Object.keys(headers).length > 0) {
+            configToml += `http_headers = { ${Object.entries(headers)
+              .map(([name, value]) => `${JSON.stringify(name)} = ${JSON.stringify(value)}`)
+              .join(', ')} }\n`
+          }
           // Add bearer token if available (using oauthClientSecret)
           if (server.oauthClientSecret) {
             configToml += `bearer_token = "${server.oauthClientSecret}"\n`
@@ -238,13 +246,15 @@ url = "${server.baseUrl}"
       await logger.info('Creating Codex configuration file...')
     }
 
-    const configSetupResult = await sandbox.runCommand({
-      cmd: 'sh',
-      args: ['-c', `mkdir -p ~/.codex && cat > ~/.codex/config.toml << 'EOF'\n${configToml}EOF`],
-      env: {},
-      sudo: false,
-      cwd: PROJECT_DIR,
-    })
+    const configSetupResult = await writeCodexConfiguration(sandbox, configToml)
+    if (!configSetupResult.success) {
+      return {
+        success: false,
+        error: 'Failed to refresh Codex configuration',
+        cliName: 'codex',
+        changesDetected: false,
+      }
+    }
 
     if (logger) {
       await logger.info('Codex config setup completed')
@@ -282,24 +292,22 @@ url = "${server.baseUrl}"
     let codexCommand = 'codex exec --dangerously-bypass-approvals-and-sandbox'
 
     if (isResumed) {
-      // Use resume command instead of exec
-      // Note: codex resume doesn't take session ID as an argument, it uses a picker or --last
-      // For now, we'll use --last to continue the most recent session
-      codexCommand = 'codex resume --last'
+      // Keep follow-ups non-interactive; the top-level resume command opens a TUI.
+      codexCommand = 'codex exec resume --last --dangerously-bypass-approvals-and-sandbox'
       if (logger) {
         await logger.info('Resuming previous Codex conversation')
       }
     }
 
-    const logCommand = `${codexCommand} "${instruction}"`
+    if (selectedModel) {
+      const quotedModel = `'${selectedModel.replace(/'/g, "'\\''")}'`
+      codexCommand += ` --model ${quotedModel}`
+    }
 
-    await logger.command(logCommand)
+    await logger.command('Executing Codex CLI')
     if (logger) {
-      await logger.command(logCommand)
-      const providerName = isVercelKey ? 'Vercel AI Gateway' : 'OpenAI API'
-      await logger.info(
-        `Executing Codex with model ${modelToUse} via ${providerName} and bypassed sandbox restrictions`,
-      )
+      await logger.command('Executing Codex CLI')
+      await logger.info('Executing Codex with configured model and provider')
     }
 
     // Use the same pattern as other working agents (Claude, etc.)

@@ -313,6 +313,21 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Development
 
+### Web search connector
+
+New users start with a connected **Parallel Search** MCP connector. Agents can use it
+to search current documentation and fetch web pages with
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp).
+Search uses Fast mode and requires no Parallel account or API key. The free service
+has usage limits. Queries and requested page URLs are sent to Parallel when an
+agent calls its tools.
+
+Use **Connectors** to disconnect or delete it, or edit its URL and credentials.
+Existing users keep their saved connectors; to add Parallel, choose **Add MCP Server**
+and the **Parallel Search** preset. Signing in again does not recreate a removed
+connector or enable a disconnected one. New tasks and follow-ups use connected servers. Native agent tools and permissions
+are unchanged.
+
 ### Database Operations
 
 ```bash

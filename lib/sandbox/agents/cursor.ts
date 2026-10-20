@@ -1,3 +1,5 @@
+import { writeMcpConfiguration } from '../mcp-config'
+import { parallelSearchHeaders } from '@/lib/connectors/parallel-search'
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
@@ -176,8 +178,8 @@ export async function executeCursorInSandbox(
       }
     }
 
-    // Configure MCP servers if provided
-    if (mcpServers && mcpServers.length > 0) {
+    // Refresh even an empty selection so disconnected servers do not survive a follow-up.
+    if (mcpServers !== undefined) {
       await logger.info('Configuring MCP servers')
 
       // Create mcp.json configuration file
@@ -223,7 +225,7 @@ export async function executeCursorInSandbox(
           }
 
           // Merge headers from oauth and env
-          const headers: Record<string, string> = {}
+          const headers: Record<string, string> = parallelSearchHeaders(server.baseUrl)
           if (server.oauthClientSecret) {
             headers.Authorization = `Bearer ${server.oauthClientSecret}`
           }
@@ -238,14 +240,8 @@ export async function executeCursorInSandbox(
         }
       }
 
-      // Write the mcp.json file to the Cursor config directory (not project directory)
-      const mcpConfigJson = JSON.stringify(mcpConfig, null, 2)
-      const createMcpConfigCmd = `mkdir -p ~/.cursor && cat > ~/.cursor/mcp.json << 'EOF'
-${mcpConfigJson}
-EOF`
-
-      await logger.info('Creating Cursor MCP configuration file...')
-      const mcpConfigResult = await runCommandInSandbox(sandbox, 'sh', ['-c', createMcpConfigCmd])
+      // Merge current app connectors while preserving native settings and user edits.
+      const mcpConfigResult = await writeMcpConfiguration(sandbox, '~/.cursor/mcp.json', mcpConfig)
 
       if (mcpConfigResult.success) {
         await logger.info('MCP configuration file (~/.cursor/mcp.json) created successfully')
@@ -256,7 +252,13 @@ EOF`
           await logger.info('MCP configuration verified')
         }
       } else {
-        await logger.info('Warning: Failed to create MCP configuration file')
+        await logger.error('Failed to refresh MCP configuration')
+        return {
+          success: false,
+          error: 'Failed to refresh MCP configuration',
+          cliName: 'cursor',
+          changesDetected: false,
+        }
       }
     }
 

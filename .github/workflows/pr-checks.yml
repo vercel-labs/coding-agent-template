@@ -44,6 +44,9 @@ jobs:
       - name: Run format check
         run: pnpm format:check
 
+      - name: Check MCP connector configuration
+        run: pnpm test:parallel-search
+
       - name: Run build
         run: pnpm build
 

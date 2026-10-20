@@ -1,3 +1,5 @@
+import { writeMcpConfiguration } from '../mcp-config'
+import { parallelSearchHeaders } from '@/lib/connectors/parallel-search'
 import { Sandbox } from '@vercel/sandbox'
 import { runCommandInSandbox, runInProject, PROJECT_DIR } from '../commands'
 import { AgentExecutionResult } from '../types'
@@ -146,8 +148,8 @@ export async function executeOpenCodeInSandbox(
       await logger.success('OpenCode CLI verified successfully')
     }
 
-    // Configure MCP servers if provided
-    if (mcpServers && mcpServers.length > 0) {
+    // Refresh even an empty selection so disconnected servers do not survive a follow-up.
+    if (mcpServers !== undefined) {
       await logger.info('Configuring MCP servers')
 
       // Create OpenCode opencode.json configuration file
@@ -197,7 +199,7 @@ export async function executeOpenCodeInSandbox(
           }
 
           // Build headers object
-          const headers: Record<string, string> = {}
+          const headers: Record<string, string> = parallelSearchHeaders(server.baseUrl)
           if (server.oauthClientSecret) {
             headers.Authorization = `Bearer ${server.oauthClientSecret}`
           }
@@ -212,25 +214,30 @@ export async function executeOpenCodeInSandbox(
         }
       }
 
-      // Write the opencode.json file to the OpenCode config directory (not project directory)
-      const opencodeConfigJson = JSON.stringify(opencodeConfig, null, 2)
-      const createConfigCmd = `mkdir -p ~/.opencode && cat > ~/.opencode/config.json << 'EOF'
-${opencodeConfigJson}
-EOF`
-
-      await logger.info('Creating OpenCode MCP configuration file...')
-      const configResult = await runCommandInSandbox(sandbox, 'sh', ['-c', createConfigCmd])
+      // Merge current app connectors while preserving native settings and user edits.
+      const configResult = await writeMcpConfiguration(
+        sandbox,
+        '~/.config/opencode/opencode.json',
+        opencodeConfig,
+        'mcp',
+      )
 
       if (configResult.success) {
-        await logger.info('OpenCode configuration file (~/.opencode/config.json) created successfully')
+        await logger.info('OpenCode configuration file (~/.config/opencode/opencode.json) created successfully')
 
         // Verify the file was created (without logging sensitive contents)
-        const verifyConfig = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.opencode/config.json'])
+        const verifyConfig = await runCommandInSandbox(sandbox, 'test', ['-f', '~/.config/opencode/opencode.json'])
         if (verifyConfig.success) {
           await logger.info('OpenCode MCP configuration verified')
         }
       } else {
-        await logger.info('Warning: Failed to create OpenCode configuration file')
+        await logger.error('Failed to refresh MCP configuration')
+        return {
+          success: false,
+          error: 'Failed to refresh MCP configuration',
+          cliName: 'opencode',
+          changesDetected: false,
+        }
       }
     }
 

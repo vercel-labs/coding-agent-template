@@ -1,7 +1,8 @@
 import 'server-only'
 
 import { db } from './client'
-import { users, accounts, type InsertUser } from './schema'
+import { users, accounts, connectors, type InsertUser } from './schema'
+import { PARALLEL_SEARCH_NAME, PARALLEL_SEARCH_URL } from '@/lib/connectors/parallel-search'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
@@ -78,12 +79,25 @@ export async function upsertUser(
   const userId = nanoid()
   const now = new Date()
 
-  await db.insert(users).values({
-    id: userId,
-    ...userData,
-    createdAt: now,
-    updatedAt: now,
-    lastLoginAt: now,
+  // Seed only at account creation. Subsequent sign-ins preserve disconnected,
+  // deleted and custom connectors, including accounts linked through GitHub.
+  await db.transaction(async (tx) => {
+    await tx.insert(users).values({
+      id: userId,
+      ...userData,
+      createdAt: now,
+      updatedAt: now,
+      lastLoginAt: now,
+    })
+    await tx.insert(connectors).values({
+      id: nanoid(),
+      userId,
+      name: PARALLEL_SEARCH_NAME,
+      description: 'Search the web and fetch pages without a Parallel account or API key.',
+      type: 'remote',
+      baseUrl: PARALLEL_SEARCH_URL,
+      status: 'connected',
+    })
   })
 
   return userId

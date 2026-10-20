@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { getServerSession } from '@/lib/session/get-server-session'
 import { db } from '@/lib/db/client'
 import { tasks, taskMessages, connectors } from '@/lib/db/schema'
+import { getConnectedConnectors } from '@/lib/db/connectors'
 import { eq, and, asc, isNull } from 'drizzle-orm'
 import { generateId } from '@/lib/utils/id'
 import { createTaskLogger } from '@/lib/utils/task-logger'
@@ -291,10 +292,7 @@ async function continueTask(
       const session = await getServerSession()
 
       if (session?.user?.id) {
-        const userConnectors = await db
-          .select()
-          .from(connectors)
-          .where(and(eq(connectors.userId, session.user.id), eq(connectors.status, 'connected')))
+        const userConnectors = await getConnectedConnectors(session.user.id)
 
         mcpServers = userConnectors.map((connector: Connector) => {
           const decryptedEnv = connector.env ? JSON.parse(decrypt(connector.env)) : null
